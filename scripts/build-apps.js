@@ -42,13 +42,37 @@ function compileStandaloneHtml(appType, appName) {
   // Set accurate native title
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${appName}</title>`);
 
-  // Inject target definition early in head
+  // Inject target definition and native status bar configuration early in head
+  const themeColor = isUser ? '#FFFFFF' : '#000000';
+  const barStyle = isUser ? 'default' : 'black-translucent';
   const headInjection = `
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="${barStyle}">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#FFFFFF">
-  <script>window.RIDINGO_TARGET = '${appType}';</script>
+  <meta name="theme-color" content="${themeColor}">
+  <script>
+    window.RIDINGO_TARGET = '${appType}';
+    (function configureNativeBars(){
+      function applyStatus(){
+        try {
+          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
+            var SB = window.Capacitor.Plugins.StatusBar;
+            var isLight = '${appType}' === 'user';
+            SB.setStyle({ style: isLight ? 'LIGHT' : 'DARK' }).catch(function(){});
+            SB.setBackgroundColor({ color: isLight ? '#FFFFFF' : '#000000' }).catch(function(){});
+            SB.setOverlaysWebView({ overlay: true }).catch(function(){});
+          }
+        } catch(e){}
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyStatus);
+      } else {
+        applyStatus();
+      }
+      setTimeout(applyStatus, 250);
+      setTimeout(applyStatus, 800);
+    })();
+  </script>
 `;
   html = html.replace('</head>', `${headInjection}\n</head>`);
 

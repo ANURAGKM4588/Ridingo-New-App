@@ -2,6 +2,7 @@
   "appId": "com.ridingo.user",
   "appName": "Ridingo",
   "webDir": "www",
+  "backgroundColor": "#FFFFFF",
   "server": {
     "androidScheme": "https",
     "cleartext": true
@@ -13,6 +14,14 @@
   },
   "ios": {
     "scheme": "Ridingo",
-    "contentInset": "always"
+    "contentInset": "never",
+    "backgroundColor": "#FFFFFF"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#FFFFFF",
+      "overlaysWebView": true
+    }
   }
 }
