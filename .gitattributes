@@ -1,0 +1,4 @@
+# Ensure gradlew retains LF line endings on Unix/Linux systems
+*/gradlew text eol=lf
+**/gradlew text eol=lf
+gradlew text eol=lf
