@@ -46,8 +46,8 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-          mkdir -p ../../../build-outputs
-          cp app/build/outputs/apk/debug/app-debug.apk ../../../build-outputs/Ridingo-User.apk
+          mkdir -p "${{ github.workspace }}/build-outputs"
+          cp app/build/outputs/apk/debug/app-debug.apk "${{ github.workspace }}/build-outputs/Ridingo-User.apk"
 
       # --- Build Driver App Android ---
       - name: Sync & Build Ridingo-Driver.apk
@@ -57,8 +57,8 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-          mkdir -p ../../../build-outputs
-          cp app/build/outputs/apk/debug/app-debug.apk ../../../build-outputs/Ridingo-Driver.apk
+          mkdir -p "${{ github.workspace }}/build-outputs"
+          cp app/build/outputs/apk/debug/app-debug.apk "${{ github.workspace }}/build-outputs/Ridingo-Driver.apk"
 
       - name: Upload Android APKs
         uses: actions/upload-artifact@v4
@@ -110,8 +110,8 @@ jobs:
           
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/App.app Payload/
-          mkdir -p ../../../build-outputs
-          zip -r -q ../../../build-outputs/Ridingo-User.ipa Payload
+          mkdir -p "${{ github.workspace }}/build-outputs"
+          zip -r -q "${{ github.workspace }}/build-outputs/Ridingo-User.ipa" Payload
 
       # --- Build Driver App iOS ---
       - name: Sync & Build Ridingo-Driver.ipa
@@ -133,8 +133,8 @@ jobs:
 
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/App.app Payload/
-          mkdir -p ../../../build-outputs
-          zip -r -q ../../../build-outputs/Ridingo-Driver.ipa Payload
+          mkdir -p "${{ github.workspace }}/build-outputs"
+          zip -r -q "${{ github.workspace }}/build-outputs/Ridingo-Driver.ipa" Payload
 
       - name: Upload iOS IPAs
         uses: actions/upload-artifact@v4
