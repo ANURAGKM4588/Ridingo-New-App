@@ -1,0 +1,19 @@
+{
+  "appId": "com.ridingo.driver",
+  "appName": "Ridingo Driver",
+  "webDir": "../../dist/driver",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "buildOptions": {
+      "releaseType": "APK"
+    }
+  },
+  "ios": {
+    "scheme": "RidingoDriver",
+    "contentInset": "always"
+  }
+}

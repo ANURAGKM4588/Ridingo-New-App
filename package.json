@@ -1,0 +1,23 @@
+{
+  "name": "ridingo-mobile-suite",
+  "version": "1.0.0",
+  "description": "Ridingo User and Driver Native Production Mobile Apps (iOS & Android)",
+  "private": true,
+  "scripts": {
+    "build:web": "node scripts/build-apps.js",
+    "build:android:user": "node scripts/build-android.js user",
+    "build:android:driver": "node scripts/build-android.js driver",
+    "build:ios:user": "node scripts/build-ios.js user",
+    "build:ios:driver": "node scripts/build-ios.js driver",
+    "build:all": "node scripts/build-apps.js && npm run build:android:user && npm run build:android:driver && npm run build:ios:user && npm run build:ios:driver",
+    "export:artifacts": "node scripts/export-artifacts.js"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/ios": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

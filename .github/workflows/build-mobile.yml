@@ -1,0 +1,174 @@
+name: Build Production Mobile Packages (iOS & Android)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # =============================================================
+  # 1. ANDROID BUILDS: Ridingo-User.apk & Ridingo-Driver.apk
+  # =============================================================
+  build-android:
+    name: Build Android APKs (User & Driver)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Web Distributions (dist/user & dist/driver)
+        run: npm run build:web
+
+      # --- Build User App Android ---
+      - name: Initialize & Sync User Android App
+        run: |
+          npx cap add android --config packages/user/capacitor.config.json || true
+          npx cap sync android --config packages/user/capacitor.config.json
+
+      - name: Build Ridingo-User.apk
+        run: |
+          cd packages/user/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          mkdir -p ../../../build-outputs
+          cp app/build/outputs/apk/debug/app-debug.apk ../../../build-outputs/Ridingo-User.apk
+
+      # --- Build Driver App Android ---
+      - name: Initialize & Sync Driver Android App
+        run: |
+          npx cap add android --config packages/driver/capacitor.config.json || true
+          npx cap sync android --config packages/driver/capacitor.config.json
+
+      - name: Build Ridingo-Driver.apk
+        run: |
+          cd packages/driver/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          mkdir -p ../../../build-outputs
+          cp app/build/outputs/apk/debug/app-debug.apk ../../../build-outputs/Ridingo-Driver.apk
+
+      - name: Upload Android APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ridingo-Android-Packages
+          path: |
+            build-outputs/Ridingo-User.apk
+            build-outputs/Ridingo-Driver.apk
+          if-no-files-found: error
+
+  # =============================================================
+  # 2. IOS BUILDS: Ridingo-User.ipa & Ridingo-Driver.ipa
+  # =============================================================
+  build-ios:
+    name: Build iOS IPAs (User & Driver)
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Web Distributions (dist/user & dist/driver)
+        run: npm run build:web
+
+      # --- Build User App iOS ---
+      - name: Initialize & Sync User iOS App
+        run: |
+          npx cap add ios --config packages/user/capacitor.config.json || true
+          npx cap sync ios --config packages/user/capacitor.config.json
+
+      - name: Build & Package Ridingo-User.ipa
+        run: |
+          cd packages/user/ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -destination generic/platform=iOS -archivePath build/Ridingo-User.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          mkdir -p build/Payload
+          cp -r build/Ridingo-User.xcarchive/Products/Applications/App.app build/Payload/
+          cd build
+          zip -r ../../../../build-outputs/Ridingo-User.ipa Payload
+
+      # --- Build Driver App iOS ---
+      - name: Initialize & Sync Driver iOS App
+        run: |
+          npx cap add ios --config packages/driver/capacitor.config.json || true
+          npx cap sync ios --config packages/driver/capacitor.config.json
+
+      - name: Build & Package Ridingo-Driver.ipa
+        run: |
+          cd packages/driver/ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -destination generic/platform=iOS -archivePath build/Ridingo-Driver.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          mkdir -p build/Payload
+          cp -r build/Ridingo-Driver.xcarchive/Products/Applications/App.app build/Payload/
+          cd build
+          zip -r ../../../../build-outputs/Ridingo-Driver.ipa Payload
+
+      - name: Upload iOS IPAs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ridingo-iOS-Packages
+          path: |
+            build-outputs/Ridingo-User.ipa
+            build-outputs/Ridingo-Driver.ipa
+          if-no-files-found: error
+
+  # =============================================================
+  # 3. CONSOLIDATED PRODUCTION SUITE (All 4 Packages)
+  # =============================================================
+  consolidate-suite:
+    name: Consolidate 4 Production Packages
+    needs: [ build-android, build-ios ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Ridingo-Android-Packages
+          path: release-packages
+
+      - name: Download iOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Ridingo-iOS-Packages
+          path: release-packages
+
+      - name: Verify All 4 Packages Exist
+        run: |
+          echo "Listing all generated standalone mobile packages:"
+          ls -la release-packages
+          test -f release-packages/Ridingo-User.apk
+          test -f release-packages/Ridingo-Driver.apk
+          test -f release-packages/Ridingo-User.ipa
+          test -f release-packages/Ridingo-Driver.ipa
+          echo "All 4 standalone packages verified successfully!"
+
+      - name: Upload Complete 4-Package Suite
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ridingo-Complete-Mobile-Suite-All-4-Packages
+          path: release-packages/*
