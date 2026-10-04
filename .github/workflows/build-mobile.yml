@@ -31,39 +31,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci || npm install
 
       - name: Build Web Distributions (dist/user & dist/driver)
-        run: npm run build:web
+        run: node scripts/build-apps.js
 
       # --- Build User App Android ---
-      - name: Initialize & Sync User Android App
+      - name: Sync & Build Ridingo-User.apk
         run: |
-          npx cap add android --config packages/user/capacitor.config.json || true
-          npx cap sync android --config packages/user/capacitor.config.json
-
-      - name: Build Ridingo-User.apk
-        run: |
-          cd packages/user/android
+          cd packages/user
+          npx cap sync android
+          cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
           mkdir -p ../../../build-outputs
           cp app/build/outputs/apk/debug/app-debug.apk ../../../build-outputs/Ridingo-User.apk
 
       # --- Build Driver App Android ---
-      - name: Initialize & Sync Driver Android App
+      - name: Sync & Build Ridingo-Driver.apk
         run: |
-          npx cap add android --config packages/driver/capacitor.config.json || true
-          npx cap sync android --config packages/driver/capacitor.config.json
-
-      - name: Build Ridingo-Driver.apk
-        run: |
-          cd packages/driver/android
+          cd packages/driver
+          npx cap sync android
+          cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
           mkdir -p ../../../build-outputs
           cp app/build/outputs/apk/debug/app-debug.apk ../../../build-outputs/Ridingo-Driver.apk
 
@@ -90,43 +83,58 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci || npm install
 
       - name: Build Web Distributions (dist/user & dist/driver)
-        run: npm run build:web
+        run: node scripts/build-apps.js
 
       # --- Build User App iOS ---
-      - name: Initialize & Sync User iOS App
+      - name: Sync & Build Ridingo-User.ipa
         run: |
-          npx cap add ios --config packages/user/capacitor.config.json || true
-          npx cap sync ios --config packages/user/capacitor.config.json
-
-      - name: Build & Package Ridingo-User.ipa
-        run: |
-          cd packages/user/ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -destination generic/platform=iOS -archivePath build/Ridingo-User.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-          mkdir -p build/Payload
-          cp -r build/Ridingo-User.xcarchive/Products/Applications/App.app build/Payload/
-          cd build
-          zip -r ../../../../build-outputs/Ridingo-User.ipa Payload
+          cd packages/user
+          npx cap sync ios
+          cd ios/App
+          pod install || true
+          xcodebuild build \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+          
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          mkdir -p ../../../build-outputs
+          zip -r -q ../../../build-outputs/Ridingo-User.ipa Payload
 
       # --- Build Driver App iOS ---
-      - name: Initialize & Sync Driver iOS App
+      - name: Sync & Build Ridingo-Driver.ipa
         run: |
-          npx cap add ios --config packages/driver/capacitor.config.json || true
-          npx cap sync ios --config packages/driver/capacitor.config.json
+          cd packages/driver
+          npx cap sync ios
+          cd ios/App
+          pod install || true
+          xcodebuild build \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
 
-      - name: Build & Package Ridingo-Driver.ipa
-        run: |
-          cd packages/driver/ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -destination generic/platform=iOS -archivePath build/Ridingo-Driver.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-          mkdir -p build/Payload
-          cp -r build/Ridingo-Driver.xcarchive/Products/Applications/App.app build/Payload/
-          cd build
-          zip -r ../../../../build-outputs/Ridingo-Driver.ipa Payload
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          mkdir -p ../../../build-outputs
+          zip -r -q ../../../build-outputs/Ridingo-Driver.ipa Payload
 
       - name: Upload iOS IPAs
         uses: actions/upload-artifact@v4
@@ -160,7 +168,7 @@ jobs:
       - name: Verify All 4 Packages Exist
         run: |
           echo "Listing all generated standalone mobile packages:"
-          ls -la release-packages
+          ls -lh release-packages
           test -f release-packages/Ridingo-User.apk
           test -f release-packages/Ridingo-Driver.apk
           test -f release-packages/Ridingo-User.ipa
@@ -172,3 +180,32 @@ jobs:
         with:
           name: Ridingo-Complete-Mobile-Suite-All-4-Packages
           path: release-packages/*
+
+      - name: Create GitHub Release with 4 Mobile Packages
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: release-build-${{ github.run_number }}
+          name: Ridingo Mobile Production Release #${{ github.run_number }}
+          body: |
+            ### Ridingo Native Mobile Production Packages (iOS & Android)
+
+            This release provides the 4 standalone, non-conflicting mobile packages for Ridingo:
+
+            | Application | Platform | Package File | Bundle / Application ID |
+            | :--- | :--- | :--- | :--- |
+            | **Ridingo (User App)** | Android | `Ridingo-User.apk` | `com.ridingo.user` |
+            | **Ridingo (User App)** | iOS | `Ridingo-User.ipa` | `com.ridingo.user` |
+            | **Ridingo Driver** | Android | `Ridingo-Driver.apk` | `com.ridingo.driver` |
+            | **Ridingo Driver** | iOS | `Ridingo-Driver.ipa` | `com.ridingo.driver` |
+
+            - Built from commit: `${{ github.sha }}`
+            - Clean Native Full-Screen UI (dynamic island / mockups removed)
+            - Safe-area inset enabled
+          files: |
+            release-packages/Ridingo-User.apk
+            release-packages/Ridingo-Driver.apk
+            release-packages/Ridingo-User.ipa
+            release-packages/Ridingo-Driver.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

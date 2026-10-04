@@ -1,8 +1,7 @@
 {
   "appId": "com.ridingo.user",
   "appName": "Ridingo",
-  "webDir": "../../dist/user",
-  "bundledWebRuntime": false,
+  "webDir": "www",
   "server": {
     "androidScheme": "https",
     "cleartext": true

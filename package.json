@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Ridingo User and Driver Native Production Mobile Apps (iOS & Android)",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build:web": "node scripts/build-apps.js",
     "build:android:user": "node scripts/build-android.js user",

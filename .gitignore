@@ -5,3 +5,22 @@ Thumbs.db
 .system_generated/
 .tempmediaStorage/
 .user_uploaded/
+build-outputs/
+dist/
+
+# Android build outputs & caches
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/capacitor-cordova-android-plugins/build/
+**/android/.idea/
+*.apk
+*.aab
+
+# iOS build outputs & caches
+**/ios/App/Pods/
+**/ios/App/build/
+**/ios/App/DerivedData/
+*.ipa
+*.xcarchive
+
