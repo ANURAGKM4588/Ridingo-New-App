@@ -52,7 +52,8 @@ function compileStandaloneHtml(appType, appName) {
 `;
   html = html.replace('</head>', `${headInjection}\n</head>`);
 
-  // Pre-apply standalone class to body tag
+  // Pre-apply standalone class to html and body tags
+  html = html.replace(/<html([^>]*)>/i, `<html$1 class="standalone-app">`);
   html = html.replace(/<body([^>]*)>/i, `<body$1 class="${standaloneClass}">`);
 
   return html;

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="standalone-app">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -14,8 +14,6 @@
     :root {
       color-scheme: light;
       box-sizing: border-box;
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
       --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, 'Segoe UI', sans-serif;
       --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, 'Segoe UI', sans-serif;
       --font-mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -367,19 +365,25 @@
     }
 
     /* =========================================================
-       CLEAN NATIVE PRODUCTION MOBILE APP STYLES (iOS & Android)
-       ========================================================= */
+        CLEAN NATIVE PRODUCTION MOBILE APP STYLES (iOS & Android)
+        ========================================================= */
+    html.standalone-app,
     body.standalone-app {
       margin: 0 !important;
       padding: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
+      width: 100% !important;
+      height: 100% !important;
+      height: 100dvh !important;
+      min-height: 100% !important;
+      max-height: 100% !important;
+      position: fixed !important;
+      inset: 0 !important;
       overflow: hidden !important;
       background: var(--surface) !important;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* 1. Remove all simulated frames, browser headers, island/notch, and debug preview controls */
+    /* 1. Remove simulated desktop preview frames, browser headers, island/notch, and debug preview controls */
     body.standalone-app header.top,
     body.standalone-app .checker,
     body.standalone-app .hint,
@@ -390,47 +394,59 @@
       display: none !important;
     }
 
+    /* 2. Full-screen Native Stages */
     body.standalone-app .stage {
+      position: absolute !important;
+      inset: 0 !important;
       padding: 0 !important;
       margin: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
       max-width: 100% !important;
-      width: 100vw !important;
-      height: 100vh !important;
       display: block !important;
+      overflow: hidden !important;
     }
 
     body.standalone-app .col {
-      width: 100vw !important;
-      height: 100vh !important;
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
       padding: 0 !important;
       margin: 0 !important;
       display: block !important;
+      overflow: hidden !important;
     }
 
     body.standalone-app .phone {
-      width: 100vw !important;
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
       max-width: 100% !important;
-      height: 100vh !important;
+      height: 100% !important;
       max-height: 100% !important;
       border-radius: 0 !important;
       padding: 0 !important;
       margin: 0 !important;
       box-shadow: none !important;
-      background: transparent !important;
+      background: var(--surface) !important;
       border: 0 !important;
+      overflow: hidden !important;
     }
 
     body.standalone-app .inner {
+      position: absolute !important;
+      inset: 0 !important;
       border-radius: 0 !important;
-      height: 100vh !important;
-      width: 100vw !important;
+      height: 100% !important;
+      width: 100% !important;
       display: flex !important;
       flex-direction: column !important;
       background: var(--surface) !important;
-      position: relative !important;
+      overflow: hidden !important;
     }
 
-    /* 2. Mounts ONLY User UI for User App */
+    /* 3. Mounts ONLY User UI for User App */
     body.standalone-user #col-d {
       display: none !important;
     }
@@ -438,7 +454,7 @@
       display: block !important;
     }
 
-    /* 3. Mounts ONLY Driver UI for Driver App */
+    /* 4. Mounts ONLY Driver UI for Driver App */
     body.standalone-driver #col-u {
       display: none !important;
     }
@@ -446,45 +462,122 @@
       display: block !important;
     }
 
-    /* 4. Top White/Card Header Background Container:
-          Keeps top status bar backing intact so scrolled content doesn't bleed behind native status bar */
-    body.standalone-app .inner::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: calc(env(safe-area-inset-top, 0px) + 6px);
-      background: var(--card);
-      z-index: 1000;
-      pointer-events: none;
-      box-shadow: 0 1px 0 var(--line);
-    }
-
-    /* 5. Safe Area Insets Padding */
+    /* 5. Perfect Native Top Spacing:
+          Smooth native status-bar clearance with NO artificial bars or divider lines */
     body.standalone-app .content {
-      padding-top: calc(env(safe-area-inset-top, 0px) + 14px) !important;
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 84px) !important;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior-y: contain;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: calc(56px + env(safe-area-inset-bottom, 16px)) !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior-y: contain !important;
+      padding-top: calc(env(safe-area-inset-top, 24px) + 8px) !important;
+      padding-bottom: 28px !important;
+      padding-inline: 18px !important;
     }
 
+    /* 6. Perfect Bottom Navigation Bar:
+          Pinned permanently above the iPhone home indicator with high z-index */
     body.standalone-app .nav {
-      padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-      height: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      z-index: 9999 !important;
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      align-items: center !important;
+      height: calc(56px + env(safe-area-inset-bottom, 16px)) !important;
+      min-height: calc(56px + env(safe-area-inset-bottom, 16px)) !important;
+      padding: 6px 0 env(safe-area-inset-bottom, 16px) !important;
+      box-sizing: border-box !important;
+      background: var(--card) !important;
+      border-top: 1px solid var(--line) !important;
+      box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.08) !important;
+      -webkit-backdrop-filter: blur(24px) !important;
+      backdrop-filter: blur(24px) !important;
+    }
+
+    body:has(.ob-screen) .nav,
+    .ob-screen ~ .nav,
+    body.standalone-app .nav[style*="display: none"] {
+      display: none !important;
+    }
+
+    body.standalone-app .nv {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 2px !important;
+      height: 44px !important;
+      background: transparent !important;
+      border: 0 !important;
+      padding: 0 !important;
+      color: var(--muted) !important;
+      cursor: pointer !important;
+      text-decoration: none !important;
+    }
+
+    body.standalone-app .nv.on {
+      color: var(--ink) !important;
+    }
+
+    body.standalone-app .nv .nv-i {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      height: 24px !important;
+    }
+
+    body.standalone-app .nv .nv-i svg {
+      width: 22px !important;
+      height: 22px !important;
+    }
+
+    body.standalone-app .nv .nv-l {
+      font-size: 10px !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.01em !important;
+    }
+
+    /* 7. Modal Sheets and Toasts */
+    body.standalone-app .layer {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 10000 !important;
+      pointer-events: none !important;
     }
 
     body.standalone-app .sheet {
-      padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px)) !important;
+      position: absolute !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      z-index: 10001 !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 20px) !important;
       border-radius: 28px 28px 0 0 !important;
+      pointer-events: auto !important;
+    }
+
+    body.standalone-app .toasts {
+      position: fixed !important;
+      top: calc(env(safe-area-inset-top, 24px) + 12px) !important;
+      left: 16px !important;
+      right: 16px !important;
+      z-index: 10002 !important;
+      pointer-events: none !important;
     }
 
     body.standalone-app .map-picker-scrim {
-      padding-top: env(safe-area-inset-top, 0px) !important;
+      padding-top: env(safe-area-inset-top, 24px) !important;
+      z-index: 10001 !important;
     }
 
     body.standalone-app .map-picker-foot {
-      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 14px) !important;
     }
 
     .content {
