@@ -98,6 +98,22 @@ cd ridingo_flutter/ridingo_driver && flutter build ipa --no-codesign
 
 ---
 
+## 🛠️ Codemagic CI/CD Pipeline Setup
+A production-ready [codemagic.yaml](file:///e:/Wbsite%20Antigravity/New%20User%20app/codemagic.yaml) configuration is set up at the root of the repository.
+
+### Available Workflows:
+1. **`ridingo-flutter-release-suite`**: Compiles release IPAs for both **Ridingo User** and **Ridingo Driver** apps on an Apple Silicon `mac_mini_m2` instance and exports them to `build-outputs/`.
+2. **`ridingo-user-ios`**: Dedicated standalone build for the Ridingo User iOS IPA.
+3. **`ridingo-driver-ios`**: Dedicated standalone build for the Ridingo Driver iOS IPA.
+
+### How to Trigger in Codemagic:
+1. Log in to [Codemagic](https://codemagic.io/) and connect your GitHub repository (`Ridingo-New-App`).
+2. Codemagic will automatically detect the root `codemagic.yaml`.
+3. Select **Start new build** and pick either the complete suite (`ridingo-flutter-release-suite`) or an individual app workflow.
+4. When finished, download the verified IPAs (`Ridingo-User.ipa` and `Ridingo-Driver.ipa`) directly from the Codemagic build artifacts tab.
+
+---
+
 ## ✨ Features Implemented in Flutter
 - **Exact UI & Design**: Custom HSL tokens, Ridingo Yellow (`#FFC70A`), rounded bento cards, reviews slider, and Cupertino/Material hybrid styling.
 - **Riverpod State Management**: Fully decoupled UI and reactive state with `StateNotifier` and auto-disposing streams.
