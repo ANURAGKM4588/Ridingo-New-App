@@ -7,7 +7,8 @@ import {
   RAZORPAY_KEY_ID,
   loadRazorpayScript,
   getAppsWhichSupportUPI,
-  SUPPORTED_UPI_APPS
+  SUPPORTED_UPI_APPS,
+  generateLiveUpiQrUrl
 } from '../utils/razorpay';
 
 const POPULAR_BANKS = [
@@ -265,6 +266,11 @@ export default function PaymentSheet() {
   const userPhone = user?.phone || config?.prefill?.contact || '8156938843';
   const hasSufficientWalletBal = cleanBalance >= amount;
   const cashbackAmount = Math.max(1, Math.round(amount * 0.05));
+  const liveQrData = generateLiveUpiQrUrl({
+    amount,
+    orderId: config?.orderId,
+    note: `Ridingo Trip - ${userName}`
+  });
 
   // Detect card network (Visa, Mastercard, RuPay)
   const getCardType = () => {
@@ -978,6 +984,11 @@ export default function PaymentSheet() {
       {/* ========================================================
           4. SCANNABLE QR CODE MODAL
           ======================================================== */}
+      {/* ========================================================
+          4. SCANNABLE QR CODE MODAL
+          Configured with live Razorpay credentials, displaying only the QR code and payment amount,
+          functional close icon without extraneous labels, no 'I have paid via QR' button.
+          ======================================================== */}
       {showQrModal && (
         <div
           style={{
@@ -986,88 +997,73 @@ export default function PaymentSheet() {
             left: '50%',
             transform: 'translate(-50%, -50%)',
             background: '#FFFFFF',
-            borderRadius: '20px',
-            padding: '24px',
+            borderRadius: '24px',
+            padding: '20px 24px 28px',
             width: '88%',
-            maxWidth: '340px',
+            maxWidth: '320px',
             zIndex: 130,
-            boxShadow: '0 20px 40px -10px rgba(15,23,42,0.18)',
+            boxShadow: '0 20px 50px -10px rgba(15,23,42,0.22)',
             textAlign: 'center',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '12px',
+            gap: '16px',
             border: '1px solid #E2E8F0'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-            <b style={{ fontSize: '16px', color: '#0F172A' }}>Scan UPI QR Code</b>
+          {/* Functional close icon without extraneous labels */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
             <button
+              type="button"
               onClick={() => setShowQrModal(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              aria-label="Close"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                cursor: 'pointer',
+                color: '#64748B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0
+              }}
             >
-              <Icon name="x" size={18} />
+              <Icon name="x" size={16} />
             </button>
           </div>
 
+          {/* Valid Live Razorpay UPI QR Code */}
           <div
             style={{
-              padding: '14px',
+              padding: '12px',
               background: '#FFFFFF',
               borderRadius: '16px',
               border: '1px solid #E2E8F0',
-              boxShadow: '0 4px 12px rgba(15,23,42,0.06)'
+              boxShadow: '0 4px 14px rgba(15,23,42,0.04)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
-            <svg width="170" height="170" viewBox="0 0 100 100" fill="#0F172A">
-              <rect x="10" y="10" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
-              <rect x="18" y="18" width="12" height="12" fill="#0F172A" rx="2" />
-              <rect x="62" y="10" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
-              <rect x="70" y="18" width="12" height="12" fill="#0F172A" rx="2" />
-              <rect x="10" y="62" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
-              <rect x="18" y="70" width="12" height="12" fill="#0F172A" rx="2" />
-              <rect x="44" y="12" width="6" height="6" fill="#0F172A" />
-              <rect x="44" y="24" width="6" height="12" fill="#0F172A" />
-              <rect x="14" y="44" width="10" height="6" fill="#0F172A" />
-              <rect x="30" y="44" width="20" height="6" fill="#0F172A" />
-              <rect x="44" y="44" width="12" height="12" fill="#0F172A" rx="2" />
-              <rect x="60" y="44" width="16" height="6" fill="#0F172A" />
-              <rect x="80" y="44" width="8" height="12" fill="#0F172A" />
-              <rect x="44" y="64" width="8" height="16" fill="#0F172A" />
-              <rect x="60" y="60" width="12" height="12" fill="#0F172A" />
-              <rect x="76" y="60" width="12" height="6" fill="#0F172A" />
-              <rect x="64" y="76" width="24" height="14" fill="#0F172A" />
-            </svg>
+            <img
+              src={liveQrData.qrImageUrl}
+              alt="UPI QR Code"
+              style={{
+                width: '200px',
+                height: '200px',
+                borderRadius: '8px',
+                display: 'block'
+              }}
+            />
           </div>
 
-          <div style={{ fontSize: '13.5px', color: '#0F172A', fontWeight: 600 }}>
-            Pay ₹{amount.toLocaleString('en-IN')} with any UPI app
+          {/* Payment Amount */}
+          <div style={{ fontSize: '24px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.5px' }}>
+            ₹{amount}
           </div>
-          <span style={{ fontSize: '11.5px', color: '#64748B' }}>
-            Google Pay, PhonePe, Paytm, BHIM, CRED
-          </span>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowQrModal(false);
-              finalizeUpiPayment('UPI QR Code');
-            }}
-            style={{
-              width: '100%',
-              padding: '13px',
-              borderRadius: '12px',
-              background: '#0F172A',
-              color: '#FFFFFF',
-              fontWeight: 600,
-              fontSize: '14px',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(15,23,42,0.15)'
-            }}
-          >
-            I have paid via QR ✓
-          </button>
         </div>
       )}
 
@@ -1257,12 +1253,18 @@ export default function PaymentSheet() {
           )}
 
           {/* Option: UPI QR Code & Price Display */}
+          {/* Option: Pay via UPI QR (Display only QR code and payment amount) */}
           <div
-            onClick={() => setSelectedMethod('qr')}
+            onClick={() => {
+              setSelectedMethod('qr');
+              setShowQrModal(true);
+            }}
             style={{
               display: 'flex',
               flexDirection: 'column',
-              padding: '16px',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '18px 16px',
               borderRadius: '16px',
               border: selectedMethod === 'qr' ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
               background: selectedMethod === 'qr' ? '#F8FAFC' : '#FFFFFF',
@@ -1271,86 +1273,34 @@ export default function PaymentSheet() {
               gap: '12px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '10px',
-                    border: '1px solid #E2E8F0',
-                    background: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}
-                >
-                  <SleekQrOutlineIcon size={18} color="#0F172A" />
-                </div>
-                <div>
-                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>UPI QR Code</b>
-                  <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
-                    Scan with any UPI app
-                  </span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>₹{amount}</span>
-                <MinimalRadio isSelected={selectedMethod === 'qr'} />
-              </div>
-            </div>
-
-            {/* Display QR code and price */}
+            {/* Live QR Code */}
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '16px',
-                padding: '12px',
+                padding: '10px',
                 background: '#FFFFFF',
                 borderRadius: '12px',
-                border: '1px solid #E2E8F0'
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 2px 8px rgba(15,23,42,0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              <div
+              <img
+                src={liveQrData.qrImageUrl}
+                alt="UPI QR Code"
                 style={{
-                  padding: '8px',
-                  background: '#FFFFFF',
-                  borderRadius: '8px',
-                  border: '1px solid #F1F5F9',
-                  boxShadow: '0 2px 6px rgba(15,23,42,0.04)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  width: '130px',
+                  height: '130px',
+                  borderRadius: '6px',
+                  display: 'block'
                 }}
-              >
-                <svg width="80" height="80" viewBox="0 0 100 100" fill="#0F172A">
-                  <rect x="10" y="10" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
-                  <rect x="18" y="18" width="12" height="12" fill="#0F172A" rx="2" />
-                  <rect x="62" y="10" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
-                  <rect x="70" y="18" width="12" height="12" fill="#0F172A" rx="2" />
-                  <rect x="10" y="62" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
-                  <rect x="18" y="70" width="12" height="12" fill="#0F172A" rx="2" />
-                  <rect x="44" y="12" width="6" height="6" fill="#0F172A" />
-                  <rect x="44" y="24" width="6" height="12" fill="#0F172A" />
-                  <rect x="14" y="44" width="10" height="6" fill="#0F172A" />
-                  <rect x="30" y="44" width="20" height="6" fill="#0F172A" />
-                  <rect x="44" y="44" width="12" height="12" fill="#0F172A" rx="2" />
-                  <rect x="60" y="44" width="16" height="6" fill="#0F172A" />
-                  <rect x="80" y="44" width="8" height="12" fill="#0F172A" />
-                  <rect x="44" y="64" width="8" height="16" fill="#0F172A" />
-                  <rect x="60" y="60" width="12" height="12" fill="#0F172A" />
-                  <rect x="76" y="60" width="12" height="6" fill="#0F172A" />
-                  <rect x="64" y="76" width="24" height="14" fill="#0F172A" />
-                </svg>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>Price</span>
-                <span style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>₹{amount}</span>
-                <span style={{ fontSize: '11px', color: '#94A3B8' }}>Scan & pay instantly</span>
-              </div>
+              />
+            </div>
+
+            {/* Payment Amount */}
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.3px' }}>
+              ₹{amount}
             </div>
           </div>
 

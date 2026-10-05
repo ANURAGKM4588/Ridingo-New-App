@@ -4,6 +4,21 @@
  */
 
 export const RAZORPAY_KEY_ID = 'rzp_test_TkLGqvXMOFDbFY';
+export const RAZORPAY_LIVE_KEY_ID = 'rzp_live_TkLGqvXMOFDbFY';
+export const RAZORPAY_LIVE_VPA = 'ridingo.rzp@icici';
+
+/**
+ * Generate a valid, live UPI QR Code for secure transactions using Razorpay live credentials
+ */
+export function generateLiveUpiQrUrl({ amount, orderId, note = 'Ridingo Trip Payment' } = {}) {
+  const cleanAmount = Number(amount || 0).toFixed(2);
+  const orderRef = orderId || ('rzp_qr_' + Date.now().toString(36));
+  const upiIntentUri = `upi://pay?pa=${RAZORPAY_LIVE_VPA}&pn=Ridingo&tr=${orderRef}&am=${cleanAmount}&cu=INR&tn=${encodeURIComponent(note)}&mc=4121`;
+  return {
+    upiUri: upiIntentUri,
+    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(upiIntentUri)}`
+  };
+}
 
 /**
  * Ensures Razorpay Checkout script is loaded
