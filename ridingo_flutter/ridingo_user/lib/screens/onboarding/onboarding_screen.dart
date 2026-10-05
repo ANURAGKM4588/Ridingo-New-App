@@ -297,6 +297,14 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet> {
     }
   }
 
+  void _demoLogin() async {
+    setState(() => _isLoading = true);
+    await ref.read(authProvider.notifier).loginAsDemo();
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -553,6 +561,19 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Sign In · Get OTP', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: _demoLogin,
+                  icon: const Icon(CupertinoIcons.bolt_fill, size: 16, color: AppColors.yellow),
+                  label: const Text('⚡ Demo Login (Instant Access as Arjun)', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.yellow)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.yellow, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
             ],
