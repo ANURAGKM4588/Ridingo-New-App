@@ -140,23 +140,23 @@ const SleekQrOutlineIcon = ({ size = 20, color = '#0F172A' }) => (
 );
 
 const PhonePeLogo = () => (
-  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#5F259F', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 900, flexShrink: 0 }}>
+  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#5F259F', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 900, flexShrink: 0, boxShadow: '0 2px 6px rgba(95,37,159,0.25)' }}>
     पे
   </div>
 );
 
 const GPayLogo = () => (
-  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-    <span style={{ fontSize: '12px', fontWeight: 900, color: '#4285F4' }}>G</span>
-    <span style={{ fontSize: '12px', fontWeight: 900, color: '#EA4335' }}>P</span>
-    <span style={{ fontSize: '12px', fontWeight: 900, color: '#FBBC05' }}>a</span>
-    <span style={{ fontSize: '12px', fontWeight: 900, color: '#34A853' }}>y</span>
+  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#FFFFFF', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+    <span style={{ fontSize: '13px', fontWeight: 900, color: '#4285F4' }}>G</span>
+    <span style={{ fontSize: '13px', fontWeight: 900, color: '#EA4335' }}>P</span>
+    <span style={{ fontSize: '13px', fontWeight: 900, color: '#FBBC05' }}>a</span>
+    <span style={{ fontSize: '13px', fontWeight: 900, color: '#34A853' }}>y</span>
   </div>
 );
 
 const CREDLogo = () => (
-  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(15,23,42,0.25)' }}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2L3 7v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V7l-9-5z" />
       <path d="M12 8v8M8 12h8" strokeWidth="2" />
     </svg>
@@ -164,8 +164,14 @@ const CREDLogo = () => (
 );
 
 const PaytmLogo = () => (
-  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#00BAF2', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900, flexShrink: 0 }}>
+  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#00BAF2', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 900, flexShrink: 0, boxShadow: '0 2px 6px rgba(0,186,242,0.25)' }}>
     Paytm
+  </div>
+);
+
+const BhimLogo = () => (
+  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#007A3D', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900, flexShrink: 0, boxShadow: '0 2px 6px rgba(0,122,61,0.25)' }}>
+    BHIM
   </div>
 );
 
@@ -178,8 +184,8 @@ export default function PaymentSheet() {
   // Selected payment method: 'wallet' (RECOMMENDED) | 'phonepe' | 'gpay' | 'cred' | 'paytm' | 'qr' | 'card' | 'netbanking'
   const [selectedMethod, setSelectedMethod] = useState('wallet');
 
-  // Installed UPI Apps queried dynamically via Razorpay getAppsWhichSupportUPI()
-  const [installedUpiApps, setInstalledUpiApps] = useState(SUPPORTED_UPI_APPS);
+  // Installed UPI Apps queried dynamically via Razorpay getAppsWhichSupportUPI() - strictly physically installed, NO mock data
+  const [installedUpiApps, setInstalledUpiApps] = useState([]);
 
   // Launching / Authorizing state
   const [isAuthorizing, setIsAuthorizing] = useState(false);
@@ -224,15 +230,18 @@ export default function PaymentSheet() {
     };
   }, []);
 
-  // Retrieve installed UPI apps dynamically from device via Razorpay SDK
+  // Retrieve physically installed UPI apps dynamically from device via Razorpay SDK (strictly device query, NO mock/pre-rendered list)
   useEffect(() => {
     let isSubscribed = true;
     getAppsWhichSupportUPI().then((apps) => {
-      if (isSubscribed && Array.isArray(apps) && apps.length > 0) {
-        setInstalledUpiApps(apps);
+      if (isSubscribed) {
+        setInstalledUpiApps(Array.isArray(apps) ? apps : []);
       }
     }).catch((err) => {
-      console.warn('Could not query UPI apps from device:', err);
+      console.warn('Razorpay getAppsWhichSupportUPI query error:', err);
+      if (isSubscribed) {
+        setInstalledUpiApps([]);
+      }
     });
     return () => { isSubscribed = false; };
   }, []);
@@ -675,6 +684,7 @@ export default function PaymentSheet() {
     if (appId === 'phonepe') return <PhonePeLogo />;
     if (appId === 'gpay') return <GPayLogo />;
     if (appId === 'paytm') return <PaytmLogo />;
+    if (appId === 'bhim') return <BhimLogo />;
     return <Icon name="smartphone" size={20} color="#0F172A" />;
   };
 
@@ -1199,76 +1209,98 @@ export default function PaymentSheet() {
             UPI
           </div>
 
-          {/* Dynamically Mapped Installed UPI Apps: Clean, Spaced-Out Vertical List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {installedUpiApps.map((app) => {
-              const isSelected = selectedMethod === app.id;
-              return (
-                <div
-                  key={app.id}
-                  onClick={() => setSelectedMethod(app.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '13px 16px',
-                    borderRadius: '14px',
-                    border: isSelected ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
-                    background: isSelected ? '#F8FAFC' : '#FFFFFF',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    {renderUpiLogo(app.id)}
-                    <b style={{ fontSize: '14.5px', color: '#0F172A', fontWeight: 500 }}>{app.name}</b>
-                  </div>
-                  <MinimalRadio isSelected={isSelected} />
-                </div>
-              );
-            })}
-
-            {/* Option: Pay via QR (Fallback for any unlisted app) */}
+          {/* Dynamically Mapped Installed UPI Apps: Side-by-Side with Official Logos */}
+          {installedUpiApps.length > 0 && (
             <div
-              onClick={() => {
-                setSelectedMethod('qr');
-                setShowQrModal(true);
-              }}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '13px 16px',
-                borderRadius: '14px',
-                border: selectedMethod === 'qr' ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
-                background: selectedMethod === 'qr' ? '#F8FAFC' : '#FFFFFF',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(installedUpiApps.length, 4)}, 1fr)`,
+                gap: '10px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    border: '1px solid #E2E8F0',
-                    background: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}
-                >
-                  <SleekQrOutlineIcon size={18} color="#0F172A" />
-                </div>
-                <div>
-                  <b style={{ fontSize: '14.5px', color: '#0F172A', fontWeight: 500 }}>Pay via UPI QR</b>
-                  <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>Scan with any UPI app</span>
-                </div>
-              </div>
-              <MinimalRadio isSelected={selectedMethod === 'qr'} />
+              {installedUpiApps.map((app) => {
+                const isSelected = selectedMethod === app.id;
+                return (
+                  <div
+                    key={app.id}
+                    onClick={() => setSelectedMethod(app.id)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '14px 6px',
+                      borderRadius: '14px',
+                      border: isSelected ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
+                      background: isSelected ? '#F8FAFC' : '#FFFFFF',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      minHeight: '76px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {renderUpiLogo(app.id)}
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: isSelected ? 600 : 500,
+                        color: '#0F172A',
+                        marginTop: '8px',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%'
+                      }}
+                    >
+                      {app.name}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
+          )}
+
+          {/* Option: Pay via QR (UPI fallback) */}
+          <div
+            onClick={() => {
+              setSelectedMethod('qr');
+              setShowQrModal(true);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '13px 16px',
+              borderRadius: '14px',
+              border: selectedMethod === 'qr' ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
+              background: selectedMethod === 'qr' ? '#F8FAFC' : '#FFFFFF',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  border: '1px solid #E2E8F0',
+                  background: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <SleekQrOutlineIcon size={18} color="#0F172A" />
+              </div>
+              <div>
+                <b style={{ fontSize: '14.5px', color: '#0F172A', fontWeight: 500 }}>Pay via UPI QR</b>
+                <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>Scan with any UPI app</span>
+              </div>
+            </div>
+            <MinimalRadio isSelected={selectedMethod === 'qr'} />
           </div>
 
           {/* Section Divider: Cards & Banking */}

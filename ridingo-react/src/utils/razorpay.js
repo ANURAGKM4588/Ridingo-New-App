@@ -201,8 +201,9 @@ export const SUPPORTED_UPI_APPS = [
 ];
 
 /**
- * Integrates Razorpay's getAppsWhichSupportUPI() function
- * Queries device for installed UPI apps (CRED, PhonePe, GPay, Paytm)
+ * Integrates Razorpay's getAppsWhichSupportUPI() API
+ * Queries device strictly for physically installed UPI apps (CRED, PhonePe, GPay, Paytm)
+ * Does NOT return any mock data or pre-rendered lists.
  */
 export async function getAppsWhichSupportUPI() {
   try {
@@ -223,11 +224,11 @@ export async function getAppsWhichSupportUPI() {
       }
     }
   } catch (err) {
-    console.log('Razorpay native getAppsWhichSupportUPI check:', err.message);
+    console.log('Razorpay getAppsWhichSupportUPI check:', err.message);
   }
 
-  // Fallback to supported list for preview / browser
-  return SUPPORTED_UPI_APPS;
+  // Return strictly empty array if no physical apps installed or detected
+  return [];
 }
 
 function filterSupportedApps(result) {
@@ -238,6 +239,7 @@ function filterSupportedApps(result) {
       else if (item && typeof item === 'object') {
         if (item.packageName) identifiers.push(item.packageName.toLowerCase());
         if (item.appName) identifiers.push(item.appName.toLowerCase());
+        if (item.id) identifiers.push(item.id.toLowerCase());
       }
     });
   } else if (typeof result === 'object' && result !== null) {
@@ -247,11 +249,12 @@ function filterSupportedApps(result) {
     });
   }
 
-  if (identifiers.length === 0) return SUPPORTED_UPI_APPS;
+  // Strictly no mock fallback - only verified installed apps
+  if (identifiers.length === 0) return [];
 
   const matched = SUPPORTED_UPI_APPS.filter(app => {
     return app.aliases.some(alias => identifiers.some(id => id.includes(alias)));
   });
 
-  return matched.length > 0 ? matched : SUPPORTED_UPI_APPS;
+  return matched;
 }
