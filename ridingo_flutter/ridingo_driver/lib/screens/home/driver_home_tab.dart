@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/app_theme.dart';
+import '../../models/driver_model.dart';
 import '../../providers/driver_provider.dart';
 
 class DriverHomeTab extends ConsumerWidget {
@@ -185,7 +186,7 @@ class DriverHomeTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildTripRequestCard(BuildContext context, WidgetRef ref, Map<String, dynamic> trip, driver) {
+  Widget _buildTripRequestCard(BuildContext context, WidgetRef ref, Map<String, dynamic> trip, DriverModel driver) {
     final status = trip['status'] ?? 'pending';
     final rider = trip['rider'] != null ? Map<String, dynamic>.from(trip['rider']) : {};
     final car = trip['car'] != null ? Map<String, dynamic>.from(trip['car']) : {};

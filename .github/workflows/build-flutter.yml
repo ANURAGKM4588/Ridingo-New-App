@@ -40,20 +40,30 @@ jobs:
       - name: Scaffold & Build Ridingo User Android APK
         run: |
           cd ridingo_flutter/ridingo_user
+          cp pubspec.yaml /tmp/user_pubspec.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_user
+          cp -f /tmp/user_pubspec.yaml pubspec.yaml
+          sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
+          sed -i 's/minSdk = .*/minSdk = 21/' android/app/build.gradle || true
           flutter pub get
           flutter build apk --release
           mkdir -p "${{ github.workspace }}/build-outputs"
-          cp build/app/outputs/flutter-apk/app-release.apk "${{ github.workspace }}/build-outputs/Ridingo-User.apk"
+          APK_FILE=$(find build/app/outputs/ -name "*.apk" | head -n 1)
+          cp "$APK_FILE" "${{ github.workspace }}/build-outputs/Ridingo-User.apk"
 
       - name: Scaffold & Build Ridingo Driver Android APK
         run: |
           cd ridingo_flutter/ridingo_driver
+          cp pubspec.yaml /tmp/driver_pubspec.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_driver
+          cp -f /tmp/driver_pubspec.yaml pubspec.yaml
+          sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
+          sed -i 's/minSdk = .*/minSdk = 21/' android/app/build.gradle || true
           flutter pub get
           flutter build apk --release
           mkdir -p "${{ github.workspace }}/build-outputs"
-          cp build/app/outputs/flutter-apk/app-release.apk "${{ github.workspace }}/build-outputs/Ridingo-Driver.apk"
+          APK_FILE=$(find build/app/outputs/ -name "*.apk" | head -n 1)
+          cp "$APK_FILE" "${{ github.workspace }}/build-outputs/Ridingo-Driver.apk"
 
       - name: Upload Android APKs
         uses: actions/upload-artifact@v4
@@ -87,9 +97,11 @@ jobs:
       - name: Scaffold & Build Ridingo User iOS IPA
         run: |
           cd ridingo_flutter/ridingo_user
+          cp pubspec.yaml /tmp/user_pubspec_ios.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_user
+          cp -f /tmp/user_pubspec_ios.yaml pubspec.yaml
           flutter pub get
-          flutter build ipa --no-codesign
+          flutter build ios --no-codesign --release
           
           # Package Payload into standard .ipa archive
           mkdir -p "${{ github.workspace }}/build-outputs"
@@ -106,9 +118,11 @@ jobs:
       - name: Scaffold & Build Ridingo Driver iOS IPA
         run: |
           cd ridingo_flutter/ridingo_driver
+          cp pubspec.yaml /tmp/driver_pubspec_ios.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_driver
+          cp -f /tmp/driver_pubspec_ios.yaml pubspec.yaml
           flutter pub get
-          flutter build ipa --no-codesign
+          flutter build ios --no-codesign --release
 
           # Package Payload into standard .ipa archive
           APP_DIR=$(find build/ios -name "*.app" -type d | head -n 1)
