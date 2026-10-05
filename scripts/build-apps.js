@@ -12,24 +12,27 @@ const rootDir = path.resolve(__dirname, '..');
 const reactDir = path.join(rootDir, 'ridingo-react');
 const reactDistDir = path.join(reactDir, 'dist');
 
-// 1. Build modern React app if ridingo-react directory exists
+// 1. Ensure ridingo-react dependencies are installed and built
 if (fs.existsSync(reactDir)) {
-  console.log('🔨 Building ridingo-react production bundle...');
-  try {
-    const buildCmd = process.platform === 'win32' ? 'cmd /c npm run build' : 'npm run build';
-    execSync(buildCmd, { cwd: reactDir, stdio: 'inherit' });
-  } catch (err) {
-    console.warn('React build warning:', err.message);
+  const reactModules = path.join(reactDir, 'node_modules');
+  if (!fs.existsSync(reactModules)) {
+    console.log('📦 Installing ridingo-react dependencies...');
+    const installCmd = process.platform === 'win32' ? 'cmd /c npm install' : 'npm install';
+    execSync(installCmd, { cwd: reactDir, stdio: 'inherit' });
   }
+
+  console.log('🔨 Building ridingo-react production bundle...');
+  const buildCmd = process.platform === 'win32' ? 'cmd /c npm run build' : 'npm run build';
+  execSync(buildCmd, { cwd: reactDir, stdio: 'inherit' });
 }
 
-// Check source: prefer ridingo-react/dist/index.html, fallback to root index.html
-const useReactDist = fs.existsSync(path.join(reactDistDir, 'index.html'));
-const sourceHtmlPath = useReactDist
-  ? path.join(reactDistDir, 'index.html')
-  : path.join(rootDir, 'index.html');
+// 2. Validate that React production bundle exists
+const sourceHtmlPath = path.join(reactDistDir, 'index.html');
+if (!fs.existsSync(sourceHtmlPath)) {
+  throw new Error(`CRITICAL: React build not found at ${sourceHtmlPath}! Cannot build mobile packages with outdated code.`);
+}
 
-console.log(`📦 Using source bundle from: ${path.relative(rootDir, sourceHtmlPath)}`);
+console.log(`📦 Using source React production bundle from: ${path.relative(rootDir, sourceHtmlPath)}`);
 const originalHtml = fs.readFileSync(sourceHtmlPath, 'utf8');
 
 const targets = [
@@ -155,12 +158,14 @@ targets.forEach(t => {
   };
 
   t.distDirs.forEach(dir => {
+    // Clean target dir and re-populate
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
     fs.mkdirSync(dir, { recursive: true });
 
     // Copy reactDist files (assets, images, fonts) into target directory
-    if (useReactDist) {
-      copyFolderRecursiveSync(reactDistDir, dir);
-    }
+    copyFolderRecursiveSync(reactDistDir, dir);
 
     fs.writeFileSync(path.join(dir, 'index.html'), compiledHtml, 'utf8');
     fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
