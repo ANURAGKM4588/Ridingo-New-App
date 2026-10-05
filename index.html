@@ -4765,16 +4765,20 @@ CREATE TABLE IF NOT EXISTS public.trips (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Create user profiles table
+-- 2. Create user profiles table (with avatar & settings)
 CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT PRIMARY KEY,
     name TEXT,
     email TEXT,
     car JSONB,
+    avatar TEXT,
     preferences JSONB,
+    settings JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS settings JSONB;
 
 -- 3. Create wallet transactions table
 CREATE TABLE IF NOT EXISTS public.wallet_transactions (
@@ -4886,14 +4890,139 @@ async function checkSupabaseConnection(manualNotice){
   }
 }
 
+/* ---------- USER-SCOPED STORAGE & PERSISTENCE HELPERS ---------- */
+function getUserStorageKey(phoneOrEmail){
+  if(!phoneOrEmail) return 'ridingo_account_guest';
+  const cleanPh = (phoneOrEmail || '').replace(/\D/g, '');
+  if(cleanPh && cleanPh.length >= 10){
+    return 'ridingo_account_ph_' + cleanPh.slice(-10);
+  }
+  const cleanEm = (phoneOrEmail || '').trim().toLowerCase();
+  if(cleanEm && cleanEm.includes('@')){
+    return 'ridingo_account_em_' + cleanEm.replace(/[^a-z0-9]/g, '_');
+  }
+  return 'ridingo_account_def';
+}
+
+function isTripForCurrentUser(t){
+  if(!t || !S || !S.user) return false;
+  const userPh = (S.user.phone || '').replace(/\D/g, '').slice(-10);
+  const userEm = (S.user.email || '').trim().toLowerCase();
+  if(t.by){
+    const byPh = t.by.replace(/\D/g, '');
+    if(userPh && byPh && byPh.endsWith(userPh)) return true;
+    if(userEm && t.by.toLowerCase() === userEm) return true;
+  }
+  if(t.rider){
+    if(t.rider.phone){
+      const rPh = t.rider.phone.replace(/\D/g, '');
+      if(userPh && rPh && rPh.endsWith(userPh)) return true;
+    }
+    if(t.rider.email && userEm && t.rider.email.toLowerCase() === userEm) return true;
+  }
+  return false;
+}
+
+function saveCurrentUserScopedData(){
+  if(!S || !S.user) return;
+  const key = getUserStorageKey(S.user.phone || S.user.email);
+  try{
+    const payload = {
+      user: {
+        name: S.user.name,
+        phone: S.user.phone,
+        email: S.user.email,
+        avatar: S.user.avatar || null,
+        car: S.user.car,
+        notif: S.user.notif,
+        pin: S.user.pin,
+        pinCode: S.user.pinCode,
+        liveShare: S.user.liveShare,
+        quiet: S.user.quiet,
+        acPref: S.user.acPref,
+        acTemp: S.user.acTemp,
+        acMode: S.user.acMode,
+        acPrecool: S.user.acPrecool,
+        whatsapp: S.user.whatsapp,
+        promo: S.user.promo,
+        biometric: S.user.biometric,
+        haptics: S.user.haptics,
+        sosContacts: S.user.sosContacts,
+        insuranceTier: S.user.insuranceTier,
+        nominee: S.user.nominee,
+        languages: S.user.languages,
+        quietCabin: S.user.quietCabin,
+        maskNumber: S.user.maskNumber,
+        hidePlate: S.user.hidePlate,
+        locPrivacy: S.user.locPrivacy
+      },
+      trips: (S.trips || []).filter(t => isTripForCurrentUser(t)),
+      utx: S.utx || [],
+      unotes: S.unotes || [],
+      savedAt: Date.now()
+    };
+    localStorage.setItem(key, JSON.stringify(payload));
+  }catch(e){
+    console.warn('Could not save user-scoped data:', e);
+  }
+}
+
+function loadUserScopedData(phoneOrEmail){
+  const key = getUserStorageKey(phoneOrEmail);
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+
+async function syncTxToSupabase(tx){
+  if(!sbClient || !sbTablesReady || !S || !S.user) return;
+  try{
+    await sbClient.from('wallet_transactions').insert({
+      user_phone: S.user.phone,
+      ts: tx.ts,
+      type: tx.type,
+      amount: tx.amount,
+      title: tx.title,
+      sub: tx.sub || '',
+      to_dest: tx.to || tx.sub || '',
+      created_at: new Date().toISOString()
+    });
+  }catch(e){
+    console.warn('Error syncing wallet transaction to Supabase:', e);
+  }
+}
+
+function addUtx(tx){
+  if(!S.utx) S.utx = [];
+  S.utx.unshift(tx);
+  syncTxToSupabase(tx);
+  saveCurrentUserScopedData();
+}
+
 async function loadTripsFromSupabase(){
-  if(!sbClient || !sbTablesReady) return;
+  if(!sbClient || !sbTablesReady || !S || !S.user) return;
   try{
     const { data, error } = await sbClient.from('trips').select('*').order('created_at', { ascending: false });
-    if(!error && Array.isArray(data) && data.length > 0){
-      const remoteMap = new Map();
-      data.forEach(row => {
-        remoteMap.set(row.id, {
+    if(!error && Array.isArray(data)){
+      const isUserApp = !window.RIDINGO_TARGET || window.RIDINGO_TARGET === 'user';
+      const currentUserPhone = (S && S.user && S.user.phone) ? S.user.phone.replace(/\D/g, '').slice(-10) : '';
+      const currentUserEmail = (S && S.user && S.user.email) ? S.user.email.trim().toLowerCase() : '';
+
+      const filtered = isUserApp ? data.filter(row => {
+        if(!currentUserPhone && !currentUserEmail) return false;
+        const byPh = (row.by_who || '').replace(/\D/g, '');
+        const rPh = (row.rider && row.rider.phone) ? row.rider.phone.replace(/\D/g, '') : '';
+        const rEm = (row.rider && row.rider.email) ? row.rider.email.toLowerCase() : '';
+        if(currentUserPhone && (byPh.endsWith(currentUserPhone) || rPh.endsWith(currentUserPhone))) return true;
+        if(currentUserEmail && (row.by_who === currentUserEmail || rEm === currentUserEmail)) return true;
+        return false;
+      }) : data;
+
+      const remoteTrips = filtered.map(row => {
+        const isMine = isUserApp || (currentUserPhone && ((row.by_who || '').replace(/\D/g, '').endsWith(currentUserPhone)));
+        return {
           id: row.id,
           cat: row.cat,
           qty: row.qty,
@@ -4901,34 +5030,22 @@ async function loadTripsFromSupabase(){
           drop: row.drop_loc || '',
           when: Number(row.when_ts),
           done: Number(row.done_ts || 0),
-          mine: true,
-          rider: row.rider || { name: 'Arjun Menon', rating: 4.9 },
-          car: row.car || (S && S.user ? S.user.car : { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' }),
+          mine: !!isMine,
+          rider: row.rider || { name: S.user.name, rating: 4.9, phone: S.user.phone },
+          car: row.car || S.user.car,
           fare: row.fare,
           advance: row.advance,
           status: row.status,
           driver: row.driver,
           cashback: row.cashback || 0,
           by: row.by_who
-        });
+        };
       });
-      if(S && S.trips){
-        const existingIds = new Set(S.trips.map(t => t.id));
-        const newTrips = [];
-        remoteMap.forEach((t, id) => {
-          if(existingIds.has(id)){
-            const local = S.trips.find(x => x.id === id);
-            if(local) Object.assign(local, t);
-          } else {
-            newTrips.push(t);
-          }
-        });
-        if(newTrips.length > 0){
-          S.trips = [...newTrips, ...S.trips];
-        }
-        render('u');
-        render('d');
-      }
+
+      S.trips = remoteTrips;
+      saveCurrentUserScopedData();
+      render('u');
+      render('d');
     }
   }catch(e){
     console.warn('Error loading trips from Supabase:', e);
@@ -4953,12 +5070,12 @@ async function syncTripToSupabase(t){
       car: t.car,
       rider: t.rider,
       cashback: t.cashback || 0,
-      by_who: t.by || null,
+      by_who: t.by || (S && S.user ? S.user.phone : null),
       created_at: new Date().toISOString()
     };
     const { error } = await sbClient.from('trips').upsert(row);
     if(!error){
-      toast('u', 'Saved to Supabase (' + t.id + ')', 'check');
+      toast('u', 'Saved to database (' + t.id + ')', 'check');
     } else {
       console.warn('Supabase trip upsert error:', error);
     }
@@ -4978,16 +5095,48 @@ async function updateTripStatusInSupabase(id, status, extra = {}){
   }
 }
 
-async function syncProfileToSupabase(phone, name, car, email){
+async function syncProfileToSupabase(phone, name, car, email, avatar, extraSettings){
   if(!sbClient || !sbTablesReady) return;
   try{
-    await sbClient.from('profiles').upsert({
-      phone: phone || (S && S.user ? S.user.phone : '+91 90000 12345'),
-      name: name || (S && S.user ? S.user.name : 'Arjun Menon'),
-      email: email || (S && S.user ? S.user.email : ''),
-      car: car || (S && S.user ? S.user.car : {}),
+    const pPhone = phone || (S && S.user ? S.user.phone : '');
+    const pName = name || (S && S.user ? S.user.name : '');
+    const pEmail = email || (S && S.user ? S.user.email : '');
+    const pCar = car || (S && S.user ? S.user.car : {});
+    const pAvatar = (avatar !== undefined) ? avatar : (S && S.user ? S.user.avatar : null);
+    const pSettings = extraSettings || (S && S.user ? {
+      pin: S.user.pin,
+      pinCode: S.user.pinCode,
+      liveShare: S.user.liveShare,
+      quiet: S.user.quiet,
+      acPref: S.user.acPref,
+      acTemp: S.user.acTemp,
+      acMode: S.user.acMode,
+      whatsapp: S.user.whatsapp,
+      promo: S.user.promo,
+      biometric: S.user.biometric,
+      haptics: S.user.haptics,
+      sosContacts: S.user.sosContacts,
+      insuranceTier: S.user.insuranceTier,
+      nominee: S.user.nominee,
+      languages: S.user.languages,
+      quietCabin: S.user.quietCabin,
+      maskNumber: S.user.maskNumber,
+      hidePlate: S.user.hidePlate,
+      locPrivacy: S.user.locPrivacy
+    } : {});
+
+    const payload = {
+      phone: pPhone,
+      name: pName,
+      email: pEmail,
+      car: pCar,
+      avatar: pAvatar,
+      preferences: { liveShare: pSettings.liveShare, pin: pSettings.pin },
+      settings: pSettings,
       updated_at: new Date().toISOString()
-    });
+    };
+
+    await sbClient.from('profiles').upsert(payload);
   }catch(e){
     console.warn('Error syncing profile to Supabase:', e);
   }
@@ -4999,8 +5148,14 @@ function subscribeSupabaseRealtime(){
     sbChannel = sbClient.channel('trips-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, payload => {
         const row = payload.new;
-        if(!row || !row.id || !S || !S.trips) return;
-        const existing = trip(row.id);
+        if(!row || !row.id || !S) return;
+        
+        const isUserApp = !window.RIDINGO_TARGET || window.RIDINGO_TARGET === 'user';
+        const userPh = (S.user && S.user.phone) ? S.user.phone.replace(/\D/g, '').slice(-10) : '';
+        const byPh = (row.by_who || '').replace(/\D/g, '');
+        const rPh = (row.rider && row.rider.phone) ? row.rider.phone.replace(/\D/g, '') : '';
+        const isMine = userPh && (byPh.endsWith(userPh) || rPh.endsWith(userPh));
+
         const mapped = {
           id: row.id,
           cat: row.cat,
@@ -5009,8 +5164,8 @@ function subscribeSupabaseRealtime(){
           drop: row.drop_loc || '',
           when: Number(row.when_ts),
           done: Number(row.done_ts || 0),
-          mine: true,
-          rider: row.rider || { name: 'Arjun Menon', rating: 4.9 },
+          mine: !!isMine,
+          rider: row.rider || { name: S.user.name, rating: 4.9, phone: S.user.phone },
           car: row.car || S.user.car,
           fare: row.fare,
           advance: row.advance,
@@ -5019,10 +5174,12 @@ function subscribeSupabaseRealtime(){
           cashback: row.cashback || 0,
           by: row.by_who
         };
+
+        const existing = trip(row.id);
         if(existing){
           const oldStatus = existing.status;
           Object.assign(existing, mapped);
-          if(oldStatus !== row.status){
+          if(isMine && oldStatus !== row.status){
             if(row.status === 'accepted'){
               systemNotify('Trip Accepted', (row.driver || DRIVER_INFO.name) + ' accepted your trip (' + row.id + ').');
               notifyUser('Trip accepted', (row.driver || DRIVER_INFO.name) + ' accepted your trip.', 'check');
@@ -5033,9 +5190,16 @@ function subscribeSupabaseRealtime(){
             }
           }
         } else {
-          S.trips.unshift(mapped);
-          dispatchTrip(mapped);
+          if(isUserApp){
+            if(isMine){
+              S.trips.unshift(mapped);
+            }
+          } else {
+            S.trips.unshift(mapped);
+            dispatchTrip(mapped);
+          }
         }
+        saveCurrentUserScopedData();
         render('u');
         render('d');
       })
@@ -5687,48 +5851,57 @@ function interpolatePolyline(pts, prog){
 const DRIVER_INFO={name:'Ravi Kumar',rating:4.8,phone:'+91 98765 43210'};
 let S, ui, THEME='system', BK=null, AMT=null, idc=2040;
 
-function seed(){
+function seed(customUser){
   idc=2040;
   const car={model:'Hyundai Creta',plate:'KL 07 AB 4821',trans:'Automatic'};
-  const trips=[];
-  const utx=[
-    {ts:Date.now()-86400000,type:'topup',amount:3500,title:'Added to wallet',sub:'UPI · Instant',to:'UPI'}
-  ];
-  const dtx=[];
-  return{
-    user:{
-      name:'Arjun Menon',
-      phone:'+91 90000 12345',
-      email:'arjun.menon@example.com',
-      car:{...car},
-      notif:true,
-      pin:true,
-      pinCode:'4821',
-      liveShare:true,
-      quiet:false,
-      acPref:true,
-      acTemp:'22°C',
-      acMode:'Chill',
-      acPrecool:true,
-      whatsapp:true,
-      promo:true,
-      biometric:true,
-      haptics:true,
-      sosContacts:[
-        {name:'Priya Menon',relation:'Spouse',phone:'+91 98401 23456'},
-        {name:'Rahul Menon',relation:'Brother',phone:'+91 94440 98765'}
-      ],
-      insuranceTier:'standard',
-      nominee:{name:'Priya Menon',relation:'Spouse'},
-      languages:['English','Hindi','Malayalam'],
-      quietCabin:true,
-      maskNumber:true,
-      hidePlate:false,
-      locPrivacy:true
+  const defaultUser = {
+    name: 'Car Owner',
+    phone: '',
+    email: '',
+    avatar: null,
+    car: { ...car },
+    notif: true,
+    pin: true,
+    pinCode: '4821',
+    liveShare: true,
+    quiet: false,
+    acPref: true,
+    acTemp: '22°C',
+    acMode: 'Chill',
+    acPrecool: true,
+    whatsapp: true,
+    promo: true,
+    biometric: false,
+    haptics: true,
+    sosContacts: [
+      { name: 'Family Contact', relation: 'Family', phone: '' }
+    ],
+    insuranceTier: 'standard',
+    nominee: { name: '', relation: '' },
+    languages: ['English', 'Hindi'],
+    quietCabin: true,
+    maskNumber: true,
+    hidePlate: false,
+    locPrivacy: true
+  };
+
+  return {
+    user: customUser ? { ...defaultUser, ...customUser } : defaultUser,
+    driver: {
+      name: DRIVER_INFO.name,
+      online: true,
+      alerts: true,
+      sound: true,
+      cats: { hourly: true, daily: true, airport: true, outstation: true, event: true },
+      trans: { Manual: true, Automatic: true, IMT: true },
+      bank: 'HDFC •••• 4521'
     },
-    driver:{name:DRIVER_INFO.name,online:true,alerts:true,sound:true,cats:{hourly:true,daily:true,airport:true,outstation:true,event:true},trans:{Manual:true,Automatic:true,IMT:true},bank:'HDFC •••• 4521'},
-    trips,utx,dtx,
-    unotes:[{ts:at(-14,9,1),title:'Welcome to Ridingo',body:'Book a driver for your own car by the hour, day or airport run.',icon:'car',read:true}]
+    trips: [],
+    utx: [],
+    dtx: [],
+    unotes: [
+      { ts: Date.now(), title: 'Welcome to Ridingo', body: 'Book a professional driver for your car by the hour, day or airport run.', icon: 'car', read: true }
+    ]
   };
 }
 function freshUI(){return{u:{tab:'home',filter:'all',open:new Set(),editName:false,editCar:false,searchOpen:false,searchQuery:''},d:{tab:'dash',filter:'all',popup:null,seen:new Set()}}}
@@ -5935,7 +6108,7 @@ function setTheme(v, persist = true){
 
 /* ---------- trip lifecycle (shared by both apps) ---------- */
 function refund(t,why){
-  S.utx.unshift({ts:Date.now(),type:'refund',amount:t.advance,title:'Refund for '+t.id,sub:why});
+  addUtx({ts:Date.now(),type:'refund',amount:t.advance,title:'Refund for '+t.id,sub:why});
   systemNotify('Transaction: Refund Processed',inr(t.advance)+' refunded to your wallet for '+t.id+' ('+why+').');
 }
 function dispatchTrip(t){
@@ -7151,14 +7324,15 @@ function bkSubmit(){
     return fail('Your wallet balance is too low.');
   }
   const first=S.user.name.split(/\s+/);
-  const t={id:'RD-'+(++idc),cat:BK.cat,qty:BK.qty,pickup:BK.pickup.trim(),drop:BK.drop.trim(),when,mine:true,rider:{name:first[0]+(first[1]?' '+first[1][0]+'.':''),rating:4.9},car:{...S.user.car,trans:BK.trans||S.user.car.trans},fare,advance:adv,status:'requested',driver:null,cashback:0};
+  const t={id:'RD-'+(++idc),cat:BK.cat,qty:BK.qty,pickup:BK.pickup.trim(),drop:BK.drop.trim(),when,mine:true,rider:{name:first[0]+(first[1]?' '+first[1][0]+'.':''),rating:4.9,phone:S.user.phone},car:{...S.user.car,trans:BK.trans||S.user.car.trans},fare,advance:adv,status:'requested',driver:null,cashback:0,by:S.user.phone};
   const cb=1+Math.floor(Math.random()*5);
   t.cashback=cb;
   const now=Date.now();
-  S.utx.push({ts:now,type:'advance',amount:-adv,title:'Advance for '+t.id,sub:c.name+' trip'});
-  S.utx.push({ts:now+1,type:'cashback',amount:cb,title:'Cashback on '+t.id,sub:'Booking reward'});
+  addUtx({ts:now,type:'advance',amount:-adv,title:'Advance for '+t.id,sub:c.name+' trip'});
+  addUtx({ts:now+1,type:'cashback',amount:cb,title:'Cashback on '+t.id,sub:'Booking reward'});
   S.trips.unshift(t);
   syncTripToSupabase(t);
+  saveCurrentUserScopedData();
   systemNotify('Payment Successful','Advance payment of '+inr(adv)+' completed for trip '+t.id+'.');
   systemNotify('Transaction: Advance Payment',inr(adv)+' debited from your wallet for booking '+t.id+'.');
   $('#u-layer .sheet').innerHTML='<div class="grab"></div><div class="ok"><span class="ok-ic">'+ic('check',32)+'</span><h3>Request sent</h3><p>We sent your request to drivers near you. You will get a notification when a driver accepts.</p>'+
@@ -7307,7 +7481,7 @@ function amtGo(){
       systemNotify('Payment Failed','Maximum wallet top-up limit is ₹50,000.');
       return fail('The most you can add at once is ₹50,000.');
     }
-    S.utx.push({ts:Date.now(),type:'topup',amount:v,title:'Added to wallet',sub:'UPI'});
+    addUtx({ts:Date.now(),type:'topup',amount:v,title:'Added to wallet',sub:'UPI'});
     closeSheet('u');render('u');
     systemNotify('Payment Successful',inr(v)+' added to your Ridingo Wallet successfully.');
     systemNotify('Transaction: Wallet Top-Up',inr(v)+' credited to your wallet balance.');
@@ -7418,6 +7592,9 @@ const ACT={
    const reader=new FileReader();
    reader.onload=function(e){
      S.user.avatar=e.target.result;
+     saveUserSession(S.user);
+     saveCurrentUserScopedData();
+     syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
      render('u');
    };
    reader.readAsDataURL(file);
@@ -7429,7 +7606,8 @@ const ACT={
    if(ve&&ve.value.trim())S.user.email=ve.value.trim();
    ui.u.editName=false;
    saveUserSession(S.user);
-   syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email);
+   saveCurrentUserScopedData();
+   syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
    render('u');
  },
  soshelp(){openSosSheet()},
@@ -7456,6 +7634,9 @@ const ACT={
      if(r)c.relation=r.value.trim()||c.relation;
      if(p)c.phone=p.value.trim()||c.phone;
    });
+   saveUserSession(S.user);
+   saveCurrentUserScopedData();
+   syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
    closeSheet('u');
    render('u');
  },
@@ -7471,6 +7652,9 @@ const ACT={
    if(!S.user.nominee)S.user.nominee={};
    if(n&&n.value.trim())S.user.nominee.name=n.value.trim();
    if(r&&r.value.trim())S.user.nominee.relation=r.value.trim();
+   saveUserSession(S.user);
+   saveCurrentUserScopedData();
+   syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
    closeSheet('u');
    render('u');
  },
@@ -7486,6 +7670,9 @@ const ACT={
    openLanguageSheet();
  },
  savelangsheet(){
+   saveUserSession(S.user);
+   saveCurrentUserScopedData();
+   syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
    closeSheet('u');
    render('u');
  },
@@ -7496,6 +7683,9 @@ const ACT={
    openAcSheet();
  },
  saveacsheet(){
+   saveUserSession(S.user);
+   saveCurrentUserScopedData();
+   syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
    closeSheet('u');
    render('u');
  },
@@ -7510,6 +7700,9 @@ const ACT={
    const v=el?el.value.trim():'';
    if(v.length===4){
      S.user.pinCode=v;
+     saveUserSession(S.user);
+     saveCurrentUserScopedData();
+     syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
      closeSheet('u');
      render('u');
    }else{
@@ -7538,14 +7731,34 @@ const ACT={
  },
  openlogout(){openLogoutSheet()},
  confirmlogout(){
+   try { saveCurrentUserScopedData(); } catch(e){}
    closeSheet('u');
    clearUserSession();
-   showOnboarding();
+   // Completely fresh state on logout: zero trips, zero transactions, clean user
+   S = seed();
+   S.trips = [];
+   S.utx = [];
+   S.unotes = [];
+   if(S.user){
+     S.user.name = '';
+     S.user.phone = '';
+     S.user.email = '';
+     S.user.avatar = null;
+   }
+   render('u');
+   showOnboarding('splash', 'login');
  },
  theme(d){setTheme(d.v)},
  tog(d){
    const k=d.key;
-   if(d.app==='u'){S.user[k]=!S.user[k];render('u');return}
+   if(d.app==='u'){
+     S.user[k]=!S.user[k];
+     saveUserSession(S.user);
+     saveCurrentUserScopedData();
+     syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
+     render('u');
+     return;
+   }
    if(k.indexOf('cat:')===0){const c=k.slice(4);S.driver.cats[c]=!S.driver.cats[c]}
    else if(k.indexOf('tr:')===0){const c=k.slice(3);S.driver.trans[c]=!S.driver.trans[c]}
    else S.driver[k]=!S.driver[k];
@@ -7721,8 +7934,9 @@ function saveUserSession(user){
   try{
     const session = {
       phone: user.phone || '',
-      name: user.name || 'Arjun Menon',
+      name: user.name || 'Car Owner',
       email: user.email || '',
+      avatar: user.avatar || null,
       car: user.car || { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' },
       loggedIn: true,
       timestamp: Date.now()
@@ -7749,6 +7963,143 @@ function clearUserSession(){
   try{
     localStorage.removeItem(RIDINGO_USER_SESSION_KEY);
   }catch(e){}
+}
+
+function setupFreshUserAccount(name, phone, email){
+  const cleanPh = phone.startsWith('+91 ') ? phone : ('+91 ' + phone.replace(/\D/g, '').slice(-10));
+  const defaultCar = { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' };
+
+  S.user = {
+    name: name,
+    phone: cleanPh,
+    email: email,
+    avatar: null,
+    car: defaultCar,
+    notif: true,
+    pin: true,
+    pinCode: '4821',
+    liveShare: true,
+    quiet: false,
+    acPref: true,
+    acTemp: '22°C',
+    acMode: 'Chill',
+    acPrecool: true,
+    whatsapp: true,
+    promo: true,
+    biometric: false,
+    haptics: true,
+    sosContacts: [
+      { name: 'Family Contact', relation: 'Family', phone: '' }
+    ],
+    insuranceTier: 'standard',
+    nominee: { name: '', relation: '' },
+    languages: ['English', 'Hindi'],
+    quietCabin: true,
+    maskNumber: true,
+    hidePlate: false,
+    locPrivacy: true
+  };
+
+  // Fresh data: zero trips, zero transactions, clean notification
+  S.trips = [];
+  S.utx = [];
+  S.unotes = [
+    { ts: Date.now(), title: 'Welcome to Ridingo, ' + name.split(' ')[0] + '!', body: 'Book a professional driver for your car by the hour, day or airport run.', icon: 'car', read: false }
+  ];
+
+  saveUserSession(S.user);
+  saveCurrentUserScopedData();
+  syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email, S.user.avatar, S.user);
+}
+
+async function loadUserDataForLogin(phoneOrEmail){
+  const normPh = (phoneOrEmail || '').replace(/\D/g, '').slice(-10);
+  const normEm = (phoneOrEmail || '').trim().toLowerCase();
+
+  // 1. Try local user-scoped cache first for instant responsiveness
+  const cached = loadUserScopedData(phoneOrEmail);
+  if(cached && cached.user){
+    Object.assign(S.user, cached.user);
+    S.trips = Array.isArray(cached.trips) ? cached.trips.map(t => ({...t, mine: true})) : [];
+    S.utx = Array.isArray(cached.utx) ? cached.utx : [];
+    S.unotes = Array.isArray(cached.unotes) ? cached.unotes : [];
+  } else {
+    S.trips = [];
+    S.utx = [];
+    S.unotes = [
+      { ts: Date.now(), title: 'Welcome to Ridingo', body: 'Book a driver for your own car.', icon: 'car', read: true }
+    ];
+  }
+
+  // 2. Fetch latest data from Supabase
+  if(sbClient && sbTablesReady){
+    try{
+      let profQuery = normPh 
+        ? sbClient.from('profiles').select('*').ilike('phone', `*${normPh}*`).limit(1)
+        : sbClient.from('profiles').select('*').ilike('email', normEm).limit(1);
+
+      const { data: profs } = await profQuery;
+      if(profs && profs.length > 0){
+        const p = profs[0];
+        if(p.name) S.user.name = p.name;
+        if(p.phone) S.user.phone = p.phone;
+        if(p.email) S.user.email = p.email;
+        if(p.car) S.user.car = p.car;
+        if(p.avatar) S.user.avatar = p.avatar;
+        if(p.settings && typeof p.settings === 'object'){
+          Object.assign(S.user, p.settings);
+        }
+      }
+
+      // Trips (ONLY trips where by_who matches user's phone or email)
+      const userDigits = (S.user.phone || '').replace(/\D/g, '').slice(-10);
+      let tripQuery = sbClient.from('trips').select('*').order('created_at', { ascending: false });
+      if(userDigits){
+        tripQuery = tripQuery.or(`by_who.ilike.*${userDigits}*,rider->>phone.ilike.*${userDigits}*`);
+      }
+      const { data: tripData } = await tripQuery;
+      if(tripData && Array.isArray(tripData)){
+        S.trips = tripData.map(row => ({
+          id: row.id,
+          cat: row.cat,
+          qty: row.qty,
+          pickup: row.pickup,
+          drop: row.drop_loc || '',
+          when: Number(row.when_ts),
+          done: Number(row.done_ts || 0),
+          mine: true,
+          rider: row.rider || { name: S.user.name, rating: 4.9, phone: S.user.phone },
+          car: row.car || S.user.car,
+          fare: row.fare,
+          advance: row.advance,
+          status: row.status,
+          driver: row.driver,
+          cashback: row.cashback || 0,
+          by: row.by_who || S.user.phone
+        }));
+      }
+
+      // Wallet Transactions
+      if(userDigits){
+        const { data: txData } = await sbClient.from('wallet_transactions').select('*').ilike('user_phone', `*${userDigits}*`).order('ts', { ascending: false });
+        if(txData && Array.isArray(txData) && txData.length > 0){
+          S.utx = txData.map(r => ({
+            ts: Number(r.ts),
+            type: r.type,
+            amount: Number(r.amount),
+            title: r.title,
+            sub: r.sub,
+            to: r.to_dest
+          }));
+        }
+      }
+    }catch(e){
+      console.warn('Error loading user data from Supabase:', e);
+    }
+  }
+
+  saveUserSession(S.user);
+  saveCurrentUserScopedData();
 }
 
 /* ========== ONBOARDING & AUTHENTICATION STATE ========== */
@@ -8355,48 +8706,13 @@ document.addEventListener('click', async e => {
 
     try{
       if(authState.authTab === 'register'){
-        // Create new account profile in Supabase
         const newFullName = authState.regFirstName + ' ' + authState.regLastName;
         const newPhone = '+91 ' + authState.regPhone;
         const newEmail = authState.regEmail;
-        const defaultCar = { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' };
-
-        if(sbClient && sbTablesReady){
-          await sbClient.from('profiles').insert({
-            phone: newPhone,
-            name: newFullName,
-            email: newEmail,
-            car: defaultCar,
-            preferences: { liveShare: true, pin: true },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-        }
-
-        S.user.name = newFullName;
-        S.user.phone = newPhone;
-        S.user.email = newEmail;
-        S.user.car = defaultCar;
+        setupFreshUserAccount(newFullName, newPhone, newEmail);
       } else {
-        // Sign in: retrieve latest profile from database
-        if(sbClient && sbTablesReady){
-          const filter = authState.targetType === 'phone'
-            ? sbClient.from('profiles').select('*').ilike('phone', `*${authState.loginPhone}*`).limit(1)
-            : sbClient.from('profiles').select('*').ilike('email', authState.targetDisplay).limit(1);
-
-          const { data } = await filter;
-          if(data && data.length > 0){
-            const prof = data[0];
-            if(prof.name) S.user.name = prof.name;
-            if(prof.phone) S.user.phone = prof.phone;
-            if(prof.email) S.user.email = prof.email;
-            if(prof.car) S.user.car = prof.car;
-          }
-        }
+        await loadUserDataForLogin(authState.targetType === 'phone' ? authState.loginPhone : authState.loginEmail);
       }
-
-      // PERSIST SESSION TO LOCALSTORAGE
-      saveUserSession(S.user);
 
       // Remove onboarding overlay & unlock main UI
       const ov=$('#ob-screen');
@@ -8406,20 +8722,18 @@ document.addEventListener('click', async e => {
       if(un)un.style.display='';
 
       toast('u', 'Welcome to Ridingo, ' + S.user.name.split(' ')[0] + '!', 'check');
-      init(false);
+      render('u');
       setupScrollPhysics();
       setTimeout(requestNotifPermissionOnce, 1500);
 
     }catch(err){
       console.warn('Session save error:', err);
-      // Fallback: unlock UI anyway
-      saveUserSession(S.user);
       const ov=$('#ob-screen');
       if(ov)ov.remove();
       const uc=$('#u-content'),un=$('#u-nav');
       if(uc)uc.style.display='';
       if(un)un.style.display='';
-      init(false);
+      render('u');
     }
   }
 
@@ -8555,14 +8869,10 @@ document.addEventListener('keydown', e => {
     // Driver App: directly mounts Driver dashboard
     render('d');
   } else {
-    // User App: check if user session already exists in localStorage
     const saved = getUserSession();
-    if(saved && saved.loggedIn){
-      // ALREADY LOGGED IN: Restore session and skip login page!
-      S.user.phone = saved.phone || S.user.phone;
-      S.user.name = saved.name || S.user.name;
-      S.user.email = saved.email || S.user.email;
-      if(saved.car) S.user.car = saved.car;
+    if(saved && saved.loggedIn && (saved.phone || saved.email)){
+      // ALREADY LOGGED IN: Restore session and load user's isolated data!
+      loadUserDataForLogin(saved.phone || saved.email).then(() => { render('u'); });
 
       const ov = document.getElementById('ob-screen');
       if(ov) ov.remove();
@@ -8571,8 +8881,6 @@ document.addEventListener('keydown', e => {
       if(un) un.style.display = '';
 
       render('u');
-      // Background sync with Supabase
-      syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email);
     } else {
       // First time / signed out: show onboarding
       showOnboarding('splash');
