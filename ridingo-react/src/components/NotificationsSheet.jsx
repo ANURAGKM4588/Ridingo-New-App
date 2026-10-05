@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
@@ -17,9 +17,10 @@ function formatTimeAgo(ts) {
  * Swipeable Notification Tile Component
  * - Right swipe (drag right > 70px): Mark as read with yellow icon & smooth animation
  * - Left swipe (drag left < -70px): Delete notification with red icon & smooth slide-out
- * - Supports both mobile touch gestures and desktop mouse drag
+ * - Auto-demo hint: For first-time users, the first notification card smoothly peeks right (Yellow Read),
+ *   then across to left (Red Delete), and glides back to center automatically.
  */
-function SwipeableNotifItem({ note, onMarkRead, onDelete }) {
+function SwipeableNotifItem({ note, onMarkRead, onDelete, isDemoHint, onDemoHintComplete }) {
   const [offsetX, setOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -29,8 +30,42 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete }) {
   const currentXRef = useRef(0);
   const SWIPE_THRESHOLD = 70; // px threshold to trigger action
 
+  // Choreographed automatic demo animation for first-time users
+  useEffect(() => {
+    if (!isDemoHint) return;
+
+    let t1, t2, t3, t4;
+    // Delay 380ms after bottom sheet finishes sliding into view
+    t1 = setTimeout(() => {
+      // Step 1: Smoothly slide Right -> reveals Yellow "Mark Read" with soft bounce
+      setOffsetX(62);
+
+      t2 = setTimeout(() => {
+        // Step 2: Smoothly slide across to Left -> reveals Red "Delete"
+        setOffsetX(-62);
+
+        t3 = setTimeout(() => {
+          // Step 3: Return smoothly to resting center position
+          setOffsetX(0);
+
+          t4 = setTimeout(() => {
+            if (onDemoHintComplete) onDemoHintComplete();
+          }, 400);
+        }, 550);
+      }, 550);
+    }, 380);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [isDemoHint]);
+
   // --- Touch gesture handlers ---
   const handleTouchStart = (e) => {
+    if (isDemoHint && onDemoHintComplete) onDemoHintComplete();
     setIsDragging(true);
     startXRef.current = e.touches[0].clientX;
     currentXRef.current = e.touches[0].clientX;
@@ -60,6 +95,7 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete }) {
 
   // --- Mouse drag handlers for desktop / testing ---
   const handleMouseDown = (e) => {
+    if (isDemoHint && onDemoHintComplete) onDemoHintComplete();
     setIsDragging(true);
     startXRef.current = e.clientX;
     currentXRef.current = e.clientX;
@@ -147,10 +183,10 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete }) {
           paddingLeft: '20px',
           gap: '8px',
           cursor: 'pointer',
-          opacity: offsetX > 0 ? Math.min(rightSwipeRatio * 1.2, 1) : 0,
+          opacity: offsetX > 0 ? Math.min(rightSwipeRatio * 1.25, 1) : 0,
           transform: `scale(${0.85 + rightSwipeRatio * 0.15})`,
           transformOrigin: 'left center',
-          transition: isDragging ? 'none' : 'opacity 0.2s ease, transform 0.2s ease'
+          transition: isDragging ? 'none' : 'opacity 0.24s ease, transform 0.24s ease'
         }}
       >
         <span
@@ -190,10 +226,10 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete }) {
           paddingRight: '20px',
           gap: '8px',
           cursor: 'pointer',
-          opacity: offsetX < 0 ? Math.min(leftSwipeRatio * 1.2, 1) : 0,
+          opacity: offsetX < 0 ? Math.min(leftSwipeRatio * 1.25, 1) : 0,
           transform: `scale(${0.85 + leftSwipeRatio * 0.15})`,
           transformOrigin: 'right center',
-          transition: isDragging ? 'none' : 'opacity 0.2s ease, transform 0.2s ease'
+          transition: isDragging ? 'none' : 'opacity 0.24s ease, transform 0.24s ease'
         }}
       >
         <b style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.02em', color: '#FFFFFF' }}>
@@ -236,7 +272,7 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete }) {
           transform: `translateX(${offsetX}px)`,
           transition: isDragging
             ? 'none'
-            : 'transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), background 0.25s ease, border-color 0.25s ease',
+            : 'transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1), background 0.25s ease, border-color 0.25s ease',
           boxShadow: Math.abs(offsetX) > 5 ? '0 8px 24px rgba(0, 0, 0, 0.12)' : 'none',
           cursor: isDragging ? 'grabbing' : 'grab'
         }}
@@ -298,7 +334,7 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete }) {
               marginTop: '6px',
               boxShadow: '0 0 0 3px rgba(250, 204, 21, 0.22)'
             }}
-            title="Unread (Swipe right to mark read)"
+            title="Unread"
           />
         ) : (
           <span
@@ -331,6 +367,22 @@ export default function NotificationsSheet() {
     clearAllNotifs,
     addToast
   } = useApp();
+
+  // Check if first-time user for swipe demo hint animation
+  const [shouldPlayDemoHint, setShouldPlayDemoHint] = useState(() => {
+    try {
+      return !localStorage.getItem('ridingo_notif_swipe_hint_seen');
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleDemoHintComplete = () => {
+    try {
+      localStorage.setItem('ridingo_notif_swipe_hint_seen', 'true');
+    } catch (e) {}
+    setShouldPlayDemoHint(false);
+  };
 
   if (!notifsOpen) return null;
 
@@ -395,28 +447,6 @@ export default function NotificationsSheet() {
         <div className="sheet-scroll-body">
           {unotes && unotes.length > 0 ? (
             <>
-              {/* Swipe Instruction Guide Capsule */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '12px',
-                  background: 'var(--field)',
-                  padding: '7px 12px',
-                  borderRadius: '999px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'var(--muted)',
-                  marginBottom: '12px',
-                  textAlign: 'center'
-                }}
-              >
-                <span>👉 Slide right to <b>Mark Read</b></span>
-                <span>•</span>
-                <span>👈 Slide left to <b>Delete</b></span>
-              </div>
-
               {/* Header Action Row */}
               <div
                 style={{
@@ -454,12 +484,14 @@ export default function NotificationsSheet() {
 
               {/* Swipeable Notification Cards */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {unotes.map((n) => (
+                {unotes.map((n, idx) => (
                   <SwipeableNotifItem
                     key={n.id}
                     note={n}
                     onMarkRead={handleItemMarkRead}
                     onDelete={handleItemDelete}
+                    isDemoHint={idx === 0 && shouldPlayDemoHint}
+                    onDemoHintComplete={handleDemoHintComplete}
                   />
                 ))}
               </div>
