@@ -142,7 +142,7 @@ export function AppProvider({ children }) {
     let backListener = null;
     try {
       if (window.Capacitor?.isPluginAvailable('App')) {
-        backListener = CapApp.addListener('backButton', ({ canGoBack }) => {
+        CapApp.addListener('backButton', ({ canGoBack }) => {
           if (bookingOpen) {
             setBookingOpen(false);
           } else if (onboardingOpen) {
@@ -154,7 +154,9 @@ export function AppProvider({ children }) {
           } else {
             CapApp.exitApp();
           }
-        });
+        }).then(h => {
+          backListener = h;
+        }).catch(() => {});
       }
     } catch (e) {}
 
