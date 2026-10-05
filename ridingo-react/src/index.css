@@ -861,6 +861,11 @@
       box-shadow: 0 -10px 40px rgba(0, 0, 0, .18);
     }
 
+    .sheet.no-scroll-anim {
+      animation: none !important;
+      transform: none !important;
+    }
+
     .sheet-sticky-top {
       position: relative;
       flex-shrink: 0;

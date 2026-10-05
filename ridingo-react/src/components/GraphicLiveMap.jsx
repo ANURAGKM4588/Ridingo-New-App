@@ -51,10 +51,12 @@ export function getRouteTelemetry(prog = 0.38) {
 export default function GraphicLiveMap({
   trip,
   isModal = false,
+  height,
   progress = 0.42,
   speed = 38,
   onOpenModal
 }) {
+  const mapHeight = height || (isModal ? 160 : 175);
   const geom = getRouteTelemetry(progress);
   const mid = isModal ? 'modal' : 'mini';
   const pickupLabel = trip?.pickup ? trip.pickup.split(',')[0].slice(0, 16).toUpperCase() : 'PICKUP';
@@ -66,7 +68,7 @@ export default function GraphicLiveMap({
       onClick={onOpenModal}
       style={{
         position: 'relative',
-        height: isModal ? '230px' : '175px',
+        height: `${mapHeight}px`,
         borderRadius: isModal ? '18px' : '14px',
         overflow: 'hidden',
         cursor: isModal ? 'default' : 'pointer'

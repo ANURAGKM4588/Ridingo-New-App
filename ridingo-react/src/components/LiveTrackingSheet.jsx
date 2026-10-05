@@ -53,9 +53,9 @@ export default function LiveTrackingSheet() {
     <div className="layer on" id="u-tracking-layer" style={{ zIndex: 95 }}>
       <div className="scrim" onClick={() => setLiveTrackingOpen(false)} />
 
-      <div className="sheet" role="dialog" aria-modal="true">
+      <div className="sheet no-scroll-anim" role="dialog" aria-modal="true" style={{ maxHeight: '90%' }}>
         {/* Sticky Header: Small bar (grab) + Title + Close icon */}
-        <div className="sheet-sticky-top">
+        <div className="sheet-sticky-top" style={{ padding: '8px 18px 2px' }}>
           <div className="grab" />
           <div className="sheet-h">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
@@ -91,10 +91,11 @@ export default function LiveTrackingSheet() {
         {/* Scrollable Body */}
         <div className="sheet-scroll-body">
           {/* Top Center Graphic Map UI Viewport */}
-          <div className="live-sheet-map-wrap" style={{ marginBottom: '14px' }}>
+          <div className="live-sheet-map-wrap" style={{ height: '160px', marginBottom: '10px' }}>
             <GraphicLiveMap
               trip={trip}
               isModal={true}
+              height={160}
               progress={progress}
               speed={speed}
             />
@@ -106,21 +107,21 @@ export default function LiveTrackingSheet() {
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '10px',
-              marginBottom: '14px'
+              gap: '8px',
+              marginBottom: '10px'
             }}
           >
-            <div className="live-sheet-stat-card card" style={{ padding: '12px 10px', textAlign: 'center' }}>
-              <span className="lbl" style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>ETA</span>
-              <b className="val" style={{ fontSize: '18px', color: 'var(--ink)', fontWeight: 800 }}>{etaMins} mins</b>
+            <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+              <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>ETA</span>
+              <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{etaMins} mins</b>
             </div>
-            <div className="live-sheet-stat-card card" style={{ padding: '12px 10px', textAlign: 'center' }}>
-              <span className="lbl" style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Distance Left</span>
-              <b className="val" style={{ fontSize: '18px', color: 'var(--ink)', fontWeight: 800 }}>{distLeft} km</b>
+            <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+              <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Distance Left</span>
+              <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{distLeft} km</b>
             </div>
-            <div className="live-sheet-stat-card card" style={{ padding: '12px 10px', textAlign: 'center' }}>
-              <span className="lbl" style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Live Speed</span>
-              <b className="val" style={{ fontSize: '18px', color: 'var(--ink)', fontWeight: 800 }}>{speed} km/h</b>
+            <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+              <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Live Speed</span>
+              <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{speed} km/h</b>
             </div>
           </div>
 
@@ -128,11 +129,11 @@ export default function LiveTrackingSheet() {
           <div
             className="live-driver-profile-card card"
             style={{
-              padding: '14px',
+              padding: '10px 12px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '14px'
+              marginBottom: '10px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -204,7 +205,7 @@ export default function LiveTrackingSheet() {
           </div>
 
           {/* Route Timeline */}
-          <div className="card" style={{ padding: '14px', marginBottom: '14px' }}>
+          <div className="card" style={{ padding: '10px 12px', marginBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', position: 'relative' }}>
               {/* Vertical connector line */}
               <div
@@ -263,45 +264,51 @@ export default function LiveTrackingSheet() {
             </div>
           </div>
 
-          {/* Action Buttons: Share & Emergency SOS */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
+          {/* Action Buttons: Share & Emergency SOS (Single Line Text, lifted higher up) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px', marginBottom: '12px' }}>
             <button
               className="btn line"
               onClick={handleShareTrip}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
-                height: '46px',
-                borderRadius: '14px',
-                fontSize: '13.5px',
-                fontWeight: 600
+                gap: '6px',
+                height: '42px',
+                borderRadius: '13px',
+                fontSize: '13px',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                padding: '0 6px',
+                cursor: 'pointer'
               }}
             >
-              <Icon name="share" size={16} />
-              <span>Share Trip</span>
+              <Icon name="share" size={15} />
+              <span style={{ whiteSpace: 'nowrap' }}>Share Trip</span>
             </button>
 
             <button
               className="btn"
               onClick={handleSos}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
-                height: '46px',
-                borderRadius: '14px',
-                fontSize: '13.5px',
+                gap: '6px',
+                height: '42px',
+                borderRadius: '13px',
+                fontSize: '13px',
                 fontWeight: 700,
                 background: 'rgba(239, 68, 68, 0.12)',
                 color: '#EF4444',
-                border: '1px solid rgba(239, 68, 68, 0.25)'
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                whiteSpace: 'nowrap',
+                padding: '0 6px',
+                cursor: 'pointer'
               }}
             >
-              <Icon name="shield" size={16} />
-              <span>Emergency SOS</span>
+              <Icon name="shield" size={15} />
+              <span style={{ whiteSpace: 'nowrap' }}>Emergency SOS</span>
             </button>
           </div>
         </div>
