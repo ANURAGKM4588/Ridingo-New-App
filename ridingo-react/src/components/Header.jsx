@@ -9,7 +9,7 @@ export default function Header() {
     <header className="top">
       <div className="brand">
         <div>
-          <BrandLogo height={26} width={105} style={{ display: 'block', marginBottom: '2px' }} />
+          <BrandLogo height={32} width={128} style={{ display: 'block', marginBottom: '2px' }} />
           <small>Hire a driver for your own car</small>
         </div>
       </div>

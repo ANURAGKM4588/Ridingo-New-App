@@ -196,36 +196,18 @@
     }
 
     .ridingo-brand-logo-wrap .brand-logo-img {
-      position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
       object-fit: contain;
       object-position: left center;
-      transition: opacity .38s cubic-bezier(.25, 1, .35, 1);
+      transition: opacity .25s ease;
       will-change: opacity;
+      display: block;
       pointer-events: none;
     }
 
     .ridingo-brand-logo-wrap.center .brand-logo-img {
       object-position: center center;
-    }
-
-    .ridingo-brand-logo-wrap .logo-light {
-      opacity: 1;
-    }
-
-    .ridingo-brand-logo-wrap .logo-dark {
-      opacity: 0;
-    }
-
-    [data-theme="dark"] .ridingo-brand-logo-wrap .logo-light {
-      opacity: 0;
-    }
-
-    [data-theme="dark"] .ridingo-brand-logo-wrap .logo-dark {
-      opacity: 1;
     }
 
     .ridingo-brand-logo {

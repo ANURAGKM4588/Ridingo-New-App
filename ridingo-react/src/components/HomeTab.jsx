@@ -220,9 +220,9 @@ export default function HomeTab() {
   return (
     <div>
       {/* Top Bar with Brand Logo and Notification Bell */}
-      <div className="row" style={{ justifyContent: 'space-between', marginBottom: '16px' }}>
-        <div className="row" style={{ display: 'flex', alignItems: 'center' }}>
-          <BrandLogo height={28} width={112} />
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <BrandLogo height={38} width={152} />
         </div>
         <button className="iconbtn" aria-label="Notifications" onClick={() => setNotifsOpen(true)}>
           <Icon name="bell" size={20} />
