@@ -1003,22 +1003,25 @@ export default function PaymentSheet() {
       {showQrModal && (
         <div
           style={{
-            position: 'fixed',
+            position: 'absolute',
             inset: 0,
-            zIndex: 140,
+            zIndex: 150,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'flex-end'
+            justifyContent: 'flex-end',
+            overflow: 'hidden',
+            pointerEvents: 'auto'
           }}
         >
-          {/* Dimmed Backdrop Scrim */}
+          {/* Dimmed Backdrop Scrim strictly inside mobile app container */}
           <div
             onClick={() => setShowQrModal(false)}
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(15, 23, 42, 0.55)',
+              background: 'rgba(15, 23, 42, 0.65)',
               backdropFilter: 'blur(3px)',
+              WebkitBackdropFilter: 'blur(3px)',
               transition: 'opacity 0.2s ease'
             }}
           />
@@ -1028,13 +1031,11 @@ export default function PaymentSheet() {
             style={{
               position: 'relative',
               width: '100%',
-              maxWidth: '480px',
-              margin: '0 auto',
               background: '#FFFFFF',
               borderTopLeftRadius: '24px',
               borderTopRightRadius: '24px',
               padding: '12px 20px 32px',
-              zIndex: 141,
+              zIndex: 151,
               boxShadow: '0 -10px 40px rgba(15, 23, 42, 0.25)',
               display: 'flex',
               flexDirection: 'column',
@@ -1287,12 +1288,19 @@ export default function PaymentSheet() {
             </div>
           )}
 
-          {/* Option: Pay via UPI QR (Clean row firstly, shows QR after selection) */}
+          {/* Option: Pay via UPI QR (Clean row, QR code only displayed in separate popup modal) */}
           <div
-            onClick={() => setSelectedMethod('qr')}
+            onClick={() => {
+              if (selectedMethod === 'qr') {
+                setShowQrModal(true);
+              } else {
+                setSelectedMethod('qr');
+              }
+            }}
             style={{
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               padding: '15px 16px',
               borderRadius: '16px',
               border: selectedMethod === 'qr' ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
@@ -1301,67 +1309,30 @@ export default function PaymentSheet() {
               transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '10px',
-                    border: '1px solid #E2E8F0',
-                    background: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}
-                >
-                  <SleekQrOutlineIcon size={19} color="#0F172A" />
-                </div>
-                <div>
-                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Pay via UPI QR</b>
-                  <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
-                    Scan with any UPI app
-                  </span>
-                </div>
-              </div>
-              <MinimalRadio isSelected={selectedMethod === 'qr'} />
-            </div>
-
-            {/* After selection, show the QR code preview with payment amount */}
-            {selectedMethod === 'qr' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div
                 style={{
-                  marginTop: '14px',
-                  padding: '14px',
-                  background: '#FFFFFF',
-                  borderRadius: '14px',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
                   border: '1px solid #E2E8F0',
+                  background: '#FFFFFF',
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '8px'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowQrModal(true);
+                  justifyContent: 'center',
+                  flexShrink: 0
                 }}
               >
-                <img
-                  src={liveQrData.qrImageUrl}
-                  alt="UPI QR Code"
-                  style={{
-                    width: '140px',
-                    height: '140px',
-                    borderRadius: '8px',
-                    display: 'block'
-                  }}
-                />
-                <div style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>
-                  ₹{amount}
-                </div>
+                <SleekQrOutlineIcon size={19} color="#0F172A" />
               </div>
-            )}
+              <div>
+                <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Pay via UPI QR</b>
+                <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
+                  Scan with any UPI app
+                </span>
+              </div>
+            </div>
+            <MinimalRadio isSelected={selectedMethod === 'qr'} />
           </div>
 
           {/* Section Divider: Cards & Banking */}
