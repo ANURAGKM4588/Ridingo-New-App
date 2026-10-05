@@ -95,8 +95,24 @@ export default function PaymentSheet() {
 
   const handleClose = () => {
     if (isAuthorizing || netbankingStatus === 'authorizing') return;
-    if (config.onDismiss) config.onDismiss();
+    if (config?.onDismiss) config.onDismiss();
     setConfig(null);
+  };
+
+  /**
+   * Unified Payment Success & Redirection Handler
+   * Closes payment modals and dispatches callback to route to live tracking
+   */
+  const handlePaymentSuccess = (verifiedPayment) => {
+    setIsAuthorizing(false);
+    setShowCardOtpModal(false);
+    setShowNetbankingPortal(false);
+    setShowQrModal(false);
+    const onComplete = config?.onSuccess;
+    setConfig(null);
+    if (typeof onComplete === 'function') {
+      onComplete(verifiedPayment);
+    }
   };
 
   /**
@@ -240,14 +256,12 @@ export default function PaymentSheet() {
     const paymentId = 'pay_card_' + Date.now().toString(36);
     const orderId = 'ord_' + Date.now().toString(36);
 
-    setConfig(null);
-    if (config?.onSuccess) {
-      config.onSuccess({
-        razorpay_payment_id: paymentId,
-        razorpay_order_id: orderId,
-        method: methodTitle
-      });
-    }
+    handlePaymentSuccess({
+      razorpay_payment_id: paymentId,
+      razorpay_order_id: orderId,
+      method: methodTitle,
+      gateway: 'Razorpay'
+    });
     addToast(`Card authorized successfully! Paid ₹${amount}.`, 'check');
   };
 
@@ -266,14 +280,12 @@ export default function PaymentSheet() {
         const paymentId = 'pay_nb_' + selectedBank.code.toLowerCase() + '_' + Date.now().toString(36);
         const orderId = 'ord_nb_' + Date.now().toString(36);
 
-        setConfig(null);
-        if (config?.onSuccess) {
-          config.onSuccess({
-            razorpay_payment_id: paymentId,
-            razorpay_order_id: orderId,
-            method: `${selectedBank.name} Netbanking`
-          });
-        }
+        handlePaymentSuccess({
+          razorpay_payment_id: paymentId,
+          razorpay_order_id: orderId,
+          method: `${selectedBank.name} Netbanking`,
+          gateway: 'Razorpay'
+        });
         addToast(`Paid ₹${amount} via ${selectedBank.name} Netbanking!`, 'check');
       }, 600);
     }, 1200);
@@ -286,16 +298,12 @@ export default function PaymentSheet() {
     const paymentId = 'pay_upi_' + Date.now().toString(36);
     const orderId = 'ord_upi_' + Date.now().toString(36);
 
-    setIsAuthorizing(false);
-    setConfig(null);
-
-    if (config?.onSuccess) {
-      config.onSuccess({
-        razorpay_payment_id: paymentId,
-        razorpay_order_id: orderId,
-        method: methodTitle || 'UPI App'
-      });
-    }
+    handlePaymentSuccess({
+      razorpay_payment_id: paymentId,
+      razorpay_order_id: orderId,
+      method: methodTitle || 'UPI App',
+      gateway: 'Razorpay'
+    });
   };
 
   /**
@@ -331,13 +339,11 @@ export default function PaymentSheet() {
       setUtx(prev => [cashbackTx, walletTx, ...(Array.isArray(prev) ? prev : [])]);
     }
 
-    setConfig(null);
-    if (config?.onSuccess) {
-      config.onSuccess({
-        razorpay_payment_id: walletPid,
-        method: 'Ridingo Wallet'
-      });
-    }
+    handlePaymentSuccess({
+      razorpay_payment_id: walletPid,
+      method: 'Ridingo Wallet',
+      gateway: 'Ridingo Wallet'
+    });
     addToast(`Paid ₹${amount} with Wallet! ₹${cashbackAmount} cashback credited.`, 'check');
   };
 
