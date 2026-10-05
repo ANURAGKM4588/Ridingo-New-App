@@ -981,88 +981,123 @@ export default function PaymentSheet() {
         </div>
       )}
 
+      <style>{`
+        @keyframes bottomSheetSlideUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0.5;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
+
       {/* ========================================================
-          4. SCANNABLE QR CODE MODAL
-          ======================================================== */}
-      {/* ========================================================
-          4. SCANNABLE QR CODE MODAL
-          Configured with live Razorpay credentials, displaying only the QR code and payment amount,
-          functional close icon without extraneous labels, no 'I have paid via QR' button.
+          4. BOTTOM-TO-TOP POPUP WINDOW STYLE: SCAN & PAY VIA QR
+          Slides up from the bottom when clicking the bottom Pay button,
+          displaying only the live QR code and payment amount,
+          with a functional close icon without extraneous labels.
           ======================================================== */}
       {showQrModal && (
         <div
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: '#FFFFFF',
-            borderRadius: '24px',
-            padding: '20px 24px 28px',
-            width: '88%',
-            maxWidth: '320px',
-            zIndex: 130,
-            boxShadow: '0 20px 50px -10px rgba(15,23,42,0.22)',
-            textAlign: 'center',
+            position: 'fixed',
+            inset: 0,
+            zIndex: 140,
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            gap: '16px',
-            border: '1px solid #E2E8F0'
+            justifyContent: 'flex-end'
           }}
         >
-          {/* Functional close icon without extraneous labels */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-            <button
-              type="button"
-              onClick={() => setShowQrModal(false)}
-              aria-label="Close"
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                cursor: 'pointer',
-                color: '#64748B',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 0
-              }}
-            >
-              <Icon name="x" size={16} />
-            </button>
-          </div>
+          {/* Dimmed Backdrop Scrim */}
+          <div
+            onClick={() => setShowQrModal(false)}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(3px)',
+              transition: 'opacity 0.2s ease'
+            }}
+          />
 
-          {/* Valid Live Razorpay UPI QR Code */}
+          {/* Bottom-to-Top Sliding Popup Window */}
           <div
             style={{
-              padding: '12px',
+              position: 'relative',
+              width: '100%',
+              maxWidth: '480px',
+              margin: '0 auto',
               background: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 4px 14px rgba(15,23,42,0.04)',
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
+              padding: '12px 20px 32px',
+              zIndex: 141,
+              boxShadow: '0 -10px 40px rgba(15, 23, 42, 0.25)',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center'
+              animation: 'bottomSheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           >
-            <img
-              src={liveQrData.qrImageUrl}
-              alt="UPI QR Code"
-              style={{
-                width: '200px',
-                height: '200px',
-                borderRadius: '8px',
-                display: 'block'
-              }}
-            />
-          </div>
+            {/* Top Grab Bar */}
+            <div style={{ width: '36px', height: '4px', background: '#E2E8F0', borderRadius: '999px', margin: '2px auto 8px' }} />
 
-          {/* Payment Amount */}
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.5px' }}>
-            ₹{amount}
+            {/* Functional close icon without extraneous labels */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginBottom: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                aria-label="Close"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0
+                }}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+
+            {/* Valid Live Razorpay UPI QR Code */}
+            <div
+              style={{
+                padding: '14px',
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <img
+                src={liveQrData.qrImageUrl}
+                alt="UPI QR Code"
+                style={{
+                  width: '210px',
+                  height: '210px',
+                  borderRadius: '8px',
+                  display: 'block'
+                }}
+              />
+            </div>
+
+            {/* Payment Amount */}
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.5px', marginTop: '14px' }}>
+              ₹{amount}
+            </div>
           </div>
         </div>
       )}
@@ -1252,56 +1287,81 @@ export default function PaymentSheet() {
             </div>
           )}
 
-          {/* Option: UPI QR Code & Price Display */}
-          {/* Option: Pay via UPI QR (Display only QR code and payment amount) */}
+          {/* Option: Pay via UPI QR (Clean row firstly, shows QR after selection) */}
           <div
-            onClick={() => {
-              setSelectedMethod('qr');
-              setShowQrModal(true);
-            }}
+            onClick={() => setSelectedMethod('qr')}
             style={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '18px 16px',
+              padding: '15px 16px',
               borderRadius: '16px',
               border: selectedMethod === 'qr' ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
               background: selectedMethod === 'qr' ? '#F8FAFC' : '#FFFFFF',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              gap: '12px'
+              transition: 'all 0.15s ease'
             }}
           >
-            {/* Live QR Code */}
-            <div
-              style={{
-                padding: '10px',
-                background: '#FFFFFF',
-                borderRadius: '12px',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 2px 8px rgba(15,23,42,0.04)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <img
-                src={liveQrData.qrImageUrl}
-                alt="UPI QR Code"
-                style={{
-                  width: '130px',
-                  height: '130px',
-                  borderRadius: '6px',
-                  display: 'block'
-                }}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    background: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <SleekQrOutlineIcon size={19} color="#0F172A" />
+                </div>
+                <div>
+                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Pay via UPI QR</b>
+                  <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
+                    Scan with any UPI app
+                  </span>
+                </div>
+              </div>
+              <MinimalRadio isSelected={selectedMethod === 'qr'} />
             </div>
 
-            {/* Payment Amount */}
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.3px' }}>
-              ₹{amount}
-            </div>
+            {/* After selection, show the QR code preview with payment amount */}
+            {selectedMethod === 'qr' && (
+              <div
+                style={{
+                  marginTop: '14px',
+                  padding: '14px',
+                  background: '#FFFFFF',
+                  borderRadius: '14px',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowQrModal(true);
+                }}
+              >
+                <img
+                  src={liveQrData.qrImageUrl}
+                  alt="UPI QR Code"
+                  style={{
+                    width: '140px',
+                    height: '140px',
+                    borderRadius: '8px',
+                    display: 'block'
+                  }}
+                />
+                <div style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>
+                  ₹{amount}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section Divider: Cards & Banking */}
