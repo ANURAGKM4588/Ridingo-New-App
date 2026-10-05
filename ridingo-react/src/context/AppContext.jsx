@@ -96,6 +96,7 @@ export function AppProvider({ children }) {
   const [tripsFilter, setTripsFilter] = useState('all');
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingCategory, setBookingCategory] = useState('hourly');
+  const [bookingDestination, setBookingDestination] = useState('');
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   // Trips & Wallet
@@ -247,6 +248,8 @@ export function AppProvider({ children }) {
         setBookingOpen,
         bookingCategory,
         setBookingCategory,
+        bookingDestination,
+        setBookingDestination,
         bookRide,
         driverOnline,
         setDriverOnline,

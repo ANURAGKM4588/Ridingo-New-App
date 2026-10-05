@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
+import MapPickerModal from './MapPickerModal';
+import { searchPlaces } from '../lib/locationService';
 
 const CATS = {
   hourly: { name: 'Hourly', blurb: '2 to 12 hours', icon: 'clock', from: '₹250 per hour' },
@@ -42,7 +44,31 @@ const REVIEWS = [
 ];
 
 export default function HomeTab() {
-  const { user, trips, setBookingOpen, setBookingCategory, setUTab } = useApp();
+  const {
+    user,
+    trips,
+    setBookingOpen,
+    setBookingCategory,
+    setBookingDestination,
+    setUTab
+  } = useApp();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const searchWrapRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const inProg = trips.find(t => t.status === 'inprogress');
   const popularTrips = trips.filter(t => t.status === 'completed');
@@ -51,6 +77,42 @@ export default function HomeTab() {
   const openBooking = (cat) => {
     setBookingCategory(cat);
     setBookingOpen(true);
+  };
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    if (val.trim()) {
+      setSearchOpen(true);
+      searchPlaces(val, (matches) => {
+        setSearchResults(matches);
+      });
+    } else {
+      setSearchResults([]);
+      setSearchOpen(false);
+    }
+  };
+
+  const handleClearSearch = (e) => {
+    e.stopPropagation();
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchOpen(false);
+  };
+
+  const handlePickPlace = (placeTitle) => {
+    const isAirport = placeTitle.toLowerCase().includes('airport');
+    setBookingCategory(isAirport ? 'airport' : 'hourly');
+    setBookingDestination(placeTitle);
+    setBookingOpen(true);
+    setSearchOpen(false);
+  };
+
+  const handleMapPick = (addr) => {
+    setBookingCategory('hourly');
+    setBookingDestination(addr);
+    setBookingOpen(true);
+    setMapModalOpen(false);
   };
 
   return (
@@ -79,10 +141,10 @@ export default function HomeTab() {
         <p>Need a driver for your own car?</p>
       </div>
 
-      {/* Destination Search Bar */}
-      <div className="search-wrap" id="u-search-wrap">
+      {/* Destination Search Bar with Typing Feature & Autocomplete */}
+      <div className="search-wrap" id="u-search-wrap" ref={searchWrapRef} style={{ position: 'relative', zIndex: 20 }}>
         <div className="search-anim-inner">
-          <div className="search-box" onClick={() => openBooking('hourly')}>
+          <div className="search-box">
             <span className="search-ic">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="7" />
@@ -94,11 +156,105 @@ export default function HomeTab() {
               className="search-inp"
               id="u-dest-search"
               placeholder="Where you go today?"
-              readOnly
-              style={{ cursor: 'pointer' }}
+              autoComplete="off"
+              spellCheck="false"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={() => {
+                if (searchQuery.trim()) setSearchOpen(true);
+              }}
             />
+            {searchQuery && (
+              <button
+                className="search-clr"
+                type="button"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+              >
+                &times;
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Autocomplete Dropdown */}
+        {searchOpen && searchQuery.trim() && (
+          <div className="search-dropdown" id="u-search-drop">
+            <div className="search-drop-h">Matching Places & Keywords</div>
+            {searchResults.length > 0 ? (
+              <>
+                {searchResults.map((p, idx) => (
+                  <button
+                    key={`${p.title}-${idx}`}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickPlace(p.title)}
+                  >
+                    <span className="search-item-ic">
+                      <Icon
+                        name={
+                          p.type === 'airport'
+                            ? 'plane'
+                            : p.type === 'station' || p.type === 'metro'
+                            ? 'route'
+                            : p.type === 'mall' || p.type === 'tech'
+                            ? 'bank'
+                            : 'pin'
+                        }
+                        size={16}
+                      />
+                    </span>
+                    <div className="search-item-meta">
+                      <div className="search-item-route">
+                        <span className="loc-to" style={{ fontWeight: 700 }}>
+                          {p.title}
+                        </span>
+                      </div>
+                      <span className="search-item-sub">{p.sub}</span>
+                    </div>
+                    <span className="search-item-badge">Book</span>
+                  </button>
+                ))}
+
+                <button
+                  className="search-item"
+                  type="button"
+                  onClick={() => {
+                    setSearchOpen(false);
+                    setMapModalOpen(true);
+                  }}
+                  style={{ borderTop: '1px solid var(--line)', marginTop: '4px' }}
+                >
+                  <span className="search-item-ic">
+                    <Icon name="pin" size={16} />
+                  </span>
+                  <div className="search-item-meta">
+                    <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Choose destination on map</b>
+                    <span className="search-item-sub">Drag pin to any exact street</span>
+                  </div>
+                  <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
+                    Map
+                  </span>
+                </button>
+              </>
+            ) : (
+              <div className="search-empty">
+                <span className="search-empty-ic">
+                  <Icon name="pin" size={20} />
+                </span>
+                <p>Search for "{searchQuery}"</p>
+                <button
+                  className="btn primary sm"
+                  style={{ marginTop: '8px' }}
+                  type="button"
+                  onClick={() => handlePickPlace(searchQuery)}
+                >
+                  Book driver to {searchQuery}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Live In-Progress Trip Card */}
@@ -297,6 +453,13 @@ export default function HomeTab() {
           </div>
         ))}
       </div>
+      {/* Map Picker Modal */}
+      <MapPickerModal
+        isOpen={mapModalOpen}
+        onClose={() => setMapModalOpen(false)}
+        onSelect={handleMapPick}
+        targetField="drop"
+      />
     </div>
   );
 }

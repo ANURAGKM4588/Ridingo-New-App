@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
+import MapPickerModal from './MapPickerModal';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours', min: 2, max: 12, def: 3, rate: 250 },
@@ -18,6 +19,7 @@ export default function BookingSheet() {
     setBookingOpen,
     bookingCategory,
     setBookingCategory,
+    bookingDestination,
     user,
     userBalance,
     bookRide,
@@ -32,6 +34,8 @@ export default function BookingSheet() {
   const [trans, setTrans] = useState('Automatic');
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmedTrip, setConfirmedTrip] = useState(null);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [mapPickerTarget, setMapPickerTarget] = useState('drop');
 
   // Sync category with parent selection
   useEffect(() => {
@@ -43,6 +47,13 @@ export default function BookingSheet() {
       }
     }
   }, [bookingCategory, bookingOpen]);
+
+  // Sync destination if selected from home search or landmark
+  useEffect(() => {
+    if (bookingDestination) {
+      setDrop(bookingDestination);
+    }
+  }, [bookingDestination, bookingOpen]);
 
   if (!bookingOpen) return null;
 
@@ -71,6 +82,21 @@ export default function BookingSheet() {
     if (selectedKey === 'airport') {
       setDrop('Cochin International Airport (COK)');
     }
+  };
+
+  const handleMapSelect = (addr) => {
+    if (mapPickerTarget === 'pickup') {
+      setPickup(addr);
+      addToast('Pickup set from map', 'pin');
+    } else {
+      setDrop(addr);
+      addToast('Destination set from map', 'pin');
+    }
+  };
+
+  const openMap = (target) => {
+    setMapPickerTarget(target);
+    setMapPickerOpen(true);
   };
 
   const handleSubmit = () => {
@@ -213,10 +239,7 @@ export default function BookingSheet() {
                 className="loc-map-btn"
                 type="button"
                 title="Choose on map"
-                onClick={() => {
-                  setPickup('Edappally Toll, Kochi');
-                  addToast('Pickup set to current location', 'pin');
-                }}
+                onClick={() => openMap('pickup')}
               >
                 <Icon name="pin" size={16} />
               </button>
@@ -239,10 +262,7 @@ export default function BookingSheet() {
                 className="loc-map-btn"
                 type="button"
                 title="Choose on map"
-                onClick={() => {
-                  setDrop('Cochin International Airport (COK)');
-                  addToast('Destination set to Airport', 'pin');
-                }}
+                onClick={() => openMap('drop')}
               >
                 <Icon name="pin" size={16} />
               </button>
@@ -396,6 +416,13 @@ export default function BookingSheet() {
           </>
         )}
       </div>
+
+      <MapPickerModal
+        isOpen={mapPickerOpen}
+        onClose={() => setMapPickerOpen(false)}
+        onSelect={handleMapSelect}
+        targetField={mapPickerTarget}
+      />
     </div>
   );
 }
