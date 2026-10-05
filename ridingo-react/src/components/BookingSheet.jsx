@@ -1,187 +1,411 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import Icon from './Icon';
+
+const CATS = {
+  hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours', min: 2, max: 12, def: 3, rate: 250 },
+  daily: { name: 'Full day', icon: 'sun', unit: 'day', units: 'days', min: 1, max: 7, def: 1, rate: 1800 },
+  airport: { name: 'Airport', icon: 'plane', flat: 900 },
+  outstation: { name: 'Outstation', icon: 'route', unit: 'day', units: 'days', min: 1, max: 10, def: 2, rate: 2200 },
+  event: { name: 'Night & events', icon: 'moon', unit: 'hr', units: 'hours', min: 4, max: 10, def: 4, rate: 350 }
+};
+
+const CAT_KEYS = ['hourly', 'daily', 'airport', 'outstation', 'event'];
 
 export default function BookingSheet() {
-  const { bookingOpen, setBookingOpen, bookingCategory, setBookingCategory, bookRide } = useApp();
+  const {
+    bookingOpen,
+    setBookingOpen,
+    bookingCategory,
+    setBookingCategory,
+    user,
+    userBalance,
+    bookRide,
+    addToast
+  } = useApp();
 
-  const [qty, setQty] = useState(2);
-  const [pickup, setPickup] = useState('Edappally Toll, Kochi');
-  const [drop, setDrop] = useState('Cochin International Airport (COK)');
+  const [cat, setCat] = useState('hourly');
+  const [qty, setQty] = useState(3);
+  const [pickup, setPickup] = useState('');
+  const [drop, setDrop] = useState('');
+  const [dateType, setDateType] = useState('today'); // 'today' | 'tomorrow'
+  const [trans, setTrans] = useState('Automatic');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [confirmedTrip, setConfirmedTrip] = useState(null);
+
+  // Sync category with parent selection
+  useEffect(() => {
+    if (bookingCategory && CATS[bookingCategory]) {
+      setCat(bookingCategory);
+      setQty(CATS[bookingCategory].def || 1);
+      if (bookingCategory === 'airport') {
+        setDrop('Cochin International Airport (COK)');
+      }
+    }
+  }, [bookingCategory, bookingOpen]);
 
   if (!bookingOpen) return null;
 
-  const catConfig = {
-    hourly: { name: 'Hourly Chauffeur', base: 398, rate: 199, unit: 'hrs', min: 2, max: 12 },
-    airport: { name: 'Airport Transfer', base: 699, rate: 0, unit: 'trip', min: 1, max: 1 },
-    daily: { name: 'Daily Chauffeur', base: 1499, rate: 1499, unit: 'days', min: 1, max: 7 },
-    outstation: { name: 'Outstation Trip', base: 1899, rate: 1899, unit: 'days', min: 1, max: 14 },
-    event: { name: 'Event Chauffeur', base: 999, rate: 250, unit: 'hrs', min: 4, max: 8 }
+  const currentCat = CATS[cat] || CATS.hourly;
+  const isFlat = !!currentCat.flat;
+
+  // Fare & Advance calculation
+  const fare = isFlat ? currentCat.flat : currentCat.rate * qty;
+  const adv = Math.ceil(fare * 0.3);
+  const remaining = fare - adv;
+
+  const handleQtyChange = (delta) => {
+    setQty(prev => {
+      const next = prev + delta;
+      if (next < (currentCat.min || 1)) return prev;
+      if (next > (currentCat.max || 12)) return prev;
+      return next;
+    });
   };
 
-  const cfg = catConfig[bookingCategory] || catConfig.hourly;
-
-  const calculateFare = () => {
-    if (bookingCategory === 'hourly') {
-      return cfg.base + Math.max(0, qty - 2) * cfg.rate;
-    } else if (bookingCategory === 'event') {
-      return cfg.base + Math.max(0, qty - 4) * cfg.rate;
-    } else if (bookingCategory === 'airport') {
-      return cfg.base;
-    } else {
-      return cfg.base * qty;
+  const handleCategorySelect = (selectedKey) => {
+    setCat(selectedKey);
+    setBookingCategory(selectedKey);
+    const c = CATS[selectedKey];
+    setQty(c.def || 1);
+    if (selectedKey === 'airport') {
+      setDrop('Cochin International Airport (COK)');
     }
   };
 
-  const fare = calculateFare();
+  const handleSubmit = () => {
+    const pickupLoc = pickup.trim() || 'Edappally Toll, Kochi';
+    const dropLoc = drop.trim() || (cat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
+
+    const tripObj = {
+      id: 'TRP-' + Math.floor(1000 + Math.random() * 9000),
+      cat,
+      qty,
+      pickup: pickupLoc,
+      drop_loc: dropLoc,
+      fare,
+      advance: adv,
+      cashback: Math.floor(1 + Math.random() * 5),
+      trans,
+      when_ts: Date.now()
+    };
+
+    setConfirmedTrip(tripObj);
+    setIsSuccess(true);
+    bookRide(cat, qty, pickupLoc, dropLoc, fare);
+  };
+
+  const handleClose = () => {
+    setIsSuccess(false);
+    setConfirmedTrip(null);
+    setBookingOpen(false);
+  };
+
+  const dateStr = dateType === 'today' ? '5 Oct 2026' : '6 Oct 2026';
+  const timeStr = '6:00 PM';
 
   return (
-    <>
-      {/* Scrim Overlay */}
-      <div
-        className="layer"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 998,
-          backdropFilter: 'blur(4px)'
-        }}
-        onClick={() => setBookingOpen(false)}
-      />
+    <div className="layer on" id="u-layer">
+      <div className="scrim" onClick={handleClose} />
 
-      {/* Sheet Content */}
-      <div
-        className="sheet"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'var(--sheet)',
-          borderTopLeftRadius: '28px',
-          borderTopRightRadius: '28px',
-          padding: '24px 20px',
-          zIndex: 999,
-          boxShadow: '0 -10px 40px rgba(0,0,0,0.2)',
-          maxHeight: '90vh',
-          overflowY: 'auto'
-        }}
-      >
-        <div style={{ width: '40px', height: '4px', background: 'var(--bar)', borderRadius: '2px', margin: '0 auto 16px' }} />
+      <div className="sheet" role="dialog" aria-modal="true">
+        <div className="grab" />
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-          <div>
-            <h3 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{cfg.name}</h3>
-            <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '4px 0 0' }}>Professional chauffeur for your car</p>
-          </div>
-          <button
-            onClick={() => setBookingOpen(false)}
-            style={{ background: 'var(--chip)', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '16px' }}
-          >
-            ✕
-          </button>
-        </div>
+        {isSuccess && confirmedTrip ? (
+          /* ---------- Request Sent Confirmation View ---------- */
+          <div className="ok">
+            <span className="ok-ic">
+              <Icon name="check" size={32} />
+            </span>
+            <h3>Request sent</h3>
+            <p>We sent your request to drivers near you. You will get a notification when a driver accepts.</p>
 
-        {/* Category Selector Tabs */}
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '20px', paddingBottom: '4px' }}>
-          {Object.keys(catConfig).map(k => (
-            <button
-              key={k}
-              className={`chip-btn ${bookingCategory === k ? 'on' : ''}`}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '16px',
-                background: bookingCategory === k ? 'var(--yellow)' : 'var(--chip)',
-                color: bookingCategory === k ? 'var(--on-yellow)' : 'var(--ink)',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '12px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-              onClick={() => {
-                setBookingCategory(k);
-                setQty(catConfig[k].min);
-              }}
-            >
-              {catConfig[k].name.split(' ')[0]}
+            <div className="cbwin">
+              <Icon name="gift" size={20} /> You got ₹{confirmedTrip.cashback} cashback
+            </div>
+
+            <div className="kv" style={{ textAlign: 'left', marginBottom: '16px' }}>
+              <div>
+                <span>Trip ID</span>
+                <b>{confirmedTrip.id}</b>
+              </div>
+              <div>
+                <span>When</span>
+                <b>{dateStr} · {timeStr}</b>
+              </div>
+              <div>
+                <span>Advance paid</span>
+                <b>₹{confirmedTrip.advance}</b>
+              </div>
+              <div>
+                <span>Wallet balance</span>
+                <b>₹{userBalance.toLocaleString('en-IN')}</b>
+              </div>
+            </div>
+
+            <button className="btn solid block" onClick={handleClose}>
+              Done
             </button>
-          ))}
-        </div>
-
-        {/* Duration / Quantity Counter */}
-        {cfg.max > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', background: 'var(--card)', borderRadius: '16px', border: '1px solid var(--line)', marginBottom: '16px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>Duration ({cfg.unit})</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <button
-                disabled={qty <= cfg.min}
-                onClick={() => setQty(q => Math.max(cfg.min, q - 1))}
-                style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--chip)', border: 'none', fontWeight: 700, cursor: 'pointer' }}
-              >
-                -
-              </button>
-              <b style={{ fontSize: '16px', minWidth: '24px', textAlign: 'center' }}>{qty}</b>
-              <button
-                disabled={qty >= cfg.max}
-                onClick={() => setQty(q => Math.min(cfg.max, q + 1))}
-                style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--chip)', border: 'none', fontWeight: 700, cursor: 'pointer' }}
-              >
-                +
+          </div>
+        ) : (
+          /* ---------- Booking Details Form (Matching User's Reference Screenshot) ---------- */
+          <>
+            <div className="sheet-h">
+              <h3>Book a driver</h3>
+              <button className="iconbtn" onClick={handleClose} aria-label="Close">
+                <Icon name="x" size={18} />
               </button>
             </div>
-          </div>
+
+            {/* Category Chips in 2 Rows */}
+            <div
+              className="chips"
+              id="bk-cats"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px',
+                marginBottom: '16px'
+              }}
+            >
+              {CAT_KEYS.map(k => (
+                <button
+                  key={k}
+                  className={`chip ${cat === k ? 'on' : ''}`}
+                  onClick={() => handleCategorySelect(k)}
+                >
+                  {CATS[k].name}
+                </button>
+              ))}
+            </div>
+
+            {/* Pickup Location */}
+            <label className="lab" htmlFor="bk-pickup">
+              Pickup location
+            </label>
+            <div className="loc-input-wrap">
+              <input
+                className="inp"
+                id="bk-pickup"
+                placeholder="Where should the driver meet you?"
+                value={pickup}
+                onChange={e => setPickup(e.target.value)}
+                autoComplete="off"
+              />
+              <button
+                className="loc-map-btn"
+                type="button"
+                title="Choose on map"
+                onClick={() => {
+                  setPickup('Edappally Toll, Kochi');
+                  addToast('Pickup set to current location', 'pin');
+                }}
+              >
+                <Icon name="pin" size={16} />
+              </button>
+            </div>
+
+            {/* Destination (optional) */}
+            <label className="lab" htmlFor="bk-drop" style={{ marginTop: '10px' }}>
+              Destination (optional)
+            </label>
+            <div className="loc-input-wrap">
+              <input
+                className="inp"
+                id="bk-drop"
+                placeholder="Add if you know it"
+                value={drop}
+                onChange={e => setDrop(e.target.value)}
+                autoComplete="off"
+              />
+              <button
+                className="loc-map-btn"
+                type="button"
+                title="Choose on map"
+                onClick={() => {
+                  setDrop('Cochin International Airport (COK)');
+                  addToast('Destination set to Airport', 'pin');
+                }}
+              >
+                <Icon name="pin" size={16} />
+              </button>
+            </div>
+
+            {/* Hours Stepper (Only for hourly/daily/event) */}
+            {!isFlat && (
+              <>
+                <div className="lab" style={{ marginTop: '10px' }}>
+                  {currentCat.units === 'hours' ? 'Hours' : 'Days'}
+                </div>
+                <div className="stepper">
+                  <button
+                    type="button"
+                    onClick={() => handleQtyChange(-1)}
+                    disabled={qty <= (currentCat.min || 1)}
+                    aria-label="Less"
+                  >
+                    <Icon name="minus" size={18} />
+                  </button>
+                  <b>
+                    {qty} {qty === 1 ? currentCat.unit : currentCat.units}
+                  </b>
+                  <button
+                    type="button"
+                    onClick={() => handleQtyChange(1)}
+                    disabled={qty >= (currentCat.max || 12)}
+                    aria-label="More"
+                  >
+                    <Icon name="plus" size={18} />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Date and time */}
+            <div className="lab" style={{ marginTop: '10px' }}>
+              Date and time
+            </div>
+            <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <button
+                type="button"
+                className={`chip ${dateType === 'today' ? 'on' : ''}`}
+                onClick={() => setDateType('today')}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className={`chip ${dateType === 'tomorrow' ? 'on' : ''}`}
+                onClick={() => setDateType('tomorrow')}
+              >
+                Tomorrow
+              </button>
+            </div>
+
+            <div className="two" style={{ marginTop: '8px' }}>
+              <input
+                className="inp"
+                type="text"
+                value={dateStr}
+                readOnly
+                aria-label="Date"
+                style={{ textAlign: 'center', fontWeight: 600 }}
+              />
+              <input
+                className="inp"
+                type="text"
+                value={timeStr}
+                readOnly
+                aria-label="Time"
+                style={{ textAlign: 'center', fontWeight: 600 }}
+              />
+            </div>
+
+            {/* Vehicle Gearbox Segment */}
+            <div className="lab" style={{ marginTop: '10px' }}>
+              Vehicle gearbox
+            </div>
+            <div className="seg" id="bk-trans" style={{ marginTop: '6px' }}>
+              {['Manual', 'Automatic', 'IMT'].map(x => (
+                <button
+                  key={x}
+                  type="button"
+                  className={trans === x ? 'on' : ''}
+                  onClick={() => setTrans(x)}
+                >
+                  {x}
+                </button>
+              ))}
+            </div>
+
+            {/* Your Car Card */}
+            <div className="lab" style={{ marginTop: '10px' }}>
+              Your car
+            </div>
+            <div className="carrow">
+              <span
+                className="ico"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '12px',
+                  background: 'var(--yellow)',
+                  color: 'var(--on-yellow)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Icon name="car" size={20} />
+              </span>
+              <div className="grow">
+                <b style={{ display: 'block', fontSize: '15px' }}>
+                  {user?.car?.model || 'Hyundai Creta'}
+                </b>
+                <span className="sub" style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                  {user?.car?.plate || 'KL 07 AB 4821'} · {trans}
+                </span>
+              </div>
+            </div>
+
+            {/* Total Fare Card (.meter) */}
+            <div className="meter" style={{ marginTop: '18px' }}>
+              <div className="lab" style={{ letterSpacing: '0.5px' }}>
+                TOTAL FARE
+              </div>
+              <div className="dig" style={{ color: 'var(--yellow)', fontSize: '34px', fontWeight: 800 }}>
+                ₹{fare}
+              </div>
+              <div className="mrow">
+                <span>Pay now (30%)</span>
+                <b style={{ color: 'var(--yellow)' }}>₹{adv}</b>
+              </div>
+              <div className="mrow">
+                <span>Pay driver after trip (70%)</span>
+                <b style={{ color: 'var(--yellow)' }}>₹{remaining}</b>
+              </div>
+            </div>
+
+            {/* Cashback Hint */}
+            <div className="cbhint" style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="gift" size={16} /> Get ₹1 to ₹5 cashback on every booking
+            </div>
+
+            {/* Wallet Balance */}
+            <div
+              className="row small"
+              style={{
+                justifyContent: 'space-between',
+                margin: '12px 0 6px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <span className="mut" style={{ fontSize: '14px' }}>
+                Wallet balance
+              </span>
+              <b style={{ fontSize: '15px' }}>₹{userBalance.toLocaleString('en-IN')}</b>
+            </div>
+
+            {/* Submit Primary CTA */}
+            <button
+              className="btn primary block"
+              style={{
+                marginTop: '14px',
+                width: '100%',
+                borderRadius: '24px',
+                padding: '16px',
+                fontWeight: 800,
+                fontSize: '16px',
+                cursor: 'pointer'
+              }}
+              onClick={handleSubmit}
+            >
+              Pay ₹{adv} and send request
+            </button>
+          </>
         )}
-
-        {/* Locations */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>PICKUP LOCATION</label>
-            <input
-              type="text"
-              value={pickup}
-              onChange={e => setPickup(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: '14px', boxSizing: 'border-box' }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>DROP / DESTINATION</label>
-            <input
-              type="text"
-              value={drop}
-              onChange={e => setDrop(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: '14px', boxSizing: 'border-box' }}
-            />
-          </div>
-        </div>
-
-        {/* Price Breakdown & CTA */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div>
-            <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Estimated Fare</span>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink)' }}>₹{fare}</div>
-          </div>
-          <span style={{ fontSize: '12px', color: 'var(--good)', fontWeight: 600 }}>Includes GST & Insurance</span>
-        </div>
-
-        <button
-          className="btn"
-          style={{
-            width: '100%',
-            padding: '16px',
-            borderRadius: '16px',
-            background: 'var(--yellow)',
-            color: 'var(--on-yellow)',
-            border: 'none',
-            fontSize: '16px',
-            fontWeight: 800,
-            cursor: 'pointer'
-          }}
-          onClick={() => bookRide(bookingCategory, qty, pickup, drop, fare)}
-        >
-          Confirm & Book Chauffeur
-        </button>
       </div>
-    </>
+    </div>
   );
 }
