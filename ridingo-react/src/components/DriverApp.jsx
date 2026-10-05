@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
+import DriverOnboardingModal from './DriverOnboardingModal';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours' },
@@ -191,7 +192,8 @@ export default function DriverApp() {
     setDTab,
     driverTheme,
     setDriverTheme,
-    addToast
+    addToast,
+    logoutDriver
   } = useApp();
 
   const [dFilter, setDFilter] = useState('all');
@@ -1382,9 +1384,10 @@ export default function DriverApp() {
               </p>
               <button
                 type="button"
+                id="driver-sign-out-btn"
                 onClick={() => {
                   setDriverOnline(false);
-                  addToast('Signed out of Driver Partner account. Set to offline.', 'info');
+                  logoutDriver();
                 }}
                 style={{
                   width: '100%',
@@ -1883,6 +1886,9 @@ export default function DriverApp() {
           </div>
         )}
       </div>
+
+      {/* Driver Onboarding & Login Modal */}
+      <DriverOnboardingModal />
 
       {/* Driver Bottom Navigation */}
       <nav className="nav" id="d-nav" aria-label="Driver app">

@@ -167,6 +167,7 @@ export function AppProvider({ children }) {
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [liveTrackingOpen, setLiveTrackingOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [driverOnboardingOpen, setDriverOnboardingOpen] = useState(false);
 
   // Trips, Wallet & Notifications
   const [trips, setTrips] = useState(INITIAL_TRIPS);
@@ -386,6 +387,41 @@ export function AppProvider({ children }) {
     });
   };
 
+  const loginDriverDemo = () => {
+    setDriverPartner(DEFAULT_DRIVER);
+    try {
+      localStorage.setItem('ridingo_driver_session', JSON.stringify(DEFAULT_DRIVER));
+    } catch (e) {}
+    setDriverOnboardingOpen(false);
+    addToast('Signed in as Ravi Kumar (Demo)', 'check');
+  };
+
+  const loginDriverWithDetails = (driverData = {}) => {
+    const updated = {
+      ...DEFAULT_DRIVER,
+      ...driverData,
+      phone: driverData.phone
+        ? driverData.phone.startsWith('+91') ? driverData.phone : `+91 ${driverData.phone}`
+        : DEFAULT_DRIVER.phone
+    };
+    setDriverPartner(updated);
+    try {
+      localStorage.setItem('ridingo_driver_session', JSON.stringify(updated));
+    } catch (e) {}
+    setDriverOnboardingOpen(false);
+    addToast(`Welcome, ${updated.name || 'Driver Partner'}!`, 'check');
+  };
+
+  const logoutDriver = () => {
+    setDriverPartner(null);
+    try {
+      localStorage.removeItem('ridingo_driver_session');
+    } catch (e) {}
+    setDriverOnboardingOpen(true);
+    setDTab('dash');
+    addToast('Signed out of Driver Partner account', 'info');
+  };
+
   const logout = () => {
     setUser(null);
     try {
@@ -451,6 +487,9 @@ export function AppProvider({ children }) {
         loginDemo,
         loginWithDetails,
         logout,
+        loginDriverDemo,
+        loginDriverWithDetails,
+        logoutDriver,
         resetDemo,
         view,
         setView,
@@ -488,7 +527,9 @@ export function AppProvider({ children }) {
         liveTrackingOpen,
         setLiveTrackingOpen,
         onboardingOpen,
-        setOnboardingOpen
+        setOnboardingOpen,
+        driverOnboardingOpen,
+        setDriverOnboardingOpen
       }}
     >
       {children}
