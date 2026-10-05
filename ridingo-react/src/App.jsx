@@ -7,6 +7,7 @@ import WalletTab from './components/WalletTab';
 import ProfileTab from './components/ProfileTab';
 import BottomNav from './components/BottomNav';
 import BookingSheet from './components/BookingSheet';
+import NotificationsSheet from './components/NotificationsSheet';
 import OnboardingModal from './components/OnboardingModal';
 import DriverApp from './components/DriverApp';
 
@@ -61,6 +62,7 @@ function MainApp() {
 
               <BottomNav />
               <BookingSheet />
+              <NotificationsSheet />
               <OnboardingModal />
 
               <div className="toasts" id="u-toasts" aria-live="polite">

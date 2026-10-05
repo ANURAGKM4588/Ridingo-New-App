@@ -69,6 +69,33 @@ export const INITIAL_UTX = [
   { ts: Date.now() - 86400000 * 2, type: 'cashback', amount: 35, title: 'Ride Cashback (5%)', sub: 'TRP-1085' }
 ];
 
+export const INITIAL_UNOTES = [
+  {
+    id: 'notif-1',
+    ts: Date.now() - 1000 * 60 * 18,
+    title: 'Trip in progress',
+    body: 'Ravi Kumar is driving your Hyundai Creta to Lulu Mall, Edappally.',
+    icon: 'car',
+    read: false
+  },
+  {
+    id: 'notif-2',
+    ts: Date.now() - 1000 * 60 * 60 * 3,
+    title: 'Cashback credited! ₹35',
+    body: 'Your 5% ride cashback has been deposited into your Ridingo wallet.',
+    icon: 'gift',
+    read: false
+  },
+  {
+    id: 'notif-3',
+    ts: Date.now() - 1000 * 60 * 60 * 24,
+    title: 'Welcome to Ridingo',
+    body: 'Book a professional driver for your car by the hour, day or airport run.',
+    icon: 'check',
+    read: true
+  }
+];
+
 export function AppProvider({ children }) {
   // Theme state
   const [theme, setTheme] = useState(() => {
@@ -97,13 +124,31 @@ export function AppProvider({ children }) {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingCategory, setBookingCategory] = useState('hourly');
   const [bookingDestination, setBookingDestination] = useState('');
+  const [notifsOpen, setNotifsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
-  // Trips & Wallet
+  // Trips, Wallet & Notifications
   const [trips, setTrips] = useState(INITIAL_TRIPS);
   const [utx, setUtx] = useState(INITIAL_UTX);
+  const [unotes, setUnotes] = useState(INITIAL_UNOTES);
   const [driverOnline, setDriverOnline] = useState(true);
   const [toasts, setToasts] = useState([]);
+
+  const markAllNotifsRead = () => {
+    setUnotes(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const addNotification = (title, body, icon = 'bell') => {
+    const newNote = {
+      id: 'notif-' + Date.now(),
+      ts: Date.now(),
+      title,
+      body,
+      icon,
+      read: false
+    };
+    setUnotes(prev => [newNote, ...prev]);
+  };
 
   // Toast helper
   const addToast = (msg, icon = 'check') => {
@@ -146,6 +191,8 @@ export function AppProvider({ children }) {
         CapApp.addListener('backButton', ({ canGoBack }) => {
           if (bookingOpen) {
             setBookingOpen(false);
+          } else if (notifsOpen) {
+            setNotifsOpen(false);
           } else if (onboardingOpen) {
             setOnboardingOpen(false);
           } else if (uTab !== 'home') {
@@ -250,6 +297,12 @@ export function AppProvider({ children }) {
         setBookingCategory,
         bookingDestination,
         setBookingDestination,
+        notifsOpen,
+        setNotifsOpen,
+        unotes,
+        setUnotes,
+        markAllNotifsRead,
+        addNotification,
         bookRide,
         driverOnline,
         setDriverOnline,

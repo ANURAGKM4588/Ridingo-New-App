@@ -50,8 +50,13 @@ export default function HomeTab() {
     setBookingOpen,
     setBookingCategory,
     setBookingDestination,
+    notifsOpen,
+    setNotifsOpen,
+    unotes,
     setUTab
   } = useApp();
+
+  const unreadCount = (unotes || []).filter(n => !n.read).length;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -129,9 +134,9 @@ export default function HomeTab() {
           </span>
           <b style={{ font: '800 20px var(--font-display)', letterSpacing: '-0.5px' }}>Ridingo</b>
         </div>
-        <button className="iconbtn" aria-label="Notifications" onClick={() => setUTab('profile')}>
+        <button className="iconbtn" aria-label="Notifications" onClick={() => setNotifsOpen(true)}>
           <Icon name="bell" size={20} />
-          <span className="dotbadge" />
+          {unreadCount > 0 && <span className="dotbadge" />}
         </button>
       </div>
 
