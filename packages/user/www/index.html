@@ -78,11 +78,8 @@
       touch-action: manipulation;
     }
 
-    /* Allowed horizontal swipe containers (Review cards, chips, carousels) */
+    /* Allowed horizontal swipe containers (Review cards only) */
     .reviews-slider,
-    .chips,
-    .map-picker-chips,
-    .ob-walk-slides,
     [data-scroll-x] {
       touch-action: pan-x pan-y !important;
       overflow-x: auto !important;
@@ -659,7 +656,17 @@
       left: 0 !important;
       right: 0 !important;
       bottom: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
       z-index: 10001 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      touch-action: pan-y !important;
+      -ms-touch-action: pan-y !important;
+      overscroll-behavior-x: none !important;
+      overscroll-behavior-y: contain !important;
+      -webkit-overflow-scrolling: touch !important;
       padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 20px) !important;
       border-radius: 28px 28px 0 0 !important;
       pointer-events: auto !important;
@@ -775,8 +782,17 @@
       left: 0;
       right: 0;
       bottom: 0;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
       max-height: 93%;
-      overflow-y: auto;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      touch-action: pan-y !important;
+      -ms-touch-action: pan-y !important;
+      overscroll-behavior-x: none !important;
+      overscroll-behavior-y: contain !important;
+      -webkit-overflow-scrolling: touch !important;
       background: var(--sheet);
       border-radius: 38px 38px 0 0;
       padding: 8px 20px 36px;
@@ -788,6 +804,69 @@
 
     .sheet::-webkit-scrollbar {
       display: none;
+    }
+
+    .sheet *,
+    .sheet *::before,
+    .sheet *::after {
+      box-sizing: border-box !important;
+    }
+
+    /* Booking Sheet & Modal Sections: strictly vertical scrolling only, no horizontal drifting/free scrolling */
+    .sheet .chips,
+    .sheet #bk-cats {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 8px !important;
+      overflow-x: hidden !important;
+      overflow-y: visible !important;
+      touch-action: pan-y !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    .sheet .chips .chip {
+      flex: none !important;
+      touch-action: manipulation !important;
+    }
+
+    .sheet form,
+    .sheet #bk-form,
+    .sheet #bk-sum,
+    .sheet .sheet-h,
+    .sheet .meter,
+    .sheet .mrow,
+    .sheet .carrow,
+    .sheet .seg,
+    .sheet .stepper,
+    .sheet .loc-input-wrap,
+    .sheet .two {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+      box-sizing: border-box !important;
+      touch-action: pan-y !important;
+    }
+
+    .sheet .two {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 10px !important;
+    }
+
+    .sheet .two > * {
+      min-width: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .sheet input,
+    .sheet button,
+    .sheet select,
+    .sheet textarea {
+      touch-action: manipulation !important;
+      box-sizing: border-box !important;
     }
 
     .grab {
@@ -7052,7 +7131,7 @@ function openAdd(pre){
   AMT={kind:'add'};
   openSheet('u','<div class="sheet-h"><h3>Add money</h3><button class="iconbtn" data-act="close" data-app="u" aria-label="Close">'+ic('x',18)+'</button></div>'+
    '<label class="lab" for="amt" style="margin-top:0">Amount</label><input class="inp" id="amt" data-in="amt" inputmode="numeric" placeholder="Enter amount" value="'+(pre||'')+'">'+
-   '<div class="chips" style="margin-top:10px">'+[500,1000,2000,5000].map(v=>'<button class="chip" data-act="amtchip" data-v="'+v+'">'+inr(v)+'</button>').join('')+'</div>'+
+   '<div class="chips" style="display:flex;flex-wrap:wrap;overflow-x:hidden;touch-action:pan-y;margin-top:10px">'+[500,1000,2000,5000].map(v=>'<button class="chip" data-act="amtchip" data-v="'+v+'">'+inr(v)+'</button>').join('')+'</div>'+
    '<p class="mut small" style="margin-top:12px">Demo payment through UPI. No real money moves.</p>'+
    '<p class="err" id="amt-err" hidden></p>'+
    '<button class="btn primary block" id="amt-cta" style="margin-top:14px" data-act="amtgo">Add money</button>');
@@ -7068,7 +7147,7 @@ function openBooking(cat){
   const d=new Date(Date.now()+3600e3);d.setMinutes(d.getMinutes()<30?30:60,0,0);
   BK={cat,qty:CATS[cat].def||1,pickup:'',drop:cat==='airport'?'International Airport':'',date:ymd(d),time:pad(d.getHours())+':'+pad(d.getMinutes()),trans:S.user.car.trans||'Manual'};
   openSheet('u','<div class="sheet-h"><h3>Book a driver</h3><button class="iconbtn" data-act="close" data-app="u" aria-label="Close">'+ic('x',18)+'</button></div>'+
-    '<div class="chips" id="bk-cats"></div><div id="bk-form"></div><div id="bk-sum"></div>');
+    '<div class="chips" id="bk-cats" style="display:flex;flex-wrap:wrap;overflow-x:hidden;touch-action:pan-y"></div><div id="bk-form" style="width:100%;max-width:100%;overflow-x:hidden"></div><div id="bk-sum" style="width:100%;max-width:100%;overflow-x:hidden"></div>');
   bkPaint();
 }
 function bkWhen(){return new Date(BK.date+'T'+BK.time).getTime()}
@@ -7092,7 +7171,7 @@ function bkPaint(){
      '<div class="loc-suggest-drop" id="bk-drop-drop" hidden></div>'+
    '</div>'+
    (flat?'':'<div class="lab">'+(c.units==='hours'?'Hours':'Days')+'</div><div class="stepper"><button data-act="bkqty" data-d="-1" aria-label="Less">'+ic('minus',18)+'</button><b>'+BK.qty+' '+(BK.qty===1?c.unit:c.units)+'</b><button data-act="bkqty" data-d="1" aria-label="More">'+ic('plus',18)+'</button></div>')+
-   '<div class="lab">Date and time</div><div class="chips"><button class="chip '+(BK.date===today?'on':'')+'" data-act="bkdate" data-v="'+today+'">Today</button><button class="chip '+(BK.date===tmr?'on':'')+'" data-act="bkdate" data-v="'+tmr+'">Tomorrow</button></div>'+
+   '<div class="lab">Date and time</div><div class="chips" style="display:flex;flex-wrap:wrap;overflow-x:hidden;touch-action:pan-y"><button class="chip '+(BK.date===today?'on':'')+'" data-act="bkdate" data-v="'+today+'">Today</button><button class="chip '+(BK.date===tmr?'on':'')+'" data-act="bkdate" data-v="'+tmr+'">Tomorrow</button></div>'+
    '<div class="two"><input class="inp" type="date" id="bk-date" data-in="bk" name="date" min="'+today+'" value="'+BK.date+'" aria-label="Date"><input class="inp" type="time" id="bk-time" data-in="bk" name="time" value="'+BK.time+'" aria-label="Time"></div>'+
    '<div class="lab">Vehicle gearbox</div>'+
    '<div class="seg" id="bk-trans" style="margin-top:6px">'+['Manual','Automatic','IMT'].map(x=>'<button class="'+(BK.trans===x?'on':'')+'" data-act="bktrans" data-v="'+x+'">'+x+'</button>').join('')+'</div>'+
@@ -7264,7 +7343,7 @@ function openWithdraw(){
   openSheet('d','<div class="sheet-h"><h3>Withdraw</h3><button class="iconbtn" data-act="close" data-app="d" aria-label="Close">'+ic('x',18)+'</button></div>'+
    '<div class="meter"><div class="lab">Available balance</div><div class="dig sm">'+inr(dAvail())+'</div></div>'+
    '<label class="lab" for="amt">Amount (minimum ₹100)</label><input class="inp" id="amt" data-in="amt" inputmode="numeric" placeholder="Enter amount">'+
-   '<div class="chips" style="margin-top:10px"><button class="chip" data-act="amtchip" data-v="500">₹500</button><button class="chip" data-act="amtchip" data-v="1000">₹1,000</button><button class="chip" data-act="amtchip" data-v="'+dAvail()+'">All</button></div>'+
+   '<div class="chips" style="display:flex;flex-wrap:wrap;overflow-x:hidden;touch-action:pan-y;margin-top:10px"><button class="chip" data-act="amtchip" data-v="500">₹500</button><button class="chip" data-act="amtchip" data-v="1000">₹1,000</button><button class="chip" data-act="amtchip" data-v="'+dAvail()+'">All</button></div>'+
    '<div class="carrow" style="margin-top:14px"><span class="ico">'+ic('bank')+'</span><div class="grow"><b>'+esc(S.driver.bank)+'</b><span class="sub">Arrives in 1 to 2 working days</span></div></div>'+
    '<p class="err" id="amt-err" hidden></p><button class="btn primary block" id="amt-cta" style="margin-top:14px" data-act="amtgo">Withdraw</button>');
 }
