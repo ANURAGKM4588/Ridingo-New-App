@@ -1171,7 +1171,7 @@ export default function PaymentSheet() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Ridingo Wallet</b>
+                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Wallet</b>
                   <span
                     style={{
                       fontSize: '9.5px',
@@ -1193,11 +1193,6 @@ export default function PaymentSheet() {
                       ? `₹${cleanBalance.toLocaleString('en-IN')} available · Instant Pay`
                       : `Low balance (₹${cleanBalance.toLocaleString('en-IN')} available)`}
                   </span>
-                  {hasSufficientWalletBal && (
-                    <span style={{ color: '#64748B', fontWeight: 500 }}>
-                      · +₹{cashbackAmount} Cashback
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -1261,46 +1256,102 @@ export default function PaymentSheet() {
             </div>
           )}
 
-          {/* Option: Pay via QR (UPI fallback) */}
+          {/* Option: UPI QR Code & Price Display */}
           <div
-            onClick={() => {
-              setSelectedMethod('qr');
-              setShowQrModal(true);
-            }}
+            onClick={() => setSelectedMethod('qr')}
             style={{
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '13px 16px',
-              borderRadius: '14px',
+              flexDirection: 'column',
+              padding: '16px',
+              borderRadius: '16px',
               border: selectedMethod === 'qr' ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
               background: selectedMethod === 'qr' ? '#F8FAFC' : '#FFFFFF',
               cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              gap: '12px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  border: '1px solid #E2E8F0',
-                  background: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}
-              >
-                <SleekQrOutlineIcon size={18} color="#0F172A" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    background: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <SleekQrOutlineIcon size={18} color="#0F172A" />
+                </div>
+                <div>
+                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>UPI QR Code</b>
+                  <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
+                    Scan with any UPI app
+                  </span>
+                </div>
               </div>
-              <div>
-                <b style={{ fontSize: '14.5px', color: '#0F172A', fontWeight: 500 }}>Pay via UPI QR</b>
-                <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>Scan with any UPI app</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>₹{amount}</span>
+                <MinimalRadio isSelected={selectedMethod === 'qr'} />
               </div>
             </div>
-            <MinimalRadio isSelected={selectedMethod === 'qr'} />
+
+            {/* Display QR code and price */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '16px',
+                padding: '12px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0'
+              }}
+            >
+              <div
+                style={{
+                  padding: '8px',
+                  background: '#FFFFFF',
+                  borderRadius: '8px',
+                  border: '1px solid #F1F5F9',
+                  boxShadow: '0 2px 6px rgba(15,23,42,0.04)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <svg width="80" height="80" viewBox="0 0 100 100" fill="#0F172A">
+                  <rect x="10" y="10" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
+                  <rect x="18" y="18" width="12" height="12" fill="#0F172A" rx="2" />
+                  <rect x="62" y="10" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
+                  <rect x="70" y="18" width="12" height="12" fill="#0F172A" rx="2" />
+                  <rect x="10" y="62" width="28" height="28" fill="none" stroke="#0F172A" strokeWidth="4" rx="4" />
+                  <rect x="18" y="70" width="12" height="12" fill="#0F172A" rx="2" />
+                  <rect x="44" y="12" width="6" height="6" fill="#0F172A" />
+                  <rect x="44" y="24" width="6" height="12" fill="#0F172A" />
+                  <rect x="14" y="44" width="10" height="6" fill="#0F172A" />
+                  <rect x="30" y="44" width="20" height="6" fill="#0F172A" />
+                  <rect x="44" y="44" width="12" height="12" fill="#0F172A" rx="2" />
+                  <rect x="60" y="44" width="16" height="6" fill="#0F172A" />
+                  <rect x="80" y="44" width="8" height="12" fill="#0F172A" />
+                  <rect x="44" y="64" width="8" height="16" fill="#0F172A" />
+                  <rect x="60" y="60" width="12" height="12" fill="#0F172A" />
+                  <rect x="76" y="60" width="12" height="6" fill="#0F172A" />
+                  <rect x="64" y="76" width="24" height="14" fill="#0F172A" />
+                </svg>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>Price</span>
+                <span style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>₹{amount}</span>
+                <span style={{ fontSize: '11px', color: '#94A3B8' }}>Scan & pay instantly</span>
+              </div>
+            </div>
           </div>
 
           {/* Section Divider: Cards & Banking */}
@@ -1340,22 +1391,7 @@ export default function PaymentSheet() {
                   <SleekCardOutlineIcon size={19} color="#0F172A" />
                 </div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Credit / Debit / ATM Card</b>
-                    <span
-                      style={{
-                        fontSize: '9.5px',
-                        fontWeight: 700,
-                        color: '#0F172A',
-                        background: '#F1F5F9',
-                        border: '1px solid #E2E8F0',
-                        padding: '1px 6px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      3D SECURE
-                    </span>
-                  </div>
+                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Credit and Debit Card</b>
                   <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
                     Visa, Mastercard, RuPay · Secure Checkout
                   </span>
@@ -1456,22 +1492,7 @@ export default function PaymentSheet() {
                   <SleekBankOutlineIcon size={19} color="#0F172A" />
                 </div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Netbanking</b>
-                    <span
-                      style={{
-                        fontSize: '9.5px',
-                        fontWeight: 700,
-                        color: '#0F172A',
-                        background: '#F1F5F9',
-                        border: '1px solid #E2E8F0',
-                        padding: '1px 6px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      STANDARD CHECKOUT
-                    </span>
-                  </div>
+                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 600 }}>Netbanking</b>
                   <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
                     Selected: <b>{selectedBank.name}</b>
                   </span>
@@ -1563,11 +1584,6 @@ export default function PaymentSheet() {
                 ? `Pay ₹${amount} via ${selectedBank.code}`
                 : `Pay ₹${amount}`}
             </span>
-            {selectedMethod === 'wallet' && hasSufficientWalletBal && (
-              <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
-                +₹{cashbackAmount} Cashback
-              </span>
-            )}
           </button>
 
           {/* Footer Security Branding */}
