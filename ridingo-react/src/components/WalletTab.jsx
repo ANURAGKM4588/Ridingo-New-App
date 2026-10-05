@@ -1,139 +1,113 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import Icon from './Icon';
 
 export default function WalletTab() {
   const { utx, setUtx, userBalance, addToast } = useApp();
-
-  const handleTopup = (amt) => {
-    const newTx = {
-      ts: Date.now(),
-      type: 'topup',
-      amount: amt,
-      title: 'Wallet Top-up',
-      sub: 'UPI • Instant'
-    };
-    setUtx(prev => [newTx, ...prev]);
-    addToast(`Added ₹${amt} to your Ridingo Wallet!`, 'check');
-  };
+  const [showAddMoney, setShowAddMoney] = useState(false);
+  const [addAmt, setAddAmt] = useState('1000');
 
   const totalCashback = utx
     .filter(t => t.type === 'cashback')
     .reduce((a, t) => a + t.amount, 0);
 
+  const handleAdd = (amt) => {
+    const val = parseInt(amt, 10);
+    if (!val || val <= 0) return;
+    const newTx = {
+      ts: Date.now(),
+      type: 'topup',
+      amount: val,
+      title: 'UPI Top Up',
+      sub: 'Deposit · ' + new Date().toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+    };
+    setUtx(prev => [newTx, ...prev]);
+    setShowAddMoney(false);
+    addToast(`Added ₹${val} to your Ridingo Wallet!`, 'check');
+  };
+
   return (
-    <div className="tab-pane active" id="tab-wallet">
-      <div className="hello" style={{ marginBottom: '16px' }}>
-        <div>
-          <h1 style={{ fontSize: '34px', fontWeight: 700, letterSpacing: '-1px', lineHeight: 1.1 }}>Wallet</h1>
-          <p>Cashback, balance & statements</p>
+    <div>
+      <div className="hello" style={{ marginBottom: '14px' }}>
+        <h1>Wallet</h1>
+        <p>Advance payments and rewards</p>
+      </div>
+
+      {/* Exact Wallet Card from Original CSS */}
+      <div className="walletcard">
+        <div className="walletcard-head">
+          <span className="walletcard-brand">Ridingo</span>
+          <span className="walletcard-pill">Digital Wallet</span>
+        </div>
+        <div className="walletcard-lab">Current Balance</div>
+        <div className="walletcard-bal">₹{userBalance.toLocaleString('en-IN')}</div>
+        <div className="walletcard-foot">
+          <button className="walletcard-add-btn" onClick={() => setShowAddMoney(true)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>Add Fund</span>
+          </button>
+          <span className="walletcard-cb">
+            <Icon name="gift" size={15} /> ₹{totalCashback} cashback
+          </span>
         </div>
       </div>
 
-      {/* Wallet Card */}
-      <div
-        className="walletcard"
-        style={{
-          padding: '22px',
-          borderRadius: '24px',
-          background: 'linear-gradient(135deg, #1C1C1E 0%, #0A0A0B 100%)',
-          color: '#FFFFFF',
-          marginBottom: '20px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-          <div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Ridingo Cash Balance
-            </span>
-            <div style={{ fontSize: '36px', fontWeight: 800, marginTop: '4px', letterSpacing: '-1px' }}>
-              ₹{userBalance.toLocaleString()}
-            </div>
+      {/* Add Money Modal / Quick Add Panel */}
+      {showAddMoney && (
+        <div className="card" style={{ padding: '16px', marginBottom: '18px', background: 'var(--field)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <b style={{ fontSize: '14px' }}>Top-up Wallet (Instant UPI)</b>
+            <button onClick={() => setShowAddMoney(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+          </div>
+          <div className="chips" style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            {[500, 1000, 2000, 5000].map(v => (
+              <button
+                key={v}
+                className={`chip ${addAmt === String(v) ? 'on' : ''}`}
+                onClick={() => setAddAmt(String(v))}
+              >
+                ₹{v}
+              </button>
+            ))}
           </div>
           <button
-            className="btn"
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              background: 'var(--yellow)',
-              color: 'var(--on-yellow)',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-            onClick={() => handleTopup(1000)}
+            className="btn primary block"
+            onClick={() => handleAdd(addAmt)}
+            style={{ width: '100%' }}
           >
-            + Add Funds
+            Add ₹{addAmt}
           </button>
         </div>
+      )}
 
-        <div style={{ paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.12)', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>Lifetime Cashback</span>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--switch)' }}>₹{totalCashback} Earned</span>
-        </div>
+      {/* Transaction Section Header */}
+      <div className="sec" style={{ margin: '22px 0 10px' }}>
+        <h3>Transaction</h3>
+        <span className="sub" style={{ fontWeight: 600, color: 'var(--muted)' }}>
+          View All
+        </span>
       </div>
 
-      {/* Quick Add Chips */}
-      <div style={{ marginBottom: '24px' }}>
-        <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Fast Top-up</h4>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[500, 1000, 2000].map(amt => (
-            <button
-              key={amt}
-              className="chip-btn"
-              style={{
-                flex: 1,
-                padding: '10px',
-                borderRadius: '14px',
-                background: 'var(--card)',
-                border: '1px solid var(--line)',
-                cursor: 'pointer',
-                fontWeight: 700,
-                fontSize: '14px',
-                color: 'var(--ink)'
-              }}
-              onClick={() => handleTopup(amt)}
-            >
-              + ₹{amt}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Transactions List */}
-      <div>
-        <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Transaction History</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {utx.map((tx, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '14px',
-                borderRadius: '16px',
-                background: 'var(--card)',
-                border: '1px solid var(--line)'
-              }}
-            >
-              <div>
-                <b style={{ fontSize: '14px', display: 'block' }}>{tx.title}</b>
-                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{tx.sub}</span>
+      {/* Exact Transaction Rows matching txRows() in index.html */}
+      <div className="tx-list">
+        {utx.map((t, idx) => {
+          const letter = (t.title?.charAt(0) || 'W').toUpperCase();
+          const isPos = t.amount > 0;
+          return (
+            <div key={idx} className="tx">
+              <span className="tx-badge">{letter}</span>
+              <div className="tx-main">
+                <b className="tx-title ell">{t.title}</b>
+                <span className="tx-sub ell">{t.sub}</span>
               </div>
-              <div
-                style={{
-                  fontSize: '15px',
-                  fontWeight: 700,
-                  color: tx.amount > 0 ? 'var(--good)' : 'var(--ink)'
-                }}
-              >
-                {tx.amount > 0 ? `+₹${tx.amount}` : `-₹${Math.abs(tx.amount)}`}
-              </div>
+              <span className={`tx-amt ${isPos ? 'pos' : ''}`}>
+                {isPos ? '+' : ''}₹{Math.abs(t.amount)}
+              </span>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -23,8 +23,10 @@ function MainApp() {
 
       <div className="stage" id="stage" data-view={view}>
         {/* User App Phone */}
-        <section className="col" id="col-u" style={{ display: view === 'user' ? 'block' : 'none' }}>
-          <h2 className="col-h">User app <small>Book a driver</small></h2>
+        <section className="col" id="col-u">
+          <h2 className="col-h">
+            User app <small>Book a driver</small>
+          </h2>
           <div className="phone">
             <div className="inner">
               <div className="island" aria-hidden="true" />
@@ -76,8 +78,10 @@ function MainApp() {
         </section>
 
         {/* Driver App Phone */}
-        <section className="col" id="col-d" style={{ display: view === 'driver' ? 'block' : 'none' }}>
-          <h2 className="col-h">Driver app <small>Accept and drive</small></h2>
+        <section className="col" id="col-d">
+          <h2 className="col-h">
+            Driver app <small>Accept and drive</small>
+          </h2>
           <div className="phone">
             <DriverApp />
           </div>
