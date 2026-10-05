@@ -157,21 +157,30 @@ export default function BookingSheet() {
               </button>
             </div>
 
-            {/* Category Chips in 2 Rows */}
+            {/* Category Chips - Horizontal Scrolling Style */}
             <div
               className="chips"
               id="bk-cats"
               style={{
                 display: 'flex',
-                flexWrap: 'wrap',
+                flexWrap: 'nowrap',
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'none',
                 gap: '8px',
-                marginBottom: '16px'
+                marginBottom: '16px',
+                paddingBottom: '4px'
               }}
             >
               {CAT_KEYS.map(k => (
                 <button
                   key={k}
                   className={`chip ${cat === k ? 'on' : ''}`}
+                  style={{
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap'
+                  }}
                   onClick={() => handleCategorySelect(k)}
                 >
                   {CATS[k].name}
