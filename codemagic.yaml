@@ -40,6 +40,7 @@ workflows:
           cp pubspec.yaml /tmp/user_pubspec.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_user
           cp -f /tmp/user_pubspec.yaml pubspec.yaml
+          sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
           flutter pub get
 
       - name: Compile Ridingo User iOS App
@@ -66,6 +67,7 @@ workflows:
           cp pubspec.yaml /tmp/driver_pubspec.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_driver
           cp -f /tmp/driver_pubspec.yaml pubspec.yaml
+          sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
           flutter pub get
 
       - name: Compile Ridingo Driver iOS App
@@ -121,6 +123,7 @@ workflows:
           cp pubspec.yaml /tmp/user_pubspec.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_user
           cp -f /tmp/user_pubspec.yaml pubspec.yaml
+          sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
           flutter pub get
       - name: Build iOS Application
         script: |
@@ -164,6 +167,7 @@ workflows:
           cp pubspec.yaml /tmp/driver_pubspec.yaml
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_driver
           cp -f /tmp/driver_pubspec.yaml pubspec.yaml
+          sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
           flutter pub get
       - name: Build iOS Application
         script: |
