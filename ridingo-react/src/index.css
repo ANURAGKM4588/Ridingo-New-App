@@ -529,7 +529,7 @@
     }
 
     /* 5. Perfect Native Top Spacing & Status Bar Backing:
-          Solid matching white in light mode, solid black in dark mode */
+          Strictly matches the exact app background color (var(--surface)) in both light & dark themes across all pages */
     body.standalone-app::before {
       content: '';
       position: fixed;
@@ -537,7 +537,7 @@
       left: 0;
       right: 0;
       height: env(safe-area-inset-top, 0px);
-      background: #FFFFFF;
+      background: var(--surface) !important;
       z-index: 9998;
       pointer-events: none;
       transition: background .2s ease;
@@ -547,16 +547,18 @@
     :root[data-theme="dark"] body.standalone-app::before,
     html[data-theme="dark"] body.standalone-app::before,
     body.standalone-app[data-theme="dark"]::before,
-    :root[data-theme="dark"] body.standalone-driver::before {
-      background: #000000 !important;
+    :root[data-theme="dark"] body.standalone-driver::before,
+    body.standalone-driver[data-theme="dark"]::before {
+      background: var(--surface) !important;
     }
 
-    /* Light Theme on html or body (OVERRULES system dark and driver defaults) */
+    /* Light Theme on html or body */
     :root[data-theme="light"] body.standalone-app::before,
     html[data-theme="light"] body.standalone-app::before,
     body.standalone-app[data-theme="light"]::before,
+    :root[data-theme="light"] body.standalone-driver::before,
     body.standalone-driver[data-theme="light"]::before {
-      background: #FFFFFF !important;
+      background: var(--surface) !important;
     }
 
     body.standalone-app .content {

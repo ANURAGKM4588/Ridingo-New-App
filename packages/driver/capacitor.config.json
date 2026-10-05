@@ -2,7 +2,7 @@
   "appId": "com.ridingo.driver",
   "appName": "Ridingo Driver",
   "webDir": "www",
-  "backgroundColor": "#000000",
+  "backgroundColor": "#0D0E12",
   "server": {
     "androidScheme": "https",
     "cleartext": true
@@ -15,12 +15,12 @@
   "ios": {
     "scheme": "RidingoDriver",
     "contentInset": "never",
-    "backgroundColor": "#000000"
+    "backgroundColor": "#0D0E12"
   },
   "plugins": {
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#000000",
+      "backgroundColor": "#0D0E12",
       "overlaysWebView": true
     }
   }

@@ -85,7 +85,7 @@ function compileStandaloneHtml(appType, appName) {
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="${isUser ? '#FFFFFF' : '#000000'}">
+  <meta name="theme-color" content="${isUser ? '#F2F2F7' : '#0D0E12'}">
   <script>
     window.RIDINGO_TARGET = '${appType}';
     (function configureNativeBars(){
@@ -105,7 +105,7 @@ function compileStandaloneHtml(appType, appName) {
             var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             isDark = ('${appType}' === 'driver') ? true : sysDark;
           }
-          var bgColor = isDark ? '#000000' : '#FFFFFF';
+          var bgColor = isDark ? '#0D0E12' : '#F2F2F7';
           var barStyle = isDark ? 'black-translucent' : 'default';
 
           var metaTheme = document.querySelector('meta[name="theme-color"]');

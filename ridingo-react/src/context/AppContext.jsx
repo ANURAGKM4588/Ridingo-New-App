@@ -292,16 +292,17 @@ export function AppProvider({ children }) {
       document.documentElement.style.colorScheme = activeThemeVal;
       document.body.setAttribute('data-theme', activeThemeVal);
 
-      // Meta theme-color
+      // Meta theme-color strictly matches app background color (var(--surface))
+      const appBgColor = isDark ? '#0D0E12' : '#F2F2F7';
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) {
-        metaTheme.setAttribute('content', isDark ? '#0A0A0B' : '#FFFFFF');
+        metaTheme.setAttribute('content', appBgColor);
       }
 
-      // Capacitor StatusBar
+      // Capacitor StatusBar strictly matches app background
       if (window.Capacitor?.isPluginAvailable('StatusBar')) {
         StatusBar.setStyle({ style: isDark ? 'DARK' : 'LIGHT' }).catch(() => {});
-        StatusBar.setBackgroundColor({ color: isDark ? '#000000' : '#FFFFFF' }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: appBgColor }).catch(() => {});
         StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
       }
     } catch (e) {}
