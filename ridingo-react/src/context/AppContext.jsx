@@ -100,9 +100,9 @@ export function AppProvider({ children }) {
   // Theme state
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem('ridingo_theme_pref') || 'system';
+      return localStorage.getItem('ridingo_theme_pref') || 'light';
     } catch (e) {
-      return 'system';
+      return 'light';
     }
   });
 
@@ -166,14 +166,23 @@ export function AppProvider({ children }) {
       let isDark = false;
       if (theme === 'dark') isDark = true;
       else if (theme === 'light') isDark = false;
-      else {
+      else if (theme === 'system') {
         isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      } else {
+        isDark = false;
       }
 
       const themeVal = isDark ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', themeVal);
+      document.documentElement.style.colorScheme = themeVal;
       document.body.setAttribute('data-theme', themeVal);
       localStorage.setItem('ridingo_theme_pref', theme);
+
+      // Meta theme-color
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) {
+        metaTheme.setAttribute('content', isDark ? '#0A0A0B' : '#FFFFFF');
+      }
 
       // Capacitor StatusBar
       if (window.Capacitor?.isPluginAvailable('StatusBar')) {
@@ -182,6 +191,26 @@ export function AppProvider({ children }) {
         StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
       }
     } catch (e) {}
+  }, [theme]);
+
+  // Dynamic system theme listener when setting is 'system'
+  useEffect(() => {
+    if (theme !== 'system') return;
+    const media = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    if (!media) return;
+    const handleMediaChange = (e) => {
+      const isDark = e.matches;
+      const themeVal = isDark ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', themeVal);
+      document.documentElement.style.colorScheme = themeVal;
+      document.body.setAttribute('data-theme', themeVal);
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) {
+        metaTheme.setAttribute('content', isDark ? '#0A0A0B' : '#FFFFFF');
+      }
+    };
+    media.addEventListener?.('change', handleMediaChange);
+    return () => media.removeEventListener?.('change', handleMediaChange);
   }, [theme]);
 
   // Capacitor Android Back Button handler

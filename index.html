@@ -3,6 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script>
+    (function() {
+      try {
+        var pref = localStorage.getItem('ridingo_theme_pref') || 'light';
+        var isDark = false;
+        if (pref === 'dark') isDark = true;
+        else if (pref === 'light') isDark = false;
+        else if (pref === 'system') {
+          isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } else isDark = false;
+        var themeVal = isDark ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', themeVal);
+        document.documentElement.style.colorScheme = themeVal;
+      } catch (e) {}
+    })();
+  </script>
   <title>Ridingo - On-demand Driver Service</title>
   <link rel="icon" type="image/png" href="public/App icon.png">
   <link rel="apple-touch-icon" href="public/App icon.png">

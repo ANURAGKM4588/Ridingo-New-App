@@ -82,37 +82,7 @@
       display: none !important;
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) {
-        --ground: #0A0A0B;
-        --surface: #000000;
-        --card: #1C1C1E;
-        --sheet: #1C1C1E;
-        --field: #2C2C2E;
-        --ink: #F5F5F7;
-        --muted: #9A9AA1;
-        --line: #2C2C2E;
-        --line-strong: #48484A;
-        --yellow-soft: #3A3208;
-        --chip: #2C2C2E;
-        --bar: #3A3A3C;
-        --solid: #F5F5F7;
-        --on-solid: #0B0B0C;
-        --bezel: #1A1A1C;
-        --glass: rgba(24, 24, 26, .78);
-        --glass2: rgba(44, 44, 48, .62);
-        --meter: #0A0A0B;
-        --switch: #30D158;
-        --good: #32D74B;
-        --good-soft: #12301B;
-        --warn: #FFD60A;
-        --warn-soft: #3A2F08;
-        --bad: #FF6961;
-        --bad-soft: #3D1A1C;
-        color-scheme: dark;
-      }
-    }
-
+    /* Dark Theme (controlled strictly by app setting data-theme="dark") */
     :root[data-theme="dark"] {
       --ground: #0A0A0B;
       --surface: #000000;
@@ -558,33 +528,20 @@
       transition: background .2s ease;
     }
 
-    /* System dark mode when not explicitly forced to light */
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) body.standalone-app::before,
-      html:not([data-theme="light"]) body.standalone-app::before,
-      body.standalone-app:not([data-theme="light"])::before {
-        background: #000000;
-      }
-    }
-
-    /* Explicit Dark Theme on html or body */
+    /* Dark Theme on html or body */
     :root[data-theme="dark"] body.standalone-app::before,
     html[data-theme="dark"] body.standalone-app::before,
-    body.standalone-app[data-theme="dark"]::before {
+    body.standalone-app[data-theme="dark"]::before,
+    :root[data-theme="dark"] body.standalone-driver::before {
       background: #000000 !important;
     }
 
-    /* Explicit Light Theme on html or body (OVERRULES system dark and driver defaults) */
+    /* Light Theme on html or body (OVERRULES system dark and driver defaults) */
     :root[data-theme="light"] body.standalone-app::before,
     html[data-theme="light"] body.standalone-app::before,
     body.standalone-app[data-theme="light"]::before,
     body.standalone-driver[data-theme="light"]::before {
       background: #FFFFFF !important;
-    }
-
-    /* Default driver app is dark only when not explicitly set to light */
-    :root:not([data-theme="light"]) body.standalone-driver:not([data-theme="light"])::before {
-      background: #000000;
     }
 
     body.standalone-app .content {
@@ -2278,12 +2235,6 @@
       background: #636366;
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) .seg button.on {
-        background: #636366;
-      }
-    }
-
     .tog {
       width: 51px;
       height: 31px;
@@ -2773,6 +2724,139 @@
       background: linear-gradient(90deg, #34C759, var(--yellow));
       transition: width .5s ease;
       box-shadow: 0 0 8px rgba(52, 199, 89, 0.5);
+    }
+
+    /* Live Map Interactive Drag & Zoom Controls */
+    .live-map-viewport.modal {
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .live-map-viewport.modal.is-dragging {
+      cursor: grabbing !important;
+    }
+
+    .live-map-controls-dock {
+      position: absolute;
+      right: 12px;
+      bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 10;
+      pointer-events: auto;
+    }
+
+    .map-ctrl-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(20, 22, 26, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+      transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+      user-select: none;
+      padding: 0;
+    }
+
+    .map-ctrl-btn:hover {
+      background: rgba(36, 38, 44, 0.95);
+      transform: scale(1.06);
+    }
+
+    .map-ctrl-btn:active {
+      transform: scale(0.92);
+    }
+
+    .map-ctrl-btn.map-zoom-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--yellow);
+    }
+
+    .map-ctrl-btn.map-recenter-btn.has-offset {
+      background: var(--yellow);
+      color: #121316;
+      border-color: var(--yellow);
+      box-shadow: 0 0 10px rgba(255, 199, 10, 0.4);
+    }
+
+    :root:not([data-theme="dark"]) .map-ctrl-btn {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      color: #121316;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    :root:not([data-theme="dark"]) .map-ctrl-btn:hover {
+      background: #FFFFFF;
+    }
+
+    :root:not([data-theme="dark"]) .map-ctrl-btn.map-recenter-btn.has-offset {
+      background: var(--yellow);
+      color: #121316;
+      border-color: #EAB308;
+    }
+
+    .live-map-hint-pill {
+      position: absolute;
+      left: 12px;
+      bottom: 14px;
+      z-index: 10;
+      background: rgba(18, 19, 22, 0.78);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 0.5px solid rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.88);
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .live-map-hint-pill.live-map-reset-pill {
+      pointer-events: auto;
+      cursor: pointer;
+      background: rgba(255, 199, 10, 0.2);
+      border-color: rgba(255, 199, 10, 0.4);
+      color: var(--yellow);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .live-map-hint-pill.live-map-reset-pill:hover {
+      background: rgba(255, 199, 10, 0.32);
+      transform: scale(1.03);
+    }
+
+    .live-map-hint-pill.live-map-reset-pill:active {
+      transform: scale(0.96);
+    }
+
+    :root:not([data-theme="dark"]) .live-map-hint-pill {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      color: #4B5563;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    :root:not([data-theme="dark"]) .live-map-hint-pill.live-map-reset-pill {
+      background: #FEF9C3;
+      border-color: #FDE047;
+      color: #854D0E;
     }
 
     /* Live HUD 3-Col Stats Grid */

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Icon from './Icon';
 
 export const ROUTE_PTS_MODAL = [
@@ -56,7 +56,8 @@ export function getRouteTelemetry(prog = 0.38, isModal = false) {
 /**
  * GraphicLiveMap Component
  * High-fidelity, large modern vector graphic map with buildings, street grid,
- * metro rail, glowing gradient route ribbon, rotating car with radar ripples, and live telemetry.
+ * metro rail, glowing gradient route ribbon, rotating car with radar ripples, live telemetry,
+ * and free drag (pan) + zoom in / zoom out interactive controls.
  */
 export default function GraphicLiveMap({
   trip,
@@ -72,34 +73,202 @@ export default function GraphicLiveMap({
   const pickupLabel = trip?.pickup ? trip.pickup.split(',')[0].slice(0, 16).toUpperCase() : 'PICKUP';
   const dropLabel = trip?.drop_loc ? trip.drop_loc.split(',')[0].slice(0, 16).toUpperCase() : 'LULU MALL';
 
+  // Interactive Pan and Zoom State (smooth natural feel)
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  const containerRef = useRef(null);
+  const dragStartRef = useRef({ startX: 0, startY: 0, initialPanX: 0, initialPanY: 0 });
+  const pinchRef = useRef({ initialDist: 0, initialZoom: 1 });
+
+  // Gentle, natural zoom in (+18% smooth step)
+  const handleZoomIn = useCallback((e) => {
+    e?.stopPropagation?.();
+    setZoom((z) => Math.min(3.2, parseFloat((z * 1.18).toFixed(2))));
+  }, []);
+
+  // Gentle, natural zoom out (-18% smooth step)
+  const handleZoomOut = useCallback((e) => {
+    e?.stopPropagation?.();
+    setZoom((z) => Math.max(0.65, parseFloat((z / 1.18).toFixed(2))));
+  }, []);
+
+  // Recenter map back to vehicle/center position smoothly
+  const handleRecenter = useCallback((e) => {
+    e?.stopPropagation?.();
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  // Mouse drag handlers (free smooth pan)
+  const handleMouseDown = (e) => {
+    if (!isModal || e.button !== 0) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialPanX: pan.x,
+      initialPanY: pan.y
+    };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - dragStartRef.current.startX;
+      const dy = e.clientY - dragStartRef.current.startY;
+      const maxPan = Math.max(160, 220 * zoom);
+      const newX = Math.max(-maxPan, Math.min(maxPan, dragStartRef.current.initialPanX + dx));
+      const newY = Math.max(-maxPan, Math.min(maxPan, dragStartRef.current.initialPanY + dy));
+      setPan({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, zoom]);
+
+  // Touch handlers (1-finger drag & natural 2-finger pinch zoom)
+  const handleTouchStart = (e) => {
+    if (!isModal) return;
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      dragStartRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        initialPanX: pan.x,
+        initialPanY: pan.y
+      };
+    } else if (e.touches.length === 2) {
+      setIsDragging(false);
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      pinchRef.current = {
+        initialDist: dist,
+        initialZoom: zoom
+      };
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isModal) return;
+    if (e.touches.length === 1 && isDragging) {
+      const dx = e.touches[0].clientX - dragStartRef.current.startX;
+      const dy = e.touches[0].clientY - dragStartRef.current.startY;
+      const maxPan = Math.max(160, 220 * zoom);
+      const newX = Math.max(-maxPan, Math.min(maxPan, dragStartRef.current.initialPanX + dx));
+      const newY = Math.max(-maxPan, Math.min(maxPan, dragStartRef.current.initialPanY + dy));
+      setPan({ x: newX, y: newY });
+    } else if (e.touches.length === 2 && pinchRef.current.initialDist > 0) {
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const rawScale = currentDist / pinchRef.current.initialDist;
+      // Damped scaling so pinch feels natural and controlled rather than runaway
+      const dampedScale = 1 + (rawScale - 1) * 0.7;
+      const newZoom = Math.max(0.65, Math.min(3.2, parseFloat((pinchRef.current.initialZoom * dampedScale).toFixed(2))));
+      setZoom(newZoom);
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+      pinchRef.current = { initialDist: 0, initialZoom: zoom };
+    } else if (e.touches.length === 1) {
+      setIsDragging(true);
+      dragStartRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        initialPanX: pan.x,
+        initialPanY: pan.y
+      };
+    }
+  };
+
+  // Mouse wheel zoom with gentle dampening for natural, continuous deceleration
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !isModal) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Clamp delta to prevent sudden huge jumps from fast wheel spins or trackpad swipes
+      const clampedDelta = Math.max(-35, Math.min(35, e.deltaY));
+      const factor = Math.exp(-clampedDelta * 0.0024);
+      setZoom((prev) => {
+        const next = Math.max(0.65, Math.min(3.2, parseFloat((prev * factor).toFixed(3))));
+        return next;
+      });
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [isModal]);
+
   // Route path strings for SVG
   const routePathD = isModal
     ? 'M 55 225 L 105 185 L 175 185 L 235 120 L 285 120 L 330 50'
     : 'M 65 155 L 115 125 L 175 125 L 235 80 L 285 80 L 325 40';
 
   const viewBox = isModal ? '0 0 390 270' : '0 0 390 195';
+  const hasMoved = pan.x !== 0 || pan.y !== 0 || zoom !== 1;
 
   return (
     <div
-      className={`live-map-viewport ${isModal ? 'modal' : ''}`}
-      onClick={onOpenModal}
+      ref={containerRef}
+      className={`live-map-viewport ${isModal ? 'modal' : ''} ${isDragging ? 'is-dragging' : ''}`}
+      onClick={isModal ? undefined : onOpenModal}
+      onMouseDown={isModal ? handleMouseDown : undefined}
+      onTouchStart={isModal ? handleTouchStart : undefined}
+      onTouchMove={isModal ? handleTouchMove : undefined}
+      onTouchEnd={isModal ? handleTouchEnd : undefined}
+      onTouchCancel={isModal ? handleTouchEnd : undefined}
       style={{
         position: 'relative',
         height: `${mapHeight}px`,
         width: '100%',
         borderRadius: isModal ? '20px' : '16px',
         overflow: 'hidden',
-        cursor: isModal ? 'default' : 'pointer',
-        boxShadow: isModal ? '0 8px 30px rgba(0, 0, 0, 0.12)' : 'none'
+        cursor: isModal ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
+        boxShadow: isModal ? '0 8px 30px rgba(0, 0, 0, 0.12)' : 'none',
+        userSelect: 'none',
+        touchAction: isModal ? 'none' : 'auto'
       }}
     >
-      <svg
-        className="live-map-svg"
-        viewBox={viewBox}
-        preserveAspectRatio="xMidYMid meet"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ width: '100%', height: '100%', display: 'block' }}
+      {/* Pan & Zoom Transforming Inner Canvas with Natural Eased Transition */}
+      <div
+        className="live-map-canvas-inner"
+        style={{
+          transform: isModal ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : 'none',
+          transformOrigin: 'center center',
+          width: '100%',
+          height: '100%',
+          transition: isDragging ? 'none' : 'transform 0.38s cubic-bezier(0.25, 1, 0.45, 1)',
+          willChange: 'transform',
+          pointerEvents: 'none'
+        }}
       >
+        <svg
+          className="live-map-svg"
+          viewBox={viewBox}
+          preserveAspectRatio="xMidYMid meet"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: '100%', height: '100%', display: 'block' }}
+        >
         <defs>
           <linearGradient id={`routeGrad-${mid}`} x1="0%" y1="100%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#22C55E" />
@@ -368,7 +537,8 @@ export default function GraphicLiveMap({
             {speed} km/h
           </text>
         </g>
-      </svg>
+        </svg>
+      </div>
 
       {/* Floating HUD overlay on card */}
       {!isModal && (
@@ -378,9 +548,10 @@ export default function GraphicLiveMap({
         </div>
       )}
 
-      {/* Floating HUD overlay on popup */}
+      {/* Floating HUD & Interactive Controls overlay on popup */}
       {isModal && (
         <>
+          {/* Top telemetry & street pills */}
           <div className="live-sheet-hud-top">
             <span className="live-sheet-pill">
               <Icon name="navigation" size={12} />
@@ -391,6 +562,64 @@ export default function GraphicLiveMap({
             </span>
           </div>
 
+          {/* Interactive Zoom Controls Dock (Right side) */}
+          <div className="live-map-controls-dock">
+            <button
+              type="button"
+              className="map-ctrl-btn"
+              onClick={handleZoomIn}
+              title="Zoom In"
+              aria-label="Zoom In"
+            >
+              <Icon name="plus" size={15} />
+            </button>
+            <button
+              type="button"
+              className="map-ctrl-btn map-zoom-badge"
+              onClick={handleRecenter}
+              title="Reset Zoom to 100%"
+              aria-label="Reset Zoom"
+            >
+              <span>{Math.round(zoom * 100)}%</span>
+            </button>
+            <button
+              type="button"
+              className="map-ctrl-btn"
+              onClick={handleZoomOut}
+              title="Zoom Out"
+              aria-label="Zoom Out"
+            >
+              <Icon name="minus" size={15} />
+            </button>
+            <button
+              type="button"
+              className={`map-ctrl-btn map-recenter-btn ${hasMoved ? 'has-offset' : ''}`}
+              onClick={handleRecenter}
+              title="Recenter & Reset View"
+              aria-label="Recenter Map"
+            >
+              <Icon name="target" size={16} />
+            </button>
+          </div>
+
+          {/* Bottom Left: Interactive Hint or Recenter Quick Action */}
+          {hasMoved ? (
+            <button
+              type="button"
+              className="live-map-hint-pill live-map-reset-pill"
+              onClick={handleRecenter}
+              title="Recenter Map"
+            >
+              <Icon name="target" size={12} />
+              <span>Recenter Map</span>
+            </button>
+          ) : (
+            <div className="live-map-hint-pill">
+              <span>Drag to Pan · Pinch / ± to Zoom</span>
+            </div>
+          )}
+
+          {/* Bottom Progress Bar Dock */}
           <div
             className="live-map-progress-dock"
             style={{

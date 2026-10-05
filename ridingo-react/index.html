@@ -7,6 +7,30 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#FFFFFF" />
+    <script>
+      (function() {
+        try {
+          var pref = localStorage.getItem('ridingo_theme_pref') || 'light';
+          var isDark = false;
+          if (pref === 'dark') {
+            isDark = true;
+          } else if (pref === 'light') {
+            isDark = false;
+          } else if (pref === 'system') {
+            isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          } else {
+            isDark = false;
+          }
+          var themeVal = isDark ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', themeVal);
+          document.documentElement.style.colorScheme = themeVal;
+          var metaTheme = document.querySelector('meta[name="theme-color"]');
+          if (metaTheme) {
+            metaTheme.setAttribute('content', isDark ? '#0A0A0B' : '#FFFFFF');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>Ridingo - On-demand Driver Service</title>
     <link rel="icon" type="image/png" href="/App icon.png" />
     <link rel="apple-touch-icon" href="/App icon.png" />
