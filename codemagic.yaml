@@ -24,7 +24,6 @@ workflows:
         - pattern: main
           include: true
           source: true
-      cancel_previous_builds_on_push: true
 
     scripts:
       - name: Verify Environment & Flutter Tools
