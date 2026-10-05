@@ -125,6 +125,7 @@ export function AppProvider({ children }) {
   const [bookingCategory, setBookingCategory] = useState('hourly');
   const [bookingDestination, setBookingDestination] = useState('');
   const [notifsOpen, setNotifsOpen] = useState(false);
+  const [liveTrackingOpen, setLiveTrackingOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   // Trips, Wallet & Notifications
@@ -191,6 +192,8 @@ export function AppProvider({ children }) {
         CapApp.addListener('backButton', ({ canGoBack }) => {
           if (bookingOpen) {
             setBookingOpen(false);
+          } else if (liveTrackingOpen) {
+            setLiveTrackingOpen(false);
           } else if (notifsOpen) {
             setNotifsOpen(false);
           } else if (onboardingOpen) {
@@ -308,6 +311,8 @@ export function AppProvider({ children }) {
         setDriverOnline,
         toasts,
         addToast,
+        liveTrackingOpen,
+        setLiveTrackingOpen,
         onboardingOpen,
         setOnboardingOpen
       }}

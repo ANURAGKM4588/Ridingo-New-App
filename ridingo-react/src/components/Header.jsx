@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import BrandLogo from './BrandLogo';
 
 export default function Header() {
   const { view, setView, resetDemo } = useApp();
@@ -7,15 +8,8 @@ export default function Header() {
   return (
     <header className="top">
       <div className="brand">
-        <span className="logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <circle cx="12" cy="12" r="2.3" />
-            <path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21" />
-          </svg>
-        </span>
         <div>
-          <b>Ridingo</b>
+          <BrandLogo height={26} width={105} style={{ display: 'block', marginBottom: '2px' }} />
           <small>Hire a driver for your own car</small>
         </div>
       </div>

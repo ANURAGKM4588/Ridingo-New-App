@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
+import BrandLogo from './BrandLogo';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours' },
@@ -464,6 +465,16 @@ export default function DriverApp() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div style={{ textAlign: 'center', padding: '24px 0 10px' }}>
+              <BrandLogo
+                height={20}
+                width={80}
+                center
+                style={{ opacity: 0.8, marginBottom: '6px' }}
+              />
+              <p className="mut small" style={{ margin: 0 }}>Ridingo Driver Partner · v2.4.2</p>
             </div>
           </div>
         )}

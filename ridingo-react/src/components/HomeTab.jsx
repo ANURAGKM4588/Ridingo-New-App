@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
+import BrandLogo from './BrandLogo';
 import MapPickerModal from './MapPickerModal';
+import GraphicLiveMap from './GraphicLiveMap';
 import { searchPlaces } from '../lib/locationService';
+import { getRecommendations, APP_SETTINGS } from '../lib/searchEngine';
 
 const CATS = {
   hourly: { name: 'Hourly', blurb: '2 to 12 hours', icon: 'clock', from: '₹250 per hour' },
@@ -52,6 +55,8 @@ export default function HomeTab() {
     setBookingDestination,
     notifsOpen,
     setNotifsOpen,
+    liveTrackingOpen,
+    setLiveTrackingOpen,
     unotes,
     setUTab
   } = useApp();
@@ -62,6 +67,8 @@ export default function HomeTab() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [isScrolledHidden, setIsScrolledHidden] = useState(false);
+  const isHiddenRef = useRef(false);
   const searchWrapRef = useRef(null);
 
   // Close dropdown on outside click
@@ -73,6 +80,71 @@ export default function HomeTab() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Smooth blur fade-out / fade-in scroll animation
+  useEffect(() => {
+    const uc = document.getElementById('u-content');
+    let lastScroll = 0;
+    let ticking = false;
+
+    const getScrollTop = () => {
+      if (uc) return uc.scrollTop;
+      return window.scrollY || document.documentElement.scrollTop || 0;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const st = getScrollTop();
+          const delta = st - lastScroll;
+
+          if (st <= 10) {
+            // Near top: always show search bar
+            if (isHiddenRef.current) {
+              isHiddenRef.current = false;
+              setIsScrolledHidden(false);
+              if (searchWrapRef.current) {
+                searchWrapRef.current.classList.remove('scrolled-hidden');
+              }
+            }
+          } else if (delta > 1.8 && st > 20) {
+            // Scrolling down: smooth minimal blur fade-out
+            if (!isHiddenRef.current) {
+              isHiddenRef.current = true;
+              setIsScrolledHidden(true);
+              setSearchOpen(false);
+              if (searchWrapRef.current) {
+                searchWrapRef.current.classList.add('scrolled-hidden');
+              }
+            }
+          } else if (delta < -3) {
+            // Scrolling up: smooth blur fade-in
+            if (isHiddenRef.current) {
+              isHiddenRef.current = false;
+              setIsScrolledHidden(false);
+              if (searchWrapRef.current) {
+                searchWrapRef.current.classList.remove('scrolled-hidden');
+              }
+            }
+          }
+
+          lastScroll = Math.max(0, st);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    if (uc) {
+      uc.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      if (uc) uc.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const inProg = trips.find(t => t.status === 'inprogress');
@@ -113,6 +185,28 @@ export default function HomeTab() {
     setSearchOpen(false);
   };
 
+  const handlePickTrip = (t) => {
+    setBookingCategory(t.cat || 'hourly');
+    setBookingDestination(t.drop_loc);
+    setBookingOpen(true);
+    setSearchOpen(false);
+  };
+
+  const handlePickSetting = (s) => {
+    if (s.action === 'open_notifs') {
+      setNotifsOpen(true);
+    } else if (s.tab) {
+      setUTab(s.tab);
+    }
+    setSearchOpen(false);
+  };
+
+  const handlePickService = (srv) => {
+    setBookingCategory(srv.cat);
+    setBookingOpen(true);
+    setSearchOpen(false);
+  };
+
   const handleMapPick = (addr) => {
     setBookingCategory('hourly');
     setBookingDestination(addr);
@@ -120,19 +214,15 @@ export default function HomeTab() {
     setMapModalOpen(false);
   };
 
+  const recs = getRecommendations(searchQuery, { trips });
+  const hasAnyRecs = recs.trips.length > 0 || recs.settings.length > 0 || recs.services.length > 0 || recs.landmarks.length > 0;
+
   return (
     <div>
       {/* Top Bar with Brand Logo and Notification Bell */}
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: '16px' }}>
-        <div className="row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="logo" style={{ width: '34px', height: '34px', borderRadius: '10px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="2.3" />
-              <path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21" />
-            </svg>
-          </span>
-          <b style={{ font: '800 20px var(--font-display)', letterSpacing: '-0.5px' }}>Ridingo</b>
+        <div className="row" style={{ display: 'flex', alignItems: 'center' }}>
+          <BrandLogo height={28} width={112} />
         </div>
         <button className="iconbtn" aria-label="Notifications" onClick={() => setNotifsOpen(true)}>
           <Icon name="bell" size={20} />
@@ -147,7 +237,12 @@ export default function HomeTab() {
       </div>
 
       {/* Destination Search Bar with Typing Feature & Autocomplete */}
-      <div className="search-wrap" id="u-search-wrap" ref={searchWrapRef} style={{ position: 'relative', zIndex: 20 }}>
+      <div
+        className={`search-wrap ${isScrolledHidden ? 'scrolled-hidden' : ''}`}
+        id="u-search-wrap"
+        ref={searchWrapRef}
+        style={{ position: 'relative', zIndex: 20 }}
+      >
         <div className="search-anim-inner">
           <div className="search-box">
             <span className="search-ic">
@@ -182,13 +277,100 @@ export default function HomeTab() {
           </div>
         </div>
 
-        {/* Autocomplete Dropdown */}
+        {/* Keyword-based Recommendations Dropdown (Trips, Settings, Services, Places) */}
         {searchOpen && searchQuery.trim() && (
           <div className="search-dropdown" id="u-search-drop">
-            <div className="search-drop-h">Matching Places & Keywords</div>
-            {searchResults.length > 0 ? (
+            {/* 1. Recent Trips Section */}
+            {recs.trips.length > 0 && (
               <>
-                {searchResults.map((p, idx) => (
+                <div className="search-drop-h">Recent Trips</div>
+                {recs.trips.map(t => (
+                  <button
+                    key={t.id}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickTrip(t)}
+                  >
+                    <span className="search-item-ic" style={{ background: 'var(--yellow-soft)', color: 'var(--on-yellow)' }}>
+                      <Icon name="route" size={16} />
+                    </span>
+                    <div className="search-item-meta">
+                      <div className="search-item-route">
+                        <span className="loc-to" style={{ fontWeight: 700 }}>
+                          {t.drop_loc}
+                        </span>
+                      </div>
+                      <span className="search-item-sub">
+                        From {t.pickup} · Driver: {t.driver || 'Assigned'}
+                      </span>
+                    </div>
+                    <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
+                      Rebook
+                    </span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* 2. Settings & Preferences Section */}
+            {recs.settings.length > 0 && (
+              <>
+                <div className="search-drop-h">Settings & Features</div>
+                {recs.settings.map(s => (
+                  <button
+                    key={s.id}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickSetting(s)}
+                  >
+                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
+                      <Icon name={s.icon} size={16} />
+                    </span>
+                    <div className="search-item-meta">
+                      <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>
+                        {s.title}
+                      </b>
+                      <span className="search-item-sub">{s.sub}</span>
+                    </div>
+                    <span className="search-item-badge" style={{ background: 'var(--field)', color: 'var(--muted)' }}>
+                      {s.badge}
+                    </span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* 3. Driver Services Section */}
+            {recs.services.length > 0 && (
+              <>
+                <div className="search-drop-h">Driver Services</div>
+                {recs.services.map(s => (
+                  <button
+                    key={s.id}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickService(s)}
+                  >
+                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
+                      <Icon name={s.icon} size={16} />
+                    </span>
+                    <div className="search-item-meta">
+                      <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>
+                        {s.title}
+                      </b>
+                      <span className="search-item-sub">{s.sub}</span>
+                    </div>
+                    <span className="search-item-badge">Book</span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* 4. Locations & Landmarks Section */}
+            {recs.landmarks.length > 0 && (
+              <>
+                <div className="search-drop-h">Locations & Places</div>
+                {recs.landmarks.map((p, idx) => (
                   <button
                     key={`${p.title}-${idx}`}
                     className="search-item"
@@ -217,32 +399,36 @@ export default function HomeTab() {
                       </div>
                       <span className="search-item-sub">{p.sub}</span>
                     </div>
-                    <span className="search-item-badge">Book</span>
+                    <span className="search-item-badge">Go</span>
                   </button>
                 ))}
-
-                <button
-                  className="search-item"
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setMapModalOpen(true);
-                  }}
-                  style={{ borderTop: '1px solid var(--line)', marginTop: '4px' }}
-                >
-                  <span className="search-item-ic">
-                    <Icon name="pin" size={16} />
-                  </span>
-                  <div className="search-item-meta">
-                    <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Choose destination on map</b>
-                    <span className="search-item-sub">Drag pin to any exact street</span>
-                  </div>
-                  <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
-                    Map
-                  </span>
-                </button>
               </>
-            ) : (
+            )}
+
+            {/* Choose on Map option */}
+            <button
+              className="search-item"
+              type="button"
+              onClick={() => {
+                setSearchOpen(false);
+                setMapModalOpen(true);
+              }}
+              style={{ borderTop: '1px solid var(--line)', marginTop: '4px' }}
+            >
+              <span className="search-item-ic">
+                <Icon name="pin" size={16} />
+              </span>
+              <div className="search-item-meta">
+                <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Choose destination on map</b>
+                <span className="search-item-sub">Drag pin to any exact street</span>
+              </div>
+              <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
+                Map
+              </span>
+            </button>
+
+            {/* Fallback if no matching results */}
+            {!hasAnyRecs && (
               <div className="search-empty">
                 <span className="search-empty-ic">
                   <Icon name="pin" size={20} />
@@ -273,6 +459,15 @@ export default function HomeTab() {
             <span className="live-eta-badge" id="live-eta-badge-mini">14 mins away</span>
           </div>
 
+          {/* Minimal Modern Graphic Vector Map Viewport */}
+          <GraphicLiveMap
+            trip={inProg}
+            isModal={false}
+            progress={0.42}
+            speed={38}
+            onOpenModal={() => setLiveTrackingOpen(true)}
+          />
+
           <div className="live-hud-row">
             <div className="live-hud-cell">
               <span className="live-hud-lbl">ETA</span>
@@ -298,7 +493,7 @@ export default function HomeTab() {
               <b>{inProg.driver || 'Ravi Kumar'} <span style={{ fontWeight: 400, color: 'var(--muted)' }}>★ 4.8</span></b>
               <span>Driving your {user?.car?.model || inProg.car?.model} ({user?.car?.plate || inProg.car?.plate})</span>
             </div>
-            <button className="btn sm primary" onClick={() => setUTab('trips')}>
+            <button className="btn sm primary" onClick={() => setLiveTrackingOpen(true)}>
               Track
             </button>
           </div>

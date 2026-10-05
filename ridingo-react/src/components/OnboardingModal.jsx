@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import BrandLogo from './BrandLogo';
 
 export default function OnboardingModal() {
   const { onboardingOpen, setOnboardingOpen, loginDemo, addToast } = useApp();
@@ -42,27 +43,12 @@ export default function OnboardingModal() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: '400px', margin: '0 auto', width: '100%' }}>
         {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div
-            style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '20px',
-              background: 'var(--yellow)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '16px'
-            }}
-          >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--on-yellow)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="2.3" />
-              <path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21" />
-            </svg>
-          </div>
-          <h2 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.5px' }}>
-            Ridingo
-          </h2>
+          <BrandLogo
+            height={38}
+            width={150}
+            center
+            style={{ marginBottom: '12px' }}
+          />
           <p style={{ fontSize: '15px', color: 'var(--muted)', margin: 0 }}>
             On-demand professional chauffeurs for your car
           </p>

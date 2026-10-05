@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import BrandLogo from './BrandLogo';
 
 export default function ProfileTab() {
   const { user, theme, setTheme, logout, loginDemo } = useApp();
@@ -126,6 +127,12 @@ export default function ProfileTab() {
 
       {/* Sign Out Actions */}
       <div style={{ textAlign: 'center', padding: '24px 0 10px' }}>
+        <BrandLogo
+          height={20}
+          width={80}
+          center
+          style={{ opacity: 0.8, marginBottom: '6px' }}
+        />
         <p className="mut small" style={{ margin: 0 }}>Ridingo for Car Owners · v2.4.2</p>
         <button
           className="btn line sm"
