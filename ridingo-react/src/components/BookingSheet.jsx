@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
+import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours', min: 2, max: 12, def: 3, rate: 250 },
@@ -36,6 +37,7 @@ export default function BookingSheet() {
   const [confirmedTrip, setConfirmedTrip] = useState(null);
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
   const [mapPickerTarget, setMapPickerTarget] = useState('drop');
+  const [isDetectingCurrent, setIsDetectingCurrent] = useState(false);
 
   // Sync category with parent selection
   useEffect(() => {
@@ -55,7 +57,42 @@ export default function BookingSheet() {
     }
   }, [bookingDestination, bookingOpen]);
 
+  // Auto-detect strict device location on booking sheet open if pickup is empty
+  useEffect(() => {
+    if (bookingOpen && !pickup) {
+      const cached = getCachedDeviceLocation();
+      if (cached?.address) {
+        setPickup(cached.address);
+      } else {
+        getDeviceLocation(false).then(loc => {
+          if (loc?.address) setPickup(loc.address);
+        }).catch(() => {});
+      }
+    }
+  }, [bookingOpen]);
+
   if (!bookingOpen) return null;
+
+  const handleUseCurrentLocation = async () => {
+    setIsDetectingCurrent(true);
+    addToast('Acquiring device GPS...', 'crosshair');
+
+    try {
+      const loc = await getDeviceLocation(true);
+      if (loc && loc.address) {
+        setPickup(loc.address);
+        const short = loc.address.split(',')[0].trim();
+        addToast(`Pickup set to device location: ${short}`, 'check');
+      } else {
+        addToast('Could not resolve device address', 'alert');
+      }
+    } catch (err) {
+      console.warn('GPS location error:', err);
+      addToast('GPS unavailable. Please check location permissions.', 'alert');
+    } finally {
+      setIsDetectingCurrent(false);
+    }
+  };
 
   const currentCat = CATS[cat] || CATS.hourly;
   const isFlat = !!currentCat.flat;
@@ -87,11 +124,12 @@ export default function BookingSheet() {
   const handleMapSelect = (addr) => {
     if (mapPickerTarget === 'pickup') {
       setPickup(addr);
-      addToast('Pickup set from map', 'pin');
+      addToast(`Pickup set: ${addr.split(',')[0]}`, 'check');
     } else {
       setDrop(addr);
-      addToast('Destination set from map', 'pin');
+      addToast(`Destination set: ${addr.split(',')[0]}`, 'check');
     }
+    setMapPickerOpen(false);
   };
 
   const openMap = (target) => {
@@ -100,7 +138,8 @@ export default function BookingSheet() {
   };
 
   const handleSubmit = () => {
-    const pickupLoc = pickup.trim() || 'Edappally Toll, Kochi';
+    const cached = getCachedDeviceLocation();
+    const pickupLoc = pickup.trim() || cached?.address || 'Current Device Location';
     const dropLoc = drop.trim() || (cat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
 
     const tripObj = {
@@ -222,10 +261,31 @@ export default function BookingSheet() {
               ))}
             </div>
 
-            {/* Pickup Location */}
-            <label className="lab" htmlFor="bk-pickup">
-              Pickup location
-            </label>
+            {/* Pickup Location with 1-tap Current Location */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', marginBottom: '4px' }}>
+              <label className="lab" htmlFor="bk-pickup" style={{ margin: 0 }}>
+                Pickup location
+              </label>
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--yellow)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: 0
+                }}
+              >
+                <Icon name="crosshair" size={13} />
+                <span>{isDetectingCurrent ? 'Locating...' : 'Use current location'}</span>
+              </button>
+            </div>
             <div className="loc-input-wrap">
               <input
                 className="inp"
@@ -246,9 +306,30 @@ export default function BookingSheet() {
             </div>
 
             {/* Destination (optional) */}
-            <label className="lab" htmlFor="bk-drop" style={{ marginTop: '10px' }}>
-              Destination (optional)
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '4px' }}>
+              <label className="lab" htmlFor="bk-drop" style={{ margin: 0 }}>
+                Destination (optional)
+              </label>
+              <button
+                type="button"
+                onClick={() => openMap('drop')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: 0
+                }}
+              >
+                <Icon name="pin" size={13} />
+                <span>Choose on map</span>
+              </button>
+            </div>
             <div className="loc-input-wrap">
               <input
                 className="inp"
@@ -355,8 +436,6 @@ export default function BookingSheet() {
               ))}
             </div>
 
-
-
             {/* Total Fare Card (.meter) */}
             <div className="meter" style={{ marginTop: '18px' }}>
               <div className="lab" style={{ letterSpacing: '0.5px' }}>
@@ -395,23 +474,25 @@ export default function BookingSheet() {
               </span>
               <b style={{ fontSize: '15px' }}>₹{userBalance.toLocaleString('en-IN')}</b>
             </div>
+            </div>
 
-            {/* Submit Primary CTA */}
-            <button
-              className="btn primary block"
-              style={{
-                marginTop: '14px',
-                width: '100%',
-                borderRadius: '24px',
-                padding: '16px',
-                fontWeight: 800,
-                fontSize: '16px',
-                cursor: 'pointer'
-              }}
-              onClick={handleSubmit}
-            >
-              Pay ₹{adv} and send request
-            </button>
+            {/* Sticky Bottom Action Footer (Always visible & accessible) */}
+            <div className="sheet-sticky-foot">
+              <button
+                className="btn primary block"
+                style={{
+                  width: '100%',
+                  borderRadius: '20px',
+                  padding: '16px',
+                  fontWeight: 800,
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 18px rgba(255, 199, 10, 0.4)'
+                }}
+                onClick={handleSubmit}
+              >
+                Pay ₹{adv} and send request
+              </button>
             </div>
           </>
         )}

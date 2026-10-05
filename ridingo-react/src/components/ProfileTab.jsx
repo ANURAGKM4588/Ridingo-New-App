@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
 export default function ProfileTab() {
-  const { user, updateUserProfile, addNotification, theme, setTheme, logout, addToast } = useApp();
+  const { user, updateUserProfile, addNotification, userTheme, setUserTheme, logout, addToast } = useApp();
 
   // Active Bottom Sheet Modal:
   // null | 'editProfile' | 'changePin' | 'sos' | 'insurance' | 'temp' | 'lang' | 'privacy' | 'concierge' | 'safety'
@@ -590,8 +590,8 @@ export default function ProfileTab() {
               <button
                 key={mode}
                 type="button"
-                className={`ios-seg-btn ${theme === mode ? 'on' : ''}`}
-                onClick={() => setTheme(mode)}
+                className={`ios-seg-btn ${userTheme === mode ? 'on' : ''}`}
+                onClick={() => setUserTheme(mode)}
               >
                 {label}
               </button>

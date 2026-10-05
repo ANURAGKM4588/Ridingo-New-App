@@ -189,8 +189,8 @@ export default function DriverApp() {
     updateDriverPartner,
     dTab,
     setDTab,
-    theme,
-    setTheme,
+    driverTheme,
+    setDriverTheme,
     addToast
   } = useApp();
 
@@ -1325,8 +1325,8 @@ export default function DriverApp() {
                     <button
                       key={mode}
                       type="button"
-                      className={`ios-seg-btn ${theme === mode ? 'on' : ''}`}
-                      onClick={() => setTheme(mode)}
+                      className={`ios-seg-btn ${driverTheme === mode ? 'on' : ''}`}
+                      onClick={() => setDriverTheme(mode)}
                     >
                       {label}
                     </button>

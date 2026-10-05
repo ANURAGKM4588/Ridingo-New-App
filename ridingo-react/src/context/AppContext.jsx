@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar } from '@capacitor/status-bar';
+import { getDeviceLocation } from '../lib/deviceLocation';
 
 const AppContext = createContext(null);
 
@@ -124,15 +125,6 @@ export const INITIAL_UNOTES = [
 ];
 
 export function AppProvider({ children }) {
-  // Theme state
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem('ridingo_theme_pref') || 'light';
-    } catch (e) {
-      return 'light';
-    }
-  });
-
   // User state
   const [user, setUser] = useState(() => {
     try {
@@ -153,8 +145,19 @@ export function AppProvider({ children }) {
     }
   });
 
-  // App navigation state
-  const [view, setView] = useState('user'); // 'user' | 'driver'
+  // App navigation state (User App or Driver App)
+  const [view, setView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (
+        window.RIDINGO_TARGET === 'driver' ||
+        window.location.search.includes('app=driver') ||
+        (typeof document !== 'undefined' && document.body?.classList?.contains('standalone-driver'))
+      ) {
+        return 'driver';
+      }
+    }
+    return 'user';
+  });
   const [uTab, setUTab] = useState('home'); // 'home' | 'history' | 'wallet' | 'profile'
   const [dTab, setDTab] = useState('dash');
   const [tripsFilter, setTripsFilter] = useState('all');
@@ -209,23 +212,85 @@ export function AppProvider({ children }) {
     }, 3200);
   };
 
-  // Sync theme with HTML attribute & Capacitor StatusBar
+  // Separate theme states: User App & Driver App are independent apps
+  const [userTheme, setUserTheme] = useState(() => {
+    try {
+      return localStorage.getItem('ridingo_user_theme') || localStorage.getItem('ridingo_theme_pref') || 'light';
+    } catch (e) {
+      return 'light';
+    }
+  });
+
+  const [driverTheme, setDriverTheme] = useState(() => {
+    try {
+      return localStorage.getItem('ridingo_driver_theme') || 'light';
+    } catch (e) {
+      return 'light';
+    }
+  });
+
+  // Track system OS color scheme preference
+  const [systemIsDark, setSystemIsDark] = useState(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = (e) => setSystemIsDark(e.matches);
+    media.addEventListener?.('change', handleMediaChange);
+    return () => media.removeEventListener?.('change', handleMediaChange);
+  }, []);
+
+  const userThemeVal = userTheme === 'system' ? (systemIsDark ? 'dark' : 'light') : userTheme;
+  const driverThemeVal = driverTheme === 'system' ? (systemIsDark ? 'dark' : 'light') : driverTheme;
+
+  // Persist userTheme
   useEffect(() => {
     try {
-      let isDark = false;
-      if (theme === 'dark') isDark = true;
-      else if (theme === 'light') isDark = false;
-      else if (theme === 'system') {
-        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      } else {
-        isDark = false;
-      }
+      localStorage.setItem('ridingo_user_theme', userTheme);
+      localStorage.setItem('ridingo_theme_pref', userTheme);
+    } catch (e) {}
+  }, [userTheme]);
 
-      const themeVal = isDark ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', themeVal);
-      document.documentElement.style.colorScheme = themeVal;
-      document.body.setAttribute('data-theme', themeVal);
-      localStorage.setItem('ridingo_theme_pref', theme);
+  // Persist driverTheme
+  useEffect(() => {
+    try {
+      localStorage.setItem('ridingo_driver_theme', driverTheme);
+    } catch (e) {}
+  }, [driverTheme]);
+
+  // Pre-warm real device GPS location in background
+  useEffect(() => {
+    getDeviceLocation(false).catch(() => {});
+  }, []);
+
+  // Backward compatibility alias for single theme
+  const theme = view === 'driver' ? driverTheme : userTheme;
+  const setTheme = (val) => {
+    if (view === 'driver') {
+      setDriverTheme(val);
+    } else {
+      setUserTheme(val);
+    }
+  };
+
+  // Sync root (document.documentElement / Capacitor) for standalone view or active tab
+  useEffect(() => {
+    try {
+      const isStandaloneDriver = typeof document !== 'undefined' && (
+        document.body?.classList?.contains('standalone-driver') ||
+        window.location.search.includes('app=driver')
+      );
+      const activeThemeVal = (isStandaloneDriver || view === 'driver') ? driverThemeVal : userThemeVal;
+      const isDark = activeThemeVal === 'dark';
+
+      document.documentElement.setAttribute('data-theme', activeThemeVal);
+      document.documentElement.style.colorScheme = activeThemeVal;
+      document.body.setAttribute('data-theme', activeThemeVal);
 
       // Meta theme-color
       const metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -240,27 +305,7 @@ export function AppProvider({ children }) {
         StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
       }
     } catch (e) {}
-  }, [theme]);
-
-  // Dynamic system theme listener when setting is 'system'
-  useEffect(() => {
-    if (theme !== 'system') return;
-    const media = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-    if (!media) return;
-    const handleMediaChange = (e) => {
-      const isDark = e.matches;
-      const themeVal = isDark ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', themeVal);
-      document.documentElement.style.colorScheme = themeVal;
-      document.body.setAttribute('data-theme', themeVal);
-      const metaTheme = document.querySelector('meta[name="theme-color"]');
-      if (metaTheme) {
-        metaTheme.setAttribute('content', isDark ? '#0A0A0B' : '#FFFFFF');
-      }
-    };
-    media.addEventListener?.('change', handleMediaChange);
-    return () => media.removeEventListener?.('change', handleMediaChange);
-  }, [theme]);
+  }, [userThemeVal, driverThemeVal, view]);
 
   // Capacitor Android Back Button handler
   useEffect(() => {
@@ -388,6 +433,14 @@ export function AppProvider({ children }) {
       value={{
         theme,
         setTheme,
+        userTheme,
+        setUserTheme,
+        userThemeVal,
+        userIsDark: userThemeVal === 'dark',
+        driverTheme,
+        setDriverTheme,
+        driverThemeVal,
+        driverIsDark: driverThemeVal === 'dark',
         user,
         setUser,
         updateUserProfile,

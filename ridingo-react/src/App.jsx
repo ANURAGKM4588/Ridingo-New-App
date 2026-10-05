@@ -13,7 +13,7 @@ import OnboardingModal from './components/OnboardingModal';
 import DriverApp from './components/DriverApp';
 
 function MainApp() {
-  const { view, uTab, toasts } = useApp();
+  const { view, uTab, toasts, userThemeVal, userTheme, driverThemeVal, driverTheme } = useApp();
 
   return (
     <>
@@ -25,7 +25,7 @@ function MainApp() {
 
       <div className="stage" id="stage" data-view={view}>
         {/* User App Phone */}
-        <section className="col" id="col-u">
+        <section className="col" id="col-u" data-theme={userThemeVal} data-theme-setting={userTheme}>
           <h2 className="col-h">
             User app <small>Book a driver</small>
           </h2>
@@ -82,7 +82,7 @@ function MainApp() {
         </section>
 
         {/* Driver App Phone */}
-        <section className="col" id="col-d">
+        <section className="col" id="col-d" data-theme={driverThemeVal} data-theme-setting={driverTheme}>
           <h2 className="col-h">
             Driver app <small>Accept and drive</small>
           </h2>

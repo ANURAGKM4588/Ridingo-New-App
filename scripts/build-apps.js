@@ -6,9 +6,31 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const rootDir = path.resolve(__dirname, '..');
-const sourceHtmlPath = path.join(rootDir, 'index.html');
+const reactDir = path.join(rootDir, 'ridingo-react');
+const reactDistDir = path.join(reactDir, 'dist');
+
+// 1. Build modern React app if ridingo-react directory exists
+if (fs.existsSync(reactDir)) {
+  console.log('🔨 Building ridingo-react production bundle...');
+  try {
+    const buildCmd = process.platform === 'win32' ? 'cmd /c npm run build' : 'npm run build';
+    execSync(buildCmd, { cwd: reactDir, stdio: 'inherit' });
+  } catch (err) {
+    console.warn('React build warning:', err.message);
+  }
+}
+
+// Check source: prefer ridingo-react/dist/index.html, fallback to root index.html
+const useReactDist = fs.existsSync(path.join(reactDistDir, 'index.html'));
+const sourceHtmlPath = useReactDist
+  ? path.join(reactDistDir, 'index.html')
+  : path.join(rootDir, 'index.html');
+
+console.log(`📦 Using source bundle from: ${path.relative(rootDir, sourceHtmlPath)}`);
+const originalHtml = fs.readFileSync(sourceHtmlPath, 'utf8');
 
 const targets = [
   {
@@ -31,7 +53,20 @@ const targets = [
   }
 ];
 
-const originalHtml = fs.readFileSync(sourceHtmlPath, 'utf8');
+function copyFolderRecursiveSync(source, target) {
+  if (!fs.existsSync(source)) return;
+  if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
+  const items = fs.readdirSync(source);
+  for (const item of items) {
+    const srcPath = path.join(source, item);
+    const destPath = path.join(target, item);
+    if (fs.statSync(srcPath).isDirectory()) {
+      copyFolderRecursiveSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 function compileStandaloneHtml(appType, appName) {
   const isUser = appType === 'user';
@@ -54,7 +89,10 @@ function compileStandaloneHtml(appType, appName) {
       function applyStatus(){
         try {
           var saved = null;
-          try { saved = localStorage.getItem('ridingo_theme_pref'); } catch(e){}
+          try { saved = localStorage.getItem('ridingo_${appType}_theme'); } catch(e){}
+          if (!saved) {
+            try { saved = localStorage.getItem('ridingo_theme_pref'); } catch(e){}
+          }
           var isDark = false;
           if (saved === 'dark') {
             isDark = true;
@@ -118,6 +156,12 @@ targets.forEach(t => {
 
   t.distDirs.forEach(dir => {
     fs.mkdirSync(dir, { recursive: true });
+
+    // Copy reactDist files (assets, images, fonts) into target directory
+    if (useReactDist) {
+      copyFolderRecursiveSync(reactDistDir, dir);
+    }
+
     fs.writeFileSync(path.join(dir, 'index.html'), compiledHtml, 'utf8');
     fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
   });
