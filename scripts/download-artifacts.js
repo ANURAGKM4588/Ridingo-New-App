@@ -3,10 +3,10 @@ const path = require('path');
 const https = require('https');
 
 const files = [
-  { name: 'Ridingo-User.apk', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-12/Ridingo-User.apk' },
-  { name: 'Ridingo-Driver.apk', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-12/Ridingo-Driver.apk' },
-  { name: 'Ridingo-User.ipa', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-12/Ridingo-User.ipa' },
-  { name: 'Ridingo-Driver.ipa', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-12/Ridingo-Driver.ipa' },
+  { name: 'Ridingo-User.apk', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-13/Ridingo-User.apk' },
+  { name: 'Ridingo-Driver.apk', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-13/Ridingo-Driver.apk' },
+  { name: 'Ridingo-User.ipa', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-13/Ridingo-User.ipa' },
+  { name: 'Ridingo-Driver.ipa', url: 'https://github.com/ANURAGKM4588/Ridingo-New-App/releases/download/release-build-13/Ridingo-Driver.ipa' },
 ];
 
 const outDir = path.resolve(__dirname, '..', 'build-outputs');

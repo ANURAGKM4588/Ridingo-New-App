@@ -3422,20 +3422,34 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 0;
-      padding: 32px 28px 40px;
+      justify-content: space-between;
+      padding: calc(env(safe-area-inset-top, 24px) + 24px) 28px calc(env(safe-area-inset-bottom, 16px) + 24px);
       background: var(--surface);
+      text-align: center;
+      box-sizing: border-box;
+      height: 100%;
+    }
+
+    .ob-splash-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      width: 100%;
+      max-width: 320px;
+      margin: auto 0;
     }
 
     .ob-splash-logo {
-      width: 80px;
-      height: 80px;
-      border-radius: 24px;
+      width: 88px;
+      height: 88px;
+      border-radius: 26px;
       background: var(--yellow);
       color: var(--on-yellow);
       display: grid;
       place-items: center;
+      margin: 0 auto;
       box-shadow: 0 16px 40px -8px rgba(255,199,10,.55);
       animation: pop .6s cubic-bezier(.2,.9,.25,1) .12s both;
       flex: none;
@@ -3445,23 +3459,25 @@
       font: 800 38px/1 var(--font-display);
       letter-spacing: -.04em;
       color: var(--ink);
-      margin-top: 20px;
+      margin-top: 22px;
+      text-align: center;
       animation: pop .55s cubic-bezier(.2,.9,.25,1) .22s both;
     }
 
     .ob-splash-sub {
-      font-size: 14.5px;
+      font-size: 15px;
       color: var(--muted);
       text-align: center;
-      margin-top: 8px;
-      line-height: 1.4;
-      max-width: 230px;
+      margin-top: 10px;
+      line-height: 1.45;
+      max-width: 260px;
       animation: pop .5s cubic-bezier(.2,.9,.25,1) .32s both;
     }
 
     .ob-splash-cta {
-      margin-top: 40px;
       width: 100%;
+      max-width: 360px;
+      margin: 0 auto;
       animation: up .55s cubic-bezier(.2,.9,.25,1) .4s both;
     }
 
@@ -3470,12 +3486,18 @@
       flex: 1;
       display: flex;
       flex-direction: column;
+      height: 100%;
+      position: relative;
+      background: var(--surface);
     }
 
     .ob-walk-slides {
       flex: 1;
       position: relative;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .ob-slide {
@@ -3484,12 +3506,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-end;
-      padding: 0 28px 28px;
+      justify-content: center;
+      text-align: center;
+      padding: calc(env(safe-area-inset-top, 24px) + 16px) 28px 16px;
       opacity: 0;
       transform: translateX(48px);
       transition: opacity .4s cubic-bezier(.25,1,.35,1), transform .4s cubic-bezier(.25,1,.35,1);
       pointer-events: none;
+      box-sizing: border-box;
     }
 
     .ob-slide.active {
@@ -3504,88 +3528,116 @@
       pointer-events: none;
     }
 
+    .ob-slide-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      width: 100%;
+      max-width: 320px;
+      margin: auto 0;
+    }
+
     .ob-slide-illo {
-      width: 200px;
-      height: 200px;
-      border-radius: 40px;
+      width: 190px;
+      height: 190px;
+      border-radius: 44px;
       display: grid;
       place-items: center;
-      margin-bottom: 24px;
+      margin: 0 auto 28px;
       position: relative;
       flex: none;
+      box-shadow: 0 20px 48px -12px rgba(0,0,0,0.18);
     }
 
     .ob-slide-illo-bg {
       position: absolute;
       inset: 0;
-      border-radius: 40px;
+      border-radius: 44px;
       opacity: .12;
     }
 
     .ob-slide-icon {
       position: relative;
       z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .ob-slide-title {
-      font: 700 24px/1.15 var(--font-display);
+      font: 800 26px/1.2 var(--font-display);
       letter-spacing: -.03em;
       color: var(--ink);
       text-align: center;
-      margin-bottom: 10px;
+      margin: 0 0 12px;
     }
 
     .ob-slide-body {
-      font-size: 14px;
+      font-size: 14.5px;
       color: var(--muted);
       text-align: center;
       line-height: 1.5;
-      max-width: 280px;
+      max-width: 290px;
+      margin: 0 auto;
     }
 
     .ob-walk-foot {
-      padding: 0 20px 32px;
+      padding: 16px 24px calc(env(safe-area-inset-bottom, 16px) + 24px);
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
       flex: none;
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      box-sizing: border-box;
+      z-index: 10;
     }
 
     .ob-dots {
       display: flex;
       justify-content: center;
-      gap: 7px;
-      margin-bottom: 4px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
     }
 
     .ob-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 3px;
-      background: var(--bar);
+      width: 7px;
+      height: 7px;
+      border-radius: 4px;
+      background: var(--line-strong);
       transition: width .3s cubic-bezier(.25,1,.35,1), background .3s;
     }
 
     .ob-dot.on {
-      width: 22px;
+      width: 24px;
       background: var(--yellow);
     }
 
     .ob-walk-btns {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
+      width: 100%;
     }
 
     .ob-skip-btn {
       flex: none;
       height: 52px;
-      padding: 0 18px;
+      padding: 0 22px;
       border-radius: 16px;
       font-size: 15px;
       font-weight: 600;
       color: var(--muted);
       background: var(--field);
+      border: 1px solid var(--line);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: background .15s, color .15s;
     }
 
@@ -7722,17 +7774,18 @@ function renderOb(){
 
 function obSplashHTML(){
   return '<div class="ob-splash">'+
-    '<span class="ob-splash-logo">'+
-      '<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--on-yellow)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
-        '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/>'+
-        '<path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21"/>'+
-      '</svg>'+
-    '</span>'+
-    '<b class="ob-splash-title">Ridingo</b>'+
-    '<p class="ob-splash-sub">Professional drivers for your own car. Hire by the hour, day or airport run.</p>'+
+    '<div class="ob-splash-center">'+
+      '<span class="ob-splash-logo">'+
+        '<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--on-yellow)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+          '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/>'+
+          '<path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21"/>'+
+        '</svg>'+
+      '</span>'+
+      '<b class="ob-splash-title">Ridingo</b>'+
+      '<p class="ob-splash-sub">Professional drivers for your own car. Hire by the hour, day or airport run.</p>'+
+    '</div>'+
     '<div class="ob-splash-cta">'+
       '<button class="btn primary block" data-ob="getstarted">Get Started</button>'+
-      '<button style="width:100%;margin-top:10px;height:52px;border-radius:16px;font-size:15px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer" data-ob="gotologin">I already have an account</button>'+
     '</div>'+
   '</div>';
 }
@@ -7740,13 +7793,15 @@ function obSplashHTML(){
 function obWalkHTML(){
   const slides=OB_SLIDES.map((s,i)=>{
     const bg=s.color;
-    return '<div class="ob-slide" id="ob-slide-'+i+'" aria-hidden="'+(i!==0)+'">'  +
-      '<div class="ob-slide-illo" style="background:'+bg+'">'+
-        '<div class="ob-slide-illo-bg" style="background:'+bg+'"></div>'+
-        '<span class="ob-slide-icon">'+s.svg+'</span>'+
+    return '<div class="ob-slide" id="ob-slide-'+i+'" aria-hidden="'+(i!==0)+'">'+
+      '<div class="ob-slide-center">'+
+        '<div class="ob-slide-illo" style="background:'+bg+'">'+
+          '<div class="ob-slide-illo-bg" style="background:'+bg+'"></div>'+
+          '<span class="ob-slide-icon">'+s.svg+'</span>'+
+        '</div>'+
+        '<h2 class="ob-slide-title">'+s.title+'</h2>'+
+        '<p class="ob-slide-body">'+s.body+'</p>'+
       '</div>'+
-      '<h2 class="ob-slide-title">'+s.title+'</h2>'+
-      '<p class="ob-slide-body">'+s.body+'</p>'+
     '</div>';
   }).join('');
   return '<div class="ob-walk">'+
