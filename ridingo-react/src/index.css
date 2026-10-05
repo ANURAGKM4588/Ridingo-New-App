@@ -597,8 +597,9 @@
       box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.06) !important;
     }
 
-    body:has(.ob-screen) .nav,
-    .ob-screen ~ .nav,
+    #col-u:has(.ob-screen) #u-nav,
+    .ob-screen ~ #u-nav,
+    body.standalone-app:has(.ob-screen) #u-nav,
     body.standalone-app .nav[style*="display: none"] {
       display: none !important;
     }
