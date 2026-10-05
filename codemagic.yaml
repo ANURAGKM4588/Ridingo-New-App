@@ -40,27 +40,20 @@ workflows:
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_user
           cp -f /tmp/user_pubspec.yaml pubspec.yaml
           sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
+          sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = 0000000000;/g' ios/Runner.xcodeproj/project.pbxproj || true
           flutter pub get
 
       - name: Compile Ridingo User iOS App
         script: |
-          cd ridingo_flutter/ridingo_user/ios
-          pod install
-          xcodebuild build \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            -derivedDataPath ../build/derived
+          cd ridingo_flutter/ridingo_user
+          flutter build ios --no-codesign --release
 
       - name: Package Ridingo User Release IPA
         script: |
           mkdir -p "$CM_BUILD_DIR/build-outputs"
-          cd ridingo_flutter/ridingo_user
-          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          cd "$CM_BUILD_DIR/ridingo_flutter/ridingo_user"
+          APP_PATH=$(find build/ios/iphoneos -name "*.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then APP_PATH=$(find build -name "*.app" -type d | head -n 1); fi
           echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_user/Payload
           cp -R "$APP_PATH" payload_user/Payload/
@@ -78,27 +71,20 @@ workflows:
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_driver
           cp -f /tmp/driver_pubspec.yaml pubspec.yaml
           sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
+          sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = 0000000000;/g' ios/Runner.xcodeproj/project.pbxproj || true
           flutter pub get
 
       - name: Compile Ridingo Driver iOS App
         script: |
-          cd ridingo_flutter/ridingo_driver/ios
-          pod install
-          xcodebuild build \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            -derivedDataPath ../build/derived
+          cd ridingo_flutter/ridingo_driver
+          flutter build ios --no-codesign --release
 
       - name: Package Ridingo Driver Release IPA
         script: |
           mkdir -p "$CM_BUILD_DIR/build-outputs"
-          cd ridingo_flutter/ridingo_driver
-          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          cd "$CM_BUILD_DIR/ridingo_flutter/ridingo_driver"
+          APP_PATH=$(find build/ios/iphoneos -name "*.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then APP_PATH=$(find build -name "*.app" -type d | head -n 1); fi
           echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_driver/Payload
           cp -R "$APP_PATH" payload_driver/Payload/
@@ -146,25 +132,18 @@ workflows:
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_user
           cp -f /tmp/user_pubspec.yaml pubspec.yaml
           sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
+          sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = 0000000000;/g' ios/Runner.xcodeproj/project.pbxproj || true
           flutter pub get
       - name: Build iOS Application
         script: |
-          cd ridingo_flutter/ridingo_user/ios
-          pod install
-          xcodebuild build \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            -derivedDataPath ../build/derived
+          cd ridingo_flutter/ridingo_user
+          flutter build ios --no-codesign --release
       - name: Package IPA
         script: |
           mkdir -p "$CM_BUILD_DIR/build-outputs"
-          cd ridingo_flutter/ridingo_user
-          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          cd "$CM_BUILD_DIR/ridingo_flutter/ridingo_user"
+          APP_PATH=$(find build/ios/iphoneos -name "*.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then APP_PATH=$(find build -name "*.app" -type d | head -n 1); fi
           echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_user/Payload
           cp -R "$APP_PATH" payload_user/Payload/
@@ -202,25 +181,18 @@ workflows:
           flutter create . --platforms=android,ios --org com.ridingo --project-name ridingo_driver
           cp -f /tmp/driver_pubspec.yaml pubspec.yaml
           sed -i '' "s/# platform :ios, '12.0'/platform :ios, '13.0'/" ios/Podfile || true
+          sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = 0000000000;/g' ios/Runner.xcodeproj/project.pbxproj || true
           flutter pub get
       - name: Build iOS Application
         script: |
-          cd ridingo_flutter/ridingo_driver/ios
-          pod install
-          xcodebuild build \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            -derivedDataPath ../build/derived
+          cd ridingo_flutter/ridingo_driver
+          flutter build ios --no-codesign --release
       - name: Package IPA
         script: |
           mkdir -p "$CM_BUILD_DIR/build-outputs"
-          cd ridingo_flutter/ridingo_driver
-          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          cd "$CM_BUILD_DIR/ridingo_flutter/ridingo_driver"
+          APP_PATH=$(find build/ios/iphoneos -name "*.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then APP_PATH=$(find build -name "*.app" -type d | head -n 1); fi
           echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_driver/Payload
           cp -R "$APP_PATH" payload_driver/Payload/
