@@ -126,27 +126,24 @@ class WalletTab extends ConsumerWidget {
           children: [
             Text(
               'Wallet',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isDark ? AppColors.inkDark : AppColors.inkLight),
+              style: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, height: 1.1, letterSpacing: -1.0, color: isDark ? AppColors.inkDark : AppColors.inkLight),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               'Advance payments and rewards',
-              style: TextStyle(fontSize: 14, color: isDark ? AppColors.mutedDark : AppColors.mutedLight),
+              style: TextStyle(fontSize: 15, color: isDark ? AppColors.mutedDark : AppColors.mutedLight),
             ),
             const SizedBox(height: 16),
 
-            // Digital Wallet Card
+            // Digital Wallet Card (matches web .walletcard exactly)
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E1E24), Color(0xFF121215)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
+                color: const Color(0xFF111215),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
+                  BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 36, offset: const Offset(0, 16)),
                 ],
               ),
               child: Column(
@@ -155,52 +152,79 @@ class WalletTab extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Ridingo',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
-                      ),
+                      const Text('Ridingo', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.yellow.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.white.withOpacity(0.09),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: Colors.white.withOpacity(0.12)),
                         ),
-                        child: const Text('Digital Wallet', style: TextStyle(color: AppColors.yellow, fontSize: 11, fontWeight: FontWeight.w700)),
+                        child: const Text('Digital Wallet', style: TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  const Text('Current Balance', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 22),
+                  const Text('Current Balance', style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.1)),
+                  const SizedBox(height: 6),
                   Text(
-                    '₹$balance',
-                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900),
+                    '\u20b9$balance',
+                    style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: -1.2),
                   ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _openAddMoneySheet(context, ref),
-                      icon: const Icon(CupertinoIcons.add, size: 16),
-                      label: const Text('Add Funds', style: TextStyle(fontWeight: FontWeight.w700)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.yellow,
-                        foregroundColor: AppColors.onYellow,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
+                  const SizedBox(height: 24),
+                  Container(
+                    height: 0.5,
+                    color: Colors.white.withOpacity(0.1),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      InkWell(
+                        onTap: () => _openAddMoneySheet(context, ref),
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 10, offset: const Offset(0, 4))],
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(CupertinoIcons.add, size: 14, color: Color(0xFF111215)),
+                              SizedBox(width: 5),
+                              Text('Add Fund', style: TextStyle(color: Color(0xFF111215), fontWeight: FontWeight.w700, fontSize: 13)),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                      Row(
+                        children: [
+                          Icon(CupertinoIcons.gift, size: 15, color: Colors.white.withOpacity(0.7)),
+                          const SizedBox(width: 5),
+                          Text(
+                            '\u20b9${txs.where((t) => t.type == 'cashback').fold(0, (s, t) => s + t.amount)} cashback',
+                            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
             // Transactions Header
-            Text(
-              'Recent Transactions',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: isDark ? AppColors.inkDark : AppColors.inkLight),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('Transaction', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4, color: isDark ? AppColors.inkDark : AppColors.inkLight)),
+                Text('View All', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: isDark ? AppColors.mutedDark : AppColors.mutedLight)),
+              ],
             ),
             const SizedBox(height: 12),
 

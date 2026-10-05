@@ -172,8 +172,10 @@ class ProfileTab extends ConsumerWidget {
           children: [
             Text(
               'Profile',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isDark ? AppColors.inkDark : AppColors.inkLight),
+              style: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, height: 1.1, letterSpacing: -1.0, color: isDark ? AppColors.inkDark : AppColors.inkLight),
             ),
+            const SizedBox(height: 4),
+            Text('Account & preferences', style: TextStyle(fontSize: 15, color: isDark ? AppColors.mutedDark : AppColors.mutedLight)),
             const SizedBox(height: 18),
 
             // Avatar & Profile Center Card

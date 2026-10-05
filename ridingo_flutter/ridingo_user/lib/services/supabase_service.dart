@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/trip_model.dart';
 import '../models/user_model.dart';
@@ -45,7 +44,6 @@ class SupabaseService {
       final cleanDigits = phoneOrEmail.replaceAll(RegExp(r'\D'), '');
       final isEmail = phoneOrEmail.contains('@');
 
-      PostgrestFilterBuilder query = client.from('profiles').select();
       if (!isEmail && cleanDigits.length >= 10) {
         final last10 = cleanDigits.substring(cleanDigits.length - 10);
         final res = await client.from('profiles').select().ilike('phone', '%$last10%').limit(1);

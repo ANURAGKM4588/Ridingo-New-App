@@ -19,7 +19,6 @@ class _BookingBottomSheetState extends ConsumerState<BookingBottomSheet> {
   int _qty = 2;
   final TextEditingController _pickupCtrl = TextEditingController(text: 'Edappally Toll, Kochi');
   final TextEditingController _dropCtrl = TextEditingController(text: 'Cochin International Airport (COK)');
-  bool _isScheduled = false;
 
   final Map<String, Map<String, dynamic>> _catConfig = {
     'hourly': {'name': 'Hourly Chauffeur', 'base': 398, 'rate': 199, 'unit': 'hrs', 'min': 2, 'max': 12},
