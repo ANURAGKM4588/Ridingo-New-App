@@ -9,9 +9,6 @@ export default function OnboardingModal() {
   // Active top tab: 'signin' | 'register'
   const [activeTab, setActiveTab] = useState('signin');
 
-  // Sign In method: 'mobile' | 'email'
-  const [signInMethod, setSignInMethod] = useState('mobile');
-
   // Flow step: 'form' | 'otp'
   const [step, setStep] = useState('form');
 
@@ -30,17 +27,14 @@ export default function OnboardingModal() {
 
   const handleSignInSubmit = (e) => {
     e.preventDefault();
-    if (signInMethod === 'mobile') {
-      const cleanPhone = phone.replace(/\D/g, '');
-      if (cleanPhone.length < 10) {
-        addToast('Please enter a valid 10-digit mobile number', 'warn');
-        return;
-      }
-    } else {
-      if (!email || !email.includes('@')) {
-        addToast('Please enter a valid email address', 'warn');
-        return;
-      }
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      addToast('Please enter a valid 10-digit mobile number', 'warn');
+      return;
+    }
+    if (!email || !email.includes('@')) {
+      addToast('Please enter a valid email address', 'warn');
+      return;
     }
     setStep('otp');
     addToast('Verification code sent: 4821', 'check');
@@ -75,15 +69,10 @@ export default function OnboardingModal() {
         phone: regMobile.trim()
       });
     } else {
-      if (signInMethod === 'mobile') {
-        loginWithDetails({
-          phone: phone.trim()
-        });
-      } else {
-        loginWithDetails({
-          email: email.trim()
-        });
-      }
+      loginWithDetails({
+        phone: phone.trim(),
+        email: email.trim() || 'arjun.menon@example.com'
+      });
     }
   };
 
@@ -197,9 +186,9 @@ export default function OnboardingModal() {
             }}
           >
             {step === 'otp'
-              ? `Enter the 6-digit verification code sent to your ${activeTab === 'register' ? 'mobile' : signInMethod === 'mobile' ? 'mobile number' : 'email ID'}`
+              ? `Enter the 6-digit verification code sent to your mobile & email`
               : activeTab === 'signin'
-              ? 'Sign in to access your rides and chauffeur services'
+              ? 'Sign in with your mobile number & email ID'
               : 'Sign up in seconds for on-demand personal drivers'}
           </p>
         </div>
@@ -345,149 +334,111 @@ export default function OnboardingModal() {
           </form>
         ) : activeTab === 'signin' ? (
           /* ========================================================
-             SECTION 1: SIGN IN (Mobile No or Email ID + OTP Verification)
+             SECTION 1: SIGN IN (Mobile Number + Email ID + OTP)
              ======================================================== */
-          <form onSubmit={handleSignInSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
-            {/* Mobile No vs Email ID Toggle Switcher */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '2px' }}>
-              <button
-                type="button"
-                onClick={() => setSignInMethod('mobile')}
+          <form onSubmit={handleSignInSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+            {/* Field 1: Mobile Number */}
+            <div>
+              <label
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: signInMethod === 'mobile' ? '1.5px solid var(--yellow)' : '1px solid var(--line)',
-                  background: signInMethod === 'mobile' ? 'rgba(255, 199, 10, 0.15)' : 'var(--card)',
-                  color: signInMethod === 'mobile' ? 'var(--ink)' : 'var(--muted)',
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 700,
-                  cursor: 'pointer'
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color: 'var(--muted)',
+                  display: 'block',
+                  marginBottom: '5px'
                 }}
               >
-                📱 Mobile No
-              </button>
-              <button
-                type="button"
-                onClick={() => setSignInMethod('email')}
+                Mobile Number
+              </label>
+              <div
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: signInMethod === 'email' ? '1.5px solid var(--yellow)' : '1px solid var(--line)',
-                  background: signInMethod === 'email' ? 'rgba(255, 199, 10, 0.15)' : 'var(--card)',
-                  color: signInMethod === 'email' ? 'var(--ink)' : 'var(--muted)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
+                  display: 'flex',
+                  alignItems: 'center',
+                  height: '48px',
+                  borderRadius: '14px',
+                  background: 'var(--card)',
+                  border: '1.5px solid var(--line)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  overflow: 'hidden'
                 }}
               >
-                ✉️ Email ID
-              </button>
-            </div>
-
-            {signInMethod === 'mobile' ? (
-              <div>
-                <label
+                <span
                   style={{
-                    fontSize: '11px',
+                    padding: '0 12px',
+                    fontSize: '14px',
                     fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    color: 'var(--muted)',
-                    display: 'block',
-                    textAlign: 'center',
-                    marginBottom: '6px'
-                  }}
-                >
-                  Enter Mobile Number
-                </label>
-                <div
-                  style={{
+                    color: 'var(--ink)',
+                    borderRight: '1px solid var(--line)',
+                    height: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    height: '48px',
-                    borderRadius: '14px',
-                    background: 'var(--card)',
-                    border: '1.5px solid var(--line)',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                    overflow: 'hidden'
+                    background: 'var(--field)',
+                    flexShrink: 0
                   }}
                 >
-                  <span
-                    style={{
-                      padding: '0 12px',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      color: 'var(--ink)',
-                      borderRight: '1px solid var(--line)',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      background: 'var(--field)',
-                      flexShrink: 0
-                    }}
-                  >
-                    🇮🇳 +91
-                  </span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    value={phone}
-                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    placeholder="98765 43210"
-                    style={{
-                      flex: 1,
-                      height: '100%',
-                      border: 'none',
-                      outline: 'none',
-                      background: 'transparent',
-                      padding: '0 12px',
-                      fontSize: '15.5px',
-                      fontWeight: 600,
-                      color: 'var(--ink)',
-                      letterSpacing: '0.04em'
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div>
-                <label
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    color: 'var(--muted)',
-                    display: 'block',
-                    textAlign: 'center',
-                    marginBottom: '6px'
-                  }}
-                >
-                  Enter Email ID
-                </label>
+                  🇮🇳 +91
+                </span>
                 <input
-                  type="email"
-                  inputMode="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={phone}
+                  onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="98765 43210"
                   style={{
-                    width: '100%',
-                    height: '48px',
-                    borderRadius: '14px',
-                    background: 'var(--card)',
-                    border: '1.5px solid var(--line)',
-                    padding: '0 14px',
-                    fontSize: '14.5px',
+                    flex: 1,
+                    height: '100%',
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    padding: '0 12px',
+                    fontSize: '15.5px',
                     fontWeight: 600,
                     color: 'var(--ink)',
-                    outline: 'none',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                    letterSpacing: '0.04em'
                   }}
                 />
               </div>
-            )}
+            </div>
+
+            {/* Field 2: Email ID (New filling section) */}
+            <div>
+              <label
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color: 'var(--muted)',
+                  display: 'block',
+                  marginBottom: '5px'
+                }}
+              >
+                Email ID
+              </label>
+              <input
+                type="email"
+                inputMode="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  borderRadius: '14px',
+                  background: 'var(--card)',
+                  border: '1.5px solid var(--line)',
+                  padding: '0 14px',
+                  fontSize: '14.5px',
+                  fontWeight: 600,
+                  color: 'var(--ink)',
+                  outline: 'none',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                }}
+              />
+            </div>
 
             <button
               type="submit"
@@ -505,7 +456,7 @@ export default function OnboardingModal() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginTop: '2px'
+                marginTop: '4px'
               }}
             >
               Continue with OTP
