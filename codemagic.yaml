@@ -44,15 +44,26 @@ workflows:
 
       - name: Compile Ridingo User iOS App
         script: |
-          cd ridingo_flutter/ridingo_user
-          flutter build ios --no-codesign --release
+          cd ridingo_flutter/ridingo_user/ios
+          pod install
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath ../build/derived
 
       - name: Package Ridingo User Release IPA
         script: |
           mkdir -p "$CM_BUILD_DIR/build-outputs"
           cd ridingo_flutter/ridingo_user
+          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_user/Payload
-          cp -R build/ios/iphoneos/Runner.app payload_user/Payload/
+          cp -R "$APP_PATH" payload_user/Payload/
           cd payload_user
           zip -r -y "$CM_BUILD_DIR/build-outputs/Ridingo-User.ipa" Payload
           cd ..
@@ -71,14 +82,26 @@ workflows:
 
       - name: Compile Ridingo Driver iOS App
         script: |
-          cd ridingo_flutter/ridingo_driver
-          flutter build ios --no-codesign --release
+          cd ridingo_flutter/ridingo_driver/ios
+          pod install
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath ../build/derived
 
       - name: Package Ridingo Driver Release IPA
         script: |
+          mkdir -p "$CM_BUILD_DIR/build-outputs"
           cd ridingo_flutter/ridingo_driver
+          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_driver/Payload
-          cp -R build/ios/iphoneos/Runner.app payload_driver/Payload/
+          cp -R "$APP_PATH" payload_driver/Payload/
           cd payload_driver
           zip -r -y "$CM_BUILD_DIR/build-outputs/Ridingo-Driver.ipa" Payload
           cd ..
@@ -126,18 +149,30 @@ workflows:
           flutter pub get
       - name: Build iOS Application
         script: |
-          cd ridingo_flutter/ridingo_user
-          flutter build ios --no-codesign --release
+          cd ridingo_flutter/ridingo_user/ios
+          pod install
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath ../build/derived
       - name: Package IPA
         script: |
           mkdir -p "$CM_BUILD_DIR/build-outputs"
           cd ridingo_flutter/ridingo_user
+          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_user/Payload
-          cp -R build/ios/iphoneos/Runner.app payload_user/Payload/
+          cp -R "$APP_PATH" payload_user/Payload/
           cd payload_user
           zip -r -y "$CM_BUILD_DIR/build-outputs/Ridingo-User.ipa" Payload
           cd ..
           rm -rf payload_user
+          echo "Successfully generated: $CM_BUILD_DIR/build-outputs/Ridingo-User.ipa"
     artifacts:
       - build-outputs/Ridingo-User.ipa
 
@@ -170,17 +205,29 @@ workflows:
           flutter pub get
       - name: Build iOS Application
         script: |
-          cd ridingo_flutter/ridingo_driver
-          flutter build ios --no-codesign --release
+          cd ridingo_flutter/ridingo_driver/ios
+          pod install
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath ../build/derived
       - name: Package IPA
         script: |
           mkdir -p "$CM_BUILD_DIR/build-outputs"
           cd ridingo_flutter/ridingo_driver
+          APP_PATH=$(find build -name "Runner.app" -type d | head -n 1)
+          echo "Found compiled app at: $APP_PATH"
           mkdir -p payload_driver/Payload
-          cp -R build/ios/iphoneos/Runner.app payload_driver/Payload/
+          cp -R "$APP_PATH" payload_driver/Payload/
           cd payload_driver
           zip -r -y "$CM_BUILD_DIR/build-outputs/Ridingo-Driver.ipa" Payload
           cd ..
           rm -rf payload_driver
+          echo "Successfully generated: $CM_BUILD_DIR/build-outputs/Ridingo-Driver.ipa"
     artifacts:
       - build-outputs/Ridingo-Driver.ipa
