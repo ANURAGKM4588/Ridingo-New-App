@@ -109,53 +109,61 @@ export default function BookingSheet() {
       <div className="scrim" onClick={handleClose} />
 
       <div className="sheet" role="dialog" aria-modal="true">
-        <div className="grab" />
-
         {isSuccess && confirmedTrip ? (
           /* ---------- Request Sent Confirmation View ---------- */
-          <div className="ok">
-            <span className="ok-ic">
-              <Icon name="check" size={32} />
-            </span>
-            <h3>Request sent</h3>
-            <p>We sent your request to drivers near you. You will get a notification when a driver accepts.</p>
+          <div className="sheet-scroll-body" style={{ padding: '20px 20px 36px' }}>
+            <div className="grab" />
+            <div className="ok">
+              <span className="ok-ic">
+                <Icon name="check" size={32} />
+              </span>
+              <h3>Request sent</h3>
+              <p>We sent your request to drivers near you. You will get a notification when a driver accepts.</p>
 
-            <div className="cbwin">
-              <Icon name="gift" size={20} /> You got ₹{confirmedTrip.cashback} cashback
+              <div className="cbwin">
+                <Icon name="gift" size={20} /> You got ₹{confirmedTrip.cashback} cashback
+              </div>
+
+              <div className="kv" style={{ textAlign: 'left', marginBottom: '16px' }}>
+                <div>
+                  <span>Trip ID</span>
+                  <b>{confirmedTrip.id}</b>
+                </div>
+                <div>
+                  <span>When</span>
+                  <b>{dateStr} · {timeStr}</b>
+                </div>
+                <div>
+                  <span>Advance paid</span>
+                  <b>₹{confirmedTrip.advance}</b>
+                </div>
+                <div>
+                  <span>Wallet balance</span>
+                  <b>₹{userBalance.toLocaleString('en-IN')}</b>
+                </div>
+              </div>
+
+              <button className="btn solid block" onClick={handleClose}>
+                Done
+              </button>
             </div>
-
-            <div className="kv" style={{ textAlign: 'left', marginBottom: '16px' }}>
-              <div>
-                <span>Trip ID</span>
-                <b>{confirmedTrip.id}</b>
-              </div>
-              <div>
-                <span>When</span>
-                <b>{dateStr} · {timeStr}</b>
-              </div>
-              <div>
-                <span>Advance paid</span>
-                <b>₹{confirmedTrip.advance}</b>
-              </div>
-              <div>
-                <span>Wallet balance</span>
-                <b>₹{userBalance.toLocaleString('en-IN')}</b>
-              </div>
-            </div>
-
-            <button className="btn solid block" onClick={handleClose}>
-              Done
-            </button>
           </div>
         ) : (
           /* ---------- Booking Details Form (Matching User's Reference Screenshot) ---------- */
           <>
-            <div className="sheet-h">
-              <h3>Book a driver</h3>
-              <button className="iconbtn" onClick={handleClose} aria-label="Close">
-                <Icon name="x" size={18} />
-              </button>
+            {/* Sticky Header: Top Grab Bar + Title + Close Button */}
+            <div className="sheet-sticky-top">
+              <div className="grab" />
+              <div className="sheet-h">
+                <h3>Book a driver</h3>
+                <button className="iconbtn" onClick={handleClose} aria-label="Close">
+                  <Icon name="x" size={18} />
+                </button>
+              </div>
             </div>
+
+            {/* Scrollable Body: All details with smooth scroll animation */}
+            <div className="sheet-scroll-body">
 
             {/* Category Chips - Horizontal Scrolling Style */}
             <div
@@ -327,35 +335,7 @@ export default function BookingSheet() {
               ))}
             </div>
 
-            {/* Your Car Card */}
-            <div className="lab" style={{ marginTop: '10px' }}>
-              Your car
-            </div>
-            <div className="carrow">
-              <span
-                className="ico"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '12px',
-                  background: 'var(--yellow)',
-                  color: 'var(--on-yellow)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  flexShrink: 0
-                }}
-              >
-                <Icon name="car" size={20} />
-              </span>
-              <div className="grow">
-                <b style={{ display: 'block', fontSize: '15px' }}>
-                  {user?.car?.model || 'Hyundai Creta'}
-                </b>
-                <span className="sub" style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                  {user?.car?.plate || 'KL 07 AB 4821'} · {trans}
-                </span>
-              </div>
-            </div>
+
 
             {/* Total Fare Card (.meter) */}
             <div className="meter" style={{ marginTop: '18px' }}>
@@ -412,6 +392,7 @@ export default function BookingSheet() {
             >
               Pay ₹{adv} and send request
             </button>
+            </div>
           </>
         )}
       </div>

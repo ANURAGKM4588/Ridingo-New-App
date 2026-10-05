@@ -773,23 +773,50 @@
       max-width: 100% !important;
       box-sizing: border-box !important;
       max-height: 93%;
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
       touch-action: pan-y !important;
       -ms-touch-action: pan-y !important;
       overscroll-behavior-x: none !important;
       overscroll-behavior-y: contain !important;
-      -webkit-overflow-scrolling: touch !important;
       background: var(--sheet);
       border-radius: 38px 38px 0 0;
-      padding: 8px 20px 36px;
+      padding: 0 !important;
       pointer-events: auto;
       animation: up .38s cubic-bezier(.2, .9, .25, 1);
-      scrollbar-width: none;
       box-shadow: 0 -10px 40px rgba(0, 0, 0, .18);
     }
 
-    .sheet::-webkit-scrollbar {
+    .sheet-sticky-top {
+      position: relative;
+      flex-shrink: 0;
+      background: var(--sheet);
+      border-radius: 38px 38px 0 0;
+      padding: 10px 20px 4px;
+      z-index: 15;
+    }
+
+    .sheet-scroll-body {
+      flex: 1;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      touch-action: pan-y !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior-y: contain !important;
+      scroll-behavior: smooth;
+      padding: 4px 20px 36px;
+      scrollbar-width: none;
+      animation: sheetBodyFade .25s ease-out;
+    }
+
+    @keyframes sheetBodyFade {
+      from { opacity: 0.7; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .sheet::-webkit-scrollbar,
+    .sheet-scroll-body::-webkit-scrollbar {
       display: none;
     }
 
