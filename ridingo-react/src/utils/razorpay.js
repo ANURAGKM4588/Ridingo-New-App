@@ -1,9 +1,9 @@
 /**
  * Razorpay Payment Gateway Integration
- * Key ID: rzp_test_TMCUCKawLwdbmz (Test Mode)
+ * Key ID: rzp_test_TkLGqvXMOFDbFY (Test Mode)
  */
 
-export const RAZORPAY_KEY_ID = 'rzp_test_TMCUCKawLwdbmz';
+export const RAZORPAY_KEY_ID = 'rzp_test_TkLGqvXMOFDbFY';
 
 /**
  * Ensures Razorpay Checkout script is loaded
@@ -121,4 +121,47 @@ export function processRazorpayCashbackTransfer({
     amount,
     timestamp: Date.now()
   };
+}
+
+/**
+ * Creates an order directly via the Razorpay Orders API
+ * POST https://api.razorpay.com/v1/orders
+ * 
+ * Note: Key Secret should be kept secure on server / edge function.
+ */
+export async function createRazorpayOrder({
+  amount, // In rupees (e.g. 500)
+  currency = 'INR',
+  receipt = 'rcpt_' + Date.now().toString(36),
+  notes = {},
+  keyId = RAZORPAY_KEY_ID,
+  keySecret
+}) {
+  if (!keySecret) {
+    throw new Error('Razorpay Key Secret is required to create an order via the Orders API.');
+  }
+
+  const amountInPaise = Math.round(amount * 100);
+  const authHeader = 'Basic ' + (typeof btoa !== 'undefined' ? btoa(`${keyId}:${keySecret}`) : Buffer.from(`${keyId}:${keySecret}`).toString('base64'));
+
+  const response = await fetch('https://api.razorpay.com/v1/orders', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': authHeader
+    },
+    body: JSON.stringify({
+      amount: amountInPaise,
+      currency,
+      receipt,
+      notes
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.description || 'Failed to create Razorpay Order');
+  }
+
+  return data;
 }
