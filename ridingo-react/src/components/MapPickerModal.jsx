@@ -4,8 +4,6 @@ import Icon from './Icon';
 import { getDeviceLocation, reverseGeocode, getCachedDeviceLocation } from '../lib/deviceLocation';
 
 export default function MapPickerModal({ isOpen, onClose, onSelect, targetField = 'pickup' }) {
-  if (!isOpen) return null;
-
   const label = targetField === 'pickup' ? 'Pickup Location' : 'Destination';
   
   const [selectedAddr, setSelectedAddr] = useState('Detecting device location...');
@@ -39,6 +37,7 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
 
   // Initialize Leaflet Map Centered STRICTLY on Device Location
   useEffect(() => {
+    if (!isOpen) return;
     let isCancelled = false;
 
     async function initMapWithDeviceLocation() {
@@ -149,7 +148,7 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
         isInitializedRef.current = false;
       }
     };
-  }, [geocodeCenter]);
+  }, [isOpen, geocodeCenter]);
 
   // Strictly re-query device hardware GPS and fly directly to device
   const handleDetectCurrentLocation = async () => {
@@ -190,6 +189,8 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
     onSelect(selectedAddr);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="map-picker-scrim" style={{ zIndex: 1000 }}>

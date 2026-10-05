@@ -82,6 +82,19 @@ export default function HomeTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Ensure HomeTab always lands on the very top section on load
+  useEffect(() => {
+    const uc = document.getElementById('u-content');
+    if (uc) {
+      uc.scrollTop = 0;
+    }
+    isHiddenRef.current = false;
+    setIsScrolledHidden(false);
+    if (searchWrapRef.current) {
+      searchWrapRef.current.classList.remove('scrolled-hidden');
+    }
+  }, []);
+
   // Smooth blur fade-out / fade-in scroll animation
   useEffect(() => {
     const uc = document.getElementById('u-content');
@@ -148,6 +161,7 @@ export default function HomeTab() {
   }, []);
 
   const inProg = trips.find(t => t.status === 'inprogress');
+  const requestedTrip = trips.find(t => t.status === 'requested');
   const popularTrips = trips.filter(t => t.status === 'completed');
   const first = user?.name ? user.name.split(' ')[0] : 'there';
 
@@ -220,7 +234,7 @@ export default function HomeTab() {
   return (
     <div>
       {/* Top Bar with Brand Logo and Notification Bell */}
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div className="row stagger-1" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <BrandLogo height={38} width={152} />
         </div>
@@ -231,14 +245,14 @@ export default function HomeTab() {
       </div>
 
       {/* Greeting Header */}
-      <div className="hello">
+      <div className="hello stagger-1">
         <h1>Hi, {first}</h1>
         <p>Need a driver for your own car?</p>
       </div>
 
       {/* Destination Search Bar with Typing Feature & Autocomplete */}
       <div
-        className={`search-wrap ${isScrolledHidden ? 'scrolled-hidden' : ''}`}
+        className={`search-wrap stagger-2 ${isScrolledHidden ? 'scrolled-hidden' : ''}`}
         id="u-search-wrap"
         ref={searchWrapRef}
         style={{ position: 'relative', zIndex: 20 }}
@@ -500,14 +514,63 @@ export default function HomeTab() {
         </div>
       )}
 
+      {/* Requested / Searching Ride Banner (when ride has been initiated) */}
+      {!inProg && requestedTrip && (
+        <div
+          className="card stagger-2"
+          style={{
+            marginTop: '14px',
+            padding: '14px 16px',
+            borderRadius: '20px',
+            border: '1.5px solid rgba(250, 204, 21, 0.4)',
+            background: 'var(--card)',
+            boxShadow: '0 4px 18px rgba(255, 199, 10, 0.12)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span
+              className="pill warn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                fontSize: '11px',
+                fontWeight: 700,
+                background: 'rgba(250, 204, 21, 0.2)',
+                color: '#B45309'
+              }}
+            >
+              <span className="live-pulse-dot" style={{ background: '#F59E0B' }} />
+              FINDING CHAUFFEUR
+            </span>
+            <b style={{ fontSize: '15px', color: 'var(--ink)' }}>₹{requestedTrip.fare}</b>
+          </div>
+
+          <div style={{ fontSize: '13px', color: 'var(--ink)', marginBottom: '10px' }}>
+            Broadcasting request for <b>{String(requestedTrip?.cat || 'hourly').toUpperCase()}</b> chauffeur near <b>{(typeof requestedTrip?.pickup === 'string' && requestedTrip.pickup ? requestedTrip.pickup.split(',')[0] : 'Edappally')}</b>
+          </div>
+
+          <button
+            className="btn primary sm block"
+            style={{ width: '100%', height: '38px', borderRadius: '12px', fontWeight: 750, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            onClick={() => setLiveTrackingOpen(true)}
+          >
+            <Icon name="navigation" size={14} />
+            <span>Track Live Request Status</span>
+          </button>
+        </div>
+      )}
+
       {/* Services Section Header */}
-      <div className="sec">
+      <div className="sec stagger-3">
         <h3>Book a driver</h3>
         <span>Pay 30% now</span>
       </div>
 
       {/* Bento Grid */}
-      <div className="bento-grid">
+      <div className="bento-grid stagger-4">
         {/* Hourly Chauffeur Hero */}
         <button
           className="bento-hero"
@@ -568,12 +631,12 @@ export default function HomeTab() {
       </div>
 
       {/* Popular Rides Rebook */}
-      <div className="sec" style={{ marginTop: '22px' }}>
+      <div className="sec stagger-5" style={{ marginTop: '22px' }}>
         <h3>Popular rides</h3>
         <span>Repeat booking</span>
       </div>
 
-      <div className="rebook-list">
+      <div className="rebook-list stagger-5">
         <div className="rebook-card">
           <span className="rebook-ic">
             <Icon name="plane" size={18} />

@@ -119,7 +119,8 @@ export default function DriverOnboardingModal() {
         paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
         paddingLeft: 'max(20px, env(safe-area-inset-left, 0px))',
         paddingRight: 'max(20px, env(safe-area-inset-right, 0px))',
-        overflowY: 'auto', WebkitOverflowScrolling: 'touch'
+        overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none', msOverflowStyle: 'none'
       }}
     >
       {driverPartner && (

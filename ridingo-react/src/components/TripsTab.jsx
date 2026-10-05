@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
+import { openRazorpayCheckout } from '../utils/razorpay';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours' },
@@ -11,9 +12,48 @@ const CATS = {
 };
 
 export default function TripsTab() {
-  const { trips } = useApp();
+  const { trips, setTrips, setUtx, user, addToast } = useApp();
   const [filter, setFilter] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
+
+  const handlePayRemaining = (trip) => {
+    const rem = Math.max(0, trip.fare - (trip.advance || Math.round(trip.fare * 0.3)));
+    if (rem <= 0) return;
+
+    openRazorpayCheckout({
+      amount: rem,
+      name: 'Ridingo Trip Final Settlement',
+      description: `Remaining balance for ${trip.id}`,
+      prefill: {
+        name: user?.name,
+        email: user?.email,
+        phone: user?.phone
+      },
+      notes: {
+        tripId: trip.id
+      },
+      onSuccess: (paymentRes) => {
+        const pId = paymentRes.razorpay_payment_id || ('pay_test_' + Date.now().toString(36));
+        setTrips(prev =>
+          prev.map(t => (t.id === trip.id ? { ...t, balancePaid: true, balancePaymentId: pId } : t))
+        );
+        const newTx = {
+          ts: Date.now(),
+          type: 'trip',
+          amount: -rem,
+          title: `Trip Settlement · ${trip.id}`,
+          sub: `Razorpay (${pId.slice(0, 14)}) · Just now`,
+          gateway: 'Razorpay',
+          paymentId: pId
+        };
+        setUtx(prev => [newTx, ...prev]);
+        addToast(`Remaining ₹${rem} settled via Razorpay!`, 'check');
+      },
+      onError: () => {
+        addToast('Settlement cancelled or failed', 'warn');
+      }
+    });
+  };
 
   const F = { all: 'All', up: 'Upcoming', done: 'Completed', cancel: 'Cancelled' };
 
@@ -47,13 +87,13 @@ export default function TripsTab() {
 
   return (
     <div>
-      <div className="hello" style={{ marginBottom: '14px' }}>
+      <div className="hello stagger-1" style={{ marginBottom: '14px' }}>
         <h1>History</h1>
         <p>All your driver bookings</p>
       </div>
 
       {/* Filter Chips */}
-      <div className="chips" style={{ marginBottom: '14px', display: 'flex', gap: '6px', overflowX: 'auto' }}>
+      <div className="chips stagger-2" style={{ marginBottom: '14px', display: 'flex', gap: '6px', overflowX: 'auto' }}>
         {Object.keys(F).map(k => (
           <button
             key={k}
@@ -67,18 +107,18 @@ export default function TripsTab() {
 
       {/* Trip List */}
       {list.length === 0 ? (
-        <div className="empty" style={{ textAlign: 'center', padding: '36px 0', color: 'var(--muted)' }}>
+        <div className="empty stagger-3" style={{ textAlign: 'center', padding: '36px 0', color: 'var(--muted)' }}>
           No trips here yet.
         </div>
       ) : (
         <div className="trip-list">
-          {list.map(t => {
+          {list.map((t, idx) => {
             const c = CATS[t.cat] || CATS.hourly;
             const isOpen = expandedId === t.id;
             const destName = t.drop_loc || t.pickup || `${c.name} trip`;
 
             return (
-              <div key={t.id} className="trip-row">
+              <div key={t.id} className={`trip-row stagger-${Math.min(6, 3 + idx)}`}>
                 <button
                   className="trip-row-head"
                   onClick={() => toggleExpand(t.id)}
@@ -137,15 +177,59 @@ export default function TripsTab() {
                       </div>
                       <div>
                         <span>Advance (30%)</span>
-                        <b>₹{Math.ceil(t.fare * 0.3)} paid</b>
+                        <b style={{ color: 'var(--good)' }}>
+                          ₹{t.advance || Math.ceil(t.fare * 0.3)} paid {t.paymentId ? `(Razorpay: ${t.paymentId.slice(0, 10)}...)` : '(Razorpay)'}
+                        </b>
                       </div>
                       {t.cashback > 0 && (
                         <div>
-                          <span>Cashback earned</span>
-                          <b style={{ color: 'var(--good)' }}>+₹{t.cashback}</b>
+                          <span>Razorpay Cashback</span>
+                          <b style={{ color: '#22C55E' }}>+₹{t.cashback} (5%)</b>
                         </div>
                       )}
                     </div>
+
+                    {/* Pay Remaining Balance via Razorpay */}
+                    {['inprogress', 'completed'].includes(t.status) && !t.balancePaid && (
+                      <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '12.5px', color: 'var(--muted)' }}>
+                            Remaining Balance (70%)
+                          </span>
+                          <b style={{ fontSize: '14px', color: 'var(--ink)' }}>
+                            ₹{Math.max(0, t.fare - (t.advance || Math.round(t.fare * 0.3)))}
+                          </b>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn primary block"
+                          onClick={() => handlePayRemaining(t)}
+                          style={{
+                            width: '100%',
+                            height: '42px',
+                            borderRadius: '12px',
+                            fontWeight: 750,
+                            fontSize: '13.5px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <span>Pay Remaining via Razorpay</span>
+                          <span style={{ fontSize: '10px', background: 'rgba(0,0,0,0.15)', padding: '2px 5px', borderRadius: '4px' }}>
+                            Test
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
+                    {t.balancePaid && (
+                      <div style={{ marginTop: '10px', padding: '8px 10px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.1)', color: '#16A34A', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>✓</span>
+                        <span>Trip fare 100% fully settled via Razorpay ({t.balancePaymentId?.slice(0, 12) || 'RZP'})</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

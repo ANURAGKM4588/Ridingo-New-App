@@ -4,7 +4,7 @@ import BrandLogo from './BrandLogo';
 import Icon from './Icon';
 
 export default function OnboardingModal() {
-  const { onboardingOpen, setOnboardingOpen, user, loginDemo, loginWithDetails, addToast } = useApp();
+  const { onboardingOpen, setOnboardingOpen, user, loginDemo, loginWithDetails, addToast, openLegal } = useApp();
 
   // Active top tab: 'signin' | 'register'
   const [activeTab, setActiveTab] = useState('signin');
@@ -154,7 +154,9 @@ export default function OnboardingModal() {
         paddingLeft: 'max(20px, env(safe-area-inset-left, 0px))',
         paddingRight: 'max(20px, env(safe-area-inset-right, 0px))',
         overflowY: 'auto',
-        WebkitOverflowScrolling: 'touch'
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
       }}
     >
       {/* Close button if a user session already exists */}
@@ -820,8 +822,41 @@ export default function OnboardingModal() {
         {/* Legal Disclaimer: Terms & Privacy Policy */}
         <p style={{ fontSize: '12px', color: 'var(--muted)', textAlign: 'center', marginTop: '18px', lineHeight: 1.45, maxWidth: '320px' }}>
           By continuing, you agree to Ridingo's{' '}
-          <span style={{ textDecoration: 'underline', color: 'var(--ink)', cursor: 'pointer' }}>Terms of Service</span> &{' '}
-          <span style={{ textDecoration: 'underline', color: 'var(--ink)', cursor: 'pointer' }}>Privacy Policy</span>
+          <button
+            type="button"
+            onClick={() => openLegal && openLegal('terms')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              fontSize: 'inherit',
+              fontFamily: 'inherit',
+              textDecoration: 'underline',
+              color: 'var(--ink)',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Terms of Service
+          </button>{' '}
+          &{' '}
+          <button
+            type="button"
+            onClick={() => openLegal && openLegal('privacy')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              fontSize: 'inherit',
+              fontFamily: 'inherit',
+              textDecoration: 'underline',
+              color: 'var(--ink)',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Privacy Policy
+          </button>
         </p>
       </div>
     </div>

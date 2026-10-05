@@ -76,6 +76,15 @@
 				<string>com.googleusercontent.apps.496710932146-d6v9usj2h4iipoe2knma70t1boctuu7u</string>
 			</array>
 		</dict>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>upi</string>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>cred</string>
+		<string>bhim</string>
+		<string>amazonpay</string>
 	</array>
 </dict>
 </plist>

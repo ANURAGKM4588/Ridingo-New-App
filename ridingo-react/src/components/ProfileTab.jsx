@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
 export default function ProfileTab() {
-  const { user, updateUserProfile, addNotification, userTheme, setUserTheme, logout, addToast } = useApp();
+  const { user, updateUserProfile, addNotification, userTheme, setUserTheme, logout, addToast, openLegal } = useApp();
 
   // Active Bottom Sheet Modal:
   // null | 'editProfile' | 'changePin' | 'sos' | 'insurance' | 'temp' | 'lang' | 'privacy' | 'concierge' | 'safety'
@@ -198,7 +198,7 @@ export default function ProfileTab() {
   return (
     <div style={{ paddingBottom: '32px' }}>
       {/* 1. Header */}
-      <div className="hello" style={{ marginBottom: '16px' }}>
+      <div className="hello stagger-1" style={{ marginBottom: '16px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: 'var(--ink)' }}>
           Profile
         </h1>
@@ -208,7 +208,7 @@ export default function ProfileTab() {
       </div>
 
       {/* 2. User Profile Card */}
-      <div className="card prof-card" style={{ padding: '16px', borderRadius: '20px', marginBottom: '22px' }}>
+      <div className="card prof-card stagger-2" style={{ padding: '16px', borderRadius: '20px', marginBottom: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
             {/* Avatar with Camera badge */}
@@ -321,8 +321,8 @@ export default function ProfileTab() {
       </div>
 
       {/* 3. SAFETY & SECURITY */}
-      <div className="prof-section-title">Safety & Security</div>
-      <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+      <div className="prof-section-title stagger-3">Safety & Security</div>
+      <div className="card stagger-3" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
         {/* Row 1: Ride Start PIN */}
         <div className="prof-set-row">
           <div className="prof-set-info">
@@ -410,8 +410,8 @@ export default function ProfileTab() {
       </div>
 
       {/* 4. RIDE PREFERENCES */}
-      <div className="prof-section-title">Ride Preferences</div>
-      <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+      <div className="prof-section-title stagger-4">Ride Preferences</div>
+      <div className="card stagger-4" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
         {/* Row 1: Quiet Ride Mode */}
         <div className="prof-set-row">
           <div className="prof-set-info">
@@ -462,8 +462,8 @@ export default function ProfileTab() {
       </div>
 
       {/* 5. NOTIFICATIONS */}
-      <div className="prof-section-title">Notifications</div>
-      <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+      <div className="prof-section-title stagger-5">Notifications</div>
+      <div className="card stagger-5" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
         {/* Row 1: Trip Status Alerts */}
         <div className="prof-set-row">
           <div className="prof-set-info">
@@ -530,8 +530,8 @@ export default function ProfileTab() {
       </div>
 
       {/* 6. APP & PRIVACY */}
-      <div className="prof-section-title">App & Privacy</div>
-      <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+      <div className="prof-section-title stagger-6">App & Privacy</div>
+      <div className="card stagger-6" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
         {/* Row 1: Biometric / App Lock */}
         <div className="prof-set-row">
           <div className="prof-set-info">
@@ -580,7 +580,39 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        {/* Row 4: Appearance */}
+        {/* Row 4: Terms of Service */}
+        <div
+          className="prof-set-row"
+          style={{ cursor: 'pointer' }}
+          onClick={() => openLegal && openLegal('terms')}
+        >
+          <div className="prof-set-info">
+            <b className="prof-set-title">Terms of Service</b>
+            <span className="prof-set-sub">Chauffeur transit rules, eligibility & service agreement</span>
+          </div>
+          <div className="prof-set-action-btn">
+            <span>View</span>
+            <Icon name="chevronRight" size={15} />
+          </div>
+        </div>
+
+        {/* Row 5: Privacy Policy */}
+        <div
+          className="prof-set-row"
+          style={{ cursor: 'pointer' }}
+          onClick={() => openLegal && openLegal('privacy')}
+        >
+          <div className="prof-set-info">
+            <b className="prof-set-title">Privacy Policy</b>
+            <span className="prof-set-sub">Data encryption, number masking & location handling</span>
+          </div>
+          <div className="prof-set-action-btn">
+            <span>View</span>
+            <Icon name="chevronRight" size={15} />
+          </div>
+        </div>
+
+        {/* Row 6: Appearance */}
         <div className="prof-set-row" style={{ display: 'block', padding: '14px 0' }}>
           <b className="prof-set-title" style={{ marginBottom: '10px' }}>
             Appearance
@@ -601,8 +633,8 @@ export default function ProfileTab() {
       </div>
 
       {/* 7. HELP & SUPPORT */}
-      <div className="prof-section-title">Help & Support</div>
-      <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '22px' }}>
+      <div className="prof-section-title stagger-6">Help & Support</div>
+      <div className="card stagger-6" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '22px' }}>
         {/* Row 1: 24x7 Concierge Helpline */}
         <div
           className="prof-set-row"
@@ -637,7 +669,7 @@ export default function ProfileTab() {
       </div>
 
       {/* 8. Footer: App Version & Sign Out Button */}
-      <div style={{ textAlign: 'center', padding: '16px 0 12px', width: '100%' }}>
+      <div className="stagger-6" style={{ textAlign: 'center', padding: '16px 0 12px', width: '100%' }}>
         <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>
           Ridingo for Car Owners · v2.4.2
         </p>

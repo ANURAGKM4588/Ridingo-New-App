@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
+import { openRazorpayCheckout } from '../utils/razorpay';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours', min: 2, max: 12, def: 3, rate: 250 },
@@ -23,6 +24,7 @@ export default function BookingSheet() {
     bookingDestination,
     user,
     userBalance,
+    setUtx,
     bookRide,
     addToast
   } = useApp();
@@ -71,7 +73,13 @@ export default function BookingSheet() {
     }
   }, [bookingOpen]);
 
-  if (!bookingOpen) return null;
+  // Reset form states when booking sheet opens
+  useEffect(() => {
+    if (bookingOpen) {
+      setIsSuccess(false);
+      setConfirmedTrip(null);
+    }
+  }, [bookingOpen]);
 
   const handleUseCurrentLocation = async () => {
     setIsDetectingCurrent(true);
@@ -98,9 +106,12 @@ export default function BookingSheet() {
   const isFlat = !!currentCat.flat;
 
   // Fare & Advance calculation
-  const fare = isFlat ? currentCat.flat : currentCat.rate * qty;
+  const fare = isFlat ? currentCat.flat : (currentCat.rate || 250) * qty;
   const adv = Math.ceil(fare * 0.3);
   const remaining = fare - adv;
+  const cashbackAmount = Math.max(1, Math.round(adv * 0.05));
+  const cleanBalance = Math.max(0, Number(userBalance) || 0);
+  const hasSufficientWalletBal = cleanBalance >= adv;
 
   const handleQtyChange = (delta) => {
     setQty(prev => {
@@ -138,26 +149,39 @@ export default function BookingSheet() {
   };
 
   const handleSubmit = () => {
-    const cached = getCachedDeviceLocation();
-    const pickupLoc = pickup.trim() || cached?.address || 'Current Device Location';
-    const dropLoc = drop.trim() || (cat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
+    try {
+      const cached = getCachedDeviceLocation();
+      const pickupLoc = (pickup && pickup.trim()) || cached?.address || 'Edappally Toll, Kochi';
+      const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
 
-    const tripObj = {
-      id: 'TRP-' + Math.floor(1000 + Math.random() * 9000),
-      cat,
-      qty,
-      pickup: pickupLoc,
-      drop_loc: dropLoc,
-      fare,
-      advance: adv,
-      cashback: Math.floor(1 + Math.random() * 5),
-      trans,
-      when_ts: Date.now()
-    };
-
-    setConfirmedTrip(tripObj);
-    setIsSuccess(true);
-    bookRide(cat, qty, pickupLoc, dropLoc, fare);
+      // Trigger the new payment options popup sheet
+      openRazorpayCheckout({
+        amount: adv,
+        fare: fare,
+        category: currentCat.name,
+        qty: qty,
+        unit: qty === 1 ? currentCat.unit : currentCat.units,
+        pickup: pickupLoc,
+        drop: dropLoc,
+        prefill: {
+          name: user?.name || 'ANURAG',
+          contact: user?.phone || '8156938843'
+        },
+        onSuccess: (paymentRes) => {
+          const pId = paymentRes?.razorpay_payment_id || ('pay_' + Date.now().toString(36));
+          const methodLabel = paymentRes?.method || 'UPI';
+          setBookingOpen(false);
+          bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId);
+          addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur request dispatched.`, 'check');
+        },
+        onDismiss: () => {
+          // User closed payment sheet
+        }
+      });
+    } catch (err) {
+      console.error('Ride checkout initiation error:', err);
+      addToast('Unable to open payment sheet. Please try again.', 'alert');
+    }
   };
 
   const handleClose = () => {
@@ -168,6 +192,8 @@ export default function BookingSheet() {
 
   const dateStr = dateType === 'today' ? '5 Oct 2026' : '6 Oct 2026';
   const timeStr = '6:00 PM';
+
+  if (!bookingOpen) return null;
 
   return (
     <div className="layer on" id="u-layer">
@@ -192,7 +218,7 @@ export default function BookingSheet() {
               <div className="kv" style={{ textAlign: 'left', marginBottom: '16px' }}>
                 <div>
                   <span>Trip ID</span>
-                  <b>{confirmedTrip.id}</b>
+                  <b>{confirmedTrip?.id || 'TRP-1090'}</b>
                 </div>
                 <div>
                   <span>When</span>
@@ -200,11 +226,11 @@ export default function BookingSheet() {
                 </div>
                 <div>
                   <span>Advance paid</span>
-                  <b>₹{confirmedTrip.advance}</b>
+                  <b>₹{confirmedTrip?.advance || adv}</b>
                 </div>
                 <div>
                   <span>Wallet balance</span>
-                  <b>₹{userBalance.toLocaleString('en-IN')}</b>
+                  <b>₹{(Number(userBalance) || 0).toLocaleString('en-IN')}</b>
                 </div>
               </div>
 
@@ -454,32 +480,14 @@ export default function BookingSheet() {
               </div>
             </div>
 
-            {/* Cashback Hint */}
-            <div className="cbhint" style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Icon name="gift" size={16} /> Get ₹1 to ₹5 cashback on every booking
-            </div>
-
-            {/* Wallet Balance */}
-            <div
-              className="row small"
-              style={{
-                justifyContent: 'space-between',
-                margin: '12px 0 6px',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <span className="mut" style={{ fontSize: '14px' }}>
-                Wallet balance
-              </span>
-              <b style={{ fontSize: '15px' }}>₹{userBalance.toLocaleString('en-IN')}</b>
-            </div>
             </div>
 
             {/* Sticky Bottom Action Footer (Always visible & accessible) */}
             <div className="sheet-sticky-foot">
               <button
+                type="button"
                 className="btn primary block"
+                id="bk-submit-btn"
                 style={{
                   width: '100%',
                   borderRadius: '20px',
@@ -487,11 +495,14 @@ export default function BookingSheet() {
                   fontWeight: 800,
                   fontSize: '16px',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 18px rgba(255, 199, 10, 0.4)'
+                  boxShadow: '0 4px 18px rgba(255, 199, 10, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
                 onClick={handleSubmit}
               >
-                Pay ₹{adv} and send request
+                Pay Now
               </button>
             </div>
           </>

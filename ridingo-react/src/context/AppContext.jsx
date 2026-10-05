@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar } from '@capacitor/status-bar';
 import { getDeviceLocation } from '../lib/deviceLocation';
+import { processRazorpayCashbackTransfer } from '../utils/razorpay';
 
 const AppContext = createContext(null);
 
@@ -92,7 +93,7 @@ export const INITIAL_TRIPS = [
 ];
 
 export const INITIAL_UTX = [
-  { ts: Date.now() - 86400000 * 5, type: 'topup', amount: 2000, title: 'Wallet Top-up', sub: 'UPI • Google Pay' },
+  { ts: Date.now() - 86400000 * 5, type: 'topup', amount: 5000, title: 'Wallet Top-up', sub: 'UPI • Google Pay' },
   { ts: Date.now() - 86400000 * 2, type: 'ride', amount: -699, title: 'Trip TRP-1085', sub: 'Panampilly to Airport' },
   { ts: Date.now() - 86400000 * 2, type: 'cashback', amount: 35, title: 'Ride Cashback (5%)', sub: 'TRP-1085' }
 ];
@@ -168,6 +169,10 @@ export function AppProvider({ children }) {
   const [liveTrackingOpen, setLiveTrackingOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [driverOnboardingOpen, setDriverOnboardingOpen] = useState(false);
+  const [legalModal, setLegalModal] = useState({ open: false, tab: 'terms' });
+
+  const openLegal = (tab = 'terms') => setLegalModal({ open: true, tab });
+  const closeLegal = () => setLegalModal(prev => ({ ...prev, open: false }));
 
   // Trips, Wallet & Notifications
   const [trips, setTrips] = useState(INITIAL_TRIPS);
@@ -343,12 +348,36 @@ export function AppProvider({ children }) {
     };
   }, [bookingOpen, onboardingOpen, uTab]);
 
+  const scrollUserToTop = () => {
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('u-content');
+      if (el) el.scrollTop = 0;
+      window.requestAnimationFrame(() => {
+        const el2 = document.getElementById('u-content');
+        if (el2) el2.scrollTop = 0;
+      });
+    }
+  };
+
+  const scrollDriverToTop = () => {
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('d-content');
+      if (el) el.scrollTop = 0;
+      window.requestAnimationFrame(() => {
+        const el2 = document.getElementById('d-content');
+        if (el2) el2.scrollTop = 0;
+      });
+    }
+  };
+
   // User session sync
   const loginDemo = () => {
     setUser(DEFAULT_USER);
     try {
       localStorage.setItem('ridingo_user_session', JSON.stringify(DEFAULT_USER));
     } catch (e) {}
+    setUTab('home');
+    scrollUserToTop();
     setOnboardingOpen(false);
     addToast('Signed in as Arjun Menon', 'check');
   };
@@ -363,6 +392,8 @@ export function AppProvider({ children }) {
     try {
       localStorage.setItem('ridingo_user_session', JSON.stringify(updated));
     } catch (e) {}
+    setUTab('home');
+    scrollUserToTop();
     setOnboardingOpen(false);
     addToast(`Welcome, ${updated.name || 'User'}!`, 'check');
   };
@@ -392,6 +423,8 @@ export function AppProvider({ children }) {
     try {
       localStorage.setItem('ridingo_driver_session', JSON.stringify(DEFAULT_DRIVER));
     } catch (e) {}
+    setDTab('dash');
+    scrollDriverToTop();
     setDriverOnboardingOpen(false);
     addToast('Signed in as Ravi Kumar (Demo)', 'check');
   };
@@ -408,6 +441,8 @@ export function AppProvider({ children }) {
     try {
       localStorage.setItem('ridingo_driver_session', JSON.stringify(updated));
     } catch (e) {}
+    setDTab('dash');
+    scrollDriverToTop();
     setDriverOnboardingOpen(false);
     addToast(`Welcome, ${updated.name || 'Driver Partner'}!`, 'check');
   };
@@ -417,8 +452,9 @@ export function AppProvider({ children }) {
     try {
       localStorage.removeItem('ridingo_driver_session');
     } catch (e) {}
-    setDriverOnboardingOpen(true);
     setDTab('dash');
+    scrollDriverToTop();
+    setDriverOnboardingOpen(true);
     addToast('Signed out of Driver Partner account', 'info');
   };
 
@@ -427,6 +463,8 @@ export function AppProvider({ children }) {
     try {
       localStorage.removeItem('ridingo_user_session');
     } catch (e) {}
+    setUTab('home');
+    scrollUserToTop();
     setOnboardingOpen(true);
     addToast('Logged out', 'info');
   };
@@ -441,29 +479,92 @@ export function AppProvider({ children }) {
     addToast('Demo state reset', 'check');
   };
 
-  const bookRide = (cat, qty, pickup, drop, fare) => {
+  const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, razorpayPaymentId) => {
+    const tripId = 'TRP-' + Math.floor(1000 + Math.random() * 9000);
+    const pId = String(razorpayPaymentId || ('pay_test_' + Date.now().toString(36)));
+    const safeFare = Number(fare) || 600;
+    const adv = advanceAmount !== undefined ? Number(advanceAmount) : Math.round(safeFare * 0.3);
+    const cb = Math.round(safeFare * 0.05);
+    const safeCat = String(cat || 'hourly');
+    const safePickup = (typeof pickup === 'string' && pickup.trim()) || 'Edappally Toll, Kochi';
+    const safeDrop = (typeof drop === 'string' && drop.trim()) || (safeCat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
+
     const newTrip = {
-      id: 'TRP-' + Math.floor(1000 + Math.random() * 9000),
-      cat,
-      qty,
-      pickup,
-      drop_loc: drop,
+      id: tripId,
+      cat: safeCat,
+      qty: Number(qty) || 2,
+      pickup: safePickup,
+      drop_loc: safeDrop,
       when_ts: Date.now(),
-      fare,
-      advance: 0,
+      fare: safeFare,
+      advance: adv,
       status: 'requested',
-      driver: 'Ravi Kumar',
+      paymentGateway: 'Razorpay',
+      paymentId: pId,
+      driver: null,
       car: user?.car || { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' },
       rider: { name: user?.name || 'Car Owner', phone: user?.phone || '+91 98401 23456' },
-      cashback: Math.round(fare * 0.05)
+      cashback: cb,
+      cashbackStatus: 'pending'
     };
-    setTrips(prev => [newTrip, ...prev]);
+
+    // Record 30% advance payment in user transactions
+    const newTx = {
+      ts: Date.now(),
+      type: 'trip',
+      amount: -adv,
+      title: `Ride Advance · ${safeCat.toUpperCase()}`,
+      sub: `Razorpay (${pId.slice(0, 14)}) · Just now`,
+      gateway: 'Razorpay',
+      paymentId: pId
+    };
+
+    setUtx(prev => [newTx, ...(Array.isArray(prev) ? prev : [])]);
+    // Purge any old 'requested' trips so only the active new booking is routed
+    setTrips(prev => [newTrip, ...(Array.isArray(prev) ? prev.filter(t => t.status !== 'requested') : [])]);
     setBookingOpen(false);
-    setUTab('trips');
-    addToast(`Booked ${cat.toUpperCase()} driver! Waiting for driver...`, 'check');
+    setUTab('home');
+    setLiveTrackingOpen(true);
+    addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via Razorpay.`, 'check');
   };
 
-  const userBalance = utx.reduce((a, t) => a + t.amount, 0);
+  const completeTrip = (tripId) => {
+    let cbAmount = 0;
+    setTrips(prev =>
+      prev.map(t => {
+        if (t.id === tripId) {
+          cbAmount = t.cashback || Math.round(t.fare * 0.05);
+          return { ...t, status: 'completed', cashbackStatus: 'credited' };
+        }
+        return t;
+      })
+    );
+
+    if (cbAmount > 0) {
+      const cbData = processRazorpayCashbackTransfer({
+        amount: cbAmount,
+        tripId,
+        user
+      });
+      const cbTx = {
+        ts: Date.now(),
+        type: 'cashback',
+        amount: cbAmount,
+        title: 'Razorpay Cashback (5%)',
+        sub: `Reward for ${tripId} · ${cbData.cashbackId.slice(0, 14)}`,
+        gateway: 'Razorpay Rewards',
+        cashbackId: cbData.cashbackId
+      };
+      setUtx(prev => [cbTx, ...prev]);
+      addToast(`Trip completed! ₹${cbAmount} (5%) Razorpay Cashback credited to wallet!`, 'check');
+    } else {
+      addToast('Trip marked as completed!', 'check');
+    }
+  };
+
+  const userBalance = Math.max(0, Array.isArray(utx)
+    ? utx.reduce((a, t) => a + (Number(t?.amount) || 0), 0)
+    : 0);
 
   return (
     <AppContext.Provider
@@ -490,6 +591,8 @@ export function AppProvider({ children }) {
         loginDriverDemo,
         loginDriverWithDetails,
         logoutDriver,
+        scrollUserToTop,
+        scrollDriverToTop,
         resetDemo,
         view,
         setView,
@@ -520,6 +623,7 @@ export function AppProvider({ children }) {
         clearAllNotifs,
         addNotification,
         bookRide,
+        completeTrip,
         driverOnline,
         setDriverOnline,
         toasts,
@@ -529,7 +633,11 @@ export function AppProvider({ children }) {
         onboardingOpen,
         setOnboardingOpen,
         driverOnboardingOpen,
-        setDriverOnboardingOpen
+        setDriverOnboardingOpen,
+        legalModal,
+        setLegalModal,
+        openLegal,
+        closeLegal
       }}
     >
       {children}

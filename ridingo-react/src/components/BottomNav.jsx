@@ -22,7 +22,11 @@ export default function BottomNav() {
           className={`nv ${uTab === n.id ? 'on' : ''}`}
           aria-label={n.label}
           aria-current={uTab === n.id}
-          onClick={() => setUTab(n.id)}
+          onClick={() => {
+            setUTab(n.id);
+            const el = document.getElementById('u-content');
+            if (el) el.scrollTop = 0;
+          }}
         >
           <span className="nv-i">
             <Icon name={n.icon} size={23} />

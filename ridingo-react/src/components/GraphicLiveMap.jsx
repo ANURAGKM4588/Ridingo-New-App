@@ -70,8 +70,8 @@ export default function GraphicLiveMap({
   const mapHeight = height || (isModal ? 275 : 180);
   const geom = getRouteTelemetry(progress, isModal);
   const mid = isModal ? 'modal' : 'mini';
-  const pickupLabel = trip?.pickup ? trip.pickup.split(',')[0].slice(0, 16).toUpperCase() : 'PICKUP';
-  const dropLabel = trip?.drop_loc ? trip.drop_loc.split(',')[0].slice(0, 16).toUpperCase() : 'LULU MALL';
+  const pickupLabel = (typeof trip?.pickup === 'string' && trip.pickup ? trip.pickup.split(',')[0] : 'PICKUP').slice(0, 16).toUpperCase();
+  const dropLabel = (typeof trip?.drop_loc === 'string' && trip.drop_loc ? trip.drop_loc.split(',')[0] : 'LULU MALL').slice(0, 16).toUpperCase();
 
   // Interactive Pan and Zoom State (smooth natural feel)
   const [zoom, setZoom] = useState(1);
