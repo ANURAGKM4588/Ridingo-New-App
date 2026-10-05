@@ -3923,6 +3923,52 @@
       animation: fade .35s ease;
     }
 
+    /* Auth Segmented Switcher (Sign In vs Create Account) */
+    .auth-tab-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px;
+      width: 100%;
+      height: 44px;
+      box-sizing: border-box;
+      margin-bottom: 20px;
+      gap: 4px;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .auth-tab-btn {
+      height: 100%;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: all .2s cubic-bezier(.16, 1, .3, 1);
+      padding: 0 16px;
+      user-select: none;
+      box-sizing: border-box;
+      line-height: 1;
+    }
+
+    .auth-tab-btn.active {
+      background: var(--solid);
+      color: var(--on-solid);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+    }
+
+    .auth-tab-btn:hover:not(.active) {
+      color: var(--ink);
+    }
+
     /* Splash */
     .ob-splash {
       flex: 1;

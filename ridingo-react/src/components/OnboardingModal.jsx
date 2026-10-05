@@ -206,57 +206,29 @@ export default function OnboardingModal() {
 
         {/* Tab Toggle: Sign In & Create Account on Same Page */}
         {step !== 'otp' && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              background: 'var(--card)',
-              border: '1px solid var(--line)',
-              borderRadius: '14px',
-              padding: '4px',
-              width: '100%',
-              marginBottom: '18px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-            }}
-          >
+          <div className="auth-tab-switch" role="tablist">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'signin'}
               onClick={() => {
                 setActiveTab('signin');
                 setStep('form');
               }}
-              style={{
-                height: '38px',
-                borderRadius: '10px',
-                border: 'none',
-                background: activeTab === 'signin' ? 'var(--solid)' : 'transparent',
-                color: activeTab === 'signin' ? 'var(--on-solid)' : 'var(--muted)',
-                fontSize: '13.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.18s ease'
-              }}
+              className={`auth-tab-btn ${activeTab === 'signin' ? 'active' : ''}`}
             >
               Sign In
             </button>
 
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'register'}
               onClick={() => {
                 setActiveTab('register');
                 setStep('form');
               }}
-              style={{
-                height: '38px',
-                borderRadius: '10px',
-                border: 'none',
-                background: activeTab === 'register' ? 'var(--solid)' : 'transparent',
-                color: activeTab === 'register' ? 'var(--on-solid)' : 'var(--muted)',
-                fontSize: '13.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.18s ease'
-              }}
+              className={`auth-tab-btn ${activeTab === 'register' ? 'active' : ''}`}
             >
               Create Account
             </button>
