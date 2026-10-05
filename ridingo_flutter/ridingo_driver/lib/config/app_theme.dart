@@ -32,7 +32,7 @@ class DriverTheme {
         bodyColor: DriverColors.ink,
         displayColor: DriverColors.ink,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: DriverColors.card,
         elevation: 0,
         shape: RoundedRectangleBorder(

@@ -55,7 +55,7 @@ class AppTheme {
         centerTitle: false,
         iconTheme: IconThemeData(color: AppColors.inkLight),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -88,7 +88,7 @@ class AppTheme {
         centerTitle: false,
         iconTheme: IconThemeData(color: AppColors.inkDark),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
