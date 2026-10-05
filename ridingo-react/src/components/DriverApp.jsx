@@ -11,6 +11,174 @@ const CATS = {
   event: { name: 'Night & events', icon: 'moon', unit: 'hr', units: 'hours' }
 };
 
+/**
+ * SlideToDutyToggle: Apple-grade interactive slide & tap to toggle online/offline
+ */
+function SlideToDutyToggle({ online, onToggle }) {
+  const [slideX, setSlideX] = useState(0);
+  const [isSliding, setIsSliding] = useState(false);
+  const trackRef = useRef(null);
+  const startXRef = useRef(0);
+
+  const handleTouchStart = (e) => {
+    setIsSliding(true);
+    startXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isSliding || !trackRef.current) return;
+    const trackWidth = trackRef.current.offsetWidth - 48;
+    const diff = e.touches[0].clientX - startXRef.current;
+    if (online) {
+      const clamped = Math.min(0, Math.max(diff, -trackWidth));
+      setSlideX(clamped);
+    } else {
+      const clamped = Math.max(0, Math.min(diff, trackWidth));
+      setSlideX(clamped);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isSliding || !trackRef.current) return;
+    setIsSliding(false);
+    const trackWidth = trackRef.current.offsetWidth - 48;
+    if (online) {
+      if (Math.abs(slideX) > trackWidth * 0.4) {
+        onToggle(false);
+      }
+    } else {
+      if (slideX > trackWidth * 0.4) {
+        onToggle(true);
+      }
+    }
+    setSlideX(0);
+  };
+
+  const handleMouseDown = (e) => {
+    setIsSliding(true);
+    startXRef.current = e.clientX;
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isSliding || !trackRef.current) return;
+    const trackWidth = trackRef.current.offsetWidth - 48;
+    const diff = e.clientX - startXRef.current;
+    if (online) {
+      const clamped = Math.min(0, Math.max(diff, -trackWidth));
+      setSlideX(clamped);
+    } else {
+      const clamped = Math.max(0, Math.min(diff, trackWidth));
+      setSlideX(clamped);
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!isSliding || !trackRef.current) return;
+    setIsSliding(false);
+    const trackWidth = trackRef.current.offsetWidth - 48;
+    if (online) {
+      if (Math.abs(slideX) > trackWidth * 0.4) {
+        onToggle(false);
+      }
+    } else {
+      if (slideX > trackWidth * 0.4) {
+        onToggle(true);
+      }
+    }
+    setSlideX(0);
+  };
+
+  return (
+    <div
+      ref={trackRef}
+      onClick={() => onToggle(!online)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      style={{
+        position: 'relative',
+        height: '52px',
+        borderRadius: '999px',
+        background: online ? 'rgba(34, 197, 94, 0.12)' : 'var(--field)',
+        border: online ? '1.5px solid rgba(34, 197, 94, 0.28)' : '1.5px solid var(--line)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        userSelect: 'none',
+        overflow: 'hidden',
+        transition: 'background 0.25s ease, border-color 0.25s ease'
+      }}
+    >
+      {/* Slider Center Text */}
+      <span
+        style={{
+          fontSize: '13px',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          color: online ? '#16A34A' : 'var(--muted)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          pointerEvents: 'none',
+          paddingLeft: online ? '0' : '36px',
+          paddingRight: online ? '36px' : '0',
+          transition: 'all 0.25s ease'
+        }}
+      >
+        {online ? (
+          <>
+            <span>Slide or tap to Go Offline</span>
+            <span style={{ fontSize: '15px' }}>←</span>
+          </>
+        ) : (
+          <>
+            <span>Slide or tap to Go Online</span>
+            <span style={{ fontSize: '15px' }}>→</span>
+          </>
+        )}
+      </span>
+
+      {/* Slider Knob */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '3px',
+          left: online ? `calc(100% - 47px + ${slideX}px)` : `calc(4px + ${slideX}px)`,
+          width: '44px',
+          height: '44px',
+          borderRadius: '50%',
+          background: online
+            ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
+            : '#FFFFFF',
+          color: online ? '#FFFFFF' : '#111827',
+          boxShadow: '0 3px 10px rgba(0,0,0,0.18)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: isSliding ? 'grabbing' : 'grab',
+          transition: isSliding ? 'none' : 'left 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), background 0.25s ease'
+        }}
+      >
+        {online ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+            <line x1="12" y1="2" x2="12" y2="12" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function DriverApp() {
   const {
     trips,
@@ -147,38 +315,9 @@ export default function DriverApp() {
     addToast('Trip completed! ₹ Fare added to your earnings', 'check');
   };
 
-  // Mock earnings data for the 7-day chart with rich metadata for interactive graphic view
-  const days = [
-    { day: 'Mon', l: 'M', v: 1250, trips: 2, hrs: 3.5, date: 'Sep 29' },
-    { day: 'Tue', l: 'T', v: 1800, trips: 4, hrs: 5.2, date: 'Sep 30' },
-    { day: 'Wed', l: 'W', v: 950, trips: 2, hrs: 2.8, date: 'Oct 01' },
-    { day: 'Thu', l: 'T', v: 2100, trips: 4, hrs: 6.0, date: 'Oct 02' },
-    { day: 'Fri', l: 'F', v: 2450, trips: 5, hrs: 6.5, date: 'Oct 03' },
-    { day: 'Sat', l: 'S', v: 3100, trips: 6, hrs: 7.8, date: 'Oct 04' },
-    { day: 'Today', l: 'S', v: 1495, trips: 3, hrs: 4.2, date: 'Oct 05', today: true }
-  ];
-  const [selectedDayIdx, setSelectedDayIdx] = useState(6);
-  const selectedDay = days[selectedDayIdx] || days[6];
-  const maxEarnings = Math.max(...days.map(d => d.v), 1);
-
-  // Dynamic SVG sparkline coordinates
-  const sparkPoints = days.map((d, i) => ({
-    x: 16 + i * (288 / 6),
-    y: 50 - (d.v / maxEarnings) * 36
-  }));
-
-  const lineSvgPath = sparkPoints.reduce((acc, p, i, a) => {
-    if (i === 0) return `M ${p.x},${p.y}`;
-    const prev = a[i - 1];
-    const cp1x = prev.x + (p.x - prev.x) / 2;
-    const cp1y = prev.y;
-    const cp2x = prev.x + (p.x - prev.x) / 2;
-    const cp2y = p.y;
-    return `${acc} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p.x},${p.y}`;
-  }, '');
-
-  const areaSvgPath = `${lineSvgPath} L ${sparkPoints[sparkPoints.length - 1].x},64 L ${sparkPoints[0].x},64 Z`;
-  const activePoint = sparkPoints[selectedDayIdx] || sparkPoints[6];
+  // 7-day earnings summary for Apple Card overview
+  const weeklyEarnings = 13195;
+  const todayEarnings = 1495;
 
   return (
     <div className="inner">
@@ -209,458 +348,284 @@ export default function DriverApp() {
         {/* ===================== DASHBOARD TAB ===================== */}
         {dTab === 'dash' && (
           <div>
-            {/* 1. MODERN CHAUFFEUR COMMAND HEADER */}
+            {/* CLEAN APPLE CARD / IOS MINIMALIST OVERVIEW CARD */}
             <div
+              className="card"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '16px',
-                padding: '2px 0'
-              }}
-            >
-              {/* Left: Avatar with Live Pulsing Radar + Name & Rating */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ position: 'relative' }}>
-                  <div
-                    style={{
-                      width: '46px',
-                      height: '46px',
-                      borderRadius: '50%',
-                      background: 'var(--yellow)',
-                      color: '#111827',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '17px',
-                      fontWeight: 800,
-                      overflow: 'hidden',
-                      border: '2px solid var(--surface)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.12)'
-                    }}
-                  >
-                    {driverPartner?.avatar ? (
-                      <img src={driverPartner.avatar} alt="Ravi" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : 'RK'}
-                  </div>
-                  {/* Status dot / radar pulse */}
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      right: 0,
-                      width: '13px',
-                      height: '13px',
-                      borderRadius: '50%',
-                      background: driverOnline ? '#10B981' : '#6B7280',
-                      border: '2.5px solid var(--surface)',
-                      boxShadow: driverOnline ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : 'none'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <b style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>
-                      {driverPartner?.name?.split(' ')[0] || 'Ravi'}
-                    </b>
-                    <span
-                      style={{
-                        background: 'rgba(250, 204, 21, 0.18)',
-                        color: 'var(--ink)',
-                        fontSize: '11px',
-                        fontWeight: 750,
-                        padding: '2px 7px',
-                        borderRadius: '6px'
-                      }}
-                    >
-                      ★ {driverPartner?.rating || '4.8'}
-                    </span>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      color: driverOnline ? '#10B981' : 'var(--muted)',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      marginTop: '2px'
-                    }}
-                  >
-                    {driverOnline ? '● Ready for bookings' : '○ Offline'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Right: Modern Minimalist Sliding Toggle Capsule */}
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !driverOnline;
-                  setDriverOnline(next);
-                  addToast(next ? 'You are now Online! Receiving bookings.' : 'You went Offline.', next ? 'check' : 'info');
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '7px 14px 7px 10px',
-                  borderRadius: '999px',
-                  border: 'none',
-                  background: driverOnline
-                    ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
-                    : 'var(--card)',
-                  color: driverOnline ? '#FFFFFF' : 'var(--muted)',
-                  boxShadow: driverOnline
-                    ? '0 4px 14px rgba(16, 185, 129, 0.35)'
-                    : 'inset 0 0 0 1px var(--line)',
-                  cursor: 'pointer',
-                  transition: 'all 0.25s ease',
-                  outline: 'none'
-                }}
-              >
-                <span
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    background: driverOnline ? '#FFFFFF' : 'var(--line)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.25s ease'
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: driverOnline ? '#059669' : 'var(--muted)'
-                    }}
-                  />
-                </span>
-                <span style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.02em' }}>
-                  {driverOnline ? 'ONLINE' : 'GO ONLINE'}
-                </span>
-              </button>
-            </div>
-
-            {/* 2. HERO MINIMAL MODERN GRAPHIC OVERVIEW CARD */}
-            <div
-              style={{
-                position: 'relative',
-                borderRadius: '26px',
-                background: 'linear-gradient(150deg, #16181F 0%, #0C0D11 100%)',
-                color: '#FFFFFF',
-                padding: '20px 20px 18px',
+                borderRadius: '24px',
+                padding: '20px',
                 marginBottom: '18px',
-                overflow: 'hidden',
-                boxShadow: '0 12px 36px -8px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-                border: '1px solid rgba(255, 255, 255, 0.08)'
+                border: '1px solid var(--line)',
+                background: 'var(--card)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
               }}
             >
-              {/* Background Architectural Vector Grid Watermark */}
-              <svg
-                width="220"
-                height="180"
-                viewBox="0 0 220 180"
-                fill="none"
-                style={{
-                  position: 'absolute',
-                  top: -20,
-                  right: -30,
-                  pointerEvents: 'none',
-                  opacity: 0.1
-                }}
-              >
-                <circle cx="140" cy="40" r="120" stroke="#FACC15" strokeWidth="1" strokeDasharray="3 3" />
-                <circle cx="140" cy="40" r="90" stroke="#FFFFFF" strokeWidth="1" />
-                <circle cx="140" cy="40" r="60" stroke="#FACC15" strokeWidth="1.5" />
-                <path d="M40 160 Q 110 90, 200 120" stroke="#FACC15" strokeWidth="2" strokeDasharray="4 4" />
-                <path d="M10 130 Q 90 60, 210 80" stroke="#FFFFFF" strokeWidth="1.5" />
-              </svg>
-
-              {/* Top Row: Period Badge & Monthly Tally */}
+              {/* Row 1: Chauffeur Profile Pill + Duty Status */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
-                  position: 'relative',
-                  zIndex: 1
+                  marginBottom: '16px'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 800,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      color: 'rgba(255, 255, 255, 0.65)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FACC15', boxShadow: '0 0 8px #FACC15' }} />
-                    {selectedDay.today ? "Today's Earnings" : `${selectedDay.day} (${selectedDay.date})`}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+                  <div style={{ position: 'relative' }}>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        background: 'var(--yellow)',
+                        color: '#111827',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '17px',
+                        fontWeight: 800,
+                        overflow: 'hidden',
+                        border: '2px solid var(--surface)'
+                      }}
+                    >
+                      {driverPartner?.avatar ? (
+                        <img src={driverPartner.avatar} alt="Ravi" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : 'RK'}
+                    </div>
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: -1,
+                        right: -1,
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        background: driverOnline ? '#10B981' : '#9CA3AF',
+                        border: '2px solid var(--card)',
+                        boxShadow: driverOnline ? '0 0 0 2px rgba(16, 185, 129, 0.3)' : 'none'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <b style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink)' }}>
+                        {driverPartner?.name?.split(' ')[0] || 'Ravi Kumar'}
+                      </b>
+                      <span
+                        style={{
+                          background: 'rgba(250, 204, 21, 0.18)',
+                          color: 'var(--ink)',
+                          fontSize: '11px',
+                          fontWeight: 750,
+                          padding: '1px 6px',
+                          borderRadius: '6px'
+                        }}
+                      >
+                        ★ {driverPartner?.rating || '4.8'}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>
+                      Pro Chauffeur · Kochi Central
+                    </span>
+                  </div>
                 </div>
 
+                {/* Duty Status Badge */}
                 <span
                   style={{
+                    background: driverOnline ? 'rgba(34, 197, 94, 0.12)' : 'var(--field)',
+                    color: driverOnline ? '#16A34A' : 'var(--muted)',
                     fontSize: '11.5px',
-                    fontWeight: 650,
-                    color: 'rgba(255, 255, 255, 0.75)',
-                    background: 'rgba(255, 255, 255, 0.08)',
-                    padding: '3px 9px',
+                    fontWeight: 750,
+                    padding: '5px 12px',
                     borderRadius: '999px',
-                    backdropFilter: 'blur(8px)'
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
                   }}
                 >
-                  Month: ₹28,450
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: driverOnline ? '#16A34A' : 'var(--muted)'
+                    }}
+                  />
+                  {driverOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
 
-              {/* Hero Earnings Graphic Number */}
+              {/* Row 2: Hero Typographic Earnings & Minimal Circular Goal Progress Ring */}
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'baseline',
-                  gap: '10px',
-                  marginBottom: '14px',
-                  position: 'relative',
-                  zIndex: 1
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 0',
+                  borderTop: '1px solid var(--line)',
+                  borderBottom: '1px solid var(--line)',
+                  marginBottom: '16px'
                 }}
               >
-                <span
-                  style={{
-                    fontSize: '38px',
-                    fontWeight: 800,
-                    letterSpacing: '-0.03em',
-                    color: '#FFFFFF',
-                    fontFamily: 'var(--font-mono, monospace)',
-                    lineHeight: 1
-                  }}
-                >
-                  ₹{selectedDay.v.toLocaleString('en-IN')}
-                </span>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 750,
-                    color: '#10B981',
-                    background: 'rgba(16, 185, 129, 0.16)',
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '3px'
-                  }}
-                >
-                  ↑ +18.4%
-                </span>
-              </div>
-
-              {/* Graphic Minimal Sparkline Wave SVG */}
-              <div style={{ position: 'relative', height: '64px', margin: '4px -8px 12px -8px' }}>
-                <svg width="100%" height="100%" viewBox="0 0 320 64" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-                  <defs>
-                    <linearGradient id="driverGoldLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#EAB308" stopOpacity="0.4" />
-                      <stop offset="60%" stopColor="#FACC15" stopOpacity="0.9" />
-                      <stop offset="100%" stopColor="#FACC15" stopOpacity="1" />
-                    </linearGradient>
-                    <linearGradient id="driverAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#FACC15" stopOpacity="0.22" />
-                      <stop offset="100%" stopColor="#FACC15" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Area fill */}
-                  <path d={areaSvgPath} fill="url(#driverAreaGrad)" />
-
-                  {/* Smooth curved trend line */}
-                  <path
-                    d={lineSvgPath}
-                    fill="none"
-                    stroke="url(#driverGoldLine)"
-                    strokeWidth="2.8"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Active day indicator node */}
-                  <circle
-                    cx={activePoint.x}
-                    cy={activePoint.y}
-                    r="5.5"
-                    fill="#FACC15"
-                    stroke="#111827"
-                    strokeWidth="2.5"
-                  />
-                  <circle
-                    cx={activePoint.x}
-                    cy={activePoint.y}
-                    r="10"
-                    fill="none"
-                    stroke="#FACC15"
-                    strokeWidth="1.2"
-                    opacity="0.6"
-                  />
-                </svg>
-              </div>
-
-              {/* Minimal Graphic 7-Day Performance Columns */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(7, 1fr)',
-                  gap: '6px',
-                  marginBottom: '16px',
-                  position: 'relative',
-                  zIndex: 1
-                }}
-              >
-                {days.map((d, i) => {
-                  const isSel = selectedDayIdx === i;
-                  const heightPercent = Math.max(18, Math.round((d.v / maxEarnings) * 100));
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setSelectedDayIdx(i)}
+                <div>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 750,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.07em',
+                      color: 'var(--muted)',
+                      display: 'block',
+                      marginBottom: '4px'
+                    }}
+                  >
+                    Today's Earnings
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <span
                       style={{
-                        background: isSel ? 'rgba(250, 204, 21, 0.14)' : 'rgba(255, 255, 255, 0.04)',
-                        border: isSel ? '1px solid #FACC15' : '1px solid rgba(255, 255, 255, 0.06)',
-                        borderRadius: '12px',
-                        padding: '8px 4px 6px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        outline: 'none'
+                        fontSize: '36px',
+                        fontWeight: 800,
+                        letterSpacing: '-0.03em',
+                        color: 'var(--ink)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        lineHeight: 1
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: '9.5px',
-                          fontWeight: 700,
-                          color: isSel ? '#FACC15' : 'rgba(255, 255, 255, 0.55)'
-                        }}
-                      >
-                        {d.v >= 1000 ? (d.v / 1000).toFixed(1) + 'k' : d.v}
-                      </span>
-                      {/* Bar pillar */}
-                      <div style={{ width: '100%', height: '36px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                        <div
-                          style={{
-                            width: '6px',
-                            height: `${heightPercent}%`,
-                            borderRadius: '999px',
-                            background: isSel
-                              ? 'linear-gradient(180deg, #FDE047 0%, #EAB308 100%)'
-                              : 'rgba(255, 255, 255, 0.22)',
-                            boxShadow: isSel ? '0 0 8px rgba(250, 204, 21, 0.5)' : 'none',
-                            transition: 'height 0.3s ease, background 0.2s ease'
-                          }}
-                        />
-                      </div>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: isSel ? 800 : 600,
-                          color: isSel ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)'
-                        }}
-                      >
-                        {d.l}
-                      </span>
-                    </button>
-                  );
-                })}
+                      ₹1,495
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: '#16A34A',
+                        background: 'rgba(34, 197, 94, 0.12)',
+                        padding: '2px 7px',
+                        borderRadius: '999px'
+                      }}
+                    >
+                      +18%
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
+                    This month: <b>₹28,450</b> (34 trips)
+                  </span>
+                </div>
+
+                {/* Circular Goal Progress Ring (3/5 Trips = 60%) */}
+                <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
+                  <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="25.5"
+                      fill="none"
+                      stroke="var(--field)"
+                      strokeWidth="5"
+                    />
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="25.5"
+                      fill="none"
+                      stroke="#FACC15"
+                      strokeWidth="5"
+                      strokeDasharray="160.2"
+                      strokeDashoffset="64.08"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    <b style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink)' }}>3/5</b>
+                    <span style={{ fontSize: '9px', fontWeight: 600, color: 'var(--muted)' }}>Trips</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Minimal 3-Metric KPI Grid */}
+              {/* Row 3: 3 Minimal Metric Graphic Pills */}
               <div
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, 1fr)',
                   gap: '8px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                  position: 'relative',
-                  zIndex: 1
+                  marginBottom: '16px'
                 }}
               >
-                <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'rgba(255, 255, 255, 0.5)', display: 'block' }}>
-                    Trips Done
+                <div style={{ background: 'var(--field)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
+                    Trips
                   </span>
-                  <b style={{ fontSize: '15.5px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px', display: 'block' }}>
-                    {selectedDay.trips} <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255, 255, 255, 0.45)' }}>/ 5</span>
+                  <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)', marginTop: '2px', display: 'block' }}>
+                    3
                   </b>
-                  <div style={{ width: '100%', height: '3px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '999px', marginTop: '6px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(100, (selectedDay.trips / 5) * 100)}%`, height: '100%', background: '#FACC15', borderRadius: '999px' }} />
-                  </div>
+                  <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 500 }}>
+                    Target: 5
+                  </span>
                 </div>
 
-                <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'rgba(255, 255, 255, 0.5)', display: 'block' }}>
-                    Duty Hours
+                <div style={{ background: 'var(--field)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
+                    Online Time
                   </span>
-                  <b style={{ fontSize: '15.5px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px', display: 'block' }}>
-                    {selectedDay.hrs}h
+                  <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)', marginTop: '2px', display: 'block' }}>
+                    4.2h
                   </b>
-                  <span style={{ fontSize: '10px', color: '#10B981', fontWeight: 650, marginTop: '2px', display: 'block' }}>
+                  <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 650 }}>
                     Active
                   </span>
                 </div>
 
-                <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'rgba(255, 255, 255, 0.5)', display: 'block' }}>
-                    Bonus Target
+                <div style={{ background: 'var(--field)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
+                    Rating
                   </span>
-                  <b style={{ fontSize: '15.5px', fontWeight: 800, color: '#FACC15', marginTop: '2px', display: 'block' }}>
-                    +₹300
+                  <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)', marginTop: '2px', display: 'block' }}>
+                    ★ 4.9
                   </b>
-                  <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 600, marginTop: '2px', display: 'block' }}>
-                    2 trips left
+                  <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 500 }}>
+                    Top Rated
                   </span>
                 </div>
               </div>
 
-              {/* Settlement Footer Row */}
+              {/* Row 4: Smooth Swipe-to-Go-Online Slider */}
+              <SlideToDutyToggle
+                online={driverOnline}
+                onToggle={(newVal) => {
+                  setDriverOnline(newVal);
+                  addToast(newVal ? 'You are now Online! Receiving bookings.' : 'You went Offline.', newVal ? 'check' : 'info');
+                }}
+              />
+
+              {/* Row 5: Settlement Note */}
               <div
                 style={{
                   marginTop: '12px',
-                  paddingTop: '10px',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   fontSize: '11.5px',
-                  position: 'relative',
-                  zIndex: 1
+                  color: 'var(--muted)',
+                  padding: '0 2px'
                 }}
               >
-                <span style={{ color: 'rgba(255, 255, 255, 0.6)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  🏦 HDFC Bank (•••• 4521) · 6:00 AM
-                </span>
+                <span>🏦 Daily 6 AM auto-settlement to HDFC (•••• 4521)</span>
                 <span
                   onClick={() => addToast('Auto-settlement scheduled for 6:00 AM. Free instant transfer available.', 'info')}
-                  style={{
-                    color: '#FACC15',
-                    fontWeight: 750,
-                    cursor: 'pointer',
-                    textDecoration: 'underline'
-                  }}
+                  style={{ color: 'var(--ink)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
                 >
-                  Details →
+                  Instant Payout →
                 </span>
               </div>
             </div>
