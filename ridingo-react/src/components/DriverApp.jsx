@@ -908,14 +908,14 @@ export default function DriverApp() {
             </div>
 
             {/* 10. Footer: App Version & Sign Out Button */}
-            <div style={{ textAlign: 'center', padding: '16px 0 10px' }}>
+            <div style={{ textAlign: 'center', padding: '16px 0 12px', width: '100%' }}>
               <BrandLogo
                 height={20}
                 width={80}
                 center
                 style={{ opacity: 0.8, marginBottom: '8px' }}
               />
-              <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>
+              <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>
                 Ridingo Driver Partner · v2.4.2
               </p>
               <button
@@ -925,19 +925,25 @@ export default function DriverApp() {
                   addToast('Signed out of Driver Partner account. Set to offline.', 'info');
                 }}
                 style={{
-                  background: 'var(--card)',
-                  color: '#DC2626',
-                  border: '1px solid var(--line)',
-                  borderRadius: '999px',
-                  padding: '9px 28px',
-                  fontSize: '14px',
+                  width: '100%',
+                  height: '50px',
+                  borderRadius: '16px',
+                  background: '#DC2626',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: '15px',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  boxShadow: '0 4px 14px rgba(220, 38, 38, 0.28)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
                   transition: 'transform 0.15s ease'
                 }}
               >
-                Sign Out
+                <Icon name="logout" size={18} />
+                <span>Sign Out</span>
               </button>
             </div>
           </div>
