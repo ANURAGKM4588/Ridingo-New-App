@@ -42,24 +42,45 @@ function compileStandaloneHtml(appType, appName) {
   // Set accurate native title
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${appName}</title>`);
 
-  // Inject target definition and native status bar configuration early in head
-  const themeColor = isUser ? '#FFFFFF' : '#000000';
-  const barStyle = isUser ? 'default' : 'black-translucent';
+  // Inject target definition and dynamic native status bar configuration early in head
   const headInjection = `
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="${barStyle}">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="${themeColor}">
+  <meta name="theme-color" content="${isUser ? '#FFFFFF' : '#000000'}">
   <script>
     window.RIDINGO_TARGET = '${appType}';
     (function configureNativeBars(){
       function applyStatus(){
         try {
+          var saved = null;
+          try { saved = localStorage.getItem('ridingo_theme_pref'); } catch(e){}
+          var isDark = false;
+          if (saved === 'dark') {
+            isDark = true;
+          } else if (saved === 'light') {
+            isDark = false;
+          } else {
+            var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            isDark = ('${appType}' === 'driver') ? true : sysDark;
+          }
+          var bgColor = isDark ? '#000000' : '#FFFFFF';
+          var barStyle = isDark ? 'black-translucent' : 'default';
+
+          var metaTheme = document.querySelector('meta[name="theme-color"]');
+          if (metaTheme) metaTheme.content = bgColor;
+          var metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+          if (metaApple) metaApple.content = barStyle;
+
+          if (saved === 'light' || saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', saved);
+            if (document.body) document.body.setAttribute('data-theme', saved);
+          }
+
           if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
             var SB = window.Capacitor.Plugins.StatusBar;
-            var isLight = '${appType}' === 'user';
-            SB.setStyle({ style: isLight ? 'LIGHT' : 'DARK' }).catch(function(){});
-            SB.setBackgroundColor({ color: isLight ? '#FFFFFF' : '#000000' }).catch(function(){});
+            SB.setStyle({ style: isDark ? 'DARK' : 'LIGHT' }).catch(function(){});
+            SB.setBackgroundColor({ color: bgColor }).catch(function(){});
             SB.setOverlaysWebView({ overlay: true }).catch(function(){});
           }
         } catch(e){}

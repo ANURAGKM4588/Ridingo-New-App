@@ -474,16 +474,36 @@
       background: #FFFFFF;
       z-index: 9998;
       pointer-events: none;
+      transition: background .2s ease;
     }
 
+    /* System dark mode when not explicitly forced to light */
     @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) body.standalone-app::before,
+      html:not([data-theme="light"]) body.standalone-app::before,
       body.standalone-app:not([data-theme="light"])::before {
         background: #000000;
       }
     }
-    body.standalone-app[data-theme="dark"]::before,
-    body.standalone-driver::before {
+
+    /* Explicit Dark Theme on html or body */
+    :root[data-theme="dark"] body.standalone-app::before,
+    html[data-theme="dark"] body.standalone-app::before,
+    body.standalone-app[data-theme="dark"]::before {
       background: #000000 !important;
+    }
+
+    /* Explicit Light Theme on html or body (OVERRULES system dark and driver defaults) */
+    :root[data-theme="light"] body.standalone-app::before,
+    html[data-theme="light"] body.standalone-app::before,
+    body.standalone-app[data-theme="light"]::before,
+    body.standalone-driver[data-theme="light"]::before {
+      background: #FFFFFF !important;
+    }
+
+    /* Default driver app is dark only when not explicitly set to light */
+    :root:not([data-theme="light"]) body.standalone-driver:not([data-theme="light"])::before {
+      background: #000000;
     }
 
     body.standalone-app .content {
@@ -498,6 +518,7 @@
       padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
       padding-bottom: 24px !important;
       padding-inline: 18px !important;
+      background: var(--surface) !important;
     }
 
     /* 6. Perfect Bottom Navigation Bar:
@@ -521,16 +542,37 @@
       box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.06) !important;
       -webkit-backdrop-filter: blur(24px) !important;
       backdrop-filter: blur(24px) !important;
+      transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
     }
 
+    /* System dark mode when not explicitly forced to light */
     @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) body.standalone-app .nav,
+      html:not([data-theme="light"]) body.standalone-app .nav,
       body.standalone-app:not([data-theme="light"]) .nav {
-        background: #1C1C1E !important;
+        background: #121214 !important;
+        border-top-color: #2C2C2E !important;
+        box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.4) !important;
       }
     }
-    body.standalone-app[data-theme="dark"] .nav,
-    body.standalone-driver .nav {
+
+    /* Explicit Dark Theme on html or body */
+    :root[data-theme="dark"] body.standalone-app .nav,
+    html[data-theme="dark"] body.standalone-app .nav,
+    body.standalone-app[data-theme="dark"] .nav {
       background: #121214 !important;
+      border-top-color: #2C2C2E !important;
+      box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    /* Explicit Light Theme on html or body (OVERRULES system dark and driver defaults) */
+    :root[data-theme="light"] body.standalone-app .nav,
+    html[data-theme="light"] body.standalone-app .nav,
+    body.standalone-app[data-theme="light"] .nav,
+    body.standalone-driver[data-theme="light"] .nav {
+      background: #FFFFFF !important;
+      border-top-color: #E5E5EA !important;
+      box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.06) !important;
     }
 
     body:has(.ob-screen) .nav,
@@ -4360,7 +4402,7 @@
   </style>
 
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#000000">
   <script>
@@ -4368,11 +4410,34 @@
     (function configureNativeBars(){
       function applyStatus(){
         try {
+          var saved = null;
+          try { saved = localStorage.getItem('ridingo_theme_pref'); } catch(e){}
+          var isDark = false;
+          if (saved === 'dark') {
+            isDark = true;
+          } else if (saved === 'light') {
+            isDark = false;
+          } else {
+            var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            isDark = ('driver' === 'driver') ? true : sysDark;
+          }
+          var bgColor = isDark ? '#000000' : '#FFFFFF';
+          var barStyle = isDark ? 'black-translucent' : 'default';
+
+          var metaTheme = document.querySelector('meta[name="theme-color"]');
+          if (metaTheme) metaTheme.content = bgColor;
+          var metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+          if (metaApple) metaApple.content = barStyle;
+
+          if (saved === 'light' || saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', saved);
+            if (document.body) document.body.setAttribute('data-theme', saved);
+          }
+
           if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
             var SB = window.Capacitor.Plugins.StatusBar;
-            var isLight = 'driver' === 'user';
-            SB.setStyle({ style: isLight ? 'LIGHT' : 'DARK' }).catch(function(){});
-            SB.setBackgroundColor({ color: isLight ? '#FFFFFF' : '#000000' }).catch(function(){});
+            SB.setStyle({ style: isDark ? 'DARK' : 'LIGHT' }).catch(function(){});
+            SB.setBackgroundColor({ color: bgColor }).catch(function(){});
             SB.setOverlaysWebView({ overlay: true }).catch(function(){});
           }
         } catch(e){}
@@ -5703,7 +5768,63 @@ function beep(){
   if(!S.driver.sound)return;
   try{const C=window.AudioContext||window.webkitAudioContext;const a=new C();const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(.0001,a.currentTime);g.gain.exponentialRampToValueAtTime(.15,a.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.35);o.start();o.stop(a.currentTime+.4)}catch(e){}
 }
-function setTheme(v){THEME=v;const r=document.documentElement;if(v==='system')r.removeAttribute('data-theme');else r.setAttribute('data-theme',v);render('u');render('d')}
+function applyNativeTheme(v){
+  const effectiveTheme = (v === 'system')
+    ? ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light')
+    : v;
+  const isDark = effectiveTheme === 'dark';
+  const bgColor = isDark ? '#000000' : '#FFFFFF';
+  const barStyle = isDark ? 'black-translucent' : 'default';
+
+  // 1. Update <meta name="theme-color">
+  let metaTheme = document.querySelector('meta[name="theme-color"]');
+  if(!metaTheme){
+    metaTheme = document.createElement('meta');
+    metaTheme.name = 'theme-color';
+    document.head.appendChild(metaTheme);
+  }
+  metaTheme.content = bgColor;
+
+  // 2. Update <meta name="apple-mobile-web-app-status-bar-style">
+  let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if(!metaApple){
+    metaApple = document.createElement('meta');
+    metaApple.name = 'apple-mobile-web-app-status-bar-style';
+    document.head.appendChild(metaApple);
+  }
+  metaApple.content = barStyle;
+
+  // 3. Update Capacitor Native StatusBar (iOS notch & Android status bar)
+  try{
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar){
+      const SB = window.Capacitor.Plugins.StatusBar;
+      // On iOS: LIGHT style renders dark text/icons (for light background)
+      // DARK style renders white text/icons (for dark background)
+      SB.setStyle({ style: isDark ? 'DARK' : 'LIGHT' }).catch(()=>{});
+      SB.setBackgroundColor({ color: bgColor }).catch(()=>{});
+      SB.setOverlaysWebView({ overlay: true }).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+function setTheme(v, persist = true){
+  THEME = v;
+  if(persist){
+    try{ localStorage.setItem('ridingo_theme_pref', v); }catch(e){}
+  }
+  const r = document.documentElement;
+  const b = document.body;
+  if(v === 'system'){
+    r.removeAttribute('data-theme');
+    if(b) b.removeAttribute('data-theme');
+  } else {
+    r.setAttribute('data-theme', v);
+    if(b) b.setAttribute('data-theme', v);
+  }
+  applyNativeTheme(v);
+  render('u');
+  render('d');
+}
 
 /* ---------- trip lifecycle (shared by both apps) ---------- */
 function refund(t,why){
@@ -8269,6 +8390,35 @@ document.addEventListener('keydown', e => {
   setInterval(tick, 1000);
   initSupabase();
 
+  // Load and apply saved theme preference
+  try{
+    const savedTheme = localStorage.getItem('ridingo_theme_pref');
+    if(savedTheme){
+      setTheme(savedTheme, false);
+    } else {
+      const params = new URLSearchParams(window.location.search);
+      const target = window.RIDINGO_TARGET || params.get('app');
+      if(target === 'driver'){
+        setTheme('dark', false);
+      } else {
+        setTheme('system', false);
+      }
+    }
+  }catch(e){
+    setTheme('system', false);
+  }
+
+  // Real-time system theme change listener
+  if(window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if(THEME === 'system'){
+        applyNativeTheme('system');
+        render('u');
+        render('d');
+      }
+    });
+  }
+
   const params = new URLSearchParams(window.location.search);
   const target = window.RIDINGO_TARGET || params.get('app');
 
@@ -8293,7 +8443,7 @@ document.addEventListener('keydown', e => {
 
       render('u');
       // Background sync with Supabase
-      syncProfileToSupabase(S.user.phone, S.user.name, S.user.car);
+      syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email);
     } else {
       // First time / signed out: show onboarding
       showOnboarding('splash');
