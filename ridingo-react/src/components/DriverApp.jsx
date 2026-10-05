@@ -17,6 +17,8 @@ export default function DriverApp() {
     setTrips,
     driverOnline,
     setDriverOnline,
+    driverPartner,
+    updateDriverPartner,
     dTab,
     setDTab,
     theme,
@@ -26,26 +28,71 @@ export default function DriverApp() {
 
   const [dFilter, setDFilter] = useState('all');
 
-  // Interactive toggle states for Driver Profile (matching User App iOS style)
-  const [tripPopupsOn, setTripPopupsOn] = useState(true);
-  const [requestSoundOn, setRequestSoundOn] = useState(true);
-  const [autoQueueOn, setAutoQueueOn] = useState(false);
-  const [servicesEnabled, setServicesEnabled] = useState({
-    hourly: true,
-    daily: true,
-    airport: true,
-    outstation: true,
-    event: true
-  });
-  const [biometricOn, setBiometricOn] = useState(true);
-  const [hapticOn, setHapticOn] = useState(true);
+  // Driver Profile Modal state:
+  // null | 'editDriver' | 'cars' | 'payout' | 'settlement' | 'documents' | 'help' | 'incentives'
+  const [activeDriverModal, setActiveDriverModal] = useState(null);
 
-  const toggleService = (key) => {
-    setServicesEnabled(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      addToast(`${CATS[key]?.name || key} service ${next[key] ? 'enabled' : 'disabled'}`, 'check');
-      return next;
+  // Edit Driver form states
+  const [editDriverName, setEditDriverName] = useState(driverPartner?.name || 'Ravi Kumar');
+  const [editDriverPhone, setEditDriverPhone] = useState(driverPartner?.phone || '+91 94471 23456');
+  const [editDriverExp, setEditDriverExp] = useState(driverPartner?.experienceYears || 8);
+
+  // Payout Bank / UPI form states
+  const [editBankName, setEditBankName] = useState(driverPartner?.bankName || 'HDFC Bank');
+  const [editBankAccount, setEditBankAccount] = useState(driverPartner?.bankAccount || '•••• 4521');
+  const [editUpiId, setEditUpiId] = useState(driverPartner?.upiId || 'ravi.kumar@okhdfcbank');
+
+  // Driver toggle handlers with instant state and storage persistence
+  const handleDriverToggle = (key, val, label) => {
+    updateDriverPartner({ [key]: val });
+    addToast(`${label}: ${val ? 'Enabled' : 'Disabled'}`, 'check');
+    if (key === 'haptic' && val && navigator.vibrate) {
+      try { navigator.vibrate(50); } catch (e) {}
+    }
+  };
+
+  const handleToggleService = (key) => {
+    const currentServices = driverPartner?.services || {
+      hourly: true,
+      daily: true,
+      airport: true,
+      outstation: true,
+      event: true
+    };
+    const nextVal = !currentServices[key];
+    const updated = { ...currentServices, [key]: nextVal };
+    updateDriverPartner({ services: updated });
+    addToast(`${CATS[key]?.name || key} service ${nextVal ? 'enabled' : 'disabled'}`, 'check');
+  };
+
+  const handleSaveDriverProfile = (e) => {
+    e.preventDefault();
+    if (!editDriverName.trim()) {
+      addToast('Please enter driver name', 'warn');
+      return;
+    }
+    updateDriverPartner({
+      name: editDriverName.trim(),
+      phone: editDriverPhone.trim(),
+      experienceYears: Number(editDriverExp) || 8
     });
+    setActiveDriverModal(null);
+    addToast('Driver profile updated successfully', 'check');
+  };
+
+  const handleSavePayout = (e) => {
+    e.preventDefault();
+    if (!editBankAccount.trim() || !editUpiId.trim()) {
+      addToast('Please enter bank account and UPI ID', 'warn');
+      return;
+    }
+    updateDriverPartner({
+      bankName: editBankName.trim(),
+      bankAccount: editBankAccount.trim(),
+      upiId: editUpiId.trim()
+    });
+    setActiveDriverModal(null);
+    addToast('Payout bank & UPI details saved', 'check');
   };
 
   const requestedTrips = trips.filter(t => t.status === 'requested');
@@ -429,7 +476,7 @@ export default function DriverApp() {
                         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
                       }}
                     >
-                      RK
+                      {driverPartner?.name ? driverPartner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'RK'}
                     </div>
                     <div
                       style={{
@@ -447,8 +494,8 @@ export default function DriverApp() {
                         justifyContent: 'center',
                         cursor: 'pointer'
                       }}
-                      onClick={() => addToast('Change partner photo', 'info')}
-                      title="Change Photo"
+                      onClick={() => setActiveDriverModal('editDriver')}
+                      title="Change Driver Photo & Details"
                     >
                       <Icon name="camera" size={11} />
                     </div>
@@ -457,17 +504,17 @@ export default function DriverApp() {
                   {/* Driver Meta */}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <b style={{ fontSize: '17px', fontWeight: 700, color: 'var(--ink)', display: 'block', lineHeight: 1.25 }}>
-                      Ravi Kumar
+                      {driverPartner?.name || 'Ravi Kumar'}
                     </b>
                     <span style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '3px', display: 'block' }}>
-                      ★ 4.8 · 142 trips on Ridingo
+                      ★ {driverPartner?.rating || '4.8'} · {driverPartner?.tripsCount || 142} trips on Ridingo
                     </span>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => addToast('Driver partner details verified', 'check')}
+                  onClick={() => setActiveDriverModal('editDriver')}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -483,24 +530,28 @@ export default function DriverApp() {
               </div>
 
               {/* Verified Chauffeur & Partner Badges */}
-              <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span
-                  style={{
-                    background: 'rgba(34, 197, 94, 0.14)',
-                    color: '#16A34A',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    padding: '4px 10px',
-                    borderRadius: '999px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    letterSpacing: '0.01em'
-                  }}
-                >
-                  Verified Chauffeur
-                </span>
-                <span style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 500 }}>
-                  Partner since 2024
+              <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      background: 'rgba(34, 197, 94, 0.14)',
+                      color: '#16A34A',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      display: 'inline-flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    Verified Chauffeur
+                  </span>
+                  <span style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 500 }}>
+                    Partner since 2024
+                  </span>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
+                  🎖️ {driverPartner?.experienceYears || 8} Yrs Experience
                 </span>
               </div>
             </div>
@@ -516,11 +567,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${tripPopupsOn ? 'on' : ''}`}
-                  onClick={() => {
-                    setTripPopupsOn(!tripPopupsOn);
-                    addToast(!tripPopupsOn ? 'Trip popups enabled' : 'Trip popups disabled', 'check');
-                  }}
+                  className={`ios-toggle ${driverPartner?.popups !== false ? 'on' : ''}`}
+                  onClick={() => handleDriverToggle('popups', driverPartner?.popups === false, 'Trip Popups')}
                   aria-label="Toggle Trip Popups"
                 >
                   <span className="ios-toggle-thumb" />
@@ -535,11 +583,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${requestSoundOn ? 'on' : ''}`}
-                  onClick={() => {
-                    setRequestSoundOn(!requestSoundOn);
-                    addToast(!requestSoundOn ? 'Request audio alert enabled' : 'Request audio alert muted', 'check');
-                  }}
+                  className={`ios-toggle ${driverPartner?.sound !== false ? 'on' : ''}`}
+                  onClick={() => handleDriverToggle('sound', driverPartner?.sound === false, 'Request Sound Alert')}
                   aria-label="Toggle Request Sound"
                 >
                   <span className="ios-toggle-thumb" />
@@ -554,11 +599,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${autoQueueOn ? 'on' : ''}`}
-                  onClick={() => {
-                    setAutoQueueOn(!autoQueueOn);
-                    addToast(!autoQueueOn ? 'Auto-queueing enabled' : 'Auto-queueing disabled', 'check');
-                  }}
+                  className={`ios-toggle ${driverPartner?.autoQueue ? 'on' : ''}`}
+                  onClick={() => handleDriverToggle('autoQueue', !driverPartner?.autoQueue, 'Auto-Queue Next Booking')}
                   aria-label="Toggle Auto-Queue"
                 >
                   <span className="ios-toggle-thumb" />
@@ -577,8 +619,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${servicesEnabled.hourly ? 'on' : ''}`}
-                  onClick={() => toggleService('hourly')}
+                  className={`ios-toggle ${driverPartner?.services?.hourly !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleService('hourly')}
                   aria-label="Toggle Hourly Chauffeur"
                 >
                   <span className="ios-toggle-thumb" />
@@ -593,8 +635,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${servicesEnabled.daily ? 'on' : ''}`}
-                  onClick={() => toggleService('daily')}
+                  className={`ios-toggle ${driverPartner?.services?.daily !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleService('daily')}
                   aria-label="Toggle Full Day Chauffeur"
                 >
                   <span className="ios-toggle-thumb" />
@@ -609,8 +651,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${servicesEnabled.airport ? 'on' : ''}`}
-                  onClick={() => toggleService('airport')}
+                  className={`ios-toggle ${driverPartner?.services?.airport !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleService('airport')}
                   aria-label="Toggle Airport Transfer"
                 >
                   <span className="ios-toggle-thumb" />
@@ -625,8 +667,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${servicesEnabled.outstation ? 'on' : ''}`}
-                  onClick={() => toggleService('outstation')}
+                  className={`ios-toggle ${driverPartner?.services?.outstation !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleService('outstation')}
                   aria-label="Toggle Outstation Chauffeur"
                 >
                   <span className="ios-toggle-thumb" />
@@ -641,8 +683,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${servicesEnabled.event ? 'on' : ''}`}
-                  onClick={() => toggleService('event')}
+                  className={`ios-toggle ${driverPartner?.services?.event !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleService('event')}
                   aria-label="Toggle Night & Events"
                 >
                   <span className="ios-toggle-thumb" />
@@ -656,7 +698,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Manual transmission certified (Valid)', 'check')}
+                onClick={() => setActiveDriverModal('cars')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Manual Transmission</b>
@@ -671,7 +713,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Automatic gearbox certified (TC, DCT, CVT, AMT)', 'check')}
+                onClick={() => setActiveDriverModal('cars')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Automatic Gearbox</b>
@@ -686,7 +728,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('IMT & Hybrid vehicles certified', 'check')}
+                onClick={() => setActiveDriverModal('cars')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">IMT & Hybrid</b>
@@ -701,7 +743,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Luxury & High-end EV certified', 'check')}
+                onClick={() => setActiveDriverModal('cars')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Luxury & High-end EVs</b>
@@ -720,10 +762,10 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('HDFC Bank •••• 4521 is verified for auto-withdrawals', 'check')}
+                onClick={() => setActiveDriverModal('payout')}
               >
                 <div className="prof-set-info">
-                  <b className="prof-set-title">HDFC Bank •••• 4521</b>
+                  <b className="prof-set-title">{driverPartner?.bankName || 'HDFC Bank'} {driverPartner?.bankAccount || '•••• 4521'}</b>
                   <span className="prof-set-sub">Automated daily withdrawal destination</span>
                 </div>
                 <div className="prof-set-action-btn">
@@ -735,11 +777,11 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('UPI VPA ravi.kumar@okhdfcbank verified', 'check')}
+                onClick={() => setActiveDriverModal('payout')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Instant UPI Payout</b>
-                  <span className="prof-set-sub">ravi.kumar@okhdfcbank</span>
+                  <span className="prof-set-sub">{driverPartner?.upiId || 'ravi.kumar@okhdfcbank'}</span>
                 </div>
                 <div className="prof-set-action-btn">
                   <span>Verified</span>
@@ -750,7 +792,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Daily settlement processed at 6:00 AM every morning', 'info')}
+                onClick={() => setActiveDriverModal('settlement')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Settlement Cycle</b>
@@ -769,11 +811,11 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Commercial Driving License #KL0720160049281 (Valid till 2029)', 'check')}
+                onClick={() => setActiveDriverModal('documents')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Commercial Driving License</b>
-                  <span className="prof-set-sub">#KL-07-20160049281 · Valid till Dec 2029</span>
+                  <span className="prof-set-sub">#{driverPartner?.dlNumber || 'KL-07-20160049281'} · Valid till Dec 2029</span>
                 </div>
                 <div className="prof-set-action-btn">
                   <span>Verified</span>
@@ -784,7 +826,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Police Clearance Certificate verified by Kerala Police', 'check')}
+                onClick={() => setActiveDriverModal('documents')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Police Clearance Certificate</b>
@@ -799,11 +841,11 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Chauffeur badge #KL-07-2024-CH08 is active', 'check')}
+                onClick={() => setActiveDriverModal('documents')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Chauffeur Badge</b>
-                  <span className="prof-set-sub">Badge #KL-07-2024-CH08 · Ernakulam RTO</span>
+                  <span className="prof-set-sub">Badge #{driverPartner?.badgeNumber || 'KL-07-2024-CH08'} · Ernakulam RTO</span>
                 </div>
                 <div className="prof-set-action-btn">
                   <span>Active</span>
@@ -823,11 +865,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${biometricOn ? 'on' : ''}`}
-                  onClick={() => {
-                    setBiometricOn(!biometricOn);
-                    addToast(!biometricOn ? 'Biometric lock enabled' : 'Biometric lock disabled', 'check');
-                  }}
+                  className={`ios-toggle ${driverPartner?.biometric !== false ? 'on' : ''}`}
+                  onClick={() => handleDriverToggle('biometric', driverPartner?.biometric === false, 'Biometric Lock')}
                   aria-label="Toggle Biometric Lock"
                 >
                   <span className="ios-toggle-thumb" />
@@ -842,11 +881,8 @@ export default function DriverApp() {
                 </div>
                 <button
                   type="button"
-                  className={`ios-toggle ${hapticOn ? 'on' : ''}`}
-                  onClick={() => {
-                    setHapticOn(!hapticOn);
-                    addToast(!hapticOn ? 'Haptic feedback enabled' : 'Haptic feedback disabled', 'check');
-                  }}
+                  className={`ios-toggle ${driverPartner?.haptic !== false ? 'on' : ''}`}
+                  onClick={() => handleDriverToggle('haptic', driverPartner?.haptic === false, 'Haptic Feedback')}
                   aria-label="Toggle Haptic Feedback"
                 >
                   <span className="ios-toggle-thumb" />
@@ -879,7 +915,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Calling 24x7 Driver Partner Helpline (+91 80001 88888)...', 'phone')}
+                onClick={() => setActiveDriverModal('help')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">24x7 Partner Helpline</b>
@@ -894,7 +930,7 @@ export default function DriverApp() {
               <div
                 className="prof-set-row"
                 style={{ cursor: 'pointer' }}
-                onClick={() => addToast('Opening Driver Partner Milestone & Bonus Guidelines...', 'info')}
+                onClick={() => setActiveDriverModal('incentives')}
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">Partner Guidelines & Incentives</b>
@@ -946,6 +982,374 @@ export default function DriverApp() {
                 <span>Sign Out</span>
               </button>
             </div>
+
+            {/* ==========================================================
+                DRIVER INTERACTIVE SETTING MODAL SHEETS
+               ========================================================== */}
+            {activeDriverModal && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 200,
+                  background: 'rgba(0, 0, 0, 0.45)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  animation: 'fade 0.2s ease'
+                }}
+              >
+                <div
+                  style={{ position: 'absolute', inset: 0 }}
+                  onClick={() => setActiveDriverModal(null)}
+                />
+                <div
+                  style={{
+                    position: 'relative',
+                    background: 'var(--surface)',
+                    borderTopLeftRadius: '24px',
+                    borderTopRightRadius: '24px',
+                    maxHeight: '85%',
+                    overflowY: 'auto',
+                    padding: '16px 20px 32px',
+                    boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
+                    zIndex: 2,
+                    WebkitOverflowScrolling: 'touch'
+                  }}
+                >
+                  <div style={{ width: '38px', height: '4px', borderRadius: '999px', background: 'var(--line)', margin: '0 auto 16px' }} />
+
+                  {/* MODAL 1: EDIT DRIVER PROFILE */}
+                  {activeDriverModal === 'editDriver' && (
+                    <form onSubmit={handleSaveDriverProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        Edit Chauffeur Profile
+                      </h3>
+
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+                          Partner Full Name
+                        </label>
+                        <input
+                          type="text"
+                          value={editDriverName}
+                          onChange={e => setEditDriverName(e.target.value)}
+                          style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+                          Mobile Number
+                        </label>
+                        <input
+                          type="text"
+                          value={editDriverPhone}
+                          onChange={e => setEditDriverPhone(e.target.value)}
+                          style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+                          Experience (Years)
+                        </label>
+                        <input
+                          type="number"
+                          value={editDriverExp}
+                          onChange={e => setEditDriverExp(e.target.value)}
+                          style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="btn"
+                        style={{ height: '48px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginTop: '6px' }}
+                      >
+                        Save Chauffeur Details
+                      </button>
+                    </form>
+                  )}
+
+                  {/* MODAL 2: CAR TRANSMISSION CERTIFICATIONS */}
+                  {activeDriverModal === 'cars' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        Vehicle Certifications
+                      </h3>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
+                        All certified transmission competencies verified by Ridingo Master Instructors.
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { title: 'Manual Transmission', badge: 'Level 3 Master', valid: 'Permanent' },
+                          { title: 'Automatic (TC / DCT / CVT / AMT)', badge: 'Level 3 Master', valid: 'Permanent' },
+                          { title: 'Intelligent Manual (iMT) & Strong Hybrids', badge: 'Certified Specialist', valid: 'Valid till 2028' },
+                          { title: 'Luxury Sedans & High-Voltage EVs', badge: 'VIP Chauffeur Certified', valid: 'Valid till 2027' }
+                        ].map((c, i) => (
+                          <div
+                            key={i}
+                            style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                          >
+                            <div>
+                              <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>{c.title}</b>
+                              <span style={{ fontSize: '12px', color: '#16A34A', fontWeight: 600 }}>● {c.badge}</span>
+                            </div>
+                            <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{c.valid}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addToast('Endorsement request submitted to Operations Desk', 'check');
+                          setActiveDriverModal(null);
+                        }}
+                        className="btn"
+                        style={{ height: '46px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', marginTop: '6px' }}
+                      >
+                        + Request New Vehicle Endorsement
+                      </button>
+                    </div>
+                  )}
+
+                  {/* MODAL 3: PAYOUT & BANK ACCOUNT */}
+                  {activeDriverModal === 'payout' && (
+                    <form onSubmit={handleSavePayout} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        Payout Account & UPI
+                      </h3>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
+                        Daily trip earnings and incentive bonuses are auto-credited to these verified coordinates.
+                      </p>
+
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+                          Bank Name
+                        </label>
+                        <input
+                          type="text"
+                          value={editBankName}
+                          onChange={e => setEditBankName(e.target.value)}
+                          style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+                          Account Number
+                        </label>
+                        <input
+                          type="text"
+                          value={editBankAccount}
+                          onChange={e => setEditBankAccount(e.target.value)}
+                          style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+                          UPI ID (VPA)
+                        </label>
+                        <input
+                          type="text"
+                          value={editUpiId}
+                          onChange={e => setEditUpiId(e.target.value)}
+                          style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="btn"
+                        style={{ height: '48px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginTop: '6px' }}
+                      >
+                        Save Payout Coordinates
+                      </button>
+                    </form>
+                  )}
+
+                  {/* MODAL 4: SETTLEMENT HISTORY */}
+                  {activeDriverModal === 'settlement' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        Settlement Cycle & History
+                      </h3>
+                      <div style={{ padding: '14px', borderRadius: '14px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <b style={{ fontSize: '14px', color: '#16A34A' }}>Daily Auto-Transfer</b>
+                          <span style={{ fontSize: '12.5px', color: 'var(--muted)', display: 'block' }}>Next settlement at 6:00 AM tomorrow</span>
+                        </div>
+                        <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)' }}>Active</span>
+                      </div>
+
+                      <b style={{ fontSize: '13px', color: 'var(--ink)', marginTop: '4px' }}>Recent Daily Settlements</b>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { date: 'Today, 6:00 AM', amt: '₹2,450.00', ref: 'IMPS/HDFC/629104', status: 'Settled' },
+                          { date: 'Yesterday, 6:00 AM', amt: '₹3,100.00', ref: 'IMPS/HDFC/628991', status: 'Settled' },
+                          { date: '03 Oct, 6:00 AM', amt: '₹1,800.00', ref: 'IMPS/HDFC/627884', status: 'Settled' }
+                        ].map((s, idx) => (
+                          <div key={idx} style={{ padding: '10px 14px', borderRadius: '12px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>{s.date}</b>
+                              <span style={{ fontSize: '11.5px', color: 'var(--muted)', display: 'block' }}>Ref: {s.ref}</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <b style={{ fontSize: '14.5px', color: '#16A34A', display: 'block' }}>{s.amt}</b>
+                              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>✓ {s.status}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveDriverModal(null)}
+                        className="btn"
+                        style={{ height: '46px', borderRadius: '14px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  )}
+
+                  {/* MODAL 5: DOCUMENTS & VERIFICATION */}
+                  {activeDriverModal === 'documents' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        Chauffeur KYC & Documents
+                      </h3>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
+                        Official state documents verified and authenticated on DigiLocker.
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {[
+                          { title: 'Commercial Driver License', id: driverPartner?.dlNumber || 'KL-07-20160049281', valid: 'Valid till 14 Dec 2029', status: 'Verified' },
+                          { title: 'Police Clearance Certificate', id: 'PCC-ER-2024-8819', valid: 'Clear criminal record', status: 'Approved' },
+                          { title: 'Professional Chauffeur Badge', id: driverPartner?.badgeNumber || 'KL-07-2024-CH08', valid: 'Ernakulam RTO Endorsement', status: 'Active' },
+                          { title: 'Aadhaar Biometric KYC', id: '•••• •••• 9128', valid: 'Verified via UIDAI', status: 'Completed' }
+                        ].map((d, i) => (
+                          <div key={i} style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <b style={{ fontSize: '13.5px', color: 'var(--ink)', display: 'block' }}>{d.title}</b>
+                              <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>{d.id} · {d.valid}</span>
+                            </div>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#16A34A', background: 'rgba(34, 197, 94, 0.12)', padding: '4px 8px', borderRadius: '6px' }}>
+                              ✓ {d.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addToast('Document renewal upload desk opened', 'info');
+                          setActiveDriverModal(null);
+                        }}
+                        className="btn"
+                        style={{ height: '46px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}
+                      >
+                        + Upload Renewed Document
+                      </button>
+                    </div>
+                  )}
+
+                  {/* MODAL 6: DRIVER PARTNER CARE */}
+                  {activeDriverModal === 'help' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        24x7 Driver Partner Care
+                      </h3>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
+                        Dedicated roadside assistance, passenger dispute resolution, and on-trip security.
+                      </p>
+
+                      <div style={{ padding: '16px', borderRadius: '16px', background: 'var(--card)', border: '1.5px solid var(--line)', textAlign: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                          Partner Emergency Desk
+                        </span>
+                        <b style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink)', display: 'block', marginTop: '4px' }}>
+                          +91 80001 88888
+                        </b>
+                        <span style={{ fontSize: '12.5px', color: '#16A34A', fontWeight: 600, display: 'block', marginTop: '4px' }}>
+                          ● Instant Dispatch Response
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addToast('Dialing Driver Partner Care...', 'info');
+                            window.location.href = 'tel:918000188888';
+                          }}
+                          style={{ height: '48px', borderRadius: '14px', background: '#16A34A', color: '#FFFFFF', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        >
+                          <span>📞 Call Care Free</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addToast('Roadside SOS triggered! Operations dispatched.', 'check');
+                            setActiveDriverModal(null);
+                          }}
+                          style={{ height: '48px', borderRadius: '14px', background: '#DC2626', color: '#FFFFFF', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        >
+                          <span>🚨 Roadside SOS</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MODAL 7: PARTNER INCENTIVES */}
+                  {activeDriverModal === 'incentives' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        Weekly Partner Incentives
+                      </h3>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
+                        Complete target trips each week to unlock guaranteed bonus payouts.
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { target: 'Tier 1: 20 Completed Trips', reward: '+₹1,500 Bonus', status: 'In Progress (14/20)' },
+                          { target: 'Tier 2: 35 Completed Trips', reward: '+₹3,000 Bonus', status: 'Locked' },
+                          { target: 'Tier 3: 50 Completed Trips', reward: '+₹5,500 Bonus', status: 'Locked' },
+                          { target: '5-Star Rating Maintenance', reward: '+₹500 Safety Bonus', status: 'Active (4.8 ★)' }
+                        ].map((m, idx) => (
+                          <div key={idx} style={{ padding: '12px 14px', borderRadius: '12px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <b style={{ fontSize: '13.5px', color: 'var(--ink)', display: 'block' }}>{m.target}</b>
+                              <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>{m.status}</span>
+                            </div>
+                            <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--on-yellow)', background: 'rgba(255, 199, 10, 0.15)', padding: '4px 8px', borderRadius: '8px' }}>
+                              {m.reward}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveDriverModal(null)}
+                        className="btn"
+                        style={{ height: '46px', borderRadius: '14px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}
+                      >
+                        Understood
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

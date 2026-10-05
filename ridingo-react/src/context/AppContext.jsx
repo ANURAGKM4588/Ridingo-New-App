@@ -30,6 +30,32 @@ export const DEFAULT_USER = {
   locPrivacy: true
 };
 
+export const DEFAULT_DRIVER = {
+  name: 'Ravi Kumar',
+  phone: '+91 94471 23456',
+  email: 'ravi.kumar@ridingo.partner',
+  rating: 4.8,
+  tripsCount: 142,
+  bankName: 'HDFC Bank',
+  bankAccount: '•••• 4521',
+  upiId: 'ravi.kumar@okhdfcbank',
+  dlNumber: 'KL-07-20160049281',
+  badgeNumber: 'KL-07-2024-CH08',
+  experienceYears: 8,
+  services: {
+    hourly: true,
+    daily: true,
+    airport: true,
+    outstation: true,
+    event: true
+  },
+  popups: true,
+  sound: true,
+  autoQueue: false,
+  biometric: true,
+  haptic: true
+};
+
 export const INITIAL_TRIPS = [
   {
     id: 'TRP-1092',
@@ -113,6 +139,16 @@ export function AppProvider({ children }) {
       return saved ? JSON.parse(saved) : DEFAULT_USER;
     } catch (e) {
       return DEFAULT_USER;
+    }
+  });
+
+  // Driver Partner state
+  const [driverPartner, setDriverPartner] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ridingo_driver_session');
+      return saved ? JSON.parse(saved) : DEFAULT_DRIVER;
+    } catch (e) {
+      return DEFAULT_DRIVER;
     }
   });
 
@@ -271,6 +307,26 @@ export function AppProvider({ children }) {
     addToast(`Welcome, ${updated.name || 'User'}!`, 'check');
   };
 
+  const updateUserProfile = (updates) => {
+    setUser(prev => {
+      const next = { ...(prev || DEFAULT_USER), ...updates };
+      try {
+        localStorage.setItem('ridingo_user_session', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const updateDriverPartner = (updates) => {
+    setDriverPartner(prev => {
+      const next = { ...(prev || DEFAULT_DRIVER), ...updates };
+      try {
+        localStorage.setItem('ridingo_driver_session', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
   const logout = () => {
     setUser(null);
     try {
@@ -321,6 +377,10 @@ export function AppProvider({ children }) {
         setTheme,
         user,
         setUser,
+        updateUserProfile,
+        driverPartner,
+        setDriverPartner,
+        updateDriverPartner,
         loginDemo,
         loginWithDetails,
         logout,
