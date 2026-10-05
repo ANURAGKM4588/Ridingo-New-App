@@ -1,0 +1,32 @@
+{
+  "appId": "com.ridingo.app",
+  "appName": "Ridingo",
+  "webDir": "dist",
+  "backgroundColor": "#FFFFFF",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "buildOptions": {
+      "releaseType": "AAB"
+    }
+  },
+  "ios": {
+    "scheme": "Ridingo",
+    "contentInset": "never",
+    "backgroundColor": "#FFFFFF"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#FFFFFF",
+      "overlaysWebView": true
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "DARK",
+      "resizeOnFullScreen": true
+    }
+  }
+}
