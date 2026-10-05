@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../config/app_theme.dart';
+import '../config/app_theme.dart';
 import 'home/driver_home_tab.dart';
 import 'earnings/driver_earnings_tab.dart';
 import 'profile/driver_profile_tab.dart';
