@@ -275,51 +275,24 @@ export default function LiveTrackingSheet() {
             </div>
           </div>
 
-          {/* Action Buttons: Share & Emergency SOS (Single Line Text, lifted higher up) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px', marginBottom: '12px' }}>
+          {/* Action Buttons: Share Trip (White bg + black outline) & Emergency SOS */}
+          <div className="live-sheet-actions-wrap">
             <button
-              className="btn line"
+              type="button"
+              className="live-act-btn live-btn-share"
               onClick={handleShareTrip}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                height: '42px',
-                borderRadius: '13px',
-                fontSize: '13px',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                padding: '0 6px',
-                cursor: 'pointer'
-              }}
             >
-              <Icon name="share" size={15} />
-              <span style={{ whiteSpace: 'nowrap' }}>Share Trip</span>
+              <Icon name="share" size={16} />
+              <span>Share Trip</span>
             </button>
 
             <button
-              className="btn"
+              type="button"
+              className="live-act-btn live-btn-sos"
               onClick={handleSos}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                height: '42px',
-                borderRadius: '13px',
-                fontSize: '13px',
-                fontWeight: 700,
-                background: 'rgba(239, 68, 68, 0.12)',
-                color: '#EF4444',
-                border: '1px solid rgba(239, 68, 68, 0.25)',
-                whiteSpace: 'nowrap',
-                padding: '0 6px',
-                cursor: 'pointer'
-              }}
             >
-              <Icon name="shield" size={15} />
-              <span style={{ whiteSpace: 'nowrap' }}>Emergency SOS</span>
+              <Icon name="shield" size={16} />
+              <span>Emergency SOS</span>
             </button>
           </div>
         </div>
