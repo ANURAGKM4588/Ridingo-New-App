@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
-import { registerPaymentSheetHandler, unregisterPaymentSheetHandler, RAZORPAY_KEY_ID, loadRazorpayScript } from '../utils/razorpay';
+import {
+  registerPaymentSheetHandler,
+  unregisterPaymentSheetHandler,
+  RAZORPAY_KEY_ID,
+  loadRazorpayScript,
+  getAppsWhichSupportUPI,
+  SUPPORTED_UPI_APPS
+} from '../utils/razorpay';
 
 const POPULAR_BANKS = [
   { id: 'HDFC', name: 'HDFC Bank', code: 'HDFC', color: '#004c8f' },
@@ -20,6 +27,9 @@ export default function PaymentSheet() {
 
   // Selected payment method: 'wallet' (RECOMMENDED) | 'phonepe' | 'gpay' | 'cred' | 'paytm' | 'qr' | 'card' | 'netbanking'
   const [selectedMethod, setSelectedMethod] = useState('wallet');
+
+  // Installed UPI Apps queried dynamically via Razorpay getAppsWhichSupportUPI()
+  const [installedUpiApps, setInstalledUpiApps] = useState(SUPPORTED_UPI_APPS);
 
   // Launching / Authorizing state
   const [isAuthorizing, setIsAuthorizing] = useState(false);
@@ -62,6 +72,19 @@ export default function PaymentSheet() {
     return () => {
       unregisterPaymentSheetHandler();
     };
+  }, []);
+
+  // Retrieve installed UPI apps dynamically from device via Razorpay SDK
+  useEffect(() => {
+    let isSubscribed = true;
+    getAppsWhichSupportUPI().then((apps) => {
+      if (isSubscribed && Array.isArray(apps) && apps.length > 0) {
+        setInstalledUpiApps(apps);
+      }
+    }).catch((err) => {
+      console.warn('Could not query UPI apps from device:', err);
+    });
+    return () => { isSubscribed = false; };
   }, []);
 
   // OTP Countdown timer for 3D Secure Card Verification
@@ -414,6 +437,14 @@ export default function PaymentSheet() {
       Paytm
     </div>
   );
+
+  const renderUpiLogo = (appId) => {
+    if (appId === 'cred') return <CREDLogo />;
+    if (appId === 'phonepe') return <PhonePeLogo />;
+    if (appId === 'gpay') return <GPayLogo />;
+    if (appId === 'paytm') return <PaytmLogo />;
+    return <Icon name="smartphone" size={24} color="#111827" />;
+  };
 
   return (
     <div className="layer on" id="u-payment-layer" style={{ zIndex: 120 }}>
@@ -917,100 +948,50 @@ export default function PaymentSheet() {
 
           {/* Section Divider: UPI */}
           <div style={{ fontSize: '11px', fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '4px' }}>
-            UPI Payments
+            Installed UPI Apps {installedUpiApps.length > 0 && `(${installedUpiApps.length})`}
           </div>
 
-          {/* Option: PhonePe */}
-          <div
-            onClick={() => setSelectedMethod('phonepe')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              borderRadius: '16px',
-              border: selectedMethod === 'phonepe' ? '2.5px solid var(--yellow, #FFC70A)' : '1px solid #E5E7EB',
-              background: selectedMethod === 'phonepe' ? 'rgba(255, 199, 10, 0.08)' : '#FFFFFF',
-              cursor: 'pointer'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <PhonePeLogo />
-              <b style={{ fontSize: '15px', color: '#111827', fontWeight: 700 }}>PhonePe</b>
-            </div>
-            <div
-              style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                border: selectedMethod === 'phonepe' ? '7px solid var(--yellow, #FFC70A)' : '1.5px solid #9CA3AF',
-                background: selectedMethod === 'phonepe' ? '#111827' : '#FFFFFF',
-                flexShrink: 0
-              }}
-            />
-          </div>
+          {/* Dynamically Mapped Installed UPI Apps via getAppsWhichSupportUPI() */}
+          {installedUpiApps.map((app) => {
+            const isSelected = selectedMethod === app.id;
+            return (
+              <div
+                key={app.id}
+                onClick={() => setSelectedMethod(app.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  border: isSelected ? '2.5px solid var(--yellow, #FFC70A)' : '1px solid #E5E7EB',
+                  background: isSelected ? 'rgba(255, 199, 10, 0.08)' : '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  {renderUpiLogo(app.id)}
+                  <div>
+                    <b style={{ fontSize: '15px', color: '#111827', fontWeight: 700, display: 'block' }}>{app.name}</b>
+                    <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>Detected on device</span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    border: isSelected ? '7px solid var(--yellow, #FFC70A)' : '1.5px solid #9CA3AF',
+                    background: isSelected ? '#111827' : '#FFFFFF',
+                    flexShrink: 0
+                  }}
+                />
+              </div>
+            );
+          })}
 
-          {/* Option: Google Pay */}
-          <div
-            onClick={() => setSelectedMethod('gpay')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              borderRadius: '16px',
-              border: selectedMethod === 'gpay' ? '2.5px solid var(--yellow, #FFC70A)' : '1px solid #E5E7EB',
-              background: selectedMethod === 'gpay' ? 'rgba(255, 199, 10, 0.08)' : '#FFFFFF',
-              cursor: 'pointer'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <GPayLogo />
-              <b style={{ fontSize: '15px', color: '#111827', fontWeight: 700 }}>Google Pay</b>
-            </div>
-            <div
-              style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                border: selectedMethod === 'gpay' ? '7px solid var(--yellow, #FFC70A)' : '1.5px solid #9CA3AF',
-                background: selectedMethod === 'gpay' ? '#111827' : '#FFFFFF',
-                flexShrink: 0
-              }}
-            />
-          </div>
-
-          {/* Option: CRED */}
-          <div
-            onClick={() => setSelectedMethod('cred')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              borderRadius: '16px',
-              border: selectedMethod === 'cred' ? '2.5px solid var(--yellow, #FFC70A)' : '1px solid #E5E7EB',
-              background: selectedMethod === 'cred' ? 'rgba(255, 199, 10, 0.08)' : '#FFFFFF',
-              cursor: 'pointer'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <CREDLogo />
-              <b style={{ fontSize: '15px', color: '#111827', fontWeight: 700 }}>CRED UPI</b>
-            </div>
-            <div
-              style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                border: selectedMethod === 'cred' ? '7px solid var(--yellow, #FFC70A)' : '1.5px solid #9CA3AF',
-                background: selectedMethod === 'cred' ? '#111827' : '#FFFFFF',
-                flexShrink: 0
-              }}
-            />
-          </div>
-
-          {/* Option: Pay via QR */}
+          {/* Option: Pay via QR (Fallback for any unlisted app) */}
           <div
             onClick={() => {
               setSelectedMethod('qr');
@@ -1031,7 +1012,7 @@ export default function PaymentSheet() {
               <QrLogo />
               <div>
                 <b style={{ fontSize: '15px', color: '#111827', fontWeight: 700 }}>Pay via UPI QR</b>
-                <span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Scan with any phone app</span>
+                <span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Scan with any UPI app</span>
               </div>
             </div>
             <div

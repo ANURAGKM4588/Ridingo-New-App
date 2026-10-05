@@ -165,3 +165,93 @@ export async function createRazorpayOrder({
 
   return data;
 }
+
+/**
+ * Known UPI Apps supported by Razorpay
+ */
+export const SUPPORTED_UPI_APPS = [
+  {
+    id: 'cred',
+    name: 'CRED UPI',
+    packageName: 'com.dreamplug.androidapp',
+    scheme: 'cred',
+    aliases: ['cred', 'credpay', 'com.dreamplug.androidapp']
+  },
+  {
+    id: 'phonepe',
+    name: 'PhonePe',
+    packageName: 'com.phonepe.app',
+    scheme: 'phonepe',
+    aliases: ['phonepe', 'com.phonepe.app']
+  },
+  {
+    id: 'gpay',
+    name: 'Google Pay',
+    packageName: 'com.google.android.apps.nbu.paisa.user',
+    scheme: 'gpay',
+    aliases: ['gpay', 'tez', 'google_pay', 'com.google.android.apps.nbu.paisa.user']
+  },
+  {
+    id: 'paytm',
+    name: 'Paytm',
+    packageName: 'net.one97.paytm',
+    scheme: 'paytm',
+    aliases: ['paytm', 'paytmmp', 'net.one97.paytm']
+  }
+];
+
+/**
+ * Integrates Razorpay's getAppsWhichSupportUPI() function
+ * Queries device for installed UPI apps (CRED, PhonePe, GPay, Paytm)
+ */
+export async function getAppsWhichSupportUPI() {
+  try {
+    let RazorpayCheckout = null;
+    if (typeof window !== 'undefined' && window.RazorpayCheckout) {
+      RazorpayCheckout = window.RazorpayCheckout;
+    } else {
+      try {
+        const mod = require('react-native-razorpay');
+        RazorpayCheckout = mod.default || mod;
+      } catch (e) {}
+    }
+
+    if (RazorpayCheckout && typeof RazorpayCheckout.getAppsWhichSupportUPI === 'function') {
+      const result = await RazorpayCheckout.getAppsWhichSupportUPI();
+      if (result) {
+        return filterSupportedApps(result);
+      }
+    }
+  } catch (err) {
+    console.log('Razorpay native getAppsWhichSupportUPI check:', err.message);
+  }
+
+  // Fallback to supported list for preview / browser
+  return SUPPORTED_UPI_APPS;
+}
+
+function filterSupportedApps(result) {
+  const identifiers = [];
+  if (Array.isArray(result)) {
+    result.forEach(item => {
+      if (typeof item === 'string') identifiers.push(item.toLowerCase());
+      else if (item && typeof item === 'object') {
+        if (item.packageName) identifiers.push(item.packageName.toLowerCase());
+        if (item.appName) identifiers.push(item.appName.toLowerCase());
+      }
+    });
+  } else if (typeof result === 'object' && result !== null) {
+    Object.keys(result).forEach(key => identifiers.push(key.toLowerCase()));
+    Object.values(result).forEach(val => {
+      if (typeof val === 'string') identifiers.push(val.toLowerCase());
+    });
+  }
+
+  if (identifiers.length === 0) return SUPPORTED_UPI_APPS;
+
+  const matched = SUPPORTED_UPI_APPS.filter(app => {
+    return app.aliases.some(alias => identifiers.some(id => id.includes(alias)));
+  });
+
+  return matched.length > 0 ? matched : SUPPORTED_UPI_APPS;
+}
