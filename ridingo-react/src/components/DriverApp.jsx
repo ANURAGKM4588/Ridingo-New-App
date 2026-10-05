@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
@@ -36,6 +36,32 @@ export default function DriverApp() {
   const [editDriverName, setEditDriverName] = useState(driverPartner?.name || 'Ravi Kumar');
   const [editDriverPhone, setEditDriverPhone] = useState(driverPartner?.phone || '+91 94471 23456');
   const [editDriverExp, setEditDriverExp] = useState(driverPartner?.experienceYears || 8);
+  const [editDriverAvatar, setEditDriverAvatar] = useState(driverPartner?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150');
+  const driverFileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (activeDriverModal === 'editDriver') {
+      setEditDriverName(driverPartner?.name || 'Ravi Kumar');
+      setEditDriverPhone(driverPartner?.phone || '+91 94471 23456');
+      setEditDriverExp(driverPartner?.experienceYears || 8);
+      setEditDriverAvatar(driverPartner?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150');
+    }
+  }, [activeDriverModal, driverPartner]);
+
+  const handleDriverAvatarFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image size should be under 5MB', 'warn');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setEditDriverAvatar(event.target.result);
+      addToast('Chauffeur photo selected! Tap Save to apply.', 'check');
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Payout Bank / UPI form states
   const [editBankName, setEditBankName] = useState(driverPartner?.bankName || 'HDFC Bank');
@@ -74,10 +100,11 @@ export default function DriverApp() {
     updateDriverPartner({
       name: editDriverName.trim(),
       phone: editDriverPhone.trim(),
-      experienceYears: Number(editDriverExp) || 8
+      experienceYears: Number(editDriverExp) || 8,
+      avatar: editDriverAvatar
     });
     setActiveDriverModal(null);
-    addToast('Driver profile updated successfully', 'check');
+    addToast('Chauffeur profile & photo updated successfully', 'check');
   };
 
   const handleSavePayout = (e) => {
@@ -463,8 +490,8 @@ export default function DriverApp() {
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div
                       style={{
-                        width: '56px',
-                        height: '56px',
+                        width: '58px',
+                        height: '58px',
                         borderRadius: '50%',
                         background: 'var(--yellow)',
                         color: '#111827',
@@ -473,10 +500,21 @@ export default function DriverApp() {
                         justifyContent: 'center',
                         fontSize: '20px',
                         fontWeight: 800,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                        border: '2px solid var(--surface)'
                       }}
                     >
-                      {driverPartner?.name ? driverPartner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'RK'}
+                      {driverPartner?.avatar ? (
+                        <img
+                          src={driverPartner.avatar}
+                          alt={driverPartner?.name || 'Driver'}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        (driverPartner?.name ? driverPartner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'RK')
+                      )}
                     </div>
                     <div
                       style={{
@@ -1025,6 +1063,110 @@ export default function DriverApp() {
                       <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
                         Edit Chauffeur Profile
                       </h3>
+
+                      {/* Chauffeur Photo Upload / Edit */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '6px 0 10px' }}>
+                        <div style={{ position: 'relative' }}>
+                          <div
+                            onClick={() => driverFileInputRef.current?.click()}
+                            style={{
+                              width: '84px',
+                              height: '84px',
+                              borderRadius: '50%',
+                              background: 'var(--yellow)',
+                              color: '#111827',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '28px',
+                              fontWeight: 800,
+                              overflow: 'hidden',
+                              border: '3px solid var(--surface)',
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                              cursor: 'pointer'
+                            }}
+                            title="Tap to change chauffeur photo"
+                          >
+                            {editDriverAvatar ? (
+                              <img src={editDriverAvatar} alt="Chauffeur Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              (editDriverName ? editDriverName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'RK')
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => driverFileInputRef.current?.click()}
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              right: 0,
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              background: '#111827',
+                              border: '2px solid var(--card)',
+                              color: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                            }}
+                            title="Upload Chauffeur Photo"
+                          >
+                            <Icon name="camera" size={13} />
+                          </button>
+                        </div>
+
+                        <input
+                          ref={driverFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleDriverAvatarFileSelect}
+                        />
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => driverFileInputRef.current?.click()}
+                            style={{
+                              background: 'rgba(250, 204, 21, 0.18)',
+                              border: '1px solid var(--yellow)',
+                              color: 'var(--ink)',
+                              padding: '6px 14px',
+                              borderRadius: '999px',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <Icon name="camera" size={12} />
+                            <span>{editDriverAvatar ? 'Change Photo' : 'Upload Photo'}</span>
+                          </button>
+                          {editDriverAvatar && (
+                            <button
+                              type="button"
+                              onClick={() => { setEditDriverAvatar(''); addToast('Photo removed (initials will be used)', 'info'); }}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid var(--line)',
+                                color: '#EF4444',
+                                padding: '6px 12px',
+                                borderRadius: '999px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
                       <div>
                         <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>

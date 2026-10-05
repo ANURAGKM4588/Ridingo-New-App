@@ -34,6 +34,7 @@ export const DEFAULT_DRIVER = {
   name: 'Ravi Kumar',
   phone: '+91 94471 23456',
   email: 'ravi.kumar@ridingo.partner',
+  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
   rating: 4.8,
   tripsCount: 142,
   bankName: 'HDFC Bank',
@@ -173,6 +174,18 @@ export function AppProvider({ children }) {
 
   const markAllNotifsRead = () => {
     setUnotes(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const markNotifRead = (id) => {
+    setUnotes(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
+  };
+
+  const deleteNotif = (id) => {
+    setUnotes(prev => prev.filter(n => n.id !== id));
+  };
+
+  const clearAllNotifs = () => {
+    setUnotes([]);
   };
 
   const addNotification = (title, body, icon = 'bell') => {
@@ -409,6 +422,9 @@ export function AppProvider({ children }) {
         unotes,
         setUnotes,
         markAllNotifsRead,
+        markNotifRead,
+        deleteNotif,
+        clearAllNotifs,
         addNotification,
         bookRide,
         driverOnline,

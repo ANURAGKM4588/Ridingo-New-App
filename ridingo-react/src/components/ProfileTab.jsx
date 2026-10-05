@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
@@ -15,6 +15,34 @@ export default function ProfileTab() {
   const [editEmail, setEditEmail] = useState(user?.email || 'arjun.menon@example.com');
   const [editCarModel, setEditCarModel] = useState(user?.car?.model || 'Hyundai Creta (Automatic)');
   const [editCarPlate, setEditCarPlate] = useState(user?.car?.plate || 'KL 07 AB 4821');
+  const [editAvatar, setEditAvatar] = useState(user?.avatar || '');
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (activeModal === 'editProfile') {
+      setEditName(user?.name || 'Arjun Menon');
+      setEditPhone(user?.phone || '+91 98401 23456');
+      setEditEmail(user?.email || 'arjun.menon@example.com');
+      setEditCarModel(user?.car?.model || 'Hyundai Creta (Automatic)');
+      setEditCarPlate(user?.car?.plate || 'KL 07 AB 4821');
+      setEditAvatar(user?.avatar || '');
+    }
+  }, [activeModal, user]);
+
+  const handleAvatarFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image size should be under 5MB', 'warn');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setEditAvatar(event.target.result);
+      addToast('Profile picture selected! Tap Save to apply.', 'check');
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Change PIN modal state
   const [pinInput, setPinInput] = useState(user?.pinCode || '4821');
@@ -65,6 +93,7 @@ export default function ProfileTab() {
       name: editName.trim(),
       phone: editPhone.trim(),
       email: editEmail.trim(),
+      avatar: editAvatar,
       car: {
         model: editCarModel.trim(),
         plate: editCarPlate.trim(),
@@ -72,7 +101,7 @@ export default function ProfileTab() {
       }
     });
     setActiveModal(null);
-    addToast('Profile & car details updated', 'check');
+    addToast('Profile, photo & car details updated', 'check');
   };
 
   const handleSavePin = (e) => {
@@ -186,8 +215,8 @@ export default function ProfileTab() {
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <div
                 style={{
-                  width: '56px',
-                  height: '56px',
+                  width: '58px',
+                  height: '58px',
                   borderRadius: '50%',
                   background: 'var(--yellow)',
                   color: '#111827',
@@ -196,10 +225,21 @@ export default function ProfileTab() {
                   justifyContent: 'center',
                   fontSize: '20px',
                   fontWeight: 800,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                  border: '2px solid var(--surface)'
                 }}
               >
-                {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AM'}
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user?.name || 'User'}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  (user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AM')
+                )}
               </div>
               <div
                 style={{
@@ -672,6 +712,110 @@ export default function ProfileTab() {
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
                   Edit Profile & Vehicle
                 </h3>
+
+                {/* Profile Photo Upload / Edit */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '6px 0 10px' }}>
+                  <div style={{ position: 'relative' }}>
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        width: '84px',
+                        height: '84px',
+                        borderRadius: '50%',
+                        background: 'var(--yellow)',
+                        color: '#111827',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '28px',
+                        fontWeight: 800,
+                        overflow: 'hidden',
+                        border: '3px solid var(--surface)',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                        cursor: 'pointer'
+                      }}
+                      title="Tap to change profile photo"
+                    >
+                      {editAvatar ? (
+                        <img src={editAvatar} alt="Profile Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        (editName ? editName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AM')
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: '#111827',
+                        border: '2px solid var(--card)',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                      }}
+                      title="Upload Photo"
+                    >
+                      <Icon name="camera" size={13} />
+                    </button>
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleAvatarFileSelect}
+                  />
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        background: 'rgba(250, 204, 21, 0.18)',
+                        border: '1px solid var(--yellow)',
+                        color: 'var(--ink)',
+                        padding: '6px 14px',
+                        borderRadius: '999px',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Icon name="camera" size={12} />
+                      <span>{editAvatar ? 'Change Photo' : 'Upload Photo'}</span>
+                    </button>
+                    {editAvatar && (
+                      <button
+                        type="button"
+                        onClick={() => { setEditAvatar(''); addToast('Photo removed (initials will be used)', 'info'); }}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid var(--line)',
+                          color: '#EF4444',
+                          padding: '6px 12px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
