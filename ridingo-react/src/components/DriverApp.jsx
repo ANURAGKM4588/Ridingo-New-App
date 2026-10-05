@@ -26,6 +26,28 @@ export default function DriverApp() {
 
   const [dFilter, setDFilter] = useState('all');
 
+  // Interactive toggle states for Driver Profile (matching User App iOS style)
+  const [tripPopupsOn, setTripPopupsOn] = useState(true);
+  const [requestSoundOn, setRequestSoundOn] = useState(true);
+  const [autoQueueOn, setAutoQueueOn] = useState(false);
+  const [servicesEnabled, setServicesEnabled] = useState({
+    hourly: true,
+    daily: true,
+    airport: true,
+    outstation: true,
+    event: true
+  });
+  const [biometricOn, setBiometricOn] = useState(true);
+  const [hapticOn, setHapticOn] = useState(true);
+
+  const toggleService = (key) => {
+    setServicesEnabled(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      addToast(`${CATS[key]?.name || key} service ${next[key] ? 'enabled' : 'disabled'}`, 'check');
+      return next;
+    });
+  };
+
   const requestedTrips = trips.filter(t => t.status === 'requested');
   const upcomingTrips = trips.filter(t => ['accepted', 'scheduled', 'inprogress'].includes(t.status));
 
@@ -375,89 +397,473 @@ export default function DriverApp() {
 
         {/* ===================== PROFILE TAB ===================== */}
         {dTab === 'profile' && (
-          <div>
-            <div className="hello" style={{ marginBottom: '14px' }}>
-              <h1>Profile</h1>
+          <div style={{ paddingBottom: '32px' }}>
+            {/* 1. Header */}
+            <div className="hello" style={{ marginBottom: '16px' }}>
+              <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: 'var(--ink)' }}>
+                Profile
+              </h1>
+              <p style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px', margin: 0 }}>
+                Driver partner & preferences
+              </p>
             </div>
 
-            <div className="card row" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <span className="av lg" style={{ width: '48px', height: '48px' }}>RK</span>
-              <div className="grow">
-                <b style={{ font: '700 20px var(--font-display)' }}>Ravi Kumar</b>
-                <span className="sub">★ 4.8 · 142 trips on Ridingo</span>
-              </div>
-            </div>
-
-            <div className="setgroup">
-              <h4>Requests</h4>
-              <div className="card" style={{ padding: '0 14px' }}>
-                <div className="setrow">
-                  <div className="grow">
-                    <b>Trip request popups</b>
-                    <span className="sub">Show instant popup for nearby bookings</span>
-                  </div>
-                  <span className="pill good">Active</span>
-                </div>
-                <div className="setrow" style={{ border: 'none' }}>
-                  <div className="grow">
-                    <b>Request sound</b>
-                    <span className="sub">Play alert chime when ride is received</span>
-                  </div>
-                  <span className="pill good">Active</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="setgroup">
-              <h4>Services I accept</h4>
-              <div className="card" style={{ padding: '0 14px' }}>
-                {Object.keys(CATS).map(k => (
-                  <div key={k} className="setrow">
-                    <div className="grow">
-                      <b>{CATS[k].name}</b>
-                      <span className="sub">{CATS[k].from || 'Available for booking'}</span>
+            {/* 2. Driver Profile Card (Same style as User App Profile Card) */}
+            <div className="card prof-card" style={{ padding: '16px', borderRadius: '20px', marginBottom: '22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                  {/* Avatar with Camera badge */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: 'var(--yellow)',
+                        color: '#111827',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        fontWeight: 800,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                      }}
+                    >
+                      RK
                     </div>
-                    <span className="pill good">Enabled</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="setgroup">
-              <h4>Cars I can drive</h4>
-              <div className="card" style={{ padding: '0 14px' }}>
-                {['Manual transmission', 'Automatic gearbox', 'IMT & Hybrid'].map((t, idx) => (
-                  <div key={idx} className="setrow" style={{ border: idx === 2 ? 'none' : undefined }}>
-                    <div className="grow">
-                      <b>{t}</b>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: -1,
+                        right: -1,
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: '#111827',
+                        border: '2px solid var(--card)',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => addToast('Change partner photo', 'info')}
+                      title="Change Photo"
+                    >
+                      <Icon name="camera" size={11} />
                     </div>
-                    <span className="pill good">Certified</span>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="setgroup">
-              <h4>Payout account</h4>
-              <div className="card row" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="ico">
-                  <Icon name="bank" size={20} />
+                  {/* Driver Meta */}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <b style={{ fontSize: '17px', fontWeight: 700, color: 'var(--ink)', display: 'block', lineHeight: 1.25 }}>
+                      Ravi Kumar
+                    </b>
+                    <span style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '3px', display: 'block' }}>
+                      ★ 4.8 · 142 trips on Ridingo
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => addToast('Driver partner details verified', 'check')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '6px 8px',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    color: 'var(--ink)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Edit
+                </button>
+              </div>
+
+              {/* Verified Chauffeur & Partner Badges */}
+              <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span
+                  style={{
+                    background: 'rgba(34, 197, 94, 0.14)',
+                    color: '#16A34A',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    letterSpacing: '0.01em'
+                  }}
+                >
+                  Verified Chauffeur
                 </span>
-                <div className="grow">
-                  <b>HDFC Bank •••• 4521</b>
-                  <span className="sub">Automated daily withdrawal destination</span>
+                <span style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 500 }}>
+                  Partner since 2024
+                </span>
+              </div>
+            </div>
+
+            {/* 3. TRIP REQUESTS */}
+            <div className="prof-section-title">Trip Requests</div>
+            <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+              {/* Row 1: Trip request popups */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Trip Request Popups</b>
+                  <span className="prof-set-sub">Show instant popup notification for nearby bookings</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${tripPopupsOn ? 'on' : ''}`}
+                  onClick={() => {
+                    setTripPopupsOn(!tripPopupsOn);
+                    addToast(!tripPopupsOn ? 'Trip popups enabled' : 'Trip popups disabled', 'check');
+                  }}
+                  aria-label="Toggle Trip Popups"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Row 2: Request sound */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Request Sound Alert</b>
+                  <span className="prof-set-sub">Play chime sound when booking request is received</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${requestSoundOn ? 'on' : ''}`}
+                  onClick={() => {
+                    setRequestSoundOn(!requestSoundOn);
+                    addToast(!requestSoundOn ? 'Request audio alert enabled' : 'Request audio alert muted', 'check');
+                  }}
+                  aria-label="Toggle Request Sound"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Row 3: Auto-queue next booking */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Auto-Queue Next Booking</b>
+                  <span className="prof-set-sub">Automatically queue next trip when current completes</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${autoQueueOn ? 'on' : ''}`}
+                  onClick={() => {
+                    setAutoQueueOn(!autoQueueOn);
+                    addToast(!autoQueueOn ? 'Auto-queueing enabled' : 'Auto-queueing disabled', 'check');
+                  }}
+                  aria-label="Toggle Auto-Queue"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+            </div>
+
+            {/* 4. SERVICES I ACCEPT */}
+            <div className="prof-section-title">Services I Accept</div>
+            <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+              {/* Hourly */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Hourly Chauffeur</b>
+                  <span className="prof-set-sub">₹250/hr · 2 to 12 hours minimum booking</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${servicesEnabled.hourly ? 'on' : ''}`}
+                  onClick={() => toggleService('hourly')}
+                  aria-label="Toggle Hourly Chauffeur"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Full Day */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Full Day Chauffeur</b>
+                  <span className="prof-set-sub">₹1,800/day · 8 hours dedicated chauffeur service</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${servicesEnabled.daily ? 'on' : ''}`}
+                  onClick={() => toggleService('daily')}
+                  aria-label="Toggle Full Day Chauffeur"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Airport */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Airport Transfer</b>
+                  <span className="prof-set-sub">₹900 flat · Terminal pickup & drop chauffeur</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${servicesEnabled.airport ? 'on' : ''}`}
+                  onClick={() => toggleService('airport')}
+                  aria-label="Toggle Airport Transfer"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Outstation */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Outstation Chauffeur</b>
+                  <span className="prof-set-sub">₹2,200/day · Round trips & intercity travel</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${servicesEnabled.outstation ? 'on' : ''}`}
+                  onClick={() => toggleService('outstation')}
+                  aria-label="Toggle Outstation Chauffeur"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Night & Events */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Night & Events</b>
+                  <span className="prof-set-sub">₹350/hr · Parties, dining & late night returns</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${servicesEnabled.event ? 'on' : ''}`}
+                  onClick={() => toggleService('event')}
+                  aria-label="Toggle Night & Events"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+            </div>
+
+            {/* 5. CARS I CAN DRIVE */}
+            <div className="prof-section-title">Cars I Can Drive</div>
+            <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Manual transmission certified (Valid)', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Manual Transmission</b>
+                  <span className="prof-set-sub">H-pattern clutch & gearshift certified</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Certified</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Automatic gearbox certified (TC, DCT, CVT, AMT)', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Automatic Gearbox</b>
+                  <span className="prof-set-sub">Torque Converter, DCT, CVT, AMT certified</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Certified</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('IMT & Hybrid vehicles certified', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">IMT & Hybrid</b>
+                  <span className="prof-set-sub">Clutchless manual & strong hybrids</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Certified</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Luxury & High-end EV certified', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Luxury & High-end EVs</b>
+                  <span className="prof-set-sub">Mercedes, BMW, Audi, and electric luxury</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Certified</span>
+                  <Icon name="chevronRight" size={15} />
                 </div>
               </div>
             </div>
 
-            <div className="setgroup">
-              <h4>Appearance</h4>
-              <div className="card" style={{ padding: '12px' }}>
-                <div className="seg" role="group" aria-label="Appearance">
+            {/* 6. PAYOUT & BANK ACCOUNT */}
+            <div className="prof-section-title">Payout & Bank Account</div>
+            <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('HDFC Bank •••• 4521 is verified for auto-withdrawals', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">HDFC Bank •••• 4521</b>
+                  <span className="prof-set-sub">Automated daily withdrawal destination</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Primary</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('UPI VPA ravi.kumar@okhdfcbank verified', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Instant UPI Payout</b>
+                  <span className="prof-set-sub">ravi.kumar@okhdfcbank</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Verified</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Daily settlement processed at 6:00 AM every morning', 'info')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Settlement Cycle</b>
+                  <span className="prof-set-sub">Auto-credited every morning at 6:00 AM</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Daily 6 AM</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+            </div>
+
+            {/* 7. DRIVER DOCUMENTS & KYC */}
+            <div className="prof-section-title">Documents & Verification</div>
+            <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Commercial Driving License #KL0720160049281 (Valid till 2029)', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Commercial Driving License</b>
+                  <span className="prof-set-sub">#KL-07-20160049281 · Valid till Dec 2029</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Verified</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Police Clearance Certificate verified by Kerala Police', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Police Clearance Certificate</b>
+                  <span className="prof-set-sub">Issued by Ernakulam City Police Department</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Approved</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Chauffeur badge #KL-07-2024-CH08 is active', 'check')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Chauffeur Badge</b>
+                  <span className="prof-set-sub">Badge #KL-07-2024-CH08 · Ernakulam RTO</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Active</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+            </div>
+
+            {/* 8. APP & PRIVACY */}
+            <div className="prof-section-title">App & Privacy</div>
+            <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
+              {/* Biometric */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Biometric / App Lock</b>
+                  <span className="prof-set-sub">Require Face ID or Fingerprint on app open</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${biometricOn ? 'on' : ''}`}
+                  onClick={() => {
+                    setBiometricOn(!biometricOn);
+                    addToast(!biometricOn ? 'Biometric lock enabled' : 'Biometric lock disabled', 'check');
+                  }}
+                  aria-label="Toggle Biometric Lock"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Haptic */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Haptic Feedback</b>
+                  <span className="prof-set-sub">Subtle vibration when accepting rides and alerts</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${hapticOn ? 'on' : ''}`}
+                  onClick={() => {
+                    setHapticOn(!hapticOn);
+                    addToast(!hapticOn ? 'Haptic feedback enabled' : 'Haptic feedback disabled', 'check');
+                  }}
+                  aria-label="Toggle Haptic Feedback"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Appearance */}
+              <div className="prof-set-row" style={{ display: 'block', padding: '14px 0' }}>
+                <b className="prof-set-title" style={{ marginBottom: '10px' }}>
+                  Appearance
+                </b>
+                <div className="ios-seg-control" role="group" aria-label="Appearance">
                   {[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([mode, label]) => (
                     <button
                       key={mode}
-                      className={theme === mode ? 'on' : ''}
+                      type="button"
+                      className={`ios-seg-btn ${theme === mode ? 'on' : ''}`}
                       onClick={() => setTheme(mode)}
                     >
                       {label}
@@ -467,14 +873,72 @@ export default function DriverApp() {
               </div>
             </div>
 
-            <div style={{ textAlign: 'center', padding: '24px 0 10px' }}>
+            {/* 9. DRIVER PARTNER CARE */}
+            <div className="prof-section-title">Driver Partner Care</div>
+            <div className="card" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '22px' }}>
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Calling 24x7 Driver Partner Helpline (+91 80001 88888)...', 'phone')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">24x7 Partner Helpline</b>
+                  <span className="prof-set-sub">Dedicated chauffeur roadside & emergency care</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Call Free</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+
+              <div
+                className="prof-set-row"
+                style={{ cursor: 'pointer' }}
+                onClick={() => addToast('Opening Driver Partner Milestone & Bonus Guidelines...', 'info')}
+              >
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Partner Guidelines & Incentives</b>
+                  <span className="prof-set-sub">Weekly trip milestones, bonus rates & safety rules</span>
+                </div>
+                <div className="prof-set-action-btn">
+                  <span>Guidelines</span>
+                  <Icon name="chevronRight" size={15} />
+                </div>
+              </div>
+            </div>
+
+            {/* 10. Footer: App Version & Sign Out Button */}
+            <div style={{ textAlign: 'center', padding: '16px 0 10px' }}>
               <BrandLogo
                 height={20}
                 width={80}
                 center
-                style={{ opacity: 0.8, marginBottom: '6px' }}
+                style={{ opacity: 0.8, marginBottom: '8px' }}
               />
-              <p className="mut small" style={{ margin: 0 }}>Ridingo Driver Partner · v2.4.2</p>
+              <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>
+                Ridingo Driver Partner · v2.4.2
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDriverOnline(false);
+                  addToast('Signed out of Driver Partner account. Set to offline.', 'info');
+                }}
+                style={{
+                  background: 'var(--card)',
+                  color: '#DC2626',
+                  border: '1px solid var(--line)',
+                  borderRadius: '999px',
+                  padding: '9px 28px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  transition: 'transform 0.15s ease'
+                }}
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         )}

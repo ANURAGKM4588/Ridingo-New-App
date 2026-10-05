@@ -257,6 +257,20 @@ export function AppProvider({ children }) {
     addToast('Signed in as Arjun Menon', 'check');
   };
 
+  const loginWithDetails = (userData = {}) => {
+    const updated = {
+      ...DEFAULT_USER,
+      ...userData,
+      phone: userData.phone ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`) : DEFAULT_USER.phone
+    };
+    setUser(updated);
+    try {
+      localStorage.setItem('ridingo_user_session', JSON.stringify(updated));
+    } catch (e) {}
+    setOnboardingOpen(false);
+    addToast(`Welcome, ${updated.name || 'User'}!`, 'check');
+  };
+
   const logout = () => {
     setUser(null);
     try {
@@ -308,6 +322,7 @@ export function AppProvider({ children }) {
         user,
         setUser,
         loginDemo,
+        loginWithDetails,
         logout,
         resetDemo,
         view,
