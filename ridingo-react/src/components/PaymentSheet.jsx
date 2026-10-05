@@ -997,11 +997,11 @@ export default function PaymentSheet() {
           </div>
 
           {/* Section Divider: UPI */}
-          <div style={{ fontSize: '11px', fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '4px' }}>
-            Installed UPI Apps {installedUpiApps.length > 0 && `(${installedUpiApps.length})`}
+          <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--muted, #6B7280)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '4px' }}>
+            UPI
           </div>
 
-          {/* Dynamically Mapped Installed UPI Apps via getAppsWhichSupportUPI() */}
+          {/* Dynamically Mapped Installed UPI Apps via Razorpay SDK getAppsWhichSupportUPI() */}
           {installedUpiApps.map((app) => {
             const isSelected = selectedMethod === app.id;
             return (
@@ -1022,10 +1022,7 @@ export default function PaymentSheet() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                   {renderUpiLogo(app.id)}
-                  <div>
-                    <b style={{ fontSize: '15px', color: '#111827', fontWeight: 700, display: 'block' }}>{app.name}</b>
-                    <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>Detected on device</span>
-                  </div>
+                  <b style={{ fontSize: '15px', color: 'var(--ink, #111827)', fontWeight: 700 }}>{app.name}</b>
                 </div>
                 <div
                   style={{
@@ -1077,8 +1074,8 @@ export default function PaymentSheet() {
             />
           </div>
 
-          {/* Section Divider: Cards & Banks */}
-          <div style={{ fontSize: '11px', fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '4px' }}>
+          {/* Section Divider: Cards & Banking */}
+          <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--muted, #6B7280)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '8px' }}>
             Cards & Banking
           </div>
 
