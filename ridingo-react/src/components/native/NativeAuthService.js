@@ -235,4 +235,123 @@ export function setupAppleRevocationListener(onRevoked) {
   return () => {};
 }
 
+/**
+ * ============================================================================
+ * PERSISTENT SESSION STORAGE & AUTO-LOGIN RESTORATION (Prevents Guest/Demo Reset)
+ * ============================================================================
+ */
+
+let AsyncStorage = null;
+try {
+  const asModule = require('@react-native-async-storage/async-storage');
+  AsyncStorage = asModule.default || asModule;
+} catch (e) {
+  // Fallback to localStorage or in-memory
+}
+
+const STORAGE_KEY = 'ridingo_user_session';
+
+/**
+ * Persist user profile to local device storage
+ */
+export async function saveUserSession(userData) {
+  if (!userData) return;
+  const payload = {
+    ...userData,
+    isAuthenticated: true,
+    isGuest: false,
+    isDemo: false,
+    lastActive: Date.now()
+  };
+  const serialized = JSON.stringify(payload);
+
+  if (AsyncStorage) {
+    try { await AsyncStorage.setItem(STORAGE_KEY, serialized); } catch (e) {}
+  }
+  if (typeof localStorage !== 'undefined') {
+    try { localStorage.setItem(STORAGE_KEY, serialized); } catch (e) {}
+  }
+  return payload;
+}
+
+/**
+ * Retrieve saved user session from persistent storage
+ */
+export async function getSavedUserSession() {
+  let saved = null;
+  if (AsyncStorage) {
+    try { saved = await AsyncStorage.getItem(STORAGE_KEY); } catch (e) {}
+  }
+  if (!saved && typeof localStorage !== 'undefined') {
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+  }
+  if (!saved) return null;
+
+  try {
+    const parsed = JSON.parse(saved);
+    return parsed.isAuthenticated ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Clear user session upon explicit sign out
+ */
+export async function clearUserSession() {
+  if (AsyncStorage) {
+    try { await AsyncStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  }
+  if (typeof localStorage !== 'undefined') {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  }
+  if (GoogleSignin) {
+    try { await GoogleSignin.signOut(); } catch (e) {}
+  }
+}
+
+/**
+ * Restore persistent Google session silently on app launch
+ * Checks both local storage and GoogleSignin.signInSilently()
+ */
+export async function restoreGoogleSessionSilently() {
+  // 1. Check local device storage first for instant UI hydration
+  const localSession = await getSavedUserSession();
+
+  // 2. If Google library is linked, verify silently with Google
+  if (GoogleSignin) {
+    try {
+      const isSignedIn = await GoogleSignin.isSignedIn();
+      if (isSignedIn) {
+        const signInResult = await GoogleSignin.signInSilently();
+        const userObj = signInResult.data ? signInResult.data.user : (signInResult.user || signInResult);
+        const tokens = signInResult.data ? signInResult.data : await GoogleSignin.getTokens();
+
+        const verifiedUser = {
+          provider: 'google',
+          id: userObj.id,
+          email: userObj.email,
+          name: userObj.name || `${userObj.givenName || ''} ${userObj.familyName || ''}`.trim(),
+          givenName: userObj.givenName,
+          familyName: userObj.familyName,
+          photo: userObj.photo,
+          idToken: tokens.idToken || signInResult.idToken,
+          isAuthenticated: true,
+          isGuest: false,
+          isDemo: false
+        };
+
+        // Cache refreshed profile
+        await saveUserSession(verifiedUser);
+        return verifiedUser;
+      }
+    } catch (silentErr) {
+      console.log('Silent Google sign-in check:', silentErr.message);
+    }
+  }
+
+  // Return locally cached session if still authenticated
+  return localSession;
+}
+
 export { GoogleSignin, statusCodes, appleAuth, AppleButton };

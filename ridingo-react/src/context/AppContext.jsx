@@ -383,10 +383,19 @@ export function AppProvider({ children }) {
   };
 
   const loginWithDetails = (userData = {}) => {
+    const isGoogle = userData.provider === 'google' || !!userData.idToken;
     const updated = {
       ...DEFAULT_USER,
       ...userData,
-      phone: userData.phone ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`) : DEFAULT_USER.phone
+      name: userData.name || DEFAULT_USER.name,
+      email: userData.email || (isGoogle ? '' : DEFAULT_USER.email),
+      avatar: userData.avatar || (isGoogle ? userData.avatar : DEFAULT_USER.avatar),
+      phone: userData.phone
+        ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`)
+        : (isGoogle ? '' : DEFAULT_USER.phone),
+      isAuthenticated: true,
+      isDemo: false,
+      authProvider: userData.provider || (isGoogle ? 'google' : 'phone')
     };
     setUser(updated);
     try {

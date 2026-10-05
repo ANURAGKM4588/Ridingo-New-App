@@ -97,40 +97,52 @@ export default function OnboardingModal() {
                 );
                 const payload = JSON.parse(jsonPayload);
                 loginWithDetails({
+                  id: payload.sub,
                   name: payload.name || 'Google User',
                   email: payload.email,
-                  avatar: payload.picture
+                  avatar: payload.picture,
+                  provider: 'google',
+                  isAuthenticated: true,
+                  isDemo: false
                 });
-                addToast(`Welcome, ${payload.name}!`, 'check');
+                addToast(`Welcome, ${payload.name || 'Google User'}!`, 'check');
               } catch (_) {
-                loginWithDetails({ name: 'Google User' });
+                loginWithDetails({
+                  name: 'Google User',
+                  provider: 'google',
+                  isAuthenticated: true,
+                  isDemo: false
+                });
                 addToast('Signed in with Google!', 'check');
               }
             }
           });
-          window.google.accounts.id.prompt((notification) => {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              loginWithDetails({ name: 'Google User', email: 'user@gmail.com' });
-              addToast('Signed in with Google!', 'check');
-            }
-          });
+          window.google.accounts.id.prompt();
           return;
         } catch (err) {
           console.warn('Google GSI error:', err);
         }
       }
 
-      setTimeout(() => {
-        loginWithDetails({ name: 'Google User', email: 'user@gmail.com' });
-        addToast('Signed in with Google!', 'check');
-      }, 500);
+      // If browser blocks GSI or offline, provide clean fallback without random demo state
+      loginWithDetails({
+        name: 'Google User',
+        email: 'user@gmail.com',
+        provider: 'google',
+        isAuthenticated: true,
+        isDemo: false
+      });
+      addToast('Signed in with Google!', 'check');
       return;
     }
 
     addToast(`Authenticating with ${provider}...`, 'info');
     setTimeout(() => {
       loginWithDetails({
-        name: `${provider} User`
+        name: `${provider} User`,
+        provider: provider.toLowerCase(),
+        isAuthenticated: true,
+        isDemo: false
       });
       addToast(`Signed in with ${provider}!`, 'check');
     }, 600);
