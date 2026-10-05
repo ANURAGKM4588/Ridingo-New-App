@@ -3663,20 +3663,174 @@
       font-weight: 400;
     }
 
-    .ob-otp-wrap {
+    /* Auth Switcher & Form Styles */
+    .ob-auth-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--field);
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 20px;
+      gap: 4px;
+    }
+
+    .ob-auth-tab {
+      height: 38px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      border: none;
       display: flex;
-      gap: 10px;
+      align-items: center;
       justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .ob-auth-tab.active {
+      background: var(--card);
+      color: var(--ink);
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    .ob-method-toggle {
+      display: flex;
+      gap: 8px;
       margin-bottom: 14px;
     }
 
-    .ob-otp-cell {
-      width: 54px;
-      height: 60px;
-      border-radius: 16px;
+    .ob-method-btn {
+      flex: 1;
+      height: 36px;
+      border-radius: 10px;
       border: 1.5px solid var(--line);
       background: var(--card);
-      font: 700 26px var(--font-display);
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .ob-method-btn.active {
+      border-color: var(--yellow);
+      background: var(--yellow-soft);
+      color: var(--on-yellow);
+    }
+
+    .ob-form-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .ob-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .ob-input-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ob-input-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+
+    .ob-text-input {
+      width: 100%;
+      height: 48px;
+      box-sizing: border-box;
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: 0 14px;
+      font-size: 15px;
+      color: var(--ink);
+      font-family: var(--font-body);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .ob-text-input:focus {
+      border-color: var(--yellow);
+      box-shadow: 0 0 0 3px rgba(255,199,10,.2);
+    }
+
+    .ob-error-banner {
+      background: #FFEBEB;
+      color: #D32F2F;
+      border: 1px solid #FFCDD2;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: pop .3s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .ob-success-banner {
+      background: #E8F5E9;
+      color: #2E7D32;
+      border: 1px solid #C8E6C9;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: pop .3s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .ob-otp-hint-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: var(--yellow-soft);
+      border: 1px solid rgba(255,199,10,.35);
+      color: var(--on-yellow);
+      font-size: 12px;
+      font-weight: 600;
+      margin: 0 auto 16px;
+      cursor: pointer;
+    }
+
+    .ob-otp-wrap {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .ob-otp-cell {
+      width: 48px;
+      height: 56px;
+      border-radius: 14px;
+      border: 1.5px solid var(--line);
+      background: var(--card);
+      font: 700 24px var(--font-display);
       color: var(--ink);
       text-align: center;
       outline: none;
@@ -3687,6 +3841,19 @@
     .ob-otp-cell:focus {
       border-color: var(--yellow);
       box-shadow: 0 0 0 3px rgba(255,199,10,.2);
+    }
+
+    .ob-otp-cell.shake {
+      animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+      border-color: #D32F2F !important;
+      background: #FFF5F5 !important;
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
     }
 
     .ob-login-disclaimer {
@@ -3713,6 +3880,9 @@
       color: var(--ink);
       text-decoration: underline;
       text-underline-offset: 2px;
+      background: none;
+      border: none;
+      cursor: pointer;
     }
 
     .ob-divider {
@@ -4636,12 +4806,13 @@ async function updateTripStatusInSupabase(id, status, extra = {}){
   }
 }
 
-async function syncProfileToSupabase(phone, name, car){
+async function syncProfileToSupabase(phone, name, car, email){
   if(!sbClient || !sbTablesReady) return;
   try{
     await sbClient.from('profiles').upsert({
       phone: phone || (S && S.user ? S.user.phone : '+91 90000 12345'),
       name: name || (S && S.user ? S.user.name : 'Arjun Menon'),
+      email: email || (S && S.user ? S.user.email : ''),
       car: car || (S && S.user ? S.user.car : {}),
       updated_at: new Date().toISOString()
     });
@@ -7029,6 +7200,8 @@ const ACT={
    if(vp&&vp.value.trim())S.user.phone=vp.value.trim();
    if(ve&&ve.value.trim())S.user.email=ve.value.trim();
    ui.u.editName=false;
+   saveUserSession(S.user);
+   syncProfileToSupabase(S.user.phone, S.user.name, S.user.car, S.user.email);
    render('u');
  },
  soshelp(){openSosSheet()},
@@ -7138,6 +7311,7 @@ const ACT={
  openlogout(){openLogoutSheet()},
  confirmlogout(){
    closeSheet('u');
+   clearUserSession();
    showOnboarding();
  },
  theme(d){setTheme(d.v)},
@@ -7312,7 +7486,44 @@ function init(reset){
   if(sbTablesReady){ loadTripsFromSupabase(); }
 }
 
-/* ========== ONBOARDING & LOGIN ========== */
+/* ========== PERSISTENT USER SESSION & AUTHENTICATION ========== */
+const RIDINGO_USER_SESSION_KEY = 'ridingo_user_session_v3';
+
+function saveUserSession(user){
+  try{
+    const session = {
+      phone: user.phone || '',
+      name: user.name || 'Arjun Menon',
+      email: user.email || '',
+      car: user.car || { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' },
+      loggedIn: true,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(RIDINGO_USER_SESSION_KEY, JSON.stringify(session));
+  }catch(e){
+    console.warn('Could not save user session to localStorage:', e);
+  }
+}
+
+function getUserSession(){
+  try{
+    const raw = localStorage.getItem(RIDINGO_USER_SESSION_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(parsed && parsed.loggedIn && (parsed.phone || parsed.email)){
+      return parsed;
+    }
+  }catch(e){}
+  return null;
+}
+
+function clearUserSession(){
+  try{
+    localStorage.removeItem(RIDINGO_USER_SESSION_KEY);
+  }catch(e){}
+}
+
+/* ========== ONBOARDING & AUTHENTICATION STATE ========== */
 const OB_SLIDES=[
   {
     color:'#FFC70A',
@@ -7333,17 +7544,33 @@ const OB_SLIDES=[
     body:'Reserve your driver with just a 30% advance. Pay the balance directly to the driver after the trip.'
   }
 ];
-let obStep=0; // 0=splash 1=walk 2=login 3=otp
-let obOtpPhone='';
 
-function showOnboarding(){
+let authState = {
+  step: 'splash',         // 'splash' | 'walk' | 'auth' | 'otp'
+  authTab: 'login',       // 'login' | 'register'
+  loginMethod: 'phone',   // 'phone' | 'email'
+  loginPhone: '',
+  loginEmail: '',
+  regFirstName: '',
+  regLastName: '',
+  regEmail: '',
+  regPhone: '',
+  activeOtp: '',
+  targetType: 'phone',
+  targetDisplay: '',
+  errorMsg: '',
+  successMsg: '',
+  isLoading: false,
+  resendTimer: 30,
+  timerInterval: null
+};
+
+function showOnboarding(targetStep = 'splash', tab = 'login'){
   const uc=$('#u-content'),un=$('#u-nav'),ul=$('#u-layer');
   if(!uc)return;
-  // hide main app
   uc.style.display='none';
   un.style.display='none';
   ul.innerHTML='';
-  // inject onboarding overlay into the inner div
   const inner=uc.parentElement;
   let ob=inner.querySelector('.ob-screen');
   if(ob)ob.remove();
@@ -7351,18 +7578,21 @@ function showOnboarding(){
   ob.className='ob-screen';
   ob.id='ob-screen';
   inner.appendChild(ob);
-  obStep=0;
+  authState.step = targetStep;
+  authState.authTab = tab;
+  authState.errorMsg = '';
+  authState.successMsg = '';
   renderOb();
 }
 
 function renderOb(){
   const ob=$('#ob-screen');
   if(!ob)return;
-  if(obStep===0) ob.innerHTML=obSplashHTML();
-  else if(obStep===1) ob.innerHTML=obWalkHTML();
-  else if(obStep===2) ob.innerHTML=obLoginHTML();
-  else if(obStep===3) ob.innerHTML=obOtpHTML();
-  if(obStep===1){
+  if(authState.step==='splash') ob.innerHTML=obSplashHTML();
+  else if(authState.step==='walk') ob.innerHTML=obWalkHTML();
+  else if(authState.step==='auth') ob.innerHTML=obAuthHTML();
+  else if(authState.step==='otp') ob.innerHTML=obOtpHtml();
+  if(authState.step==='walk'){
     let walkIdx=ob._walkIdx||0;
     ob._walkIdx=walkIdx;
     applyWalkSlide(walkIdx);
@@ -7380,8 +7610,8 @@ function obSplashHTML(){
     '<b class="ob-splash-title">Ridingo</b>'+
     '<p class="ob-splash-sub">Professional drivers for your own car. Hire by the hour, day or airport run.</p>'+
     '<div class="ob-splash-cta">'+
-      '<button class="btn primary block" id="ob-get-started" data-ob="walk">Get Started</button>'+
-      '<button style="width:100%;margin-top:10px;height:52px;border-radius:16px;font-size:15px;font-weight:600;color:var(--muted);background:none" data-ob="login">I already have an account</button>'+
+      '<button class="btn primary block" data-ob="getstarted">Get Started</button>'+
+      '<button style="width:100%;margin-top:10px;height:52px;border-radius:16px;font-size:15px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer" data-ob="gotologin">I already have an account</button>'+
     '</div>'+
   '</div>';
 }
@@ -7403,79 +7633,162 @@ function obWalkHTML(){
     '<div class="ob-walk-foot">'+
       '<div class="ob-dots" id="ob-dots">'+OB_SLIDES.map((_,i)=>'<span class="ob-dot '+(i===0?'on':'')+'"></span>').join('')+'</div>'+
       '<div class="ob-walk-btns">'+
-        '<button class="ob-skip-btn" data-ob="login">Skip</button>'+
-        '<button class="btn primary" style="flex:1" id="ob-next-btn" data-ob="next">Next</button>'+
+        '<button class="ob-skip-btn" data-ob="gotoregister">Skip</button>'+
+        '<button class="btn primary" style="flex:1" id="ob-next-btn" data-ob="walknext">Next</button>'+
       '</div>'+
     '</div>'+
   '</div>';
 }
 
-function obLoginHTML(){
-  return '<div class="ob-login">'+
-    '<div class="ob-login-top">'+
-      '<span class="ob-login-logo">'+
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--on-yellow)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
-          '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/><path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21"/>'+
-        '</svg>'+
-      '</span>'+
-      '<span class="ob-login-brand">Ridingo</span>'+
-    '</div>'+
-    '<h1 class="ob-login-heading">Enter your mobile</h1>'+
-    '<p class="ob-login-sub">We will send a one-time password to verify your number.</p>'+
-    '<div class="ob-login-phone-wrap">'+
-      '<span class="ob-login-cc">🇮🇳 +91</span>'+
-      '<input class="ob-login-phone-inp" id="ob-phone-inp" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="tel" data-obin="phone">'+
-    '</div>'+
-    '<button class="btn primary block" id="ob-send-otp" data-ob="sendotp" style="margin-bottom:14px">Send OTP</button>'+
-    '<p class="ob-login-disclaimer">By continuing, you agree to Ridingo\'s Terms of Service and Privacy Policy.</p>'+
-    '<div class="ob-divider">or</div>'+
-    '<div class="ob-social-row">'+
-      '<button class="ob-social-btn" data-ob="googlelogin">'+
-        '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>'+
-        'Google'+
-      '</button>'+
-      '<button class="ob-social-btn" data-ob="whatsapplogin">'+
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path fill="#25D366" d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.43 1.27 4.87L2 22l5.27-1.24A9.953 9.953 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/><path fill="#fff" d="M17 14.62c-.27-.14-1.6-.79-1.85-.88-.24-.09-.42-.14-.6.14-.17.27-.67.88-.82 1.06-.15.18-.3.2-.57.07-.27-.14-1.14-.42-2.17-1.34-.8-.71-1.34-1.59-1.5-1.86-.16-.27-.02-.42.12-.56.12-.12.27-.3.41-.45.14-.15.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.6-1.45-.82-1.99-.22-.52-.44-.45-.6-.46-.16-.01-.34-.01-.52-.01-.18 0-.48.07-.73.34-.25.27-.96.94-.96 2.29s.98 2.65 1.12 2.84c.14.18 1.93 2.95 4.68 4.14.65.28 1.16.45 1.56.58.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.83-1.28.23-.63.23-1.17.16-1.28-.07-.11-.25-.18-.52-.32z"/></svg>'+
-        'WhatsApp'+
-      '</button>'+
-    '</div>'+
-    '<div style="flex:1"></div>'+
-    (obStep===2&&obOtpPhone?'':'')+ // back to walk
-    '<button class="ob-login-back" data-ob="walk" style="justify-content:center;margin-top:16px">'+
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'+
-      'Back to intro'+
-    '</button>'+
+function obAuthHTML(){
+  const isLogin = authState.authTab === 'login';
+  const isPhone = authState.loginMethod === 'phone';
+
+  const navTabs = '<div class="ob-auth-nav">' +
+    '<button class="ob-auth-tab '+(isLogin?'active':'')+'" data-ob="tablogin"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Sign In</button>' +
+    '<button class="ob-auth-tab '+(!isLogin?'active':'')+'" data-ob="tabregister"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Create Account</button>' +
+  '</div>';
+
+  const errBanner = authState.errorMsg ? '<div class="ob-error-banner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+esc(authState.errorMsg)+'</div>' : '';
+  const succBanner = authState.successMsg ? '<div class="ob-success-banner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'+esc(authState.successMsg)+'</div>' : '';
+
+  // 1. SIGN IN FORM
+  let formBody = '';
+  if(isLogin){
+    const methodToggle = '<div class="ob-method-toggle">' +
+      '<button class="ob-method-btn '+(isPhone?'active':'')+'" data-ob="methodphone"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg> Mobile Number</button>' +
+      '<button class="ob-method-btn '+(!isPhone?'active':'')+'" data-ob="methodemail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> Email Address</button>' +
+    '</div>';
+
+    const inputArea = isPhone ?
+      '<div class="ob-input-box">' +
+        '<label class="ob-input-label">Mobile Number</label>' +
+        '<div class="ob-login-phone-wrap">' +
+          '<span class="ob-login-cc">🇮🇳 +91</span>' +
+          '<input class="ob-login-phone-inp" id="ob-login-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" value="'+esc(authState.loginPhone)+'">' +
+        '</div>' +
+      '</div>' :
+      '<div class="ob-input-box" style="margin-bottom:14px">' +
+        '<label class="ob-input-label">Email Address</label>' +
+        '<input class="ob-text-input" id="ob-login-email" type="email" inputmode="email" placeholder="you@example.com" value="'+esc(authState.loginEmail)+'">' +
+      '</div>';
+
+    formBody = '<h1 class="ob-login-heading">Welcome back</h1>' +
+      '<p class="ob-login-sub">Sign in with your registered mobile or email to continue.</p>' +
+      methodToggle +
+      inputArea +
+      errBanner + succBanner +
+      '<button class="btn primary block" data-ob="submitlogin" id="ob-submit-btn" style="margin-top:6px" '+(authState.isLoading?'disabled':'')+'>'+(authState.isLoading?'Checking account...':'Continue with OTP')+'</button>' +
+      '<div class="ob-divider">or</div>' +
+      '<div class="ob-social-row">' +
+        '<button class="ob-social-btn" data-ob="sociallogin" data-soc="Google"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Google</button>' +
+        '<button class="ob-social-btn" data-ob="sociallogin" data-soc="WhatsApp"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path fill="#25D366" d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.43 1.27 4.87L2 22l5.27-1.24A9.953 9.953 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/><path fill="#fff" d="M17 14.62c-.27-.14-1.6-.79-1.85-.88-.24-.09-.42-.14-.6.14-.17.27-.67.88-.82 1.06-.15.18-.3.2-.57.07-.27-.14-1.14-.42-2.17-1.34-.8-.71-1.34-1.59-1.5-1.86-.16-.27-.02-.42.12-.56.12-.12.27-.3.41-.45.14-.15.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.6-1.45-.82-1.99-.22-.52-.44-.45-.6-.46-.16-.01-.34-.01-.52-.01-.18 0-.48.07-.73.34-.25.27-.96.94-.96 2.29s.98 2.65 1.12 2.84c.14.18 1.93 2.95 4.68 4.14.65.28 1.16.45 1.56.58.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.83-1.28.23-.63.23-1.17.16-1.28-.07-.11-.25-.18-.52-.32z"/></svg> WhatsApp</button>' +
+      '</div>' +
+      '<p class="ob-login-disclaimer" style="margin-top:16px">Don\'t have an account? <a href="#" data-ob="tabregister" style="color:var(--ink);font-weight:700;text-decoration:underline">Create Account</a></p>';
+  } else {
+    // 2. CREATE ACCOUNT FORM
+    formBody = '<h1 class="ob-login-heading">Create Account</h1>' +
+      '<p class="ob-login-sub">One account per mobile & email address. Fill your details to get started.</p>' +
+      '<div class="ob-form-grid">' +
+        '<div class="ob-form-row">' +
+          '<div class="ob-input-box">' +
+            '<label class="ob-input-label">First Name</label>' +
+            '<input class="ob-text-input" id="ob-reg-first" type="text" placeholder="e.g. Arjun" value="'+esc(authState.regFirstName)+'" autocomplete="given-name">' +
+          '</div>' +
+          '<div class="ob-input-box">' +
+            '<label class="ob-input-label">Last Name</label>' +
+            '<input class="ob-text-input" id="ob-reg-last" type="text" placeholder="e.g. Menon" value="'+esc(authState.regLastName)+'" autocomplete="family-name">' +
+          '</div>' +
+        '</div>' +
+        '<div class="ob-input-box">' +
+          '<label class="ob-input-label">Email Address</label>' +
+          '<input class="ob-text-input" id="ob-reg-email" type="email" placeholder="arjun.menon@example.com" value="'+esc(authState.regEmail)+'" autocomplete="email">' +
+        '</div>' +
+        '<div class="ob-input-box">' +
+          '<label class="ob-input-label">Mobile Number</label>' +
+          '<div class="ob-login-phone-wrap" style="margin-bottom:0">' +
+            '<span class="ob-login-cc">🇮🇳 +91</span>' +
+            '<input class="ob-login-phone-inp" id="ob-reg-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" value="'+esc(authState.regPhone)+'" autocomplete="tel">' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      errBanner + succBanner +
+      '<button class="btn primary block" data-ob="submitregister" id="ob-submit-btn" '+(authState.isLoading?'disabled':'')+'>'+(authState.isLoading?'Checking uniqueness...':'Next (Verify OTP)')+'</button>' +
+      '<p class="ob-login-disclaimer" style="margin-top:16px">Already have an account? <a href="#" data-ob="tablogin" style="color:var(--ink);font-weight:700;text-decoration:underline">Sign In</a></p>';
+  }
+
+  return '<div class="ob-login">' +
+    '<div class="ob-login-top">' +
+      '<span class="ob-login-logo">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--on-yellow)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/><path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21"/>' +
+        '</svg>' +
+      '</span>' +
+      '<span class="ob-login-brand">Ridingo</span>' +
+    '</div>' +
+    navTabs +
+    formBody +
+    '<div style="flex:1"></div>' +
+    '<button class="ob-login-back" data-ob="gotowalk" style="justify-content:center;margin-top:16px">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> Back to intro' +
+    '</button>' +
   '</div>';
 }
 
-function obOtpHTML(){
-  const maskedPhone='•••••'+obOtpPhone.slice(-5);
-  return '<div class="ob-login">'+
-    '<button class="ob-login-back" data-ob="login">'+
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'+
-      'Change number'+
-    '</button>'+
-    '<div style="flex:1"></div>'+
-    '<div class="ob-login-top" style="margin-top:24px">'+
-      '<span class="ob-login-logo">'+
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--on-yellow)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
-          '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/><path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21"/>'+
-        '</svg>'+
-      '</span>'+
-      '<span class="ob-login-brand">Ridingo</span>'+
-    '</div>'+
-    '<h1 class="ob-login-heading">Enter OTP</h1>'+
-    '<p class="ob-login-sub">6-digit code sent to +91 '+maskedPhone+'</p>'+
-    '<div class="ob-otp-wrap" id="ob-otp-wrap">'+
-      [0,1,2,3,4,5].map(i=>'<input class="ob-otp-cell" id="ob-otp-'+i+'" type="tel" inputmode="numeric" maxlength="1" data-obidx="'+i+'" data-obin="otp" autocomplete="one-time-code">').join('')+
-    '</div>'+
-    '<div class="ob-login-resend">'+
-      "Didn't receive it? "+
-      '<button class="ob-login-resend-btn" data-ob="resendotp">Resend OTP</button>'+
-    '</div>'+
-    '<button class="btn primary block" data-ob="verifyotp" id="ob-verify-btn">Verify & Continue</button>'+
-    '<div style="flex:1"></div>'+
+function obOtpHtml(){
+  const errBanner = authState.errorMsg ? '<div class="ob-error-banner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+esc(authState.errorMsg)+'</div>' : '';
+
+  return '<div class="ob-login">' +
+    '<button class="ob-login-back" data-ob="gotoauth">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> Change '+(authState.targetType==='phone'?'number':'email') +
+    '</button>' +
+    '<div style="flex:1"></div>' +
+    '<div class="ob-login-top" style="margin-top:16px">' +
+      '<span class="ob-login-logo">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--on-yellow)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/><path d="M3.2 11h6.5M14.3 11h6.5M12 14.3V21"/>' +
+        '</svg>' +
+      '</span>' +
+      '<span class="ob-login-brand">Ridingo</span>' +
+    '</div>' +
+    '<h1 class="ob-login-heading">Verify OTP</h1>' +
+    '<p class="ob-login-sub">Enter the 6-digit code sent to <b>'+esc(authState.targetDisplay)+'</b></p>' +
+    '<div class="ob-otp-hint-badge" data-ob="fillotp" title="Tap to auto-fill code">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 2-2 2m-6 6 2-2m-8 8 2-2m-6 6 2-2"/><circle cx="7.5" cy="7.5" r="4.5"/></svg>' +
+      'Security Code: <b>'+authState.activeOtp+'</b> (Tap to fill)' +
+    '</div>' +
+    errBanner +
+    '<div class="ob-otp-wrap" id="ob-otp-wrap">' +
+      [0,1,2,3,4,5].map(i=>'<input class="ob-otp-cell" id="ob-otp-'+i+'" type="tel" inputmode="numeric" maxlength="1" data-obidx="'+i+'" data-obin="otp" autocomplete="one-time-code">').join('') +
+    '</div>' +
+    '<div class="ob-login-resend">' +
+      "Didn't receive it? " +
+      '<button class="ob-login-resend-btn" data-ob="resendotp" '+(authState.resendTimer>0?'disabled style="opacity:.45;cursor:default"':'')+'>Resend OTP '+(authState.resendTimer>0?'('+authState.resendTimer+'s)':'')+'</button>' +
+    '</div>' +
+    '<button class="btn primary block" data-ob="confirmotp" id="ob-confirm-btn" '+(authState.isLoading?'disabled':'')+'>'+(authState.isLoading?'Verifying...':'Confirm & Continue')+'</button>' +
+    '<div style="flex:1"></div>' +
   '</div>';
+}
+
+function startOtpTimer(){
+  if(authState.timerInterval) clearInterval(authState.timerInterval);
+  authState.resendTimer = 30;
+  authState.timerInterval = setInterval(()=>{
+    if(authState.resendTimer > 0){
+      authState.resendTimer--;
+      const btn = $('.ob-login-resend-btn');
+      if(btn){
+        btn.textContent = 'Resend OTP ' + (authState.resendTimer > 0 ? '('+authState.resendTimer+'s)' : '');
+        if(authState.resendTimer === 0){
+          btn.removeAttribute('disabled');
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      }
+    } else {
+      clearInterval(authState.timerInterval);
+    }
+  }, 1000);
 }
 
 let obWalkCurSlide=0;
@@ -7497,89 +7810,437 @@ function applyWalkSlide(idx){
   if(nextBtn)nextBtn.textContent=idx===OB_SLIDES.length-1?"Let's go":'Next';
 }
 
-document.addEventListener('click',e=>{
+/* ========== AUTHENTICATION CLICK & ACTION HANDLERS ========== */
+document.addEventListener('click', async e => {
   const el=e.target.closest('[data-ob]');if(!el)return;
   const v=el.dataset.ob;
   const ob=$('#ob-screen');
-  if(v==='walk'){obStep=1;renderOb();applyWalkSlide(0);}
-  else if(v==='next'){
-    const ob=$('#ob-screen');
-    const cur=ob?ob._walkIdx||0:0;
-    if(cur<OB_SLIDES.length-1){applyWalkSlide(cur+1);}
-    else{obStep=2;renderOb();}
-  }
-  else if(v==='login'){obStep=2;renderOb();}
-  else if(v==='sendotp'){
-    const inp=$('#ob-phone-inp');
-    const ph=inp?inp.value.replace(/\D/g,''):'';
-    if(ph.length<10){if(inp)inp.style.animation='none';setTimeout(()=>{if(inp)inp.style.animation='';},50);alert('Please enter a valid 10-digit mobile number.');return;}
-    obOtpPhone=ph;
-    obStep=3;
+
+  if(v==='getstarted'){
+    authState.step = 'walk';
     renderOb();
-    setTimeout(()=>{
-      const first=$('#ob-otp-0');
-      if(first)first.focus();
-    },100);
+    applyWalkSlide(0);
   }
-  else if(v==='verifyotp'){
-    const cells=Array.from({length:6},(_,i)=>$('#ob-otp-'+i));
-    const code=cells.map(c=>c?c.value:'').join('');
-    if(code.length<6){alert('Please enter the complete 6-digit OTP.');return;}
-    // Accept any 6-digit code for demo
-    const ov=$('#ob-screen');
-    if(ov)ov.remove();
-    const uc=$('#u-content'),un=$('#u-nav');
-    if(uc)uc.style.display='';
-    if(un)un.style.display='';
-    if(obOtpPhone){
-      S.user.phone='+91 '+obOtpPhone;
-      syncProfileToSupabase(S.user.phone, S.user.name, S.user.car);
+  else if(v==='walknext'){
+    const cur = ob ? ob._walkIdx || 0 : 0;
+    if(cur < OB_SLIDES.length - 1){
+      applyWalkSlide(cur + 1);
+    } else {
+      authState.step = 'auth';
+      authState.authTab = 'register';
+      renderOb();
     }
-    init(false);
-    setupScrollPhysics();
-    // Ask for notification permission once, after app is settled
-    setTimeout(requestNotifPermissionOnce, 1500);
   }
+  else if(v==='gotologin'){
+    authState.step = 'auth';
+    authState.authTab = 'login';
+    authState.errorMsg = '';
+    renderOb();
+  }
+  else if(v==='gotoregister'){
+    authState.step = 'auth';
+    authState.authTab = 'register';
+    authState.errorMsg = '';
+    renderOb();
+  }
+  else if(v==='gotowalk'){
+    authState.step = 'walk';
+    renderOb();
+    applyWalkSlide(0);
+  }
+  else if(v==='gotoauth'){
+    authState.step = 'auth';
+    authState.errorMsg = '';
+    renderOb();
+  }
+  else if(v==='tablogin'){
+    if(e.preventDefault) e.preventDefault();
+    authState.authTab = 'login';
+    authState.errorMsg = '';
+    renderOb();
+  }
+  else if(v==='tabregister'){
+    if(e.preventDefault) e.preventDefault();
+    authState.authTab = 'register';
+    authState.errorMsg = '';
+    renderOb();
+  }
+  else if(v==='methodphone'){
+    authState.loginMethod = 'phone';
+    authState.errorMsg = '';
+    renderOb();
+  }
+  else if(v==='methodemail'){
+    authState.loginMethod = 'email';
+    authState.errorMsg = '';
+    renderOb();
+  }
+  else if(v==='fillotp'){
+    // Tap-to-autofill convenience
+    for(let i=0; i<6; i++){
+      const c = $('#ob-otp-' + i);
+      if(c) c.value = authState.activeOtp[i] || '';
+    }
+    const last = $('#ob-otp-5');
+    if(last) last.focus();
+  }
+
+  // --- SUBMIT LOGIN ---
+  else if(v==='submitlogin'){
+    if(authState.isLoading) return;
+    authState.errorMsg = '';
+
+    if(authState.loginMethod === 'phone'){
+      const inp = $('#ob-login-phone');
+      const ph = inp ? inp.value.replace(/\D/g, '') : '';
+      if(!ph || ph.length !== 10){
+        authState.errorMsg = 'Please enter a valid 10-digit mobile number.';
+        renderOb();
+        return;
+      }
+      authState.loginPhone = ph;
+      const fullPhone = '+91 ' + ph;
+      authState.isLoading = true;
+      renderOb();
+
+      // Check if user exists in database
+      let userFound = false;
+      let matchedProfile = null;
+      if(sbClient && sbTablesReady){
+        try{
+          const { data, error } = await sbClient.from('profiles').select('*').ilike('phone', `*${ph}*`).limit(1);
+          if(!error && data && data.length > 0){
+            userFound = true;
+            matchedProfile = data[0];
+          }
+        }catch(err){
+          console.warn('Login lookup error:', err);
+        }
+      } else {
+        // Fallback for demo if DB offline
+        userFound = true;
+      }
+
+      authState.isLoading = false;
+      if(!userFound){
+        authState.errorMsg = 'No account found with +91 ' + ph + '. Please switch to Create Account.';
+        renderOb();
+        return;
+      }
+
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      authState.activeOtp = otp;
+      authState.targetType = 'phone';
+      authState.targetDisplay = fullPhone;
+      authState.step = 'otp';
+      startOtpTimer();
+      renderOb();
+      toast('u', 'Verification code: ' + otp, 'check');
+      systemNotify('Ridingo Verification', 'Your verification code is: ' + otp);
+      setTimeout(()=>{ const c0=$('#ob-otp-0'); if(c0)c0.focus(); }, 150);
+    } else {
+      // Email Login
+      const inp = $('#ob-login-email');
+      const em = inp ? inp.value.trim() : '';
+      if(!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){
+        authState.errorMsg = 'Please enter a valid email address.';
+        renderOb();
+        return;
+      }
+      authState.loginEmail = em;
+      authState.isLoading = true;
+      renderOb();
+
+      let userFound = false;
+      let matchedProfile = null;
+      if(sbClient && sbTablesReady){
+        try{
+          const { data, error } = await sbClient.from('profiles').select('*').ilike('email', em).limit(1);
+          if(!error && data && data.length > 0){
+            userFound = true;
+            matchedProfile = data[0];
+          }
+        }catch(err){
+          console.warn('Login lookup error:', err);
+        }
+      } else {
+        userFound = true;
+      }
+
+      authState.isLoading = false;
+      if(!userFound){
+        authState.errorMsg = 'No account found with ' + em + '. Please switch to Create Account.';
+        renderOb();
+        return;
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      authState.activeOtp = otp;
+      authState.targetType = 'email';
+      authState.targetDisplay = em;
+      authState.step = 'otp';
+      startOtpTimer();
+      renderOb();
+      toast('u', 'Verification code: ' + otp, 'check');
+      systemNotify('Ridingo Verification', 'Your verification code is: ' + otp);
+      setTimeout(()=>{ const c0=$('#ob-otp-0'); if(c0)c0.focus(); }, 150);
+    }
+  }
+
+  // --- SUBMIT REGISTER (CREATE ACCOUNT WITH UNIQUENESS CHECK) ---
+  else if(v==='submitregister'){
+    if(authState.isLoading) return;
+    authState.errorMsg = '';
+
+    const firstInp = $('#ob-reg-first');
+    const lastInp = $('#ob-reg-last');
+    const emailInp = $('#ob-reg-email');
+    const phoneInp = $('#ob-reg-phone');
+
+    const firstName = firstInp ? firstInp.value.trim() : '';
+    const lastName = lastInp ? lastInp.value.trim() : '';
+    const email = emailInp ? emailInp.value.trim() : '';
+    const phone = phoneInp ? phoneInp.value.replace(/\D/g, '') : '';
+
+    // Remember inputs
+    authState.regFirstName = firstName;
+    authState.regLastName = lastName;
+    authState.regEmail = email;
+    authState.regPhone = phone;
+
+    if(!firstName || firstName.length < 2){
+      authState.errorMsg = 'Please enter your first name (min 2 characters).';
+      renderOb();
+      return;
+    }
+    if(!lastName){
+      authState.errorMsg = 'Please enter your last name.';
+      renderOb();
+      return;
+    }
+    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      authState.errorMsg = 'Please enter a valid email address.';
+      renderOb();
+      return;
+    }
+    if(!phone || phone.length !== 10){
+      authState.errorMsg = 'Please enter a valid 10-digit mobile number.';
+      renderOb();
+      return;
+    }
+
+    const fullPhone = '+91 ' + phone;
+    const normEmail = email.toLowerCase();
+    authState.isLoading = true;
+    renderOb();
+
+    // Check Database Uniqueness (NOT ALLOW MULTIPLE ACCOUNTS FOR SAME EMAIL OR MOBILE)
+    let duplicatePhone = false;
+    let duplicateEmail = false;
+
+    if(sbClient && sbTablesReady){
+      try{
+        const { data, error } = await sbClient
+          .from('profiles')
+          .select('phone, email')
+          .or(`phone.ilike.*${phone}*,email.ilike.${normEmail}`);
+
+        if(!error && Array.isArray(data) && data.length > 0){
+          data.forEach(row => {
+            const rowDigits = (row.phone || '').replace(/\D/g, '');
+            if(rowDigits.endsWith(phone)) duplicatePhone = true;
+            if(row.email && row.email.toLowerCase() === normEmail) duplicateEmail = true;
+          });
+        }
+      }catch(err){
+        console.warn('Database uniqueness check error:', err);
+      }
+    }
+
+    authState.isLoading = false;
+
+    if(duplicatePhone){
+      authState.errorMsg = '⚠️ An account with mobile number ' + fullPhone + ' already exists. Please Sign In.';
+      renderOb();
+      return;
+    }
+
+    if(duplicateEmail){
+      authState.errorMsg = '⚠️ An account with email ' + email + ' already exists. Please Sign In.';
+      renderOb();
+      return;
+    }
+
+    // Uniqueness confirmed! Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    authState.activeOtp = otp;
+    authState.targetType = 'phone';
+    authState.targetDisplay = fullPhone;
+    authState.step = 'otp';
+    startOtpTimer();
+    renderOb();
+    toast('u', 'Verification code: ' + otp, 'check');
+    systemNotify('Ridingo Verification', 'Your verification code is: ' + otp);
+    setTimeout(()=>{ const c0=$('#ob-otp-0'); if(c0)c0.focus(); }, 150);
+  }
+
+  // --- CONFIRM OTP ---
+  else if(v==='confirmotp'){
+    if(authState.isLoading) return;
+    authState.errorMsg = '';
+
+    const cells = Array.from({length:6}, (_,i) => $('#ob-otp-'+i));
+    const enteredCode = cells.map(c => c ? c.value : '').join('');
+
+    if(enteredCode.length < 6){
+      authState.errorMsg = 'Please enter all 6 digits of the verification code.';
+      renderOb();
+      return;
+    }
+
+    // CHECK OTP: Compare against generated OTP (or master fallback 123456)
+    const isCorrect = (enteredCode === authState.activeOtp) || (enteredCode === '123456');
+
+    if(!isCorrect){
+      // INCORRECT OTP: Show warning message, shake cells, retry
+      authState.errorMsg = '🚨 Incorrect OTP code. Please check and try again.';
+      renderOb();
+      // Apply shake effect
+      setTimeout(()=>{
+        document.querySelectorAll('.ob-otp-cell').forEach(cell => {
+          cell.classList.add('shake');
+          setTimeout(()=>cell.classList.remove('shake'), 450);
+        });
+        const c0 = $('#ob-otp-0');
+        if(c0) c0.focus();
+      }, 50);
+      return;
+    }
+
+    // CORRECT OTP: Navigate to Home page & Save Persistent Session
+    authState.isLoading = true;
+    renderOb();
+
+    try{
+      if(authState.authTab === 'register'){
+        // Create new account profile in Supabase
+        const newFullName = authState.regFirstName + ' ' + authState.regLastName;
+        const newPhone = '+91 ' + authState.regPhone;
+        const newEmail = authState.regEmail;
+        const defaultCar = { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' };
+
+        if(sbClient && sbTablesReady){
+          await sbClient.from('profiles').insert({
+            phone: newPhone,
+            name: newFullName,
+            email: newEmail,
+            car: defaultCar,
+            preferences: { liveShare: true, pin: true },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+
+        S.user.name = newFullName;
+        S.user.phone = newPhone;
+        S.user.email = newEmail;
+        S.user.car = defaultCar;
+      } else {
+        // Sign in: retrieve latest profile from database
+        if(sbClient && sbTablesReady){
+          const filter = authState.targetType === 'phone'
+            ? sbClient.from('profiles').select('*').ilike('phone', `*${authState.loginPhone}*`).limit(1)
+            : sbClient.from('profiles').select('*').ilike('email', authState.targetDisplay).limit(1);
+
+          const { data } = await filter;
+          if(data && data.length > 0){
+            const prof = data[0];
+            if(prof.name) S.user.name = prof.name;
+            if(prof.phone) S.user.phone = prof.phone;
+            if(prof.email) S.user.email = prof.email;
+            if(prof.car) S.user.car = prof.car;
+          }
+        }
+      }
+
+      // PERSIST SESSION TO LOCALSTORAGE
+      saveUserSession(S.user);
+
+      // Remove onboarding overlay & unlock main UI
+      const ov=$('#ob-screen');
+      if(ov)ov.remove();
+      const uc=$('#u-content'),un=$('#u-nav');
+      if(uc)uc.style.display='';
+      if(un)un.style.display='';
+
+      toast('u', 'Welcome to Ridingo, ' + S.user.name.split(' ')[0] + '!', 'check');
+      init(false);
+      setupScrollPhysics();
+      setTimeout(requestNotifPermissionOnce, 1500);
+
+    }catch(err){
+      console.warn('Session save error:', err);
+      // Fallback: unlock UI anyway
+      saveUserSession(S.user);
+      const ov=$('#ob-screen');
+      if(ov)ov.remove();
+      const uc=$('#u-content'),un=$('#u-nav');
+      if(uc)uc.style.display='';
+      if(un)un.style.display='';
+      init(false);
+    }
+  }
+
+  // --- RESEND OTP ---
   else if(v==='resendotp'){
-    alert('OTP resent to +91 •••••'+obOtpPhone.slice(-5)+'!');
+    if(authState.resendTimer > 0) return;
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    authState.activeOtp = newOtp;
+    startOtpTimer();
+    renderOb();
+    toast('u', 'New code sent: ' + newOtp, 'check');
+    systemNotify('Ridingo Verification', 'Your new verification code is: ' + newOtp);
   }
-  else if(v==='googlelogin'||v==='whatsapplogin'){
-    // demo: go straight to app
+
+  // --- SOCIAL LOGIN ---
+  else if(v==='sociallogin'){
+    const soc = el.dataset.soc || 'Google';
     const ov=$('#ob-screen');
     if(ov)ov.remove();
     const uc=$('#u-content'),un=$('#u-nav');
     if(uc)uc.style.display='';
     if(un)un.style.display='';
-    syncProfileToSupabase(S.user.phone, S.user.name, S.user.car);
+    saveUserSession(S.user);
+    toast('u', 'Signed in via ' + soc, 'check');
     init(false);
     setupScrollPhysics();
-    // Ask for notification permission once, after app is settled
-    setTimeout(requestNotifPermissionOnce, 1500);
   }
-},true); // capture phase so it runs before the main click handler
+}, true);
 
 // OTP cell auto-advance
-document.addEventListener('input',e=>{
-  if(!e.target.dataset.obin==='otp')return;
-  if(e.target.dataset.obin==='otp'){
-    const idx=parseInt(e.target.dataset.obidx,10);
-    const v=e.target.value.replace(/\D/g,'');
-    e.target.value=v.slice(-1);
-    if(v&&idx<5){
-      const next=$('#ob-otp-'+(idx+1));
-      if(next)next.focus();
-    }
+document.addEventListener('input', e => {
+  if(!e.target.dataset || e.target.dataset.obin !== 'otp') return;
+  const idx = parseInt(e.target.dataset.obidx, 10);
+  const v = e.target.value.replace(/\D/g, '');
+  e.target.value = v.slice(-1);
+  if(v && idx < 5){
+    const next = $('#ob-otp-' + (idx + 1));
+    if(next) next.focus();
   }
-},true);
+}, true);
 
-document.addEventListener('keydown',e=>{
-  if(e.target.dataset&&e.target.dataset.obin==='otp'){
-    if(e.key==='Backspace'&&!e.target.value){
-      const idx=parseInt(e.target.dataset.obidx,10);
-      if(idx>0){const prev=$('#ob-otp-'+(idx-1));if(prev){prev.value='';prev.focus();}}
+document.addEventListener('keydown', e => {
+  if(e.target.dataset && e.target.dataset.obin === 'otp'){
+    if(e.key === 'Backspace' && !e.target.value){
+      const idx = parseInt(e.target.dataset.obidx, 10);
+      if(idx > 0){
+        const prev = $('#ob-otp-' + (idx - 1));
+        if(prev){ prev.value = ''; prev.focus(); }
+      }
     }
   }
-},true);
+}, true);
 
 // Standalone Native App Mode Detection (Full-screen native packaging)
 (function detectStandaloneApp(){
@@ -7602,10 +8263,44 @@ document.addEventListener('keydown',e=>{
   }catch(e){}
 })();
 
-showOnboarding();
-setupScrollPhysics();
-setInterval(tick,1000);
-initSupabase();
+/* ========== APP BOOTSTRAP WITH PERSISTENCE CHECK ========== */
+(function bootstrapApp(){
+  setupScrollPhysics();
+  setInterval(tick, 1000);
+  initSupabase();
+
+  const params = new URLSearchParams(window.location.search);
+  const target = window.RIDINGO_TARGET || params.get('app');
+
+  if(target === 'driver'){
+    // Driver App: directly mounts Driver dashboard
+    render('d');
+  } else {
+    // User App: check if user session already exists in localStorage
+    const saved = getUserSession();
+    if(saved && saved.loggedIn){
+      // ALREADY LOGGED IN: Restore session and skip login page!
+      S.user.phone = saved.phone || S.user.phone;
+      S.user.name = saved.name || S.user.name;
+      S.user.email = saved.email || S.user.email;
+      if(saved.car) S.user.car = saved.car;
+
+      const ov = document.getElementById('ob-screen');
+      if(ov) ov.remove();
+      const uc = $('#u-content'), un = $('#u-nav');
+      if(uc) uc.style.display = '';
+      if(un) un.style.display = '';
+
+      render('u');
+      // Background sync with Supabase
+      syncProfileToSupabase(S.user.phone, S.user.name, S.user.car);
+    } else {
+      // First time / signed out: show onboarding
+      showOnboarding('splash');
+    }
+  }
+})();
+
 })();
 </script>
 
