@@ -131,7 +131,7 @@ export default function TripsTab() {
                   <div className="trip-row-main">
                     <b className="trip-row-title ell">{destName}</b>
                     <span className="trip-row-sub ell">
-                      {c.name} · ₹{t.fare}
+                      {c.name} · {t.scheduleDisplay || 'Now'} · ₹{t.fare}
                     </span>
                   </div>
                   <div className="trip-row-right">

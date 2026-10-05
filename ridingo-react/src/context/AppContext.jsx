@@ -488,7 +488,7 @@ export function AppProvider({ children }) {
     addToast('Demo state reset', 'check');
   };
 
-  const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, razorpayPaymentId) => {
+  const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, razorpayPaymentId, schedule) => {
     const tripId = 'TRP-' + Math.floor(1000 + Math.random() * 9000);
     const pId = String(razorpayPaymentId || ('pay_test_' + Date.now().toString(36)));
     const safeFare = Number(fare) || 600;
@@ -497,6 +497,8 @@ export function AppProvider({ children }) {
     const safeCat = String(cat || 'hourly');
     const safePickup = (typeof pickup === 'string' && pickup.trim()) || 'Edappally Toll, Kochi';
     const safeDrop = (typeof drop === 'string' && drop.trim()) || (safeCat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
+    const scheduledDate = schedule?.date || null;
+    const scheduledTime = schedule?.time || null;
 
     const newTrip = {
       id: tripId,
@@ -505,6 +507,9 @@ export function AppProvider({ children }) {
       pickup: safePickup,
       drop_loc: safeDrop,
       when_ts: Date.now(),
+      scheduledDate,
+      scheduledTime,
+      scheduleDisplay: scheduledDate ? `${scheduledDate} · ${scheduledTime}` : 'Immediate Pickup',
       fare: safeFare,
       advance: adv,
       status: 'requested',

@@ -15,6 +15,65 @@ const CATS = {
 
 const CAT_KEYS = ['hourly', 'daily', 'airport', 'outstation', 'event'];
 
+// Dynamic date & time helpers
+const getTodayISO = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTomorrowISO = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getDefaultTime = () => {
+  const d = new Date();
+  const m = d.getMinutes();
+  const rem = m % 15;
+  d.setMinutes(m + (rem === 0 ? 15 : (15 - rem)));
+  const hours = String(d.getHours()).padStart(2, '0');
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  return `${hours}:${mins}`;
+};
+
+const formatTime12h = (time24) => {
+  if (!time24) return '6:00 PM';
+  const parts = time24.split(':');
+  let h = parseInt(parts[0], 10);
+  const m = parts[1] || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${m} ${ampm}`;
+};
+
+const formatDateDisplay = (dateISO) => {
+  if (!dateISO) return '';
+  const today = getTodayISO();
+  const tomorrow = getTomorrowISO();
+  const parts = dateISO.split('-').map(Number);
+  const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+  const dayName = dateObj.toLocaleDateString('en-IN', { weekday: 'short' });
+  const monthName = dateObj.toLocaleDateString('en-IN', { month: 'short' });
+  const d = parts[2];
+  const y = parts[0];
+
+  if (dateISO === today) {
+    return `Today (${dayName}, ${d} ${monthName})`;
+  } else if (dateISO === tomorrow) {
+    return `Tomorrow (${dayName}, ${d} ${monthName})`;
+  } else {
+    return `${dayName}, ${d} ${monthName} ${y}`;
+  }
+};
+
 export default function BookingSheet() {
   const {
     bookingOpen,
@@ -33,7 +92,8 @@ export default function BookingSheet() {
   const [qty, setQty] = useState(3);
   const [pickup, setPickup] = useState('');
   const [drop, setDrop] = useState('');
-  const [dateType, setDateType] = useState('today'); // 'today' | 'tomorrow'
+  const [selectedDate, setSelectedDate] = useState(getTodayISO);
+  const [selectedTime, setSelectedTime] = useState(getDefaultTime);
   const [trans, setTrans] = useState('Automatic');
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmedTrip, setConfirmedTrip] = useState(null);
@@ -78,6 +138,10 @@ export default function BookingSheet() {
     if (bookingOpen) {
       setIsSuccess(false);
       setConfirmedTrip(null);
+      setSelectedDate(prev => {
+        const today = getTodayISO();
+        return prev < today ? today : prev;
+      });
     }
   }, [bookingOpen]);
 
@@ -148,6 +212,23 @@ export default function BookingSheet() {
     setMapPickerOpen(true);
   };
 
+  const todayISO = getTodayISO();
+  const tomorrowISO = getTomorrowISO();
+  const isToday = selectedDate === todayISO;
+  const isTomorrow = selectedDate === tomorrowISO;
+  const isCustomDate = !isToday && !isTomorrow;
+
+  const dateStr = formatDateDisplay(selectedDate);
+  const timeStr = formatTime12h(selectedTime);
+
+  const addMinutesToTime = (minutes) => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + minutes);
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    setSelectedTime(`${h}:${m}`);
+  };
+
   const handleSubmit = () => {
     try {
       const cached = getCachedDeviceLocation();
@@ -167,12 +248,16 @@ export default function BookingSheet() {
           name: user?.name || 'ANURAG',
           contact: user?.phone || '8156938843'
         },
+        notes: {
+          scheduled_date: dateStr,
+          scheduled_time: timeStr
+        },
         onSuccess: (paymentRes) => {
           const pId = paymentRes?.razorpay_payment_id || ('pay_' + Date.now().toString(36));
           const methodLabel = paymentRes?.method || 'UPI';
           setBookingOpen(false);
-          bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId);
-          addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur request dispatched.`, 'check');
+          bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr });
+          addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
         onDismiss: () => {
           // User closed payment sheet
@@ -189,9 +274,6 @@ export default function BookingSheet() {
     setConfirmedTrip(null);
     setBookingOpen(false);
   };
-
-  const dateStr = dateType === 'today' ? '5 Oct 2026' : '6 Oct 2026';
-  const timeStr = '6:00 PM';
 
   if (!bookingOpen) return null;
 
@@ -406,43 +488,222 @@ export default function BookingSheet() {
             )}
 
             {/* Date and time */}
-            <div className="lab" style={{ marginTop: '10px' }}>
-              Date and time
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '6px' }}>
+              <div className="lab" style={{ margin: 0 }}>
+                Pickup date & time
+              </div>
+              <span style={{ fontSize: '11.5px', color: 'var(--yellow)', fontWeight: 700 }}>
+                {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : 'Scheduled'} · {timeStr}
+              </span>
             </div>
+
+            {/* Quick Date Chips */}
             <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               <button
                 type="button"
-                className={`chip ${dateType === 'today' ? 'on' : ''}`}
-                onClick={() => setDateType('today')}
+                className={`chip ${isToday ? 'on' : ''}`}
+                onClick={() => setSelectedDate(todayISO)}
               >
                 Today
               </button>
               <button
                 type="button"
-                className={`chip ${dateType === 'tomorrow' ? 'on' : ''}`}
-                onClick={() => setDateType('tomorrow')}
+                className={`chip ${isTomorrow ? 'on' : ''}`}
+                onClick={() => setSelectedDate(tomorrowISO)}
               >
                 Tomorrow
               </button>
+              <button
+                type="button"
+                className={`chip ${isCustomDate ? 'on' : ''}`}
+                onClick={() => {
+                  const el = document.getElementById('bk-date-input');
+                  if (el) {
+                    if (typeof el.showPicker === 'function') {
+                      try { el.showPicker(); } catch (e) { el.focus(); }
+                    } else {
+                      el.focus();
+                    }
+                  }
+                }}
+              >
+                {isCustomDate ? dateStr : 'Choose date...'}
+              </button>
             </div>
 
-            <div className="two" style={{ marginTop: '8px' }}>
-              <input
-                className="inp"
-                type="text"
-                value={dateStr}
-                readOnly
-                aria-label="Date"
-                style={{ textAlign: 'center', fontWeight: 600 }}
-              />
-              <input
-                className="inp"
-                type="text"
-                value={timeStr}
-                readOnly
-                aria-label="Time"
-                style={{ textAlign: 'center', fontWeight: 600 }}
-              />
+            {/* Two-Column Interactive Inputs: Date & Time */}
+            <div className="two" style={{ marginTop: '8px', gap: '10px' }}>
+              {/* Date Field Container */}
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  background: 'var(--field)',
+                  borderRadius: '14px',
+                  border: isCustomDate ? '1.5px solid var(--yellow)' : '1px solid #E2E8F0',
+                  padding: '9px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  minHeight: '52px',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer'
+                }}
+                onClick={() => {
+                  const el = document.getElementById('bk-date-input');
+                  if (el && typeof el.showPicker === 'function') {
+                    try { el.showPicker(); } catch (e) { el.focus(); }
+                  }
+                }}
+              >
+                <div style={{ color: 'var(--yellow)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <Icon name="calendar" size={17} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: '9.5px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    DATE
+                  </span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {dateStr}
+                  </span>
+                </div>
+                <input
+                  id="bk-date-input"
+                  type="date"
+                  min={todayISO}
+                  value={selectedDate}
+                  onChange={(e) => {
+                    if (e.target.value) setSelectedDate(e.target.value);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0,
+                    cursor: 'pointer',
+                    zIndex: 2
+                  }}
+                  aria-label="Select Pickup Date"
+                />
+              </div>
+
+              {/* Time Field Container */}
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  background: 'var(--field)',
+                  borderRadius: '14px',
+                  border: '1px solid #E2E8F0',
+                  padding: '9px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  minHeight: '52px',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer'
+                }}
+                onClick={() => {
+                  const el = document.getElementById('bk-time-input');
+                  if (el && typeof el.showPicker === 'function') {
+                    try { el.showPicker(); } catch (e) { el.focus(); }
+                  }
+                }}
+              >
+                <div style={{ color: 'var(--yellow)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <Icon name="clock" size={17} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: '9.5px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    TIME
+                  </span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)' }}>
+                    {timeStr}
+                  </span>
+                </div>
+                <input
+                  id="bk-time-input"
+                  type="time"
+                  value={selectedTime}
+                  onChange={(e) => {
+                    if (e.target.value) setSelectedTime(e.target.value);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0,
+                    cursor: 'pointer',
+                    zIndex: 2
+                  }}
+                  aria-label="Select Pickup Time"
+                />
+              </div>
+            </div>
+
+            {/* Quick Time Presets */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '8px',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                WebkitOverflowScrolling: 'touch',
+                paddingBottom: '2px'
+              }}
+            >
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0, fontWeight: 600 }}
+                onClick={() => addMinutesToTime(10)}
+              >
+                ⚡ Now
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
+                onClick={() => addMinutesToTime(30)}
+              >
+                +30m
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
+                onClick={() => addMinutesToTime(60)}
+              >
+                +1 hour
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
+                onClick={() => setSelectedTime('09:00')}
+              >
+                9:00 AM
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
+                onClick={() => setSelectedTime('18:00')}
+              >
+                6:00 PM
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
+                onClick={() => setSelectedTime('21:00')}
+              >
+                9:00 PM
+              </button>
             </div>
 
             {/* Vehicle Gearbox Segment */}
