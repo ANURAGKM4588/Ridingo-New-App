@@ -161,7 +161,7 @@ class _BookingBottomSheetState extends ConsumerState<BookingBottomSheet> {
             TextField(
               controller: _dropCtrl,
               decoration: InputDecoration(
-                prefixIcon: const Icon(CupertinoIcons.placemark_solid, color: Colors.orange, size: 20),
+                prefixIcon: const Icon(CupertinoIcons.map_pin_ellipse, color: Colors.orange, size: 20),
                 labelText: 'Destination (Optional)',
                 filled: true,
                 fillColor: isDark ? AppColors.fieldDark : AppColors.fieldLight,

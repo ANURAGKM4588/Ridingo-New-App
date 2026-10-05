@@ -31,7 +31,7 @@ class DriverHomeTab extends ConsumerWidget {
                         color: DriverColors.yellow,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(CupertinoIcons.steeringwheel, color: DriverColors.onYellow, size: 20),
+                      child: const Icon(CupertinoIcons.car_fill, color: DriverColors.onYellow, size: 20),
                     ),
                     const SizedBox(width: 10),
                     const Column(

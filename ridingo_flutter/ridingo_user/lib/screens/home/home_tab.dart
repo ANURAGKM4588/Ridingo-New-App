@@ -47,7 +47,7 @@ class HomeTab extends ConsumerWidget {
                         color: AppColors.yellow,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(CupertinoIcons.steeringwheel, color: AppColors.onYellow, size: 20),
+                      child: const Icon(CupertinoIcons.car_fill, color: AppColors.onYellow, size: 20),
                     ),
                     const SizedBox(width: 10),
                     Text(

@@ -66,7 +66,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           color: AppColors.yellow,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(CupertinoIcons.steeringwheel, color: AppColors.onYellow, size: 22),
+                        child: const Icon(CupertinoIcons.car_fill, color: AppColors.onYellow, size: 22),
                       ),
                       const SizedBox(width: 10),
                       Text(
