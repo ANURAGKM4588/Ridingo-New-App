@@ -1,22 +1,32 @@
 import React from 'react';
 import Icon from './Icon';
 
-export const ROUTE_PTS = [
-  { x: 65, y: 165, name: 'Edappally Toll (Pickup)' },
-  { x: 115, y: 135, name: 'Metro Corridor' },
-  { x: 175, y: 135, name: 'Palarivattom Bypass' },
-  { x: 235, y: 90, name: 'NH 66 Flyover' },
-  { x: 285, y: 90, name: 'Lulu Junction' },
-  { x: 325, y: 45, name: 'Lulu Mall (Destination)' }
+export const ROUTE_PTS_MODAL = [
+  { x: 55, y: 225, name: 'Edappally Toll (Pickup)' },
+  { x: 105, y: 185, name: 'Metro Viaduct Corridor' },
+  { x: 175, y: 185, name: 'Palarivattom Bypass' },
+  { x: 235, y: 120, name: 'NH 66 Express Flyover' },
+  { x: 285, y: 120, name: 'Lulu Junction' },
+  { x: 330, y: 50, name: 'Lulu Mall (Destination)' }
 ];
 
-export function getRouteTelemetry(prog = 0.38) {
+export const ROUTE_PTS_MINI = [
+  { x: 65, y: 155, name: 'Edappally Toll (Pickup)' },
+  { x: 115, y: 125, name: 'Metro Corridor' },
+  { x: 175, y: 125, name: 'Palarivattom Bypass' },
+  { x: 235, y: 80, name: 'NH 66 Flyover' },
+  { x: 285, y: 80, name: 'Lulu Junction' },
+  { x: 325, y: 40, name: 'Lulu Mall (Destination)' }
+];
+
+export function getRouteTelemetry(prog = 0.38, isModal = false) {
   prog = Math.max(0.02, Math.min(0.98, prog));
+  const pts = isModal ? ROUTE_PTS_MODAL : ROUTE_PTS_MINI;
   let totalLen = 0;
   const lens = [];
-  for (let i = 0; i < ROUTE_PTS.length - 1; i++) {
-    const dx = ROUTE_PTS[i + 1].x - ROUTE_PTS[i].x;
-    const dy = ROUTE_PTS[i + 1].y - ROUTE_PTS[i].y;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const dx = pts[i + 1].x - pts[i].x;
+    const dy = pts[i + 1].y - pts[i].y;
     const d = Math.hypot(dx, dy);
     lens.push(d);
     totalLen += d;
@@ -26,8 +36,8 @@ export function getRouteTelemetry(prog = 0.38) {
   for (let i = 0; i < lens.length; i++) {
     if (accumulated + lens[i] >= targetDist || i === lens.length - 1) {
       const segT = (targetDist - accumulated) / (lens[i] || 1);
-      const p0 = ROUTE_PTS[i];
-      const p1 = ROUTE_PTS[i + 1];
+      const p0 = pts[i];
+      const p1 = pts[i + 1];
       const x = p0.x + (p1.x - p0.x) * segT;
       const y = p0.y + (p1.y - p0.y) * segT;
       const angle = (Math.atan2(p1.y - p0.y, p1.x - p0.x) * 180) / Math.PI;
@@ -40,13 +50,13 @@ export function getRouteTelemetry(prog = 0.38) {
     }
     accumulated += lens[i];
   }
-  return { x: ROUTE_PTS[0].x, y: ROUTE_PTS[0].y, angle: 0, currentStreet: ROUTE_PTS[0].name };
+  return { x: pts[0].x, y: pts[0].y, angle: 0, currentStreet: pts[0].name };
 }
 
 /**
  * GraphicLiveMap Component
- * A modern, minimal graphic vector map with building footprints, arterial casings,
- * dynamic gradient route ribbon, rotating car with radar pulse, and floating HUD overlays.
+ * High-fidelity, large modern vector graphic map with buildings, street grid,
+ * metro rail, glowing gradient route ribbon, rotating car with radar ripples, and live telemetry.
  */
 export default function GraphicLiveMap({
   trip,
@@ -56,11 +66,18 @@ export default function GraphicLiveMap({
   speed = 38,
   onOpenModal
 }) {
-  const mapHeight = height || (isModal ? 160 : 175);
-  const geom = getRouteTelemetry(progress);
+  const mapHeight = height || (isModal ? 275 : 180);
+  const geom = getRouteTelemetry(progress, isModal);
   const mid = isModal ? 'modal' : 'mini';
   const pickupLabel = trip?.pickup ? trip.pickup.split(',')[0].slice(0, 16).toUpperCase() : 'PICKUP';
   const dropLabel = trip?.drop_loc ? trip.drop_loc.split(',')[0].slice(0, 16).toUpperCase() : 'LULU MALL';
+
+  // Route path strings for SVG
+  const routePathD = isModal
+    ? 'M 55 225 L 105 185 L 175 185 L 235 120 L 285 120 L 330 50'
+    : 'M 65 155 L 115 125 L 175 125 L 235 80 L 285 80 L 325 40';
+
+  const viewBox = isModal ? '0 0 390 270' : '0 0 390 195';
 
   return (
     <div
@@ -69,14 +86,16 @@ export default function GraphicLiveMap({
       style={{
         position: 'relative',
         height: `${mapHeight}px`,
-        borderRadius: isModal ? '18px' : '14px',
+        width: '100%',
+        borderRadius: isModal ? '20px' : '16px',
         overflow: 'hidden',
-        cursor: isModal ? 'default' : 'pointer'
+        cursor: isModal ? 'default' : 'pointer',
+        boxShadow: isModal ? '0 8px 30px rgba(0, 0, 0, 0.12)' : 'none'
       }}
     >
       <svg
         className="live-map-svg"
-        viewBox="0 0 390 215"
+        viewBox={viewBox}
         preserveAspectRatio="xMidYMid meet"
         xmlns="http://www.w3.org/2000/svg"
         style={{ width: '100%', height: '100%', display: 'block' }}
@@ -87,76 +106,267 @@ export default function GraphicLiveMap({
             <stop offset="45%" stopColor="#FFC70A" />
             <stop offset="100%" stopColor="#F59E0B" />
           </linearGradient>
+
+          {/* Water pattern */}
+          <linearGradient id={`waterGrad-${mid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="rgba(0, 122, 255, 0.15)" />
+            <stop offset="100%" stopColor="rgba(0, 122, 255, 0.28)" />
+          </linearGradient>
+
+          {/* Park pattern */}
+          <linearGradient id={`parkGrad-${mid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="rgba(34, 197, 94, 0.14)" />
+            <stop offset="100%" stopColor="rgba(34, 197, 94, 0.24)" />
+          </linearGradient>
         </defs>
 
-        {/* 1. Street Grid & Outlined Road Corridors */}
-        <g opacity="0.75">
-          <line x1="15" y1="50" x2="375" y2="50" stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
-          <line x1="15" y1="175" x2="375" y2="175" stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
-          <line x1="175" y1="15" x2="175" y2="200" stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
-          <line x1="115" y1="15" x2="115" y2="200" stroke="rgba(140,140,150,0.25)" strokeWidth="3" />
-          <line x1="235" y1="15" x2="235" y2="200" stroke="rgba(140,140,150,0.25)" strokeWidth="3" />
-          <line x1="285" y1="15" x2="285" y2="200" stroke="rgba(140,140,150,0.25)" strokeWidth="3" />
+        {/* 1. Base Map Ground Grid */}
+        <g opacity="0.65">
+          {/* Secondary streets */}
+          <line x1="10" y1="40" x2="380" y2="40" stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
+          <line x1="10" y1={isModal ? 225 : 155} x2="380" y2={isModal ? 225 : 155} stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
+          <line x1="60" y1="10" x2="60" y2={isModal ? 260 : 185} stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
+          <line x1="175" y1="10" x2="175" y2={isModal ? 260 : 185} stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
+          <line x1="330" y1="10" x2="330" y2={isModal ? 260 : 185} stroke="rgba(140,140,150,0.18)" strokeWidth="1.8" strokeDasharray="4 4" />
 
-          {/* Major Arterial Road Corridors */}
-          <line x1="15" y1="135" x2="375" y2="135" stroke="rgba(140,140,150,0.38)" strokeWidth="11" strokeLinecap="round" />
-          <line x1="15" y1="135" x2="375" y2="135" stroke="var(--card)" strokeWidth="7" strokeLinecap="round" />
-          <line x1="15" y1="90" x2="375" y2="90" stroke="rgba(140,140,150,0.38)" strokeWidth="11" strokeLinecap="round" />
-          <line x1="15" y1="90" x2="375" y2="90" stroke="var(--card)" strokeWidth="7" strokeLinecap="round" />
+          {/* Cross avenues */}
+          <line x1="105" y1="10" x2="105" y2={isModal ? 260 : 185} stroke="rgba(140,140,150,0.28)" strokeWidth="3" />
+          <line x1="235" y1="10" x2="235" y2={isModal ? 260 : 185} stroke="rgba(140,140,150,0.28)" strokeWidth="3" />
+          <line x1="285" y1="10" x2="285" y2={isModal ? 260 : 185} stroke="rgba(140,140,150,0.28)" strokeWidth="3" />
+
+          {/* Major Arterial Road Corridors (dual outline casing) */}
+          <line
+            x1="10"
+            y1={isModal ? 185 : 125}
+            x2="380"
+            y2={isModal ? 185 : 125}
+            stroke="rgba(140,140,150,0.38)"
+            strokeWidth="12"
+            strokeLinecap="round"
+          />
+          <line
+            x1="10"
+            y1={isModal ? 185 : 125}
+            x2="380"
+            y2={isModal ? 185 : 125}
+            stroke="var(--card)"
+            strokeWidth="7"
+            strokeLinecap="round"
+          />
+
+          <line
+            x1="10"
+            y1={isModal ? 120 : 80}
+            x2="380"
+            y2={isModal ? 120 : 80}
+            stroke="rgba(140,140,150,0.38)"
+            strokeWidth="12"
+            strokeLinecap="round"
+          />
+          <line
+            x1="10"
+            y1={isModal ? 120 : 80}
+            x2="380"
+            y2={isModal ? 120 : 80}
+            stroke="var(--card)"
+            strokeWidth="7"
+            strokeLinecap="round"
+          />
+
+          {/* Metro Viaduct Railway Track */}
+          <path
+            d={isModal ? "M 15 250 L 105 185 L 200 185 L 285 100 L 375 70" : "M 15 170 L 105 125 L 200 125 L 285 70 L 375 50"}
+            fill="none"
+            stroke="rgba(150, 150, 165, 0.45)"
+            strokeWidth="4"
+            strokeDasharray="2 6"
+          />
         </g>
 
-        {/* 2. Top-View Building Footprint Polygons */}
-        <g opacity="0.85">
-          <polygon points="35,22 80,22 80,48 64,48 64,36 35,36" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1.2" />
-          <polygon points="90,22 135,22 135,50 120,50 120,36 105,36 105,50 90,50" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1.2" />
-          <rect x="290" y="112" width="46" height="30" rx="3" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1.2" />
-          <rect x="298" y="119" width="30" height="16" rx="2" fill="none" stroke="rgba(140,140,150,0.3)" strokeWidth="1" />
-          <rect x="345" y="110" width="28" height="44" rx="3" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1.2" />
-          <rect x="42" y="105" width="40" height="20" rx="3" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1.2" />
+        {/* 2. Realistic Top-View Building Polygons */}
+        <g opacity="0.82">
+          {/* Commercial Center Block */}
+          <polygon
+            points={isModal ? "25,30 85,30 85,68 64,68 64,50 25,50" : "25,18 75,18 75,44 58,44 58,32 25,32"}
+            fill="var(--field)"
+            stroke="rgba(140,140,150,0.4)"
+            strokeWidth="1.2"
+          />
+
+          {/* Tech Park Quadrant */}
+          <polygon
+            points={isModal ? "115,28 165,28 165,68 150,68 150,45 130,45 130,68 115,68" : "90,18 135,18 135,46 122,46 122,32 108,32 108,46 90,46"}
+            fill="var(--field)"
+            stroke="rgba(140,140,150,0.4)"
+            strokeWidth="1.2"
+          />
+
+          {/* IT Tower with glass core */}
+          <rect
+            x="290"
+            y={isModal ? 140 : 96}
+            width="50"
+            height="34"
+            rx="4"
+            fill="var(--field)"
+            stroke="rgba(140,140,150,0.4)"
+            strokeWidth="1.2"
+          />
+          <rect
+            x="298"
+            y={isModal ? 148 : 102}
+            width="34"
+            height="18"
+            rx="2"
+            fill="none"
+            stroke="rgba(140,140,150,0.3)"
+            strokeWidth="1"
+          />
+
+          {/* Residential Avenue Blocks */}
+          <rect
+            x="348"
+            y={isModal ? 135 : 94}
+            width="28"
+            height="48"
+            rx="4"
+            fill="var(--field)"
+            stroke="rgba(140,140,150,0.4)"
+            strokeWidth="1.2"
+          />
+          <rect
+            x="35"
+            y={isModal ? 135 : 92}
+            width="46"
+            height="24"
+            rx="4"
+            fill="var(--field)"
+            stroke="rgba(140,140,150,0.4)"
+            strokeWidth="1.2"
+          />
+
+          {isModal && (
+            <>
+              {/* Additional blocks for tall modal map */}
+              <rect x="25" y="195" width="22" height="35" rx="3" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1" />
+              <rect x="125" y="200" width="36" height="24" rx="3" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1" />
+              <rect x="195" y="200" width="40" height="28" rx="3" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1" />
+              <rect x="248" y="145" width="30" height="25" rx="3" fill="var(--field)" stroke="rgba(140,140,150,0.4)" strokeWidth="1" />
+            </>
+          )}
         </g>
 
-        {/* 3. Landmark Areas */}
-        <rect x="185" y="24" width="80" height="42" rx="10" fill="rgba(52, 199, 89, 0.14)" stroke="rgba(52, 199, 89, 0.35)" strokeWidth="1.2" />
-        <text x="225" y="49" fontSize="8.5" fontWeight="700" fill="var(--muted)" textAnchor="middle" letterSpacing="0.08em">CENTRAL PARK</text>
+        {/* 3. Landmark Areas (Urban Park & Water Lake) */}
+        <rect
+          x="180"
+          y="28"
+          width="88"
+          height={isModal ? "50" : "38"}
+          rx="12"
+          fill={`url(#parkGrad-${mid})`}
+          stroke="rgba(34, 197, 94, 0.38)"
+          strokeWidth="1.2"
+        />
+        <text
+          x="224"
+          y={isModal ? "56" : "50"}
+          fontSize="9"
+          fontWeight="700"
+          fill="var(--muted)"
+          textAnchor="middle"
+          letterSpacing="0.08em"
+        >
+          CENTRAL PARK
+        </text>
 
-        <rect x="110" y="156" width="76" height="38" rx="10" fill="rgba(0, 122, 255, 0.1)" stroke="rgba(0, 122, 255, 0.28)" strokeWidth="1.2" />
-        <text x="148" y="179" fontSize="8.5" fontWeight="700" fill="var(--muted)" textAnchor="middle" letterSpacing="0.08em">LAKE VIEW</text>
+        <rect
+          x="115"
+          y={isModal ? 210 : 142}
+          width="80"
+          height={isModal ? "45" : "36"}
+          rx="12"
+          fill={`url(#waterGrad-${mid})`}
+          stroke="rgba(0, 122, 255, 0.35)"
+          strokeWidth="1.2"
+        />
+        <text
+          x="155"
+          y={isModal ? "236" : "163"}
+          fontSize="9"
+          fontWeight="700"
+          fill="var(--muted)"
+          textAnchor="middle"
+          letterSpacing="0.08em"
+        >
+          SOUTH LAKE
+        </text>
 
         {/* 4. Glowing Outlined Route Ribbon with animated white dash centerline */}
-        <path d="M 65 165 L 115 135 L 175 135 L 235 90 L 285 90 L 325 45" fill="none" stroke="var(--yellow)" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
-        <path d="M 65 165 L 115 135 L 175 135 L 235 90 L 285 90 L 325 45" fill="none" stroke={`url(#routeGrad-${mid})`} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M 65 165 L 115 135 L 175 135 L 235 90 L 285 90 L 325 45" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 12" style={{ animation: 'dash-travel 1.2s linear infinite' }} opacity="0.95" />
+        <path
+          d={routePathD}
+          fill="none"
+          stroke="var(--yellow)"
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.28"
+        />
+        <path
+          d={routePathD}
+          fill="none"
+          stroke={`url(#routeGrad-${mid})`}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d={routePathD}
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray="6 12"
+          style={{ animation: 'dash-travel 1.2s linear infinite' }}
+          opacity="0.95"
+        />
 
         {/* 5. Pickup Pin with accurate label */}
-        <g transform="translate(65, 165)">
-          <circle cx="0" cy="0" r="14" fill="#22C55E" opacity="0.22" />
-          <circle cx="0" cy="0" r="7" fill="#22C55E" stroke="#FFFFFF" strokeWidth="2" />
-          <rect x="-30" y="13" width="60" height="17" rx="4" fill="var(--ink)" opacity="0.92" />
-          <text x="0" y="24.5" fontSize="8" fontWeight="700" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.04em">{pickupLabel}</text>
+        <g transform={isModal ? "translate(55, 225)" : "translate(65, 155)"}>
+          <circle cx="0" cy="0" r="15" fill="#22C55E" opacity="0.22" />
+          <circle cx="0" cy="0" r="7.5" fill="#22C55E" stroke="#FFFFFF" strokeWidth="2.2" />
+          <rect x="-32" y="14" width="64" height="18" rx="5" fill="var(--ink)" opacity="0.92" />
+          <text x="0" y="26" fontSize="8" fontWeight="700" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.04em">
+            {pickupLabel}
+          </text>
         </g>
 
         {/* 6. Destination Pin with accurate label */}
-        <g transform="translate(325, 45)">
-          <circle cx="0" cy="0" r="14" fill="#EF4444" opacity="0.22" />
-          <circle cx="0" cy="0" r="7" fill="#EF4444" stroke="#FFFFFF" strokeWidth="2" />
-          <rect x="-34" y="-24" width="68" height="17" rx="4" fill="var(--ink)" opacity="0.92" />
-          <text x="0" y="-12.5" fontSize="8" fontWeight="700" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.04em">{dropLabel}</text>
+        <g transform={isModal ? "translate(330, 50)" : "translate(325, 40)"}>
+          <circle cx="0" cy="0" r="15" fill="#EF4444" opacity="0.22" />
+          <circle cx="0" cy="0" r="7.5" fill="#EF4444" stroke="#FFFFFF" strokeWidth="2.2" />
+          <rect x="-36" y="-25" width="72" height="18" rx="5" fill="var(--ink)" opacity="0.92" />
+          <text x="0" y="-13" fontSize="8" fontWeight="700" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.04em">
+            {dropLabel}
+          </text>
         </g>
 
-        {/* 7. Top-View Vehicle Icon with radar pulse */}
+        {/* 7. Top-View Vehicle Icon with multi-ripple radar pulse */}
         <g transform={`translate(${geom.x}, ${geom.y}) rotate(${geom.angle})`}>
-          <circle cx="0" cy="0" r="18" fill="var(--yellow)" opacity="0.25" style={{ animation: 'radar-ring 2s ease-out infinite' }} />
-          <circle cx="0" cy="0" r="11" fill="var(--yellow)" opacity="0.4" />
-          <rect x="-7" y="-13" width="14" height="26" rx="4.5" fill="var(--ink)" stroke="#FFC70A" strokeWidth="1.8" />
-          <rect x="-5" y="-5" width="10" height="8" rx="1.5" fill="#FFC70A" />
+          <circle cx="0" cy="0" r="20" fill="var(--yellow)" opacity="0.25" style={{ animation: 'radar-ring 2s ease-out infinite' }} />
+          <circle cx="0" cy="0" r="12" fill="var(--yellow)" opacity="0.4" />
+          <rect x="-7.5" y="-14" width="15" height="28" rx="5" fill="var(--ink)" stroke="#FFC70A" strokeWidth="2" />
+          <rect x="-5.5" y="-5.5" width="11" height="9" rx="1.5" fill="#FFC70A" />
           <circle cx="-4" cy="-11" r="1.5" fill="#FFFFFF" />
           <circle cx="4" cy="-11" r="1.5" fill="#FFFFFF" />
         </g>
 
-        {/* 8. Floating Speed Tag */}
-        <g transform={`translate(${Math.min(305, geom.x + 14)}, ${Math.max(16, geom.y - 14)})`}>
-          <rect x="0" y="0" width="52" height="18" rx="9" fill="var(--ink)" opacity="0.92" />
-          <text x="26" y="12.5" fontSize="9" fontWeight="700" fill="#FFC70A" textAnchor="middle">{speed} km/h</text>
+        {/* 8. Floating Speed Tag Badge */}
+        <g transform={`translate(${Math.min(300, geom.x + 14)}, ${Math.max(18, geom.y - 14)})`}>
+          <rect x="0" y="0" width="54" height="20" rx="10" fill="var(--ink)" opacity="0.92" />
+          <text x="27" y="14" fontSize="9.5" fontWeight="700" fill="#FFC70A" textAnchor="middle">
+            {speed} km/h
+          </text>
         </g>
       </svg>
 
@@ -180,6 +390,7 @@ export default function GraphicLiveMap({
               <span className="live-pulse-dot" style={{ background: '#22C55E' }} /> Live GPS
             </span>
           </div>
+
           <div
             className="live-map-progress-dock"
             style={{

@@ -88,14 +88,25 @@ export default function LiveTrackingSheet() {
           </div>
         </div>
 
-        {/* Scrollable Body */}
-        <div className="sheet-scroll-body">
-          {/* Top Center Graphic Map UI Viewport */}
-          <div className="live-sheet-map-wrap" style={{ height: '160px', marginBottom: '10px' }}>
+        {/* Scrollable Body with Smooth Vertical Scrolling Behavior */}
+        <div
+          className="sheet-scroll-body"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+            scrollBehavior: 'smooth',
+            padding: '10px 18px 24px',
+            scrollbarWidth: 'none'
+          }}
+        >
+          {/* Top Center Graphic Map UI Viewport - Big High-Fidelity Map */}
+          <div className="live-sheet-map-wrap" style={{ height: '275px', marginBottom: '14px', borderRadius: '20px' }}>
             <GraphicLiveMap
               trip={trip}
               isModal={true}
-              height={160}
+              height={275}
               progress={progress}
               speed={speed}
             />
