@@ -186,17 +186,66 @@ export default function PaymentSheet() {
     }
 
     // 5. UPI Apps (CRED, PhonePe, Google Pay, Paytm) via Razorpay SDK
-    let appName = 'CRED';
-    if (selectedMethod === 'phonepe') appName = 'PhonePe';
-    else if (selectedMethod === 'gpay') appName = 'Google Pay';
-    else if (selectedMethod === 'paytm') appName = 'Paytm';
+    const activeApp = installedUpiApps.find(a => a.id === selectedMethod) || SUPPORTED_UPI_APPS.find(a => a.id === selectedMethod);
+    const appName = activeApp ? activeApp.name : 'UPI App';
 
-    setAuthorizingTitle(`${appName} via Razorpay`);
+    setAuthorizingTitle(appName);
     setIsAuthorizing(true);
 
     const amountInPaise = Math.round(amount * 100);
 
-    // Invoke Razorpay Checkout SDK to handle UPI transaction properly
+    // 1. Check if running in native React Native environment with RazorpayCheckout
+    let NativeRazorpay = null;
+    try {
+      if (typeof window !== 'undefined' && window.RazorpayCheckout) {
+        NativeRazorpay = window.RazorpayCheckout;
+      } else {
+        const mod = require('react-native-razorpay');
+        NativeRazorpay = mod.default || mod;
+      }
+    } catch (e) {}
+
+    if (NativeRazorpay && typeof NativeRazorpay.open === 'function') {
+      const nativeOptions = {
+        key: RAZORPAY_KEY_ID,
+        amount: amountInPaise,
+        currency: 'INR',
+        name: 'Ridingo',
+        description: `Trip Booking via ${appName}`,
+        prefill: {
+          contact: user?.phone || '9876543210',
+          email: user?.email || 'user@ridingo.com',
+          name: user?.name || 'Ridingo User',
+          method: 'upi'
+        },
+        notes: {
+          service: 'Ridingo Chauffeur Services',
+          selected_upi_app: selectedMethod,
+          package_name: activeApp?.packageName || ''
+        },
+        theme: { color: '#FFC70A' }
+      };
+
+      NativeRazorpay.open(nativeOptions).then((data) => {
+        setIsAuthorizing(false);
+        const verifiedPayment = {
+          gateway: 'Razorpay',
+          method: `${appName} UPI`,
+          paymentId: data.razorpay_payment_id,
+          orderId: data.razorpay_order_id || ('ord_' + Date.now().toString(36)),
+          signature: data.razorpay_signature || ''
+        };
+        handlePaymentSuccess(verifiedPayment);
+        addToast(`Payment of ₹${amount} completed via ${appName}!`, 'check');
+      }).catch((err) => {
+        setIsAuthorizing(false);
+        addToast(err?.description || 'Payment cancelled or failed', 'warn');
+        if (config?.onError) config.onError(err);
+      });
+      return;
+    }
+
+    // 2. Invoke Razorpay Web / Capacitor Checkout SDK
     loadRazorpayScript().then((loaded) => {
       if (typeof window !== 'undefined' && window.Razorpay) {
         try {
@@ -215,6 +264,7 @@ export default function PaymentSheet() {
             notes: {
               service: 'Ridingo Chauffeur Services',
               selected_upi_app: selectedMethod,
+              package_name: activeApp?.packageName || '',
               receipt: 'rcpt_' + Date.now().toString(36)
             },
             theme: {
@@ -701,7 +751,7 @@ export default function PaymentSheet() {
                 position: 'absolute'
               }}
             />
-            {authorizingTitle === 'PhonePe' ? <PhonePeLogo /> : authorizingTitle === 'CRED' ? <CREDLogo /> : <GPayLogo />}
+            {renderUpiLogo(selectedMethod)}
           </div>
 
           <div>
