@@ -23,8 +23,3 @@ dist/
 **/ios/App/DerivedData/
 *.ipa
 *.xcarchive
-# Flutter
-**/.dart_tool/
-**/build/
-.flutter-plugins
-.flutter-plugins-dependencies
