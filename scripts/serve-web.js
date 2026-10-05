@@ -2,8 +2,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 5173;
 const ROOT_DIR = path.resolve(__dirname, '..');
+const PORTS = [5173, 8088];
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -21,7 +21,7 @@ const MIME_TYPES = {
   '.map': 'application/json'
 };
 
-const server = http.createServer((req, res) => {
+function requestHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
@@ -52,11 +52,14 @@ const server = http.createServer((req, res) => {
       res.end(content);
     });
   });
-});
+}
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Ridingo Web Preview Server running at:`);
-  console.log(`- User App:   http://localhost:${PORT}/packages/user/www/index.html`);
-  console.log(`- Driver App: http://localhost:${PORT}/packages/driver/www/index.html`);
-  console.log(`- Root App:   http://localhost:${PORT}/index.html`);
+PORTS.forEach(port => {
+  const server = http.createServer(requestHandler);
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`Ridingo Web Preview Server running at: http://localhost:${port}/packages/user/www/index.html`);
+  });
+  server.on('error', (err) => {
+    console.warn(`Port ${port} in use or error:`, err.message);
+  });
 });
