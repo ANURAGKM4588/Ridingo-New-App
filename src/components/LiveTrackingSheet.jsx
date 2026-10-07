@@ -33,6 +33,10 @@ export default function LiveTrackingSheet() {
   const [progress, setProgress] = useState(0.38);
   const [speed, setSpeed] = useState(38);
 
+  const remaining = Math.max(0.05, 1 - progress);
+  const etaMins = Math.max(1, Math.round(remaining * 16));
+  const distLeft = (remaining * 5.2).toFixed(1);
+
   useEffect(() => {
     if (!liveTrackingOpen || !isStarted) return;
     const interval = setInterval(() => {
@@ -47,14 +51,9 @@ export default function LiveTrackingSheet() {
     return () => clearInterval(interval);
   }, [liveTrackingOpen, isStarted]);
 
-  if (!liveTrackingOpen) return null;
-
-  const remaining = Math.max(0.05, 1 - progress);
-  const etaMins = Math.max(1, Math.round(remaining * 16));
-  const distLeft = (remaining * 5.2).toFixed(1);
-
   // Auto-regenerate End OTP when nearing destination (around 1 km)
   useEffect(() => {
+    if (!liveTrackingOpen) return;
     if (isStarted && parseFloat(distLeft) <= 1.0 && !trip.endOtpRegenerated) {
       const freshOtp = Math.floor(1000 + Math.random() * 9000).toString();
       setTrips(prev =>
@@ -62,7 +61,9 @@ export default function LiveTrackingSheet() {
       );
       addToast(`Nearing destination (around 1 km). Trip End OTP: ${freshOtp}`, 'info');
     }
-  }, [isStarted, distLeft, trip.id, trip.endOtpRegenerated]);
+  }, [liveTrackingOpen, isStarted, distLeft, trip.id, trip.endOtpRegenerated]);
+
+  if (!liveTrackingOpen) return null;
 
   const handleShareTrip = () => {
     navigator.clipboard?.writeText?.(`https://ridingo.app/track/${trip.id}`);
