@@ -42,7 +42,7 @@ try {
 
 export const GOOGLE_CLIENT_IDS = {
   webClientId: '496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com',
-  iosClientId: '496710932146-d6v9usj2h4iipoe2knma70t1boctuu7u.apps.googleusercontent.com',
+  iosClientId: '496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com',
   androidClientId: '496710932146-4k4qgcv7h252esqc164r6n8ncdqf9h4t.apps.googleusercontent.com'
 };
 

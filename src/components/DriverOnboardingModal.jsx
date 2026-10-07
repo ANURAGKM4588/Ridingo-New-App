@@ -5,6 +5,14 @@ import Icon from './Icon';
 import { sendOtp, verifyOtp, formatIndianPhone } from '../services/authOtpService';
 
 const GOOGLE_WEB_CLIENT_ID = '496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = '496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com';
+
+const isIOSDevice = typeof window !== 'undefined' && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+  window.Capacitor?.getPlatform?.() === 'ios'
+);
+const activeGoogleClientId = isIOSDevice ? GOOGLE_IOS_CLIENT_ID : GOOGLE_WEB_CLIENT_ID;
 
 export default function DriverOnboardingModal() {
   const {
@@ -204,7 +212,7 @@ export default function DriverOnboardingModal() {
     if (typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
       try {
         const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_WEB_CLIENT_ID,
+          client_id: activeGoogleClientId,
           scope: 'email profile openid',
           prompt: 'select_account',
           callback: async (tokenResponse) => {
@@ -246,7 +254,7 @@ export default function DriverOnboardingModal() {
     if (typeof window !== 'undefined' && window.google?.accounts?.id) {
       try {
         window.google.accounts.id.initialize({
-          client_id: GOOGLE_WEB_CLIENT_ID,
+          client_id: activeGoogleClientId,
           callback: (res) => {
             try {
               const base64Url = res.credential.split('.')[1];

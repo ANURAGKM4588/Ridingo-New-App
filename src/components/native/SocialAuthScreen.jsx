@@ -40,7 +40,7 @@ export default function SocialAuthScreen({
   onNavigateToEmail,
   isDarkMode = false,
   googleWebClientId = '496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com',
-  googleIosClientId = '496710932146-d6v9usj2h4iipoe2knma70t1boctuu7u.apps.googleusercontent.com'
+  googleIosClientId = '496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com'
 }) {
   const [loadingProvider, setLoadingProvider] = useState(null); // 'google' | 'apple' | null
   const [isAppleSupported, setIsAppleSupported] = useState(Platform.OS === 'ios');
