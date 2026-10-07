@@ -86,7 +86,7 @@ export default function LiveTrackingSheet() {
     <div className="layer on" id="u-tracking-layer" style={{ zIndex: 95 }}>
       <div className="scrim" onClick={() => setLiveTrackingOpen(false)} />
 
-      <div className="sheet no-scroll-anim" role="dialog" aria-modal="true" style={{ maxHeight: '90%' }}>
+      <div className="sheet no-scroll-anim" role="dialog" aria-modal="true" style={{ maxHeight: '92%', bottom: 0, paddingBottom: 0 }}>
         {/* Sticky Header: Small bar (grab) + Title + Close icon */}
         <div className="sheet-sticky-top" style={{ padding: '8px 18px 2px' }}>
           <div className="grab" />
@@ -168,7 +168,7 @@ export default function LiveTrackingSheet() {
             WebkitOverflowScrolling: 'touch',
             overscrollBehaviorY: 'contain',
             scrollBehavior: 'smooth',
-            padding: '10px 18px 24px',
+            padding: '10px 18px max(14px, env(safe-area-inset-bottom, 0px))',
             scrollbarWidth: 'none'
           }}
         >

@@ -3,9 +3,9 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
 export default function BottomNav() {
-  const { uTab, setUTab, onboardingOpen } = useApp();
+  const { uTab, setUTab, onboardingOpen, bookingOpen, paymentOpen, liveTrackingOpen } = useApp();
 
-  if (onboardingOpen) return null;
+  if (onboardingOpen || bookingOpen || paymentOpen || liveTrackingOpen) return null;
 
   const NAV_ITEMS = [
     { id: 'home', label: 'Home', icon: 'home' },

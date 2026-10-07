@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import BrandLogo from './BrandLogo';
 import Icon from './Icon';
+import { sendOtp, verifyOtp, formatIndianPhone } from '../services/authOtpService';
 
 export default function OnboardingModal() {
   const { onboardingOpen, setOnboardingOpen, user, loginDemo, loginWithDetails, addToast, openLegal } = useApp();
@@ -9,71 +10,210 @@ export default function OnboardingModal() {
   // Active top tab: 'signin' | 'register'
   const [activeTab, setActiveTab] = useState('signin');
 
-  // Flow step: 'form' | 'otp'
+  // Flow step: 'form' | 'otp' | 'profile' | 'welcome'
   const [step, setStep] = useState('form');
 
-  // Sign In fields
-  const [phone, setPhone] = useState('98401 23456');
-  const [email, setEmail] = useState('arjun.menon@example.com');
-  const [otp, setOtp] = useState(['4', '8', '2', '1', '9', '9']);
+  // Delivery channel: 'phone' | 'email'
+  const [otpMethod, setOtpMethod] = useState('phone');
 
-  // Create Account fields
+  // Loading states
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [devOtpCode, setDevOtpCode] = useState(null);
+  const [verifiedUserObj, setVerifiedUserObj] = useState(null);
+
+  // Authentication & Profile Fields
+  const [phone, setPhone] = useState('98401 23456');
+  const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+
+  // Registration specifics
   const [regMobile, setRegMobile] = useState('');
+
+  // Refs for 6-box OTP inputs
+  const otpInputRefs = useRef([]);
+
+  // Resend countdown timer
+  useEffect(() => {
+    let timer;
+    if (step === 'otp' && resendCountdown > 0) {
+      timer = setTimeout(() => {
+        setResendCountdown(c => c - 1);
+      }, 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [step, resendCountdown]);
 
   if (!onboardingOpen) return null;
 
-  const handleSignInSubmit = (e) => {
-    e.preventDefault();
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
-      addToast('Please enter a valid 10-digit mobile number', 'warn');
+  const getTargetIdentifier = (method, tab) => {
+    if (tab === 'register') {
+      return method === 'phone' ? (regMobile || phone) : email;
+    }
+    return method === 'phone' ? phone : email;
+  };
+
+  const handleSendOtp = async (methodToUse = otpMethod) => {
+    const rawId = getTargetIdentifier(methodToUse, activeTab);
+    if (!rawId || (methodToUse === 'phone' && rawId.replace(/\D/g, '').length < 10)) {
+      addToast(methodToUse === 'phone' ? 'Please enter a valid 10-digit mobile number' : 'Please enter a valid email address', 'warn');
       return;
     }
-    if (!email || !email.includes('@')) {
+    if (methodToUse === 'email' && !rawId.includes('@')) {
       addToast('Please enter a valid email address', 'warn');
       return;
     }
-    setStep('otp');
-    addToast('Verification code sent: 4821', 'check');
+
+    setSendingOtp(true);
+    try {
+      const res = await sendOtp({
+        method: methodToUse,
+        identifier: rawId
+      });
+      setSendingOtp(false);
+      setOtpMethod(methodToUse);
+      setStep('otp');
+      setResendCountdown(30);
+      setOtp(['', '', '', '', '', '']);
+
+      if (res.isDevFallback && res.devCode) {
+        setDevOtpCode(res.devCode);
+        addToast(`Test Code: ${res.devCode} (Tap auto-fill to enter)`, 'info');
+      } else {
+        setDevOtpCode(null);
+        addToast(res.message || `Verification code sent to ${rawId}`, 'check');
+      }
+
+      // Auto-focus first OTP input box
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 120);
+    } catch (err) {
+      setSendingOtp(false);
+      addToast(err.message || 'Failed to send OTP. Please try again.', 'warn');
+    }
+  };
+
+  const handleSignInSubmit = (e) => {
+    e.preventDefault();
+    handleSendOtp(otpMethod);
   };
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
-    if (!firstName.trim()) {
-      addToast('Please enter your full or first name', 'warn');
+    handleSendOtp(otpMethod);
+  };
+
+  const handleOtpChange = (index, value) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    const newOtp = [...otp];
+    newOtp[index] = digitsOnly.slice(-1);
+    setOtp(newOtp);
+
+    // Auto-advance to next input
+    if (digitsOnly && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const newOtp = [...otp];
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = pasted[i] || '';
+    }
+    setOtp(newOtp);
+    const targetIdx = Math.min(pasted.length, 5);
+    otpInputRefs.current[targetIdx]?.focus();
+  };
+
+  const handleVerifyOtp = async (e) => {
+    if (e) e.preventDefault();
+    const token = otp.join('');
+    if (token.length !== 6) {
+      addToast('Please enter all 6 digits of the OTP code', 'warn');
       return;
     }
-    if (!regEmail || !regEmail.includes('@')) {
+
+    const currentId = getTargetIdentifier(otpMethod, activeTab);
+    setVerifyingOtp(true);
+
+    try {
+      const res = await verifyOtp({
+        method: otpMethod,
+        identifier: currentId,
+        token
+      });
+      setVerifyingOtp(false);
+      setVerifiedUserObj(res.user);
+
+      // Transition to Profile data collection step for first-time users
+      setStep('profile');
+      addToast('Verified successfully! Please set up your profile.', 'check');
+    } catch (err) {
+      setVerifyingOtp(false);
+      addToast(err.message || 'Invalid verification code. Please check and retry.', 'warn');
+    }
+  };
+
+  const handleProfileSubmit = (e) => {
+    e.preventDefault();
+    if (!firstName.trim()) {
+      addToast('Please enter your First Name', 'warn');
+      return;
+    }
+    if (!lastName.trim()) {
+      addToast('Please enter your Last Name', 'warn');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
       addToast('Please enter a valid email address', 'warn');
       return;
     }
-    const cleanPhone = regMobile.replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
-      addToast('Please enter a valid 10-digit mobile number', 'warn');
+    const cleanEmergency = emergencyPhone.replace(/\D/g, '');
+    if (cleanEmergency.length < 10) {
+      addToast('Please enter a valid 10-digit Emergency/Alternative Contact Number', 'warn');
       return;
     }
-    setStep('otp');
-    addToast('Verification code sent: 4821', 'check');
+
+    // Move to Welcome Greeting screen before landing on Home Page
+    setStep('welcome');
   };
 
-  const handleVerifyOtp = (e) => {
-    e.preventDefault();
-    if (activeTab === 'register') {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      loginWithDetails({
-        name: fullName || 'New Member',
-        email: regEmail.trim(),
-        phone: regMobile.trim()
-      });
-    } else {
-      loginWithDetails({
-        phone: phone.trim(),
-        email: email.trim() || 'arjun.menon@example.com'
-      });
-    }
+  const handleCompleteAndShowHome = () => {
+    const finalFirst = firstName.trim();
+    const finalLast = lastName.trim();
+    const fullName = `${finalFirst} ${finalLast}`.trim();
+    const finalPhone = (otpMethod === 'phone' ? phone : (regMobile || phone)).trim();
+    const finalEmergency = emergencyPhone.trim();
+
+    loginWithDetails({
+      firstName: finalFirst,
+      lastName: finalLast,
+      name: fullName,
+      email: email.trim(),
+      phone: finalPhone,
+      emergencyPhone: finalEmergency,
+      authMethod: otpMethod,
+      supabaseUser: verifiedUserObj,
+      isAuthenticated: true,
+      isDemo: false
+    });
+
+    setOnboardingOpen(false);
+    addToast(`Welcome to Ridingo, ${finalFirst}!`, 'check');
   };
 
   const GOOGLE_WEB_CLIENT_ID = '496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com';
@@ -96,24 +236,17 @@ export default function OnboardingModal() {
                     .join('')
                 );
                 const payload = JSON.parse(jsonPayload);
-                loginWithDetails({
-                  id: payload.sub,
-                  name: payload.name || 'Google User',
-                  email: payload.email,
-                  avatar: payload.picture,
-                  provider: 'google',
-                  isAuthenticated: true,
-                  isDemo: false
-                });
-                addToast(`Welcome, ${payload.name || 'Google User'}!`, 'check');
+                const gFirst = payload.given_name || (payload.name ? payload.name.split(' ')[0] : 'Member');
+                const gLast = payload.family_name || (payload.name ? payload.name.split(' ').slice(1).join(' ') : '');
+                setFirstName(gFirst);
+                setLastName(gLast);
+                setEmail(payload.email || '');
+                setVerifiedUserObj({ id: payload.sub, email: payload.email });
+                setStep('profile');
               } catch (_) {
-                loginWithDetails({
-                  name: 'Google User',
-                  provider: 'google',
-                  isAuthenticated: true,
-                  isDemo: false
-                });
-                addToast('Signed in with Google!', 'check');
+                setFirstName('Google');
+                setLastName('User');
+                setStep('profile');
               }
             }
           });
@@ -124,28 +257,44 @@ export default function OnboardingModal() {
         }
       }
 
-      // If browser blocks GSI or offline, provide clean fallback without random demo state
-      loginWithDetails({
-        name: 'Google User',
-        email: 'user@gmail.com',
-        provider: 'google',
-        isAuthenticated: true,
-        isDemo: false
-      });
-      addToast('Signed in with Google!', 'check');
+      setFirstName('Google');
+      setLastName('User');
+      setEmail('user@gmail.com');
+      setStep('profile');
       return;
     }
 
     addToast(`Authenticating with ${provider}...`, 'info');
     setTimeout(() => {
-      loginWithDetails({
-        name: `${provider} User`,
-        provider: provider.toLowerCase(),
-        isAuthenticated: true,
-        isDemo: false
-      });
-      addToast(`Signed in with ${provider}!`, 'check');
-    }, 600);
+      setFirstName(provider);
+      setLastName('User');
+      setStep('profile');
+    }, 500);
+  };
+
+  const fieldStyle = {
+    width: '100%',
+    height: '46px',
+    borderRadius: '13px',
+    background: 'var(--card)',
+    border: '1.5px solid var(--line)',
+    padding: '0 12px',
+    fontSize: '14.5px',
+    fontWeight: 600,
+    color: 'var(--ink)',
+    outline: 'none',
+    boxSizing: 'border-box',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+  };
+
+  const labelStyle = {
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: 'var(--muted)',
+    display: 'block',
+    marginBottom: '5px'
   };
 
   return (
@@ -160,7 +309,6 @@ export default function OnboardingModal() {
         display: 'flex',
         flexDirection: 'column',
         borderRadius: '48px',
-        // Protection from Notch, Dynamic Island, and Status Bar
         paddingTop: 'max(40px, calc(env(safe-area-inset-top, 0px) + 28px))',
         paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
         paddingLeft: 'max(20px, env(safe-area-inset-left, 0px))',
@@ -171,6 +319,9 @@ export default function OnboardingModal() {
         msOverflowStyle: 'none'
       }}
     >
+      {/* Invisible container for Firebase Phone Auth Recaptcha */}
+      <div id="recaptcha-container" />
+
       {/* Close button if a user session already exists */}
       {user && (
         <button
@@ -212,7 +363,7 @@ export default function OnboardingModal() {
           padding: '6px 4px'
         }}
       >
-        {/* Brand Logo in the Center Top */}
+        {/* Brand Logo & Heading Header */}
         <div style={{ textAlign: 'center', marginBottom: '18px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <BrandLogo
             height={44}
@@ -232,10 +383,14 @@ export default function OnboardingModal() {
               lineHeight: 1.25
             }}
           >
-            {step === 'otp'
+            {step === 'welcome'
+              ? `Welcome, ${firstName || 'there'}! 🎉`
+              : step === 'profile'
+              ? 'Complete Your Profile'
+              : step === 'otp'
               ? 'Verify with OTP'
               : activeTab === 'signin'
-              ? 'Welcome Back'
+              ? 'Welcome to Ridingo'
               : 'Create Account'}
           </h1>
 
@@ -249,16 +404,20 @@ export default function OnboardingModal() {
               maxWidth: '320px'
             }}
           >
-            {step === 'otp'
-              ? `Enter the 6-digit verification code sent to your mobile & email`
+            {step === 'welcome'
+              ? 'Your account is verified and ready. Book personal chauffeurs on demand.'
+              : step === 'profile'
+              ? 'First-time login setup: enter your name and emergency contact details'
+              : step === 'otp'
+              ? `Enter the 6-digit verification code sent to your ${otpMethod === 'phone' ? 'mobile' : 'email'}`
               : activeTab === 'signin'
-              ? 'Sign in with your mobile number & email ID'
+              ? 'Sign in or register with your mobile or email'
               : 'Sign up in seconds for on-demand personal drivers'}
           </p>
         </div>
 
-        {/* Tab Toggle: Sign In & Create Account on Same Page */}
-        {step !== 'otp' && (
+        {/* Tab Toggle: Sign In & Create Account on Same Page (Only on form step) */}
+        {step === 'form' && (
           <div className="auth-tab-switch" role="tablist">
             <button
               type="button"
@@ -289,77 +448,77 @@ export default function OnboardingModal() {
         )}
 
         {/* ========================================================
-            FLOW 1: OTP VERIFICATION STEP (Common for Sign In & Sign Up)
+            FLOW 4: WELCOME GREETING SCREEN (Celebratory Card)
            ======================================================== */}
-        {step === 'otp' ? (
-          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-            {/* Auto-fill Hint Badge */}
+        {step === 'welcome' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', alignItems: 'center' }}>
             <div
-              onClick={() => setOtp(['4', '8', '2', '1', '9', '9'])}
               style={{
-                background: 'rgba(255, 199, 10, 0.15)',
-                border: '1px solid rgba(255, 199, 10, 0.4)',
-                color: 'var(--on-yellow)',
-                borderRadius: '12px',
-                padding: '8px 14px',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                textAlign: 'center',
-                cursor: 'pointer',
-                margin: '0 auto',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
+                width: '100%',
+                background: 'var(--card)',
+                border: '1.5px solid var(--line)',
+                borderRadius: '20px',
+                padding: '22px 18px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
               }}
-              title="Tap to auto-fill OTP code"
             >
-              <span>Demo Code: <b style={{ fontWeight: 800 }}>4821</b> (Tap to auto-fill)</span>
-            </div>
-
-            {/* 6-Digit OTP Box Grid */}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '4px 0' }}>
-              {otp.map((d, i) => (
-                <input
-                  key={i}
-                  id={`otp-box-${i}`}
-                  type="tel"
-                  maxLength={1}
-                  value={d}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    const newOtp = [...otp];
-                    newOtp[i] = val;
-                    setOtp(newOtp);
-                    if (val && i < 5) {
-                      document.getElementById(`otp-box-${i + 1}`)?.focus();
-                    }
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === 'Backspace' && !otp[i] && i > 0) {
-                      document.getElementById(`otp-box-${i - 1}`)?.focus();
-                    }
-                  }}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
                   style={{
                     width: '46px',
-                    height: '56px',
-                    textAlign: 'center',
+                    height: '46px',
+                    borderRadius: '50%',
+                    background: 'var(--yellow)',
+                    color: '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     fontSize: '22px',
                     fontWeight: 800,
-                    borderRadius: '14px',
-                    background: 'var(--card)',
-                    border: d ? '2px solid var(--yellow)' : '1.5px solid var(--line)',
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                    boxShadow: '0 4px 12px rgba(255, 199, 10, 0.4)'
                   }}
-                />
-              ))}
+                >
+                  {(firstName ? firstName[0] : 'R').toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)' }}>
+                    {firstName} {lastName}
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 600 }}>
+                    Verified Ridingo Member
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--line)', margin: '2px 0' }} />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink)' }}>
+                  <span style={{ color: 'var(--muted)' }}>Contact:</span>
+                  <span style={{ fontWeight: 700 }}>{formatIndianPhone(phone)}</span>
+                </div>
+                {email && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink)' }}>
+                    <span style={{ color: 'var(--muted)' }}>Email:</span>
+                    <span style={{ fontWeight: 700 }}>{email}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink)' }}>
+                  <span style={{ color: 'var(--muted)' }}>Emergency No:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{formatIndianPhone(emergencyPhone)}</span>
+                </div>
+              </div>
             </div>
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleCompleteAndShowHome}
               className="btn"
               style={{
+                width: '100%',
                 height: '48px',
                 borderRadius: '14px',
                 background: '#000000',
@@ -372,66 +531,79 @@ export default function OnboardingModal() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: '8px',
                 marginTop: '4px'
               }}
             >
-              Verify & Proceed
+              <span>Explore &amp; Book Chauffeur</span>
+              <span>→</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => setStep('form')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--muted)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textAlign: 'center',
-                margin: '0 auto',
-                padding: '4px 12px'
-              }}
-            >
-              ← Back to {activeTab === 'signin' ? 'Sign In' : 'Create Account'}
-            </button>
-          </form>
-        ) : activeTab === 'signin' ? (
+          </div>
+        ) : step === 'profile' ? (
           /* ========================================================
-             SECTION 1: SIGN IN (Mobile Number + Email ID + OTP)
+             FLOW 3: FIRST-TIME USER DATA COLLECTION FORM
+             (First Name, Last Name, Email, Alternative Emergency No)
              ======================================================== */
-          <form onSubmit={handleSignInSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-            {/* Field 1: Mobile Number */}
+          <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '11px', width: '100%' }}>
+            {/* First Name & Last Name (Side by side) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
+              <div>
+                <label style={labelStyle}>First Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Anurag"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  style={fieldStyle}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Last Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Kumar"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  style={fieldStyle}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Email Address */}
             <div>
-              <label
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--muted)',
-                  display: 'block',
-                  marginBottom: '5px'
-                }}
-              >
-                Mobile Number
-              </label>
+              <label style={labelStyle}>Email ID *</label>
+              <input
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                style={fieldStyle}
+                required
+              />
+            </div>
+
+            {/* Mobile (Prefilled from auth or input) */}
+            <div>
+              <label style={labelStyle}>Primary Mobile</label>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  height: '48px',
-                  borderRadius: '14px',
+                  height: '46px',
+                  borderRadius: '13px',
                   background: 'var(--card)',
                   border: '1.5px solid var(--line)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                   overflow: 'hidden'
                 }}
               >
                 <span
                   style={{
                     padding: '0 12px',
-                    fontSize: '14px',
+                    fontSize: '13.5px',
                     fontWeight: 700,
                     color: 'var(--ink)',
                     borderRight: '1px solid var(--line)',
@@ -458,226 +630,18 @@ export default function OnboardingModal() {
                     outline: 'none',
                     background: 'transparent',
                     padding: '0 12px',
-                    fontSize: '15.5px',
+                    fontSize: '14.5px',
                     fontWeight: 600,
-                    color: 'var(--ink)',
-                    letterSpacing: '0.04em'
+                    color: 'var(--ink)'
                   }}
                 />
               </div>
             </div>
 
-            {/* Field 2: Email ID (New filling section) */}
+            {/* Alternative No. (Emergency) */}
             <div>
-              <label
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--muted)',
-                  display: 'block',
-                  marginBottom: '5px'
-                }}
-              >
-                Email ID
-              </label>
-              <input
-                type="email"
-                inputMode="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                style={{
-                  width: '100%',
-                  height: '48px',
-                  borderRadius: '14px',
-                  background: 'var(--card)',
-                  border: '1.5px solid var(--line)',
-                  padding: '0 14px',
-                  fontSize: '14.5px',
-                  fontWeight: 600,
-                  color: 'var(--ink)',
-                  outline: 'none',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn"
-              style={{
-                height: '48px',
-                borderRadius: '14px',
-                background: '#000000',
-                color: '#FFFFFF',
-                border: '1.5px solid #000000',
-                fontSize: '15px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginTop: '4px'
-              }}
-            >
-              Continue with OTP
-            </button>
-
-            {/* Instant Demo Account Access Button */}
-            <button
-              type="button"
-              className="btn"
-              onClick={loginDemo}
-              style={{
-                height: '46px',
-                borderRadius: '14px',
-                background: '#FFFFFF',
-                color: '#000000',
-                border: '1.5px solid #000000',
-                fontSize: '14px',
-                fontWeight: 750,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              <span style={{ color: 'var(--yellow)' }}>⚡</span>
-              <span>Instant Demo Access (Arjun)</span>
-            </button>
-          </form>
-        ) : (
-          /* ========================================================
-             SECTION 2: CREATE ACCOUNT (Full Name, Last Name, Email, Mobile)
-             ======================================================== */
-          <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '11px', width: '100%' }}>
-            {/* Full Name & Last Name (Side by side) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
-              <div>
-                <label
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    color: 'var(--muted)',
-                    display: 'block',
-                    marginBottom: '4px'
-                  }}
-                >
-                  Full / First Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Arjun"
-                  value={firstName}
-                  onChange={e => setFirstName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '46px',
-                    borderRadius: '13px',
-                    background: 'var(--card)',
-                    border: '1.5px solid var(--line)',
-                    padding: '0 12px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    color: 'var(--muted)',
-                    display: 'block',
-                    marginBottom: '4px'
-                  }}
-                >
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Menon"
-                  value={lastName}
-                  onChange={e => setLastName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '46px',
-                    borderRadius: '13px',
-                    background: 'var(--card)',
-                    border: '1.5px solid var(--line)',
-                    padding: '0 12px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Email Address */}
-            <div>
-              <label
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--muted)',
-                  display: 'block',
-                  marginBottom: '4px'
-                }}
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                value={regEmail}
-                onChange={e => setRegEmail(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: '46px',
-                  borderRadius: '13px',
-                  background: 'var(--card)',
-                  border: '1.5px solid var(--line)',
-                  padding: '0 12px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: 'var(--ink)',
-                  outline: 'none',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
-                }}
-              />
-            </div>
-
-            {/* Mobile Number with Country Code */}
-            <div>
-              <label
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--muted)',
-                  display: 'block',
-                  marginBottom: '4px'
-                }}
-              >
-                Mobile
+              <label style={labelStyle}>
+                Alternative No. (Emergency) *
               </label>
               <div
                 style={{
@@ -711,9 +675,9 @@ export default function OnboardingModal() {
                   type="tel"
                   inputMode="numeric"
                   maxLength={10}
-                  placeholder="98765 43210"
-                  value={regMobile}
-                  onChange={e => setRegMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="Emergency contact (10 digits)"
+                  value={emergencyPhone}
+                  onChange={e => setEmergencyPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   style={{
                     flex: 1,
                     height: '100%',
@@ -725,11 +689,15 @@ export default function OnboardingModal() {
                     fontWeight: 600,
                     color: 'var(--ink)'
                   }}
+                  required
                 />
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
+                Used by chauffeur &amp; support during safety emergencies.
               </div>
             </div>
 
-            {/* Create Account Primary Button */}
+            {/* Next Action Button */}
             <button
               type="submit"
               className="btn"
@@ -746,21 +714,418 @@ export default function OnboardingModal() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginTop: '4px'
+                gap: '8px',
+                marginTop: '6px'
               }}
             >
-              Create Account
+              <span>Next</span>
+              <span>→</span>
+            </button>
+          </form>
+        ) : step === 'otp' ? (
+          /* ========================================================
+             FLOW 2: OTP VERIFICATION STEP
+             ======================================================== */
+          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+            {/* Target Destination Indicator */}
+            <div
+              style={{
+                background: 'var(--field)',
+                border: '1px solid var(--line)',
+                borderRadius: '14px',
+                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>{otpMethod === 'phone' ? '📱' : '✉️'}</span>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {otpMethod === 'phone' ? 'Code Sent To Mobile' : 'Code Sent To Email'}
+                  </div>
+                  <div style={{ fontSize: '13.5px', fontWeight: 750, color: 'var(--ink)' }}>
+                    {otpMethod === 'phone'
+                      ? formatIndianPhone(getTargetIdentifier('phone', activeTab))
+                      : getTargetIdentifier('email', activeTab)}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep('form')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--ink)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                Edit
+              </button>
+            </div>
+
+            {/* Dev Fallback Code Auto-fill Badge (if testing/dev fallback) */}
+            {devOtpCode && (
+              <div
+                onClick={() => {
+                  const chars = String(devOtpCode).split('').slice(0, 6);
+                  setOtp(chars);
+                  addToast('Test OTP code auto-filled!', 'info');
+                }}
+                style={{
+                  background: 'rgba(255, 199, 10, 0.16)',
+                  border: '1px solid rgba(255, 199, 10, 0.45)',
+                  color: 'var(--on-yellow)',
+                  borderRadius: '12px',
+                  padding: '9px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  margin: '0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                title="Tap to auto-fill test OTP code"
+              >
+                <span>⚡ Test OTP: <b style={{ fontWeight: 800 }}>{devOtpCode}</b> (Tap to auto-fill)</span>
+              </div>
+            )}
+
+            {/* 6-Digit OTP Box Grid with Paste & Auto-Focus */}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '4px 0' }}>
+              {otp.map((d, i) => (
+                <input
+                  key={i}
+                  id={`otp-box-${i}`}
+                  ref={el => (otpInputRefs.current[i] = el)}
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={d}
+                  onChange={e => handleOtpChange(i, e.target.value)}
+                  onKeyDown={e => handleOtpKeyDown(i, e)}
+                  onPaste={handleOtpPaste}
+                  style={{
+                    width: '46px',
+                    height: '56px',
+                    textAlign: 'center',
+                    fontSize: '22px',
+                    fontWeight: 800,
+                    borderRadius: '14px',
+                    background: 'var(--card)',
+                    border: d ? '2px solid var(--yellow)' : '1.5px solid var(--line)',
+                    color: 'var(--ink)',
+                    outline: 'none',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                    transition: 'border-color 0.15s ease'
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Verify & Proceed Button */}
+            <button
+              type="submit"
+              disabled={verifyingOtp}
+              className="btn"
+              style={{
+                height: '48px',
+                borderRadius: '14px',
+                background: '#000000',
+                color: '#FFFFFF',
+                border: '1.5px solid #000000',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: verifyingOtp ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: '4px',
+                opacity: verifyingOtp ? 0.7 : 1
+              }}
+            >
+              {verifyingOtp ? 'Verifying Code...' : 'Verify & Proceed'}
+            </button>
+
+            {/* Resend OTP & Channel Switch Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+              {resendCountdown > 0 ? (
+                <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
+                  Resend code in <strong style={{ color: 'var(--ink)' }}>{resendCountdown}s</strong>
+                </span>
+              ) : (
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleSendOtp(otpMethod)}
+                    disabled={sendingOtp}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--ink)',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      textDecoration: 'underline',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {sendingOtp ? 'Sending...' : 'Resend OTP'}
+                  </button>
+                  <span style={{ color: 'var(--line)' }}>•</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSendOtp(otpMethod === 'phone' ? 'email' : 'phone')}
+                    disabled={sendingOtp}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--muted)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      textDecoration: 'underline',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Try {otpMethod === 'phone' ? 'Email' : 'Mobile'} instead
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setStep('form')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--muted)',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textAlign: 'center',
+                margin: '0 auto',
+                padding: '4px 12px'
+              }}
+            >
+              ← Back to {activeTab === 'signin' ? 'Sign In' : 'Create Account'}
+            </button>
+          </form>
+        ) : (
+          /* ========================================================
+             FLOW 1: INITIAL LOGIN / REGISTER (Strictly Mobile & Email tabs)
+             ======================================================== */
+          <form onSubmit={activeTab === 'signin' ? handleSignInSubmit : handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+            {/* Delivery Channel Selector (STRICTLY Mobile & Email, no SMS mention) */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '6px',
+                background: 'var(--field)',
+                padding: '4px',
+                borderRadius: '14px',
+                border: '1px solid var(--line)',
+                marginBottom: '2px'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setOtpMethod('phone')}
+                style={{
+                  height: '36px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: otpMethod === 'phone' ? '#000000' : 'transparent',
+                  color: otpMethod === 'phone' ? '#FFFFFF' : 'var(--muted)',
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: otpMethod === 'phone' ? '0 2px 6px rgba(0,0,0,0.18)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>📱</span> Mobile
+              </button>
+              <button
+                type="button"
+                onClick={() => setOtpMethod('email')}
+                style={{
+                  height: '36px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: otpMethod === 'email' ? '#000000' : 'transparent',
+                  color: otpMethod === 'email' ? '#FFFFFF' : 'var(--muted)',
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: otpMethod === 'email' ? '0 2px 6px rgba(0,0,0,0.18)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>✉️</span> Email
+              </button>
+            </div>
+
+            {/* Field: Mobile Number */}
+            {otpMethod === 'phone' ? (
+              <div>
+                <label style={labelStyle}>Mobile Number</label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: '48px',
+                    borderRadius: '14px',
+                    background: 'var(--card)',
+                    border: '1.5px solid var(--line)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <span
+                    style={{
+                      padding: '0 12px',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: 'var(--ink)',
+                      borderRight: '1px solid var(--line)',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: 'var(--field)',
+                      flexShrink: 0
+                    }}
+                  >
+                    🇮🇳 +91
+                  </span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    value={phone}
+                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="98765 43210"
+                    style={{
+                      flex: 1,
+                      height: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      padding: '0 12px',
+                      fontSize: '15.5px',
+                      fontWeight: 600,
+                      color: 'var(--ink)',
+                      letterSpacing: '0.04em'
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
+                  We'll send a 6-digit verification code to your mobile.
+                </div>
+              </div>
+            ) : (
+              /* Field: Email ID */
+              <div>
+                <label style={labelStyle}>Email ID</label>
+                <input
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    borderRadius: '14px',
+                    background: 'var(--card)',
+                    border: '1.5px solid var(--line)',
+                    padding: '0 14px',
+                    fontSize: '14.5px',
+                    fontWeight: 600,
+                    color: 'var(--ink)',
+                    outline: 'none',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                  }}
+                />
+                <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
+                  We'll send a 6-digit verification code to your email.
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={sendingOtp}
+              className="btn"
+              style={{
+                height: '48px',
+                borderRadius: '14px',
+                background: '#000000',
+                color: '#FFFFFF',
+                border: '1.5px solid #000000',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: sendingOtp ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: '4px',
+                opacity: sendingOtp ? 0.7 : 1
+              }}
+            >
+              {sendingOtp ? 'Sending OTP Code...' : 'Continue with OTP'}
+            </button>
+
+            {/* Instant Demo Account Access Button */}
+            <button
+              type="button"
+              className="btn"
+              onClick={loginDemo}
+              style={{
+                height: '46px',
+                borderRadius: '14px',
+                background: '#FFFFFF',
+                color: '#000000',
+                border: '1.5px solid #000000',
+                fontSize: '14px',
+                fontWeight: 750,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span style={{ color: 'var(--yellow)' }}>⚡</span>
+              <span>Instant Demo Access (Arjun)</span>
             </button>
           </form>
         )}
 
         {/* ========================================================
-            OR SECTION & GOOGLE / APPLE SOCIAL SIGNING
-            (Available in both Sign In & Create Account sections)
+            SOCIAL LOGIN & LEGAL (Only on initial form step)
            ======================================================== */}
-        {step !== 'otp' && (
+        {step === 'form' && (
           <div style={{ width: '100%', marginTop: '16px' }}>
-            {/* Centered OR Divider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
               <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
               <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -769,9 +1134,7 @@ export default function OnboardingModal() {
               <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
             </div>
 
-            {/* Google & Apple Signing Buttons */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              {/* Google Button */}
               <button
                 type="button"
                 onClick={() => handleSocialLogin('Google')}
@@ -788,8 +1151,7 @@ export default function OnboardingModal() {
                   justifyContent: 'center',
                   gap: '8px',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.15s ease'
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
                 }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24">
@@ -801,7 +1163,6 @@ export default function OnboardingModal() {
                 <span>Google</span>
               </button>
 
-              {/* Apple Button */}
               <button
                 type="button"
                 onClick={() => handleSocialLogin('Apple')}
@@ -818,8 +1179,7 @@ export default function OnboardingModal() {
                   justifyContent: 'center',
                   gap: '8px',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.15s ease'
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
                 }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -831,7 +1191,7 @@ export default function OnboardingModal() {
           </div>
         )}
 
-        {/* Legal Disclaimer: Terms & Privacy Policy */}
+        {/* Legal Disclaimer */}
         <p style={{ fontSize: '12px', color: 'var(--muted)', textAlign: 'center', marginTop: '18px', lineHeight: 1.45, maxWidth: '320px' }}>
           By continuing, you agree to Ridingo's{' '}
           <button
@@ -851,7 +1211,7 @@ export default function OnboardingModal() {
           >
             Terms of Service
           </button>{' '}
-          &{' '}
+          &amp;{' '}
           <button
             type="button"
             onClick={() => openLegal && openLegal('privacy')}

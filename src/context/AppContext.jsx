@@ -490,15 +490,19 @@ export function AppProvider({ children }) {
 
   const loginWithDetails = (userData = {}) => {
     const isGoogle = userData.provider === 'google' || !!userData.idToken;
+    const computedName = userData.name || (userData.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : DEFAULT_USER.name);
     const updated = {
       ...DEFAULT_USER,
       ...userData,
-      name: userData.name || DEFAULT_USER.name,
+      name: computedName,
+      firstName: userData.firstName || computedName.split(' ')[0],
+      lastName: userData.lastName || (computedName.split(' ').slice(1).join(' ') || ''),
       email: userData.email || (isGoogle ? '' : DEFAULT_USER.email),
       avatar: userData.avatar || (isGoogle ? userData.avatar : DEFAULT_USER.avatar),
       phone: userData.phone
         ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`)
         : (isGoogle ? '' : DEFAULT_USER.phone),
+      emergencyPhone: userData.emergencyPhone || '',
       isAuthenticated: true,
       isDemo: false,
       authProvider: userData.provider || (isGoogle ? 'google' : 'phone')
@@ -510,7 +514,7 @@ export function AppProvider({ children }) {
     setUTab('home');
     scrollUserToTop();
     setOnboardingOpen(false);
-    addToast(`Welcome, ${updated.name || 'User'}!`, 'check');
+    addToast(`Welcome, ${updated.firstName || updated.name || 'User'}!`, 'check');
   };
 
   const updateUserProfile = (updates) => {

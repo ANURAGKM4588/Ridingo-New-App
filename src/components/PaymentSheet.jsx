@@ -1605,7 +1605,17 @@ export default function PaymentSheet() {
         </div>
 
         {/* Sticky Bottom Footer: Minimal Neutral Primary Button */}
-        <div style={{ padding: '14px 20px 18px', background: '#FFFFFF', borderTop: '1px solid #F1F5F9' }}>
+        <div
+          className="sheet-sticky-foot"
+          style={{
+            padding: '12px 18px max(14px, env(safe-area-inset-bottom, 0px))',
+            background: '#FFFFFF',
+            borderTop: '1px solid #F1F5F9',
+            marginTop: 'auto',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
           <button
             type="button"
             onClick={handleTriggerPayment}

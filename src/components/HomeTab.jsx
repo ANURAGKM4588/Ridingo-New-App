@@ -162,8 +162,8 @@ export default function HomeTab() {
 
   const inProg = trips.find(t => t.status === 'inprogress');
   const requestedTrip = trips.find(t => t.status === 'requested');
-  const popularTrips = trips.filter(t => t.status === 'completed');
-  const first = user?.name ? user.name.split(' ')[0] : 'there';
+  const rawFirst = user?.firstName || (user?.name ? user.name.trim().split(' ')[0] : 'there');
+  const first = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : 'there';
 
   const openBooking = (cat) => {
     setBookingCategory(cat);
