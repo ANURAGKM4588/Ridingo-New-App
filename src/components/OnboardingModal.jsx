@@ -21,6 +21,7 @@ export default function OnboardingModal() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [otpError, setOtpError] = useState(null);
   const [verifiedUserObj, setVerifiedUserObj] = useState(null);
 
   // Authentication & Profile Fields
@@ -64,13 +65,18 @@ export default function OnboardingModal() {
   };
 
   const handleSendOtp = async (methodToUse = otpMethod) => {
+    setOtpError(null);
     const rawId = getTargetIdentifier(methodToUse, activeTab);
     if (!rawId || (methodToUse === 'phone' && rawId.replace(/\D/g, '').length < 10)) {
-      addToast(methodToUse === 'phone' ? 'Please enter a valid 10-digit mobile number' : 'Please enter a valid email address', 'warn');
+      const msg = methodToUse === 'phone' ? 'Please enter a valid 10-digit mobile number' : 'Please enter a valid email address';
+      setOtpError(msg);
+      addToast(msg, 'warn');
       return;
     }
     if (methodToUse === 'email' && !rawId.includes('@')) {
-      addToast('Please enter a valid email address', 'warn');
+      const msg = 'Please enter a valid email address';
+      setOtpError(msg);
+      addToast(msg, 'warn');
       return;
     }
 
@@ -81,6 +87,7 @@ export default function OnboardingModal() {
         identifier: rawId
       });
       setSendingOtp(false);
+      setOtpError(null);
       setOtpMethod(methodToUse);
       setStep('otp');
       setResendCountdown(30);
@@ -94,6 +101,7 @@ export default function OnboardingModal() {
       }, 120);
     } catch (err) {
       setSendingOtp(false);
+      setOtpError(err.message || 'Failed to send OTP. Please try again.');
       addToast(err.message || 'Failed to send OTP. Please try again.', 'warn');
     }
   };
@@ -1054,6 +1062,28 @@ export default function OnboardingModal() {
                 <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
                   We'll send a 6-digit verification code to your email.
                 </div>
+              </div>
+            )}
+
+            {/* Inline error feedback if sending fails */}
+            {otpError && (
+              <div
+                style={{
+                  background: 'rgba(234, 67, 53, 0.1)',
+                  border: '1px solid rgba(234, 67, 53, 0.35)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  fontSize: '12.5px',
+                  color: '#d93025',
+                  lineHeight: 1.45,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>⚠️</span>
+                <span>{otpError}</span>
               </div>
             )}
 

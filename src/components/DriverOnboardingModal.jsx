@@ -36,6 +36,7 @@ export default function DriverOnboardingModal() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [otpError, setOtpError] = useState(null);
 
   // Sign In fields
   const [phone, setPhone] = useState('98765 43210');
@@ -112,6 +113,7 @@ export default function DriverOnboardingModal() {
       }, 100);
     } catch (err) {
       setSendingOtp(false);
+      setOtpError(err.message || 'Failed to send OTP. Please try again.');
       addToast(err.message || 'Failed to send OTP. Please try again.', 'warn');
     }
   };
@@ -544,6 +546,27 @@ export default function DriverOnboardingModal() {
                 <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
                   We'll send a 6-digit verification code to your email inbox (Free).
                 </div>
+              </div>
+            )}
+
+            {otpError && (
+              <div
+                style={{
+                  background: 'rgba(234, 67, 53, 0.1)',
+                  border: '1px solid rgba(234, 67, 53, 0.35)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  fontSize: '12.5px',
+                  color: '#d93025',
+                  lineHeight: 1.45,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>⚠️</span>
+                <span>{otpError}</span>
               </div>
             )}
 
