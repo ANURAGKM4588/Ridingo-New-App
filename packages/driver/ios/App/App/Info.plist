@@ -47,5 +47,16 @@
 	<true/>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleLightContent</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.496710932146-dff905ju49pr9j04ph4ii6u5c9moktge</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

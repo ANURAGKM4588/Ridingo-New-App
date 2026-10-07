@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import BrandLogo from './BrandLogo';
 import Icon from './Icon';
 import { sendOtp, verifyOtp, formatIndianPhone } from '../services/authOtpService';
+import { performNativeGoogleSignIn } from '../services/nativeGoogleAuth';
 
 export default function OnboardingModal() {
   const { onboardingOpen, setOnboardingOpen, user, loginDemo, loginWithDetails, addToast, openLegal } = useApp();
@@ -222,7 +223,38 @@ export default function OnboardingModal() {
     addToast(`Welcome to Ridingo, ${finalFirst}!`, 'check');
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
+    // 1. In native mobile iOS / Android app:
+    // Triggers Apple ASWebAuthenticationSession:
+    // "Ridingo" Wants to Use "accounts.google.com" to Sign In -> accounts.google.com
+    if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+      try {
+        addToast('Opening Google Sign-In...', 'info');
+        const gUser = await performNativeGoogleSignIn();
+        if (gUser && gUser.email) {
+          setFirstName(gUser.firstName);
+          setLastName(gUser.lastName);
+          setEmail(gUser.email);
+          setVerifiedUserObj({
+            id: gUser.id,
+            email: gUser.email,
+            avatar: gUser.avatar,
+            provider: 'google'
+          });
+          setStep('profile');
+          addToast(`Signed in as ${gUser.name}! Please confirm your profile.`, 'check');
+          return;
+        }
+      } catch (err) {
+        console.warn('Native Google Auth result:', err);
+        if (err.message && !err.message.includes('cancel')) {
+          addToast(err.message || 'Google sign-in was cancelled.', 'warn');
+        }
+        return;
+      }
+    }
+
+    // 2. Browser preview fallback
     setShowGooglePicker(true);
   };
 

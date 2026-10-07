@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import BrandLogo from './BrandLogo';
 import Icon from './Icon';
 import { sendOtp, verifyOtp, formatIndianPhone } from '../services/authOtpService';
+import { performNativeGoogleSignIn } from '../services/nativeGoogleAuth';
 
 const GOOGLE_WEB_CLIENT_ID = '496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID = '496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com';
@@ -212,7 +213,30 @@ export default function DriverOnboardingModal() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
+    if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+      try {
+        addToast('Opening Google Sign-In...', 'info');
+        const gUser = await performNativeGoogleSignIn();
+        if (gUser && gUser.email) {
+          loginDriverWithDetails({
+            name: gUser.name,
+            email: gUser.email,
+            avatar: gUser.avatar,
+            authMethod: 'google'
+          });
+          addToast(`Welcome to Chauffeur Portal, ${gUser.name}!`, 'check');
+          return;
+        }
+      } catch (err) {
+        console.warn('Native Google Auth result:', err);
+        if (err.message && !err.message.includes('cancel')) {
+          addToast(err.message || 'Google sign-in was cancelled.', 'warn');
+        }
+        return;
+      }
+    }
+
     setShowGooglePicker(true);
   };
 

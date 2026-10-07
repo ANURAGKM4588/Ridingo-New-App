@@ -20,6 +20,7 @@
     "@capacitor/ios": "^8.5.2",
     "@capacitor/keyboard": "^8.0.6",
     "@capacitor/status-bar": "^8.0.4",
+    "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@supabase/supabase-js": "^2.117.2",
     "expo": "^57.0.26",
     "firebase": "^12.19.0",
