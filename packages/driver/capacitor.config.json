@@ -27,6 +27,7 @@
       "scopes": ["profile", "email"],
       "serverClientId": "496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com",
       "iosClientId": "496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com",
+      "clientId": "496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }
   }

@@ -19,15 +19,30 @@ let initialized = false;
 export async function initGoogleAuth() {
   if (initialized) return;
   try {
+    const isIos = typeof window !== 'undefined' && (
+      window.Capacitor?.getPlatform?.() === 'ios' ||
+      /iPad|iPhone|iPod/.test(navigator?.userAgent)
+    );
+
+    // On iOS, GoogleSignIn requires clientId to exactly match GIDClientID in Info.plist
+    const activeClientId = isIos ? GOOGLE_CONFIG.iosClientId : GOOGLE_CONFIG.serverClientId;
+
     await GoogleAuth.initialize({
-      clientId: GOOGLE_CONFIG.serverClientId,
+      clientId: activeClientId,
+      serverClientId: GOOGLE_CONFIG.serverClientId,
       scopes: ['profile', 'email'],
       grantOfflineAccess: true
     });
     initialized = true;
+    console.log('✅ GoogleAuth initialized successfully with clientId:', activeClientId);
   } catch (err) {
     console.warn('GoogleAuth.initialize notice:', err);
   }
+}
+
+// Automatically pre-initialize Google Auth on module import so client is loaded before button tap
+if (typeof window !== 'undefined') {
+  initGoogleAuth();
 }
 
 /**
