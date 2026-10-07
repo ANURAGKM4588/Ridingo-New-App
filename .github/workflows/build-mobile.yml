@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies & Build React Web Bundle
         run: |
-          npm ci || npm install
+          npm install --legacy-peer-deps
           npm run build
 
       - name: Build Web Distributions for Standalone Packages
@@ -44,7 +44,7 @@ jobs:
       - name: Sync & Build Ridingo-User.apk
         run: |
           cd packages/user
-          npm install
+          npm install --legacy-peer-deps
           npx cap sync android
           cd android
           chmod +x gradlew
@@ -56,7 +56,7 @@ jobs:
       - name: Sync & Build Ridingo-Driver.apk
         run: |
           cd packages/driver
-          npm install
+          npm install --legacy-peer-deps
           npx cap sync android
           cd android
           chmod +x gradlew
@@ -90,7 +90,7 @@ jobs:
 
       - name: Install dependencies & Build React Web Bundle
         run: |
-          npm ci || npm install
+          npm install --legacy-peer-deps
           npm run build
 
       - name: Build Web Distributions for Standalone Packages
@@ -100,7 +100,7 @@ jobs:
       - name: Sync & Build Ridingo-User.ipa
         run: |
           cd packages/user
-          npm install
+          npm install --legacy-peer-deps
           npx cap sync ios
           cd ios/App
           pod install || true
@@ -124,7 +124,7 @@ jobs:
       - name: Sync & Build Ridingo-Driver.ipa
         run: |
           cd packages/driver
-          npm install
+          npm install --legacy-peer-deps
           npx cap sync ios
           cd ios/App
           pod install || true
