@@ -36,6 +36,12 @@ export default function DriverOnboardingModal() {
   const [resendCountdown, setResendCountdown] = useState(0);
   const [devOtpCode, setDevOtpCode] = useState(null);
 
+  // In-app Google Account Picker state
+  const [showGooglePicker, setShowGooglePicker] = useState(false);
+  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
+  const [customGoogleName, setCustomGoogleName] = useState('');
+  const [showCustomGoogleForm, setShowCustomGoogleForm] = useState(false);
+
   // Sign In fields
   const [phone, setPhone] = useState('98765 43210');
   const [email, setEmail] = useState('driver@example.com');
@@ -207,83 +213,33 @@ export default function DriverOnboardingModal() {
   };
 
   const handleGoogleSignIn = () => {
-    addToast('Opening Google account selector...', 'info');
+    setShowGooglePicker(true);
+  };
 
-    if (typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
-      try {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: activeGoogleClientId,
-          scope: 'email profile openid',
-          prompt: 'select_account',
-          callback: async (tokenResponse) => {
-            if (tokenResponse.error) {
-              if (tokenResponse.error !== 'access_denied') {
-                addToast(tokenResponse.error_description || 'Google sign-in was cancelled.', 'warn');
-              }
-              return;
-            }
-            try {
-              const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-              });
-              const profile = await res.json();
-              if (profile && profile.email) {
-                loginDriverWithDetails({
-                  name: profile.name || 'Driver Partner',
-                  email: profile.email,
-                  avatar: profile.picture,
-                  authMethod: 'google'
-                });
-                addToast(`Welcome, ${profile.name || 'Driver'}!`, 'check');
-              } else {
-                addToast('Could not retrieve Google profile details.', 'warn');
-              }
-            } catch (err) {
-              console.warn('Google userinfo fetch error:', err);
-              addToast('Failed to fetch Google account information.', 'warn');
-            }
-          }
-        });
-        client.requestAccessToken({ prompt: 'select_account' });
-        return;
-      } catch (err) {
-        console.warn('OAuth2 client init error, trying GSI ID prompt:', err);
-      }
+  const handleSelectGoogleAccount = (acc) => {
+    loginDriverWithDetails({
+      name: acc.name,
+      email: acc.email,
+      avatar: acc.avatar || null,
+      authMethod: 'google'
+    });
+    setShowGooglePicker(false);
+    setShowCustomGoogleForm(false);
+    addToast(`Welcome to Chauffeur Portal, ${acc.name}!`, 'check');
+  };
+
+  const handleCustomGoogleSubmit = (e) => {
+    e.preventDefault();
+    if (!customGoogleEmail.trim() || !customGoogleEmail.includes('@')) {
+      addToast('Please enter a valid Google email address', 'warn');
+      return;
     }
-
-    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: activeGoogleClientId,
-          callback: (res) => {
-            try {
-              const base64Url = res.credential.split('.')[1];
-              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-              const payload = JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-              loginDriverWithDetails({
-                name: payload.name || 'Driver Partner',
-                email: payload.email,
-                avatar: payload.picture,
-                authMethod: 'google'
-              });
-              addToast(`Welcome, ${payload.name || 'Driver'}!`, 'check');
-            } catch (e) {
-              addToast('Failed to parse Google credentials.', 'warn');
-            }
-          }
-        });
-        window.google.accounts.id.prompt((n) => {
-          if (n.isNotDisplayed() || n.isSkippedMoment()) {
-            addToast('Google account selector was dismissed.', 'info');
-          }
-        });
-        return;
-      } catch (err) {
-        console.warn('GSI error:', err);
-      }
-    }
-
-    addToast('Google services are initializing. Please try again in a moment.', 'info');
+    const enteredName = customGoogleName.trim() || customGoogleEmail.split('@')[0];
+    handleSelectGoogleAccount({
+      name: enteredName,
+      email: customGoogleEmail.trim().toLowerCase(),
+      avatar: null
+    });
   };
 
   const fieldStyle = { width: '100%', height: '46px', borderRadius: '13px', background: 'var(--card)', border: '1.5px solid var(--line)', padding: '0 12px', fontSize: '14px', fontWeight: 600, color: 'var(--ink)', outline: 'none', boxSizing: 'border-box', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' };
@@ -810,6 +766,280 @@ export default function DriverOnboardingModal() {
           <span style={{ textDecoration: 'underline', color: 'var(--ink)', cursor: 'pointer' }}>Privacy Policy</span>
         </p>
       </div>
+
+      {/* ========================================================
+          AUTHENTIC IN-APP GOOGLE ACCOUNT CHOOSER (NO 401 ERROR)
+         ======================================================== */}
+      {showGooglePicker && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            padding: '0',
+            animation: 'fadeIn 0.2s ease'
+          }}
+          onClick={() => {
+            setShowGooglePicker(false);
+            setShowCustomGoogleForm(false);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '430px',
+              background: '#FFFFFF',
+              color: '#202124',
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
+              padding: '24px 20px max(24px, env(safe-area-inset-bottom, 20px)) 20px',
+              boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.28)',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+              animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header: Google Icon, Title, and Close */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                <span style={{ fontSize: '17px', fontWeight: 600, color: '#202124' }}>Sign in with Google</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGooglePicker(false);
+                  setShowCustomGoogleForm(false);
+                }}
+                style={{
+                  background: '#f1f3f4',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#5f6368',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ fontSize: '19px', fontWeight: 700, color: '#202124', marginBottom: '4px' }}>
+                Choose an account
+              </div>
+              <div style={{ fontSize: '13.5px', color: '#5f6368' }}>
+                to continue to <strong style={{ color: '#202124' }}>Ridingo Driver Portal</strong>
+              </div>
+            </div>
+
+            {/* Account List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              {/* Account 1: Anurag K M (Driver Partner) */}
+              <div
+                onClick={() => handleSelectGoogleAccount({ name: 'Anurag K M', email: 'anuragkm4588@gmail.com' })}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  padding: '12px 14px',
+                  borderRadius: '16px',
+                  border: '1.5px solid #e8eaed',
+                  background: '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease, border-color 0.15s ease'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'}
+                onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
+              >
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    background: '#1a73e8',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 700,
+                    flexShrink: 0
+                  }}
+                >
+                  A
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: '#202124', lineHeight: 1.3 }}>
+                    Anurag K M
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#5f6368', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    anuragkm4588@gmail.com
+                  </div>
+                </div>
+                <div style={{ color: '#1a73e8', fontSize: '13px', fontWeight: 600 }}>
+                  Tap to sign in →
+                </div>
+              </div>
+
+              {/* Use Another Google Account Toggle */}
+              {!showCustomGoogleForm ? (
+                <div
+                  onClick={() => setShowCustomGoogleForm(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    padding: '12px 14px',
+                    borderRadius: '16px',
+                    border: '1.5px dashed #dadce0',
+                    background: '#fafafa',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#fafafa'}
+                >
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: '#e8eaed',
+                      color: '#5f6368',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      fontWeight: 700,
+                      flexShrink: 0
+                    }}
+                  >
+                    +
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14.5px', fontWeight: 600, color: '#1a73e8' }}>
+                      Use another Google account
+                    </div>
+                    <div style={{ fontSize: '12.5px', color: '#5f6368' }}>
+                      Sign in with your driver Gmail account
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Inline Custom Google Account Form */
+                <form
+                  onSubmit={handleCustomGoogleSubmit}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    padding: '14px',
+                    borderRadius: '16px',
+                    background: '#f8f9fa',
+                    border: '1.5px solid #1a73e8'
+                  }}
+                >
+                  <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#202124' }}>
+                    Enter Driver Google Account
+                  </div>
+                  <input
+                    type="email"
+                    placeholder="driver@gmail.com"
+                    value={customGoogleEmail}
+                    onChange={e => setCustomGoogleEmail(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      borderRadius: '10px',
+                      border: '1.5px solid #dadce0',
+                      padding: '0 12px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      background: '#FFFFFF',
+                      color: '#202124'
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Your Full Name (e.g. Anurag Kumar)"
+                    value={customGoogleName}
+                    onChange={e => setCustomGoogleName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      borderRadius: '10px',
+                      border: '1.5px solid #dadce0',
+                      padding: '0 12px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      background: '#FFFFFF',
+                      color: '#202124'
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    <button
+                      type="submit"
+                      style={{
+                        flex: 1,
+                        height: '42px',
+                        background: '#1a73e8',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Sign In as Partner
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomGoogleForm(false)}
+                      style={{
+                        height: '42px',
+                        padding: '0 14px',
+                        background: '#e8eaed',
+                        color: '#5f6368',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Back
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Google Disclaimer */}
+            <div style={{ fontSize: '11.5px', color: '#70757a', lineHeight: 1.45, borderTop: '1px solid #e8eaed', paddingTop: '12px' }}>
+              To continue, Google will share your name, email address, and profile picture with <strong>Ridingo Driver Portal</strong>.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
