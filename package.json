@@ -1,27 +1,39 @@
 {
-  "name": "ridingo-mobile-suite",
-  "version": "1.0.0",
-  "description": "Ridingo User and Driver Native Production Mobile Apps (iOS & Android)",
+  "name": "ridingo-react",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "version": "0.0.0",
+  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "build:web": "node scripts/build-apps.js",
-    "build:android:user": "node scripts/build-android.js user",
-    "build:android:driver": "node scripts/build-android.js driver",
-    "build:ios:user": "node scripts/build-ios.js user",
-    "build:ios:driver": "node scripts/build-ios.js driver",
-    "build:all": "node scripts/build-apps.js && npm run build:android:user && npm run build:android:driver && npm run build:ios:user && npm run build:ios:driver",
-    "export:artifacts": "node scripts/export-artifacts.js"
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "expo": "expo start",
+    "expo:web": "expo start --web"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.0",
-    "@capacitor/core": "^6.2.0",
-    "@capacitor/ios": "^6.2.0",
-    "@capacitor/status-bar": "^6.0.0"
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/geolocation": "^8.2.3",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/status-bar": "^8.0.4",
+    "@supabase/supabase-js": "^2.117.2",
+    "expo": "^57.0.26",
+    "leaflet": "^1.9.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-native": "0.86.3",
+    "react-native-webview": "13.16.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.2.0"
+    "@capacitor/cli": "^8.5.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0",
+    "vite": "^8.3.0"
   }
 }

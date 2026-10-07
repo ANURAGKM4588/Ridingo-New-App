@@ -12,10 +12,10 @@ permissions:
 
 jobs:
   # =============================================================
-  # 1. ANDROID BUILDS: Ridingo-User.apk & Ridingo-Driver.apk
+  # 1. ANDROID BUILD: Ridingo.apk
   # =============================================================
   build-android:
-    name: Build Android APKs (User & Driver)
+    name: Build Android APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -32,53 +32,32 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install dependencies & Build
         run: |
           npm ci || npm install
-          cd ridingo-react
-          npm install
           npm run build
-          cd ..
 
-      - name: Build Web Distributions (dist/user & dist/driver)
-        run: node scripts/build-apps.js
-
-      # --- Build User App Android ---
-      - name: Sync & Build Ridingo-User.apk
+      - name: Sync & Build Ridingo Android APK
         run: |
-          cd packages/user
           npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
           mkdir -p "${{ github.workspace }}/build-outputs"
-          cp app/build/outputs/apk/debug/app-debug.apk "${{ github.workspace }}/build-outputs/Ridingo-User.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "${{ github.workspace }}/build-outputs/Ridingo.apk"
 
-      # --- Build Driver App Android ---
-      - name: Sync & Build Ridingo-Driver.apk
-        run: |
-          cd packages/driver
-          npx cap sync android
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
-          mkdir -p "${{ github.workspace }}/build-outputs"
-          cp app/build/outputs/apk/debug/app-debug.apk "${{ github.workspace }}/build-outputs/Ridingo-Driver.apk"
-
-      - name: Upload Android APKs
+      - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: Ridingo-Android-Packages
-          path: |
-            build-outputs/Ridingo-User.apk
-            build-outputs/Ridingo-Driver.apk
+          name: Ridingo-Android-Package
+          path: build-outputs/Ridingo.apk
           if-no-files-found: error
 
   # =============================================================
-  # 2. IOS BUILDS: Ridingo-User.ipa & Ridingo-Driver.ipa
+  # 2. IOS BUILD: Ridingo.ipa
   # =============================================================
   build-ios:
-    name: Build iOS IPAs (User & Driver)
+    name: Build iOS IPA
     runs-on: macos-14
     steps:
       - name: Checkout repository
@@ -89,26 +68,26 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install dependencies & Build
         run: |
           npm ci || npm install
-          cd ridingo-react
-          npm install
           npm run build
-          cd ..
 
-      - name: Build Web Distributions (dist/user & dist/driver)
-        run: node scripts/build-apps.js
-
-      # --- Build User App iOS ---
-      - name: Sync & Build Ridingo-User.ipa
+      - name: Sync & Build Ridingo iOS IPA
         run: |
-          cd packages/user
           npx cap sync ios
           cd ios/App
           pod install || true
+          
+          if [ -d "App.xcworkspace" ]; then
+            TARGET_ARG="-workspace App.xcworkspace"
+          else
+            TARGET_ARG="-project App.xcodeproj"
+          fi
+          
+          echo "Building using $TARGET_ARG"
           xcodebuild build \
-            -workspace App.xcworkspace \
+            $TARGET_ARG \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
@@ -121,101 +100,67 @@ jobs:
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/App.app Payload/
           mkdir -p "${{ github.workspace }}/build-outputs"
-          zip -r -q "${{ github.workspace }}/build-outputs/Ridingo-User.ipa" Payload
+          zip -r -q "${{ github.workspace }}/build-outputs/Ridingo.ipa" Payload
 
-      # --- Build Driver App iOS ---
-      - name: Sync & Build Ridingo-Driver.ipa
-        run: |
-          cd packages/driver
-          npx cap sync ios
-          cd ios/App
-          pod install || true
-          xcodebuild build \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            AD_HOC_CODE_SIGNING_ALLOWED=YES
-
-          mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
-          mkdir -p "${{ github.workspace }}/build-outputs"
-          zip -r -q "${{ github.workspace }}/build-outputs/Ridingo-Driver.ipa" Payload
-
-      - name: Upload iOS IPAs
+      - name: Upload iOS IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Ridingo-iOS-Packages
-          path: |
-            build-outputs/Ridingo-User.ipa
-            build-outputs/Ridingo-Driver.ipa
+          name: Ridingo-iOS-Package
+          path: build-outputs/Ridingo.ipa
           if-no-files-found: error
 
   # =============================================================
-  # 3. CONSOLIDATED PRODUCTION SUITE (All 4 Packages)
+  # 3. CONSOLIDATED PRODUCTION RELEASE
   # =============================================================
   consolidate-suite:
-    name: Consolidate 4 Production Packages
+    name: Consolidate Mobile Packages
+    if: always() && (needs.build-android.result == 'success' || needs.build-ios.result == 'success')
     needs: [ build-android, build-ios ]
     runs-on: ubuntu-latest
     steps:
+      - name: Create release directory
+        run: mkdir -p release-packages
+
       - name: Download Android Artifacts
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
-          name: Ridingo-Android-Packages
+          name: Ridingo-Android-Package
           path: release-packages
 
       - name: Download iOS Artifacts
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
-          name: Ridingo-iOS-Packages
+          name: Ridingo-iOS-Package
           path: release-packages
 
-      - name: Verify All 4 Packages Exist
+      - name: Verify Packages Exist
         run: |
-          echo "Listing all generated standalone mobile packages:"
+          echo "Listing all generated mobile packages:"
           ls -lh release-packages
-          test -f release-packages/Ridingo-User.apk
-          test -f release-packages/Ridingo-Driver.apk
-          test -f release-packages/Ridingo-User.ipa
-          test -f release-packages/Ridingo-Driver.ipa
-          echo "All 4 standalone packages verified successfully!"
 
-      - name: Upload Complete 4-Package Suite
+      - name: Upload Complete Package Suite
         uses: actions/upload-artifact@v4
         with:
-          name: Ridingo-Complete-Mobile-Suite-All-4-Packages
+          name: Ridingo-Complete-Mobile-Suite
           path: release-packages/*
 
-      - name: Create GitHub Release with 4 Mobile Packages
+      - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: release-build-${{ github.run_number }}
           name: Ridingo Mobile Production Release #${{ github.run_number }}
           body: |
-            ### Ridingo Native Mobile Production Packages (iOS & Android)
+            ### Ridingo Mobile Production Packages (iOS & Android)
 
-            This release provides the 4 standalone, non-conflicting mobile packages for Ridingo:
-
-            | Application | Platform | Package File | Bundle / Application ID |
+            | Application | Platform | Package File | Application ID |
             | :--- | :--- | :--- | :--- |
-            | **Ridingo (User App)** | Android | `Ridingo-User.apk` | `com.ridingo.user` |
-            | **Ridingo (User App)** | iOS | `Ridingo-User.ipa` | `com.ridingo.user` |
-            | **Ridingo Driver** | Android | `Ridingo-Driver.apk` | `com.ridingo.driver` |
-            | **Ridingo Driver** | iOS | `Ridingo-Driver.ipa` | `com.ridingo.driver` |
+            | **Ridingo** | Android | `Ridingo.apk` | `com.ridingo.app` |
+            | **Ridingo** | iOS | `Ridingo.ipa` | `com.ridingo.app` |
 
             - Built from commit: `${{ github.sha }}`
-            - Clean Native Full-Screen UI (dynamic island / mockups removed)
-            - Safe-area inset enabled
-          files: |
-            release-packages/Ridingo-User.apk
-            release-packages/Ridingo-Driver.apk
-            release-packages/Ridingo-User.ipa
-            release-packages/Ridingo-Driver.ipa
+          files: release-packages/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

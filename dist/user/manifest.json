@@ -1,9 +1,0 @@
-{
-  "name": "Ridingo",
-  "short_name": "Ridingo",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#FFC70A",
-  "orientation": "portrait"
-}

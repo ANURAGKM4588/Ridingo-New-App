@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Ridingo",
+    "slug": "ridingo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/App icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./public/App icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
+  }
+}
