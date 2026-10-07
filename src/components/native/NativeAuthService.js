@@ -144,6 +144,23 @@ export async function signInWithGoogle() {
 }
 
 /**
+ * Sign out from Google account
+ */
+export async function signOutGoogle() {
+  if (GoogleSignin) {
+    try {
+      await GoogleSignin.signOut();
+      console.log('Google Sign-In signed out successfully');
+      return true;
+    } catch (err) {
+      console.warn('Google Sign-Out error:', err);
+      throw err;
+    }
+  }
+  return false;
+}
+
+/**
  * Trigger Real Native Apple Authentication Sheet
  * Uses official Apple ID modal on iOS 13+ devices
  */

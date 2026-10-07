@@ -4,4 +4,6 @@
     <string name="title_activity_main">Ridingo Driver</string>
     <string name="package_name">com.ridingo.driver</string>
     <string name="custom_url_scheme">com.ridingo.driver</string>
+    <string name="default_web_client_id">496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com</string>
+    <string name="server_client_id">496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com</string>
 </resources>

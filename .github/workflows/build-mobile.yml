@@ -103,7 +103,7 @@ jobs:
           npm install --legacy-peer-deps
           npx cap sync ios
           cd ios/App
-          pod install || true
+          pod install || pod install --repo-update || true
           xcodebuild build \
             -workspace App.xcworkspace \
             -scheme App \
@@ -127,7 +127,7 @@ jobs:
           npm install --legacy-peer-deps
           npx cap sync ios
           cd ios/App
-          pod install || true
+          pod install || pod install --repo-update || true
           xcodebuild build \
             -workspace App.xcworkspace \
             -scheme App \

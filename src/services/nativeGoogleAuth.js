@@ -63,3 +63,17 @@ export async function performNativeGoogleSignIn() {
     throw err;
   }
 }
+
+/**
+ * Sign out native Google session
+ */
+export async function signOutNativeGoogle() {
+  try {
+    await GoogleAuth.signOut();
+    return true;
+  } catch (err) {
+    console.warn('GoogleAuth.signOut error:', err);
+    return false;
+  }
+}
+
