@@ -47,6 +47,8 @@
 	<true/>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleLightContent</string>
+	<key>GIDClientID</key>
+	<string>496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
