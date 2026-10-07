@@ -21,7 +21,6 @@ export default function OnboardingModal() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
-  const [devOtpCode, setDevOtpCode] = useState(null);
   const [verifiedUserObj, setVerifiedUserObj] = useState(null);
 
   // Authentication & Profile Fields
@@ -87,13 +86,7 @@ export default function OnboardingModal() {
       setResendCountdown(30);
       setOtp(['', '', '', '', '', '']);
 
-      if (res.isDevFallback && res.devCode) {
-        setDevOtpCode(res.devCode);
-        addToast(`Test Code: ${res.devCode} (Tap auto-fill to enter)`, 'info');
-      } else {
-        setDevOtpCode(null);
-        addToast(res.message || `Verification code sent to ${rawId}`, 'check');
-      }
+      addToast(res.message || `Verification code sent to ${rawId}`, 'check');
 
       // Auto-focus first OTP input box
       setTimeout(() => {
@@ -792,35 +785,6 @@ export default function OnboardingModal() {
                 Edit
               </button>
             </div>
-
-            {/* Dev Fallback Code Auto-fill Badge (if testing/dev fallback) */}
-            {devOtpCode && (
-              <div
-                onClick={() => {
-                  const chars = String(devOtpCode).split('').slice(0, 6);
-                  setOtp(chars);
-                  addToast('Test OTP code auto-filled!', 'info');
-                }}
-                style={{
-                  background: 'rgba(255, 199, 10, 0.16)',
-                  border: '1px solid rgba(255, 199, 10, 0.45)',
-                  color: 'var(--on-yellow)',
-                  borderRadius: '12px',
-                  padding: '9px 14px',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  margin: '0 auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-                title="Tap to auto-fill test OTP code"
-              >
-                <span>⚡ Test OTP: <b style={{ fontWeight: 800 }}>{devOtpCode}</b> (Tap to auto-fill)</span>
-              </div>
-            )}
 
             {/* 6-Digit OTP Box Grid with Paste & Auto-Focus */}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '4px 0' }}>

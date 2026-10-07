@@ -1,17 +1,15 @@
 /**
  * authOtpService.js
  * 
- * Production-ready OTP Authentication Service:
- * 1. Mobile Phone Auth via Firebase Phone Auth (SMS OTP)
- * 2. Email OTP via Supabase Auth (Free)
- * 3. Graceful fallback for simulator/development environments
+ * Official Production OTP Authentication Service:
+ * 1. Email OTP via Official Supabase Auth (OTP Verification)
+ * 2. Mobile Phone OTP via Official Firebase Phone Auth (SMS OTP)
+ * 
+ * Zero dummy codes, zero fake test banners - 100% authentic verification.
  */
 import { auth as firebaseAuth } from '../lib/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { supabase } from '../lib/supabase';
-
-// Local storage key for active pending OTP sessions
-const OTP_STORAGE_KEY = 'ridingo_pending_otp';
 
 // In-memory holder for Firebase phone confirmation result
 let activeConfirmationResult = null;
@@ -65,7 +63,7 @@ export function setupRecaptcha(containerId = 'recaptcha-container') {
         // reCAPTCHA solved
       },
       'expired-callback': () => {
-        console.warn('Firebase reCAPTCHA expired. Resetting...');
+        console.warn('reCAPTCHA expired');
       }
     });
 
@@ -90,47 +88,39 @@ export async function sendOtp({ method, identifier, recaptchaContainerId = 'reca
 
   const cleanId = method === 'email' ? identifier.trim().toLowerCase() : formatIndianPhone(identifier);
 
-  try {
-    if (method === 'phone') {
-      // 1. Send SMS OTP via Firebase Phone Auth
-      try {
-        const appVerifier = setupRecaptcha(recaptchaContainerId);
-        if (appVerifier && firebaseAuth) {
-          const confirmationResult = await signInWithPhoneNumber(firebaseAuth, cleanId, appVerifier);
-          activeConfirmationResult = confirmationResult;
+  if (method === 'phone') {
+    // 1. Send SMS OTP via Official Firebase Phone Auth
+    const appVerifier = setupRecaptcha(recaptchaContainerId);
+    if (!appVerifier || !firebaseAuth) {
+      throw new Error('SMS service is temporarily unavailable. Please verify with Email or Google.');
+    }
 
-          return {
-            success: true,
-            method: 'phone',
-            identifier: cleanId,
-            provider: 'firebase',
-            message: `Verification code sent to ${cleanId}`
-          };
-        }
-      } catch (fbErr) {
-        console.warn('Firebase Phone Auth info (using fallback code for dev/test mode):', fbErr.message || fbErr);
-      }
-
-      // Dev fallback code so testing is never blocked if Firebase keys are pending in console
-      const devOtp = String(Math.floor(100000 + Math.random() * 900000));
-      sessionStorage.setItem(OTP_STORAGE_KEY, JSON.stringify({
-        method: 'phone',
-        identifier: cleanId,
-        code: devOtp,
-        ts: Date.now()
-      }));
+    try {
+      const confirmationResult = await signInWithPhoneNumber(firebaseAuth, cleanId, appVerifier);
+      activeConfirmationResult = confirmationResult;
 
       return {
         success: true,
         method: 'phone',
         identifier: cleanId,
-        isDevFallback: true,
-        devCode: devOtp,
-        message: `Verification code generated: ${devOtp}`
+        provider: 'firebase',
+        message: `Official SMS code sent to ${cleanId}`
       };
+    } catch (fbErr) {
+      console.error('Firebase Phone Auth error:', fbErr);
+      if (fbErr.code === 'auth/invalid-phone-number') {
+        throw new Error('The phone number is invalid. Please enter a valid 10-digit mobile number.');
+      } else if (fbErr.code === 'auth/too-many-requests') {
+        throw new Error('Too many attempts. Please wait a few minutes before requesting a new code.');
+      } else if (fbErr.code === 'auth/quota-exceeded') {
+        throw new Error('SMS quota exceeded for today. Please sign in using Email or Google.');
+      }
+      throw new Error(fbErr.message || 'Failed to send SMS verification code. Please try again.');
+    }
 
-    } else {
-      // 2. Send Email OTP via Supabase Auth (Free)
+  } else {
+    // 2. Send Official Email OTP via Supabase Auth
+    try {
       const { data, error } = await supabase.auth.signInWithOtp({
         email: cleanId,
         options: {
@@ -139,48 +129,26 @@ export async function sendOtp({ method, identifier, recaptchaContainerId = 'reca
       });
 
       if (error) {
-        console.warn('Supabase email OTP error:', error.message);
-        const devOtp = String(Math.floor(100000 + Math.random() * 900000));
-        sessionStorage.setItem(OTP_STORAGE_KEY, JSON.stringify({
-          method: 'email',
-          identifier: cleanId,
-          code: devOtp,
-          ts: Date.now()
-        }));
-        return {
-          success: true,
-          method: 'email',
-          identifier: cleanId,
-          isDevFallback: true,
-          devCode: devOtp,
-          message: `Test OTP: ${devOtp}`
-        };
+        console.error('Supabase signInWithOtp error:', error);
+        if (error.message?.includes('confirmation email') || error.status === 500) {
+          throw new Error('Failed to deliver verification email. Please verify your Supabase SMTP settings in Project Settings > Authentication > SMTP.');
+        } else if (error.status === 429) {
+          throw new Error('Too many email requests. Please wait a moment or sign in with Google.');
+        }
+        throw new Error(error.message || 'Unable to send verification email. Please try again.');
       }
 
       return {
         success: true,
         method: 'email',
         identifier: cleanId,
-        message: `Verification code sent to ${cleanId}`
+        provider: 'supabase',
+        message: `Official 6-digit code sent to ${cleanId}`
       };
+    } catch (err) {
+      console.error('Email OTP send error:', err);
+      throw err;
     }
-  } catch (err) {
-    console.error('sendOtp execution exception:', err);
-    const fallbackOtp = String(Math.floor(100000 + Math.random() * 900000));
-    sessionStorage.setItem(OTP_STORAGE_KEY, JSON.stringify({
-      method,
-      identifier: cleanId,
-      code: fallbackOtp,
-      ts: Date.now()
-    }));
-    return {
-      success: true,
-      method,
-      identifier: cleanId,
-      isDevFallback: true,
-      devCode: fallbackOtp,
-      message: `Verification code: ${fallbackOtp}`
-    };
   }
 }
 
@@ -196,32 +164,15 @@ export async function verifyOtp({ method, identifier, token }) {
   const cleanToken = String(token || '').trim();
 
   if (cleanToken.length !== 6) {
-    throw new Error('Please enter all 6 digits of the OTP code.');
+    throw new Error('Please enter all 6 digits of the verification code.');
   }
 
-  // 1. Check local session fallback first
-  try {
-    const rawSaved = sessionStorage.getItem(OTP_STORAGE_KEY);
-    if (rawSaved) {
-      const saved = JSON.parse(rawSaved);
-      if (saved.identifier === cleanId && saved.code === cleanToken) {
-        sessionStorage.removeItem(OTP_STORAGE_KEY);
-        return {
-          success: true,
-          user: {
-            id: `usr_${Date.now().toString(36)}`,
-            email: method === 'email' ? cleanId : null,
-            phone: method === 'phone' ? cleanId : null,
-            confirmed_at: new Date().toISOString()
-          },
-          message: 'Verification successful!'
-        };
-      }
+  // 1. If phone method with Firebase Phone Auth
+  if (method === 'phone') {
+    if (!activeConfirmationResult) {
+      throw new Error('No pending SMS verification found. Please request a new code.');
     }
-  } catch (e) {}
 
-  // 2. If phone method and active Firebase confirmation exists
-  if (method === 'phone' && activeConfirmationResult) {
     try {
       const result = await activeConfirmationResult.confirm(cleanToken);
       activeConfirmationResult = null;
@@ -233,26 +184,20 @@ export async function verifyOtp({ method, identifier, token }) {
           email: result.user.email || null,
           confirmed_at: new Date().toISOString()
         },
-        message: 'Phone verified with Firebase!'
+        message: 'Phone verified successfully!'
       };
     } catch (fbVerifyErr) {
-      console.warn('Firebase OTP verify error:', fbVerifyErr.message);
-      if (cleanToken === '482199' || cleanToken === '123456') {
-        return {
-          success: true,
-          user: {
-            id: `usr_test_${Date.now().toString(36)}`,
-            phone: cleanId,
-            confirmed_at: new Date().toISOString()
-          },
-          message: 'Test OTP Verified!'
-        };
+      console.error('Firebase OTP verify error:', fbVerifyErr);
+      if (fbVerifyErr.code === 'auth/invalid-verification-code') {
+        throw new Error('Invalid verification code. Please check your SMS and enter the correct code.');
+      } else if (fbVerifyErr.code === 'auth/code-expired') {
+        throw new Error('This verification code has expired. Please request a new code.');
       }
-      throw new Error('Invalid verification code. Please check and try again.');
+      throw new Error(fbVerifyErr.message || 'Invalid verification code. Please check and try again.');
     }
   }
 
-  // 3. If email method with Supabase Auth
+  // 2. If email method with Official Supabase Auth
   if (method === 'email') {
     try {
       const { data, error } = await supabase.auth.verifyOtp({
@@ -262,18 +207,8 @@ export async function verifyOtp({ method, identifier, token }) {
       });
 
       if (error) {
-        if (cleanToken === '482199' || cleanToken === '123456') {
-          return {
-            success: true,
-            user: {
-              id: `usr_test_${Date.now().toString(36)}`,
-              email: cleanId,
-              confirmed_at: new Date().toISOString()
-            },
-            message: 'Test OTP Verified!'
-          };
-        }
-        throw new Error(error.message || 'Invalid or expired OTP code.');
+        console.error('Supabase verifyOtp error:', error);
+        throw new Error(error.message || 'Invalid or expired verification code.');
       }
 
       return {
@@ -283,34 +218,10 @@ export async function verifyOtp({ method, identifier, token }) {
         message: 'Email verified successfully!'
       };
     } catch (sbErr) {
-      if (cleanToken === '482199' || cleanToken === '123456') {
-        return {
-          success: true,
-          user: {
-            id: `usr_test_${Date.now().toString(36)}`,
-            email: cleanId,
-            confirmed_at: new Date().toISOString()
-          },
-          message: 'Test OTP Verified!'
-        };
-      }
+      console.error('Email verify error:', sbErr);
       throw sbErr;
     }
   }
 
-  // Universal test code fallback
-  if (cleanToken === '482199' || cleanToken === '123456') {
-    return {
-      success: true,
-      user: {
-        id: `usr_test_${Date.now().toString(36)}`,
-        email: method === 'email' ? cleanId : null,
-        phone: method === 'phone' ? cleanId : null,
-        confirmed_at: new Date().toISOString()
-      },
-      message: 'Verified successfully!'
-    };
-  }
-
-  throw new Error('Invalid verification code. Please try again.');
+  throw new Error('Invalid verification request.');
 }
