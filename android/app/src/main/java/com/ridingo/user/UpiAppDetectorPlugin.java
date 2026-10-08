@@ -31,6 +31,9 @@ public class UpiAppDetectorPlugin extends Plugin {
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
 
             List<ResolveInfo> activities = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+            if (activities == null || activities.isEmpty()) {
+                activities = pm.queryIntentActivities(intent, 0);
+            }
             JSArray appList = new JSArray();
 
             for (ResolveInfo info : activities) {

@@ -2,11 +2,16 @@
  * installedUpiService.js
  * 
  * Dynamic Native Installed UPI Apps Detection & Deep-Link Launcher:
- * - iOS: Queries LSApplicationQueriesSchemes via canOpenURL
+ * - iOS: Queries LSApplicationQueriesSchemes via canOpenURL / Linking.canOpenURL
  * - Android: Queries PackageManager via native UpiAppDetector / AppLauncher
  * - Dynamic Filtering: Shows ONLY physically installed apps on the user's device
+ * - Prioritized Apps: GooglePay, PhonePe, NaviUPI, Cred, super.money, Jupiter
  */
 import { AppLauncher } from '@capacitor/app-launcher';
+import { registerPlugin, Capacitor } from '@capacitor/core';
+
+// Register native Android UpiAppDetector Capacitor plugin
+export const UpiAppDetector = registerPlugin('UpiAppDetector');
 
 export const KNOWN_UPI_APPS = [
   {
@@ -15,6 +20,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'GPay',
     scheme: 'tez',
     testUrl: 'tez://upi/pay',
+    testUrls: ['tez://upi/pay', 'tez://', 'gpay://'],
     launchPrefix: 'tez://upi/pay',
     packageName: 'com.google.android.apps.nbu.paisa.user',
     color: '#4285F4',
@@ -26,6 +32,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'PhonePe',
     scheme: 'phonepe',
     testUrl: 'phonepe://pay',
+    testUrls: ['phonepe://pay', 'phonepe://'],
     launchPrefix: 'phonepe://pay',
     packageName: 'com.phonepe.app',
     color: '#5F259F',
@@ -37,6 +44,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'Navi',
     scheme: 'navi',
     testUrl: 'navi://pay',
+    testUrls: ['navi://pay', 'navi://', 'naviapp://'],
     launchPrefix: 'navi://pay',
     packageName: 'com.naviapp',
     color: '#00D09C',
@@ -48,6 +56,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'CRED',
     scheme: 'credpay',
     testUrl: 'credpay://pay',
+    testUrls: ['credpay://pay', 'credpay://', 'cred://'],
     launchPrefix: 'credpay://pay',
     packageName: 'com.dreamplug.androidapp',
     color: '#0F172A',
@@ -59,6 +68,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'SuperMoney',
     scheme: 'supermoney',
     testUrl: 'supermoney://pay',
+    testUrls: ['supermoney://pay', 'supermoney://'],
     launchPrefix: 'supermoney://pay',
     packageName: 'money.super.app',
     color: '#7C3AED',
@@ -70,6 +80,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'Jupiter UPI',
     scheme: 'jupiter',
     testUrl: 'jupiter://pay',
+    testUrls: ['jupiter://pay', 'jupiter://'],
     launchPrefix: 'jupiter://pay',
     packageName: 'money.jupiter',
     color: '#FF725E',
@@ -81,6 +92,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'Paytm UPI',
     scheme: 'paytmmp',
     testUrl: 'paytmmp://pay',
+    testUrls: ['paytmmp://pay', 'paytmmp://', 'paytm://'],
     launchPrefix: 'paytmmp://pay',
     packageName: 'net.one97.paytm',
     color: '#00BAF2',
@@ -92,6 +104,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'NPCI BHIM',
     scheme: 'bhim',
     testUrl: 'bhim://pay',
+    testUrls: ['bhim://pay', 'bhim://'],
     launchPrefix: 'bhim://pay',
     packageName: 'in.org.npci.upiapp',
     color: '#00833E',
@@ -103,6 +116,7 @@ export const KNOWN_UPI_APPS = [
     subName: 'Amazon',
     scheme: 'amazonpay',
     testUrl: 'amazonpay://pay',
+    testUrls: ['amazonpay://pay', 'amazonpay://'],
     launchPrefix: 'amazonpay://pay',
     packageName: 'in.amazon.mShop.android.shopping',
     color: '#FF9900',
@@ -111,6 +125,43 @@ export const KNOWN_UPI_APPS = [
 ];
 
 export const PRIORITIZED_UPI_IDS = ['gpay', 'phonepe', 'navi', 'cred', 'supermoney', 'jupiter'];
+
+/**
+ * Checks if a specific URL scheme can be opened
+ */
+export async function canOpenUrlSafely(url) {
+  if (!url) return false;
+
+  // 1. Capacitor AppLauncher plugin
+  try {
+    if (typeof AppLauncher !== 'undefined' && typeof AppLauncher.canOpenUrl === 'function') {
+      const { value } = await AppLauncher.canOpenUrl({ url });
+      if (value) return true;
+    }
+  } catch (e) {}
+
+  // 2. window.Capacitor.Plugins.AppLauncher
+  try {
+    if (typeof window !== 'undefined' && window.Capacitor?.Plugins?.AppLauncher?.canOpenUrl) {
+      const { value } = await window.Capacitor.Plugins.AppLauncher.canOpenUrl({ url });
+      if (value) return true;
+    }
+  } catch (e) {}
+
+  return false;
+}
+
+/**
+ * Linking compatibility object providing canOpenURL and openURL
+ */
+export const Linking = {
+  canOpenURL: async (url) => {
+    return canOpenUrlSafely(url);
+  },
+  openURL: async (url) => {
+    return launchDeepLink(url);
+  }
+};
 
 /**
  * Sorts detected UPI apps placing prioritized apps (GPay, PhonePe, Navi, Cred, SuperMoney, Jupiter) first
@@ -147,55 +198,68 @@ const MERCHANT_CODE = '4121';
  */
 export async function getInstalledUpiApps() {
   const detectedApps = [];
+  const detectedIds = new Set();
 
-  // 1. First attempt: Native Android Plugin / Module (if running on Android native)
-  if (typeof window !== 'undefined' && window.Capacitor?.isPluginAvailable?.('UpiAppDetector')) {
+  // 1. Android Native Plugin query via PackageManager
+  if (typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || Capacitor?.isNativePlatform?.())) {
     try {
-      const res = await window.Capacitor.Plugins.UpiAppDetector.getInstalledUpiApps();
+      const res = await UpiAppDetector.getInstalledUpiApps();
       if (res && Array.isArray(res.apps) && res.apps.length > 0) {
-        const mapped = res.apps.map(a => {
+        for (const a of res.apps) {
           const matched = KNOWN_UPI_APPS.find(k => k.packageName === a.packageName || a.appName?.toLowerCase().includes(k.name.toLowerCase()));
-          return {
-            id: matched ? matched.id : a.packageName,
-            name: a.appName || matched?.name || 'UPI App',
-            subName: matched?.subName || 'UPI',
-            packageName: a.packageName,
-            launchPrefix: matched ? matched.launchPrefix : 'upi://pay',
-            customIcon: a.icon || null,
-            color: matched?.color || '#0F172A'
-          };
-        });
-        return sortUpiAppsByPriority(mapped);
+          const id = matched ? matched.id : a.packageName;
+          if (!detectedIds.has(id)) {
+            detectedIds.add(id);
+            detectedApps.push({
+              id,
+              name: a.appName || matched?.name || 'UPI App',
+              subName: matched?.subName || 'UPI',
+              packageName: a.packageName,
+              launchPrefix: matched ? matched.launchPrefix : 'upi://pay',
+              customIcon: a.icon || null,
+              color: matched?.color || '#0F172A'
+            });
+          }
+        }
       }
     } catch (nativeErr) {
       console.warn('Native UpiAppDetector query note:', nativeErr);
     }
   }
 
-  // 2. Cross-platform detection using AppLauncher / canOpenURL (iOS LSApplicationQueriesSchemes & Android)
-  if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
-    try {
-      for (const app of KNOWN_UPI_APPS) {
+  // 2. iOS / Android AppLauncher / Linking.canOpenURL check with multi-URL candidate testing
+  if (typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || Capacitor?.isNativePlatform?.())) {
+    for (const app of KNOWN_UPI_APPS) {
+      if (detectedIds.has(app.id)) continue;
+      const testCandidates = app.testUrls || [app.testUrl];
+      for (const testUrl of testCandidates) {
         try {
-          const { value } = await AppLauncher.canOpenUrl({ url: app.testUrl });
-          if (value) {
+          const isAvailable = await canOpenUrlSafely(testUrl);
+          if (isAvailable) {
+            detectedIds.add(app.id);
             detectedApps.push(app);
+            break;
           }
-        } catch (e) {
-          // Scheme not available or not installed
-        }
+        } catch (e) {}
       }
+    }
 
-      if (detectedApps.length > 0) {
-        return sortUpiAppsByPriority(detectedApps);
-      }
-    } catch (launcherErr) {
-      console.warn('AppLauncher query error:', launcherErr);
+    if (detectedApps.length > 0) {
+      return sortUpiAppsByPriority(detectedApps);
     }
   }
 
-  // 3. Desktop Browser / Non-Native Environment:
-  // Strictly return empty list because desktop browsers (like laptops) do NOT have native UPI apps installed.
+  // 3. Fallback for Mobile Device Browser / Mobile Environment
+  // When testing on a physical mobile device (Android or iOS):
+  // Mobile browsers cannot query PackageManager or canOpenURL due to browser sandbox.
+  // We detect if user is on a mobile device and provide prioritized UPI apps
+  // so tapping them triggers the mobile UPI intent seamlessly.
+  const isMobileDevice = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobileDevice) {
+    return sortUpiAppsByPriority(KNOWN_UPI_APPS.slice(0, 6));
+  }
+
+  // Desktop laptop/PC browser: strictly return empty list
   return detectedApps;
 }
 
@@ -227,11 +291,9 @@ export function buildUpiPaymentUrl(appId, {
 }
 
 /**
- * Triggers the native UPI app directly via deep link
+ * Launches a generic deep link URL safely
  */
-export async function launchUpiApp(appId, paymentParams) {
-  const deepLinkUrl = buildUpiPaymentUrl(appId, paymentParams);
-
+export async function launchDeepLink(deepLinkUrl) {
   if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
     try {
       const { completed } = await AppLauncher.openUrl({ url: deepLinkUrl });
@@ -241,11 +303,19 @@ export async function launchUpiApp(appId, paymentParams) {
     }
   }
 
-  // Web / fallback navigation
+  // Web / mobile browser navigation
   if (typeof window !== 'undefined') {
     window.location.href = deepLinkUrl;
     return true;
   }
 
   return false;
+}
+
+/**
+ * Triggers the native UPI app directly via deep link
+ */
+export async function launchUpiApp(appId, paymentParams) {
+  const deepLinkUrl = buildUpiPaymentUrl(appId, paymentParams);
+  return launchDeepLink(deepLinkUrl);
 }
