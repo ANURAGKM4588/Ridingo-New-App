@@ -60,5 +60,18 @@
 			</array>
 		</dict>
 	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>phonepe</string>
+		<string>tez</string>
+		<string>paytmmp</string>
+		<string>paytm</string>
+		<string>bhim</string>
+		<string>credpay</string>
+		<string>cred</string>
+		<string>navi</string>
+		<string>amazonpay</string>
+		<string>upi</string>
+	</array>
 </dict>
 </plist>

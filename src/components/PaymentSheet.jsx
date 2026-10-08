@@ -6,11 +6,9 @@ import {
   unregisterPaymentSheetHandler,
   RAZORPAY_KEY_ID,
   loadRazorpayScript,
-  getAppsWhichSupportUPI,
-  SUPPORTED_UPI_APPS,
   generateLiveUpiQrUrl
 } from '../utils/razorpay';
-import { MAJOR_UPI_APPS, triggerUpiDeepLink, buildUpiSchemeUrl } from '../utils/upiDeepLink';
+import { getInstalledUpiApps, launchUpiApp, KNOWN_UPI_APPS } from '../services/installedUpiService';
 
 const POPULAR_BANKS = [
   { id: 'HDFC', name: 'HDFC Bank', code: 'HDFC', color: '#004c8f' },
@@ -236,6 +234,30 @@ const NaviLogo = () => (
   </div>
 );
 
+const BhimLogo = () => (
+  <div style={{
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: '#00833E',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    boxShadow: '0 2px 6px rgba(0,131,62,0.25)'
+  }}>
+    <span style={{
+      fontSize: '11px',
+      fontWeight: 900,
+      color: '#FFFFFF',
+      letterSpacing: '0.2px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      BHIM
+    </span>
+  </div>
+);
+
 const InstalledAppsLogo = () => (
   <div style={{
     width: '36px',
@@ -315,15 +337,15 @@ export default function PaymentSheet() {
     };
   }, []);
 
-  // Retrieve physically installed UPI apps dynamically from device via Razorpay SDK (strictly device query, NO mock/pre-rendered list)
+  // Retrieve physically installed UPI apps dynamically from device via native module / canOpenURL (strictly device query)
   useEffect(() => {
     let isSubscribed = true;
-    getAppsWhichSupportUPI().then((apps) => {
+    getInstalledUpiApps().then((apps) => {
       if (isSubscribed) {
         setInstalledUpiApps(Array.isArray(apps) ? apps : []);
       }
     }).catch((err) => {
-      console.warn('Razorpay getAppsWhichSupportUPI query error:', err);
+      console.warn('UPI app detection query error:', err);
       if (isSubscribed) {
         setInstalledUpiApps([]);
       }
@@ -529,24 +551,23 @@ export default function PaymentSheet() {
       return;
     }
 
-    // 5. UPI Apps (Handles all 14 Indian UPI apps)
-    const isUpiApp = MAJOR_UPI_APPS.some(a => a.id === selectedMethod);
-    if (isUpiApp) {
-      const activeApp = MAJOR_UPI_APPS.find(a => a.id === selectedMethod) || { id: selectedMethod, name: 'UPI App' };
-      const appName = activeApp.name;
+    // 5. Installed UPI Apps (Dynamic native app launcher via upi://pay / canOpenURL / Native bridge)
+    const activeApp = installedUpiApps.find(a => a.id === selectedMethod) || KNOWN_UPI_APPS.find(a => a.id === selectedMethod);
+    if (activeApp) {
+      const appName = activeApp.name || 'UPI App';
 
       setAuthorizingTitle(`Opening ${appName}...`);
       setIsAuthorizing(true);
 
-      // Fire Deep Link with standard UPI URL scheme (phonepe://, tez://, paytmmp://, bhim://)
-      triggerUpiDeepLink({
-        appId: selectedMethod,
+      // Launch native app with dynamic UPI intent
+      launchUpiApp(activeApp.id, {
         amount,
         orderId: config?.orderId,
-        note: `Ridingo Trip - ${userName}`,
-        onTriggered: ({ deepLink }) => {
-          addToast(`Opening ${appName}...`, 'info');
-        }
+        note: `Ridingo Trip - ${userName}`
+      }).then(() => {
+        addToast(`Opening ${appName}...`, 'info');
+      }).catch((err) => {
+        console.warn('launchUpiApp error:', err);
       });
 
       // Verification callback
@@ -733,7 +754,32 @@ export default function PaymentSheet() {
     addToast(`Paid ₹${amount} with Wallet! ₹${cashbackAmount} cashback credited.`, 'check');
   };
 
-  const renderUpiLogo = (appId) => {
+  const renderUpiLogo = (app) => {
+    if (app?.customIcon) {
+      return (
+        <div style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+        }}>
+          <img
+            src={`data:image/png;base64,${app.customIcon}`}
+            alt={app.name || 'UPI'}
+            style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+          />
+        </div>
+      );
+    }
+
+    const appId = typeof app === 'string' ? app : app?.id;
     switch (appId) {
       case 'gpay':
         return <GPayLogo />;
@@ -743,6 +789,8 @@ export default function PaymentSheet() {
         return <PaytmLogo />;
       case 'cred':
         return <CREDLogo />;
+      case 'bhim':
+        return <BhimLogo />;
       case 'navi':
         return <NaviLogo />;
       case 'generic':
@@ -1288,78 +1336,105 @@ export default function PaymentSheet() {
             <MinimalRadio isSelected={selectedMethod === 'wallet'} />
           </div>
 
-          {/* Section Divider: Indian UPI Apps */}
+          {/* Section Divider: Installed Indian UPI Apps */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              UPI Apps ({MAJOR_UPI_APPS.length})
+              Installed UPI Apps {installedUpiApps.length > 0 ? `(${installedUpiApps.length})` : ''}
             </span>
+            {installedUpiApps.length > 0 && (
+              <span style={{ fontSize: '10.5px', color: '#16A34A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A' }} />
+                Detected on device
+              </span>
+            )}
           </div>
 
-          {/* Supported UPI Apps: Google Pay, PhonePe, Paytm, CRED, Navi, Installed Apps */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '10px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            {MAJOR_UPI_APPS.map((app) => {
-              const isSelected = selectedMethod === app.id;
-              return (
-                <div
-                  key={app.id}
-                  onClick={() => setSelectedMethod(app.id)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '12px 6px',
-                    borderRadius: '14px',
-                    border: isSelected ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
-                    background: isSelected ? '#F8FAFC' : '#FFFFFF',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    minHeight: '78px',
-                    boxSizing: 'border-box',
-                    position: 'relative'
-                  }}
-                >
-                  {renderUpiLogo(app.id)}
-                  <span
+          {/* Dynamically Filtered Installed UPI Apps */}
+          {installedUpiApps.length > 0 ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: installedUpiApps.length === 1 ? '1fr' : installedUpiApps.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                gap: '10px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {installedUpiApps.map((app) => {
+                const isSelected = selectedMethod === app.id;
+                return (
+                  <div
+                    key={app.id}
+                    onClick={() => setSelectedMethod(app.id)}
                     style={{
-                      fontSize: '11px',
-                      fontWeight: isSelected ? 700 : 500,
-                      color: '#0F172A',
-                      marginTop: '6px',
-                      textAlign: 'center',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      maxWidth: '100%',
-                      padding: '0 2px'
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '12px 6px',
+                      borderRadius: '14px',
+                      border: isSelected ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
+                      background: isSelected ? '#F8FAFC' : '#FFFFFF',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      minHeight: '78px',
+                      boxSizing: 'border-box',
+                      position: 'relative'
                     }}
                   >
-                    {app.name}
-                  </span>
-                  {isSelected && (
+                    {renderUpiLogo(app)}
                     <span
                       style={{
-                        position: 'absolute',
-                        top: '5px',
-                        right: '5px',
-                        width: '7px',
-                        height: '7px',
-                        borderRadius: '50%',
-                        background: '#16A34A'
+                        fontSize: '11px',
+                        fontWeight: isSelected ? 700 : 500,
+                        color: '#0F172A',
+                        marginTop: '6px',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%',
+                        padding: '0 2px'
                       }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    >
+                      {app.name}
+                    </span>
+                    {isSelected && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: '5px',
+                          right: '5px',
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          background: '#16A34A'
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: '12px',
+                background: '#F8FAFC',
+                border: '1px dashed #CBD5E1',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}
+            >
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="info" size={14} color="#64748B" />
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#64748B', lineHeight: '1.4' }}>
+                No standalone UPI apps detected on this device. You can pay instantly using <b>UPI QR Code</b> or <b>Card</b> below.
+              </div>
+            </div>
+          )}
 
           {/* Option: Pay via UPI QR (Clean row, QR code only displayed in separate popup modal) */}
           <div
