@@ -77,23 +77,23 @@ export const INITIAL_UNOTES = [
 ];
 
 export function AppProvider({ children }) {
-  // User state
+  // User state: null on fresh install or logged out
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('ridingo_user_session');
-      return saved ? JSON.parse(saved) : DEFAULT_USER;
+      return saved ? JSON.parse(saved) : null;
     } catch (e) {
-      return DEFAULT_USER;
+      return null;
     }
   });
 
-  // Driver Partner state
+  // Driver Partner state: null on fresh install or logged out
   const [driverPartner, setDriverPartner] = useState(() => {
     try {
       const saved = localStorage.getItem('ridingo_driver_session');
-      return saved ? JSON.parse(saved) : DEFAULT_DRIVER;
+      return saved ? JSON.parse(saved) : null;
     } catch (e) {
-      return DEFAULT_DRIVER;
+      return null;
     }
   });
 
@@ -147,8 +147,22 @@ export function AppProvider({ children }) {
   const [bookingDestination, setBookingDestination] = useState('');
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [liveTrackingOpen, setLiveTrackingOpen] = useState(false);
-  const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const [driverOnboardingOpen, setDriverOnboardingOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ridingo_user_session');
+      return !saved;
+    } catch (e) {
+      return true;
+    }
+  });
+  const [driverOnboardingOpen, setDriverOnboardingOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ridingo_driver_session');
+      return !saved;
+    } catch (e) {
+      return true;
+    }
+  });
   const [legalModal, setLegalModal] = useState({ open: false, tab: 'terms' });
 
   const openLegal = (tab = 'terms') => setLegalModal({ open: true, tab });
@@ -481,6 +495,7 @@ export function AppProvider({ children }) {
     setUser(DEFAULT_USER);
     try {
       localStorage.setItem('ridingo_user_session', JSON.stringify(DEFAULT_USER));
+      localStorage.setItem('ridingo_has_onboarded', 'true');
     } catch (e) {}
     setUTab('home');
     scrollUserToTop();
@@ -510,6 +525,7 @@ export function AppProvider({ children }) {
     setUser(updated);
     try {
       localStorage.setItem('ridingo_user_session', JSON.stringify(updated));
+      localStorage.setItem('ridingo_has_onboarded', 'true');
     } catch (e) {}
     setUTab('home');
     scrollUserToTop();
@@ -589,15 +605,19 @@ export function AppProvider({ children }) {
   };
 
   const resetDemo = () => {
-    setUser(DEFAULT_USER);
+    setUser(null);
+    try {
+      localStorage.removeItem('ridingo_user_session');
+      localStorage.removeItem('ridingo_has_onboarded');
+    } catch (e) {}
     setTrips([]);
     setUtx([]);
     setDriverBalance(0);
     setDriverTx([]);
     setBookingOpen(false);
-    setOnboardingOpen(false);
+    setOnboardingOpen(true);
     setUTab('home');
-    addToast('All demo data cleared. Clean fresh state active.', 'check');
+    addToast('App reset. Clean install state active.', 'check');
   };
 
   const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, razorpayPaymentId, schedule) => {

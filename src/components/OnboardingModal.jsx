@@ -12,8 +12,19 @@ export default function OnboardingModal() {
   // Active top tab: 'signin' | 'register'
   const [activeTab, setActiveTab] = useState('signin');
 
-  // Flow step: 'form' | 'otp' | 'profile' | 'welcome'
-  const [step, setStep] = useState('form');
+  // Flow step: 'slides' | 'form' | 'otp' | 'profile' | 'welcome'
+  const [step, setStep] = useState(() => {
+    try {
+      const onboarded = localStorage.getItem('ridingo_has_onboarded') === 'true';
+      return onboarded ? 'form' : 'slides';
+    } catch (e) {
+      return 'slides';
+    }
+  });
+
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
 
   // Delivery channel: 'phone' | 'email'
   const [otpMethod, setOtpMethod] = useState('phone');
@@ -374,6 +385,105 @@ export default function OnboardingModal() {
     });
   };
 
+  const slides = [
+    {
+      id: 0,
+      badge: 'VERIFIED CHAUFFEURS',
+      title: 'Your Car.\nOur Chauffeur.',
+      desc: 'Hire background-verified, uniformed professional chauffeurs for your personal car by the hour, day, or outstation journey.',
+      icon: (
+        <div style={{ width: '78px', height: '78px', borderRadius: '24px', background: 'linear-gradient(135deg, #FFC70A 0%, #D9A400 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 12px 28px rgba(255, 199, 10, 0.35)', color: '#000000', margin: '0 auto 16px' }}>
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.9 2 11.2 2 11.5V16c0 .6.4 1 1 1h2"/>
+            <circle cx="7" cy="17" r="2"/>
+            <circle cx="17" cy="17" r="2"/>
+          </svg>
+        </div>
+      ),
+      highlights: [
+        '🛡️ Police & Background Verified Drivers',
+        '👔 Professional Uniform & Protocol',
+        '🚗 Automatic & Manual Transmission Experts'
+      ]
+    },
+    {
+      id: 1,
+      badge: 'SAFETY & INTEGRITY',
+      title: '4-Angle Inspection\n& Live GPS.',
+      desc: 'Digital scratch & fuel photo check before every trip. Real-time GPS location sharing for total peace of mind.',
+      icon: (
+        <div style={{ width: '78px', height: '78px', borderRadius: '24px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 12px 28px rgba(16, 185, 129, 0.35)', color: '#FFFFFF', margin: '0 auto 16px' }}>
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+      ),
+      highlights: [
+        '📸 Mandatory 4-Angle Pre-Trip Photos',
+        '📍 Live Trip Tracking & Family Sharing',
+        '🚨 24/7 Ridingo Concierge & SOS Support'
+      ]
+    },
+    {
+      id: 2,
+      badge: 'FAIR & TRANSPARENT',
+      title: 'Zero Surges.\nSecure Handshakes.',
+      desc: 'Transparent pricing starting at ₹250/hr. Verified 4-digit pickup and drop OTPs ensure you are in full command.',
+      icon: (
+        <div style={{ width: '78px', height: '78px', borderRadius: '24px', background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 12px 28px rgba(59, 130, 246, 0.35)', color: '#FFFFFF', margin: '0 auto 16px' }}>
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="20" height="14" x="2" y="5" rx="2"/>
+            <line x1="2" x2="22" y1="10" y2="10"/>
+            <path d="M6 15h2"/>
+            <path d="M10 15h4"/>
+          </svg>
+        </div>
+      ),
+      highlights: [
+        '⚡ Instant Chauffeur Arrival in 15 Minutes',
+        '🔑 4-Digit Pickup & Drop OTP Protection',
+        '💳 Cashless UPI, Cards & Wallet Cashbacks'
+      ]
+    }
+  ];
+
+  const handleNextSlide = () => {
+    if (activeSlide < slides.length - 1) {
+      setActiveSlide(s => s + 1);
+    } else {
+      handleCompleteSlides();
+    }
+  };
+
+  const handleCompleteSlides = () => {
+    try {
+      localStorage.setItem('ridingo_has_onboarded', 'true');
+    } catch (e) {}
+    setStep('form');
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 45;
+    const isRightSwipe = distance < -45;
+    if (isLeftSwipe && activeSlide < slides.length - 1) {
+      setActiveSlide(s => s + 1);
+    }
+    if (isRightSwipe && activeSlide > 0) {
+      setActiveSlide(s => s - 1);
+    }
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
   const fieldStyle = {
     width: '100%',
     height: '46px',
@@ -456,21 +566,220 @@ export default function OnboardingModal() {
         </button>
       )}
 
-      {/* Main Content Container (Vertically centered when keyboard closed, snug frame when keyboard open) */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: isKeyboardVisible && step === 'otp' ? 'flex-start' : 'center',
-          alignItems: 'center',
-          maxWidth: '380px',
-          margin: '0 auto',
-          width: '100%',
-          padding: isKeyboardVisible && step === 'otp' ? '0 4px' : '6px 4px',
-          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}
-      >
+      {/* ========================================================
+          ONBOARDING SLIDES (First-time app use / fresh install)
+         ======================================================== */}
+      {step === 'slides' ? (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            width: '100%',
+            maxWidth: '380px',
+            margin: '0 auto',
+            padding: '12px 6px 20px 6px',
+            userSelect: 'none'
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Top Bar: Brand Logo & Skip Button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 4px', marginBottom: '12px' }}>
+            <BrandLogo height={38} width={152} />
+            <button
+              type="button"
+              onClick={handleCompleteSlides}
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--line)',
+                borderRadius: '999px',
+                padding: '6px 14px',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              Skip
+            </button>
+          </div>
+
+          {/* Active Slide Body */}
+          <div
+            key={activeSlide}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              padding: '10px 4px',
+              animation: 'fadeIn 0.25s ease'
+            }}
+          >
+            {/* Visual Icon Badge */}
+            {slides[activeSlide].icon}
+
+            {/* Category Pill */}
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: activeSlide === 0 ? '#B45309' : activeSlide === 1 ? '#059669' : '#2563EB',
+                background: activeSlide === 0 ? 'rgba(255, 199, 10, 0.18)' : activeSlide === 1 ? 'rgba(16, 185, 129, 0.14)' : 'rgba(59, 130, 246, 0.14)',
+                border: `1px solid ${activeSlide === 0 ? 'rgba(255, 199, 10, 0.4)' : activeSlide === 1 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                padding: '4px 14px',
+                borderRadius: '999px',
+                marginBottom: '12px'
+              }}
+            >
+              {slides[activeSlide].badge}
+            </span>
+
+            {/* Title */}
+            <h2
+              style={{
+                fontSize: '24px',
+                fontWeight: 800,
+                color: 'var(--ink)',
+                lineHeight: 1.25,
+                letterSpacing: '-0.02em',
+                margin: '0 0 10px 0',
+                whiteSpace: 'pre-line'
+              }}
+            >
+              {slides[activeSlide].title}
+            </h2>
+
+            {/* Description */}
+            <p
+              style={{
+                fontSize: '14px',
+                color: 'var(--muted)',
+                lineHeight: 1.5,
+                margin: '0 0 18px 0',
+                maxWidth: '320px'
+              }}
+            >
+              {slides[activeSlide].desc}
+            </p>
+
+            {/* Key Feature Chips */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', textAlign: 'left' }}>
+              {slides[activeSlide].highlights.map((h, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '13px',
+                    background: 'var(--card)',
+                    border: '1.5px solid var(--line)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--ink)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <span>{h}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Actions: Dots & Next Button */}
+          <div style={{ width: '100%', marginTop: '16px' }}>
+            {/* Dots */}
+            <div style={{ display: 'flex', gap: '7px', justifyContent: 'center', alignItems: 'center', marginBottom: '16px' }}>
+              {slides.map((_, i) => (
+                <div
+                  key={i}
+                  onClick={() => setActiveSlide(i)}
+                  style={{
+                    width: activeSlide === i ? '26px' : '8px',
+                    height: '8px',
+                    borderRadius: '999px',
+                    background: activeSlide === i ? 'var(--ink)' : 'var(--line)',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Next / Get Started Button */}
+            <button
+              type="button"
+              onClick={handleNextSlide}
+              style={{
+                width: '100%',
+                height: '50px',
+                borderRadius: '15px',
+                background: 'var(--ink)',
+                color: 'var(--surface)',
+                fontSize: '15px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>{activeSlide === slides.length - 1 ? 'Get Started' : 'Next'}</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+
+            {/* Quick Sign-In Link */}
+            <p style={{ textAlign: 'center', marginTop: '14px', fontSize: '13px', color: 'var(--muted)' }}>
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={handleCompleteSlides}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--ink)',
+                  fontWeight: 700,
+                  fontSize: 'inherit',
+                  textDecoration: 'underline',
+                  cursor: 'pointer'
+                }}
+              >
+                Sign In
+              </button>
+            </p>
+          </div>
+        </div>
+      ) : (
+        /* Main Login / OTP / Registration Form Container */
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: isKeyboardVisible && step === 'otp' ? 'flex-start' : 'center',
+            alignItems: 'center',
+            maxWidth: '380px',
+            margin: '0 auto',
+            width: '100%',
+            padding: isKeyboardVisible && step === 'otp' ? '0 4px' : '6px 4px',
+            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+        >
         {/* Brand Logo & Heading Header */}
         <div style={{
           textAlign: 'center',
@@ -1327,6 +1636,7 @@ export default function OnboardingModal() {
           </button>
         </p>
       </div>
-    </div>
-  );
+    )}
+  </div>
+);
 }
