@@ -127,13 +127,8 @@ export async function getInstalledUpiApps() {
     }
   }
 
-  // 3. Fallback for Web / Browser Preview / Sandbox
-  // In pure desktop browser where native app probing is not supported,
-  // return top 2 common apps (Google Pay & PhonePe) for preview testing
-  if (typeof window !== 'undefined' && !window.Capacitor?.isNativePlatform?.()) {
-    return [KNOWN_UPI_APPS[0], KNOWN_UPI_APPS[1]]; // GPay + PhonePe preview
-  }
-
+  // 3. Desktop Browser / Non-Native Environment:
+  // Strictly return empty list because desktop browsers (like laptops) do NOT have native UPI apps installed.
   return detectedApps;
 }
 
