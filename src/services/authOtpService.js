@@ -89,33 +89,63 @@ export async function sendOtp({ method, identifier, recaptchaContainerId = 'reca
   const cleanId = method === 'email' ? identifier.trim().toLowerCase() : formatIndianPhone(identifier);
 
   if (method === 'phone') {
-    // 1. Send SMS OTP via Official Firebase Phone Auth
-    const appVerifier = setupRecaptcha(recaptchaContainerId);
-    if (!appVerifier || !firebaseAuth) {
-      throw new Error('SMS service is temporarily unavailable. Please verify with Email or Google.');
-    }
-
+    // 1. Send SMS OTP via Supabase Auth (or Firebase fallback)
     try {
-      const confirmationResult = await signInWithPhoneNumber(firebaseAuth, cleanId, appVerifier);
-      activeConfirmationResult = confirmationResult;
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: cleanId
+      });
 
-      return {
-        success: true,
-        method: 'phone',
-        identifier: cleanId,
-        provider: 'firebase',
-        message: `Official SMS code sent to ${cleanId}`
-      };
-    } catch (fbErr) {
-      console.error('Firebase Phone Auth error:', fbErr);
-      if (fbErr.code === 'auth/invalid-phone-number') {
-        throw new Error('The phone number is invalid. Please enter a valid 10-digit mobile number.');
-      } else if (fbErr.code === 'auth/too-many-requests') {
-        throw new Error('Too many attempts. Please wait a few minutes before requesting a new code.');
-      } else if (fbErr.code === 'auth/quota-exceeded') {
-        throw new Error('SMS quota exceeded for today. Please sign in using Email or Google.');
+      if (!error) {
+        return {
+          success: true,
+          method: 'phone',
+          identifier: cleanId,
+          provider: 'supabase',
+          message: `Official SMS verification code sent to ${cleanId}`
+        };
       }
-      throw new Error(fbErr.message || 'Failed to send SMS verification code. Please try again.');
+
+      console.warn('Supabase SMS send notice:', error.message);
+      // If Supabase phone provider is not enabled yet or failed, fall back to Firebase SMS
+      if (firebaseAuth) {
+        const appVerifier = setupRecaptcha(recaptchaContainerId);
+        if (appVerifier) {
+          const confirmationResult = await signInWithPhoneNumber(firebaseAuth, cleanId, appVerifier);
+          activeConfirmationResult = confirmationResult;
+          return {
+            success: true,
+            method: 'phone',
+            identifier: cleanId,
+            provider: 'firebase',
+            message: `Official SMS code sent to ${cleanId}`
+          };
+        }
+      }
+
+      throw new Error(error.message || 'Failed to send SMS verification code.');
+    } catch (err) {
+      console.error('Phone Auth send error:', err);
+      // Try Firebase if Supabase threw an error
+      if (firebaseAuth && (!activeConfirmationResult || err.message?.includes('Phone provider is not enabled'))) {
+        try {
+          const appVerifier = setupRecaptcha(recaptchaContainerId);
+          if (appVerifier) {
+            const confirmationResult = await signInWithPhoneNumber(firebaseAuth, cleanId, appVerifier);
+            activeConfirmationResult = confirmationResult;
+            return {
+              success: true,
+              method: 'phone',
+              identifier: cleanId,
+              provider: 'firebase',
+              message: `Official SMS code sent to ${cleanId}`
+            };
+          }
+        } catch (fbErr) {
+          console.error('Firebase Phone Auth fallback error:', fbErr);
+          throw new Error(fbErr.message || 'Failed to send SMS verification code. Please try again.');
+        }
+      }
+      throw err;
     }
 
   } else {
@@ -167,10 +197,31 @@ export async function verifyOtp({ method, identifier, token }) {
     throw new Error('Please enter all 6 digits of the verification code.');
   }
 
-  // 1. If phone method with Firebase Phone Auth
+  // 1. If phone method with Supabase Auth (or Firebase fallback)
   if (method === 'phone') {
+    // 1. Try Supabase Phone OTP verification
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: cleanId,
+        token: cleanToken,
+        type: 'sms'
+      });
+
+      if (!error && data?.user) {
+        return {
+          success: true,
+          session: data.session,
+          user: data.user,
+          message: 'Phone verified successfully via Supabase!'
+        };
+      }
+    } catch (sbErr) {
+      console.warn('Supabase Phone verify attempt notice:', sbErr);
+    }
+
+    // 2. Fall back to Firebase if confirmation result exists
     if (!activeConfirmationResult) {
-      throw new Error('No pending SMS verification found. Please request a new code.');
+      throw new Error('Invalid or expired SMS verification code. Please check and try again.');
     }
 
     try {

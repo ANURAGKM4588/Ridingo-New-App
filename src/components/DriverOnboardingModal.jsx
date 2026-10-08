@@ -4,6 +4,7 @@ import BrandLogo from './BrandLogo';
 import Icon from './Icon';
 import { sendOtp, verifyOtp, formatIndianPhone } from '../services/authOtpService';
 import { performNativeGoogleSignIn } from '../services/nativeGoogleAuth';
+import { supabase } from '../lib/supabase';
 
 const GOOGLE_WEB_CLIENT_ID = '496710932146-0dc47l9jkgb584na7uu8ajh6bjtg98vu.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID = '496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com';
@@ -38,6 +39,10 @@ export default function DriverOnboardingModal() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [otpError, setOtpError] = useState(null);
 
+  // OTP Verification state & feedback
+  const [otpStatus, setOtpStatus] = useState('idle'); // 'idle' | 'success' | 'error'
+  const [isShaking, setIsShaking] = useState(false);
+
   // Sign In fields
   const [phone, setPhone] = useState('98765 43210');
   const [email, setEmail] = useState('driver@example.com');
@@ -52,8 +57,29 @@ export default function DriverOnboardingModal() {
   const [expYears, setExpYears] = useState('');
   const [transmissions, setTransmissions] = useState({ manual: false, automatic: false, imt: false, luxury: false });
 
-  // Refs for 6-box OTP inputs
+  // Refs for OTP inputs
   const otpInputRefs = useRef([]);
+
+  // Keyboard open/close frame responsiveness
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const handleViewportChange = () => {
+      if (window.visualViewport) {
+        const isKb = window.visualViewport.height < (window.innerHeight - 130);
+        setIsKeyboardVisible(isKb);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+    }
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+      }
+    };
+  }, []);
 
   // Resend countdown timer
   useEffect(() => {
@@ -78,6 +104,9 @@ export default function DriverOnboardingModal() {
   };
 
   const handleSendOtp = async (methodToUse = otpMethod) => {
+    setOtpError(null);
+    setOtpStatus('idle');
+    setIsShaking(false);
     const rawId = getTargetIdentifier(methodToUse, activeTab);
     if (!rawId || (methodToUse === 'phone' && rawId.replace(/\D/g, '').length < 10)) {
       addToast(methodToUse === 'phone' ? 'Please enter a valid 10-digit mobile number' : 'Please enter a valid email address', 'warn');
@@ -95,18 +124,14 @@ export default function DriverOnboardingModal() {
         identifier: rawId
       });
       setSendingOtp(false);
+      setOtpStatus('idle');
+      setIsShaking(false);
       setOtpMethod(methodToUse);
       setStep('otp');
       setResendCountdown(30);
       setOtp(['', '', '', '', '', '']);
 
-      if (res.isDevFallback && res.devCode) {
-        setDevOtpCode(res.devCode);
-        addToast(`Test Code: ${res.devCode} (Tap auto-fill to enter)`, 'info');
-      } else {
-        setDevOtpCode(null);
-        addToast(res.message || `Verification code sent to ${rawId}`, 'check');
-      }
+      addToast(res.message || `Verification code sent to ${rawId}`, 'check');
 
       setTimeout(() => {
         otpInputRefs.current[0]?.focus();
@@ -133,12 +158,29 @@ export default function DriverOnboardingModal() {
   };
 
   const handleOtpChange = (index, value) => {
-    const digitsOnly = value.replace(/\D/g, '');
+    if (otpStatus !== 'idle') {
+      setOtpStatus('idle');
+      setOtpError(null);
+    }
+
+    const cleanChars = value.trim().replace(/[^a-zA-Z0-9]/g, '');
+    if (cleanChars.length > 1) {
+      const newOtp = [...otp];
+      for (let i = 0; i < cleanChars.length && (index + i) < 6; i++) {
+        newOtp[index + i] = cleanChars[i];
+      }
+      setOtp(newOtp);
+      const nextIdx = Math.min(index + cleanChars.length, 5);
+      otpInputRefs.current[nextIdx]?.focus();
+      return;
+    }
+
+    const char = cleanChars.slice(-1);
     const newOtp = [...otp];
-    newOtp[index] = digitsOnly.slice(-1);
+    newOtp[index] = char;
     setOtp(newOtp);
 
-    if (digitsOnly && index < 5) {
+    if (char && index < 5) {
       otpInputRefs.current[index + 1]?.focus();
     }
   };
@@ -151,27 +193,42 @@ export default function DriverOnboardingModal() {
 
   const handleOtpPaste = (e) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (!pasted) return;
-    const newOtp = [...otp];
-    for (let i = 0; i < 6; i++) {
-      newOtp[i] = pasted[i] || '';
+    const raw = e.clipboardData.getData('text');
+    if (!raw) return;
+    const cleaned = raw.trim().replace(/[^a-zA-Z0-9]/g, '').slice(0, 6);
+    if (!cleaned) return;
+
+    const newOtp = ['', '', '', '', '', ''];
+    for (let i = 0; i < cleaned.length; i++) {
+      newOtp[i] = cleaned[i];
     }
     setOtp(newOtp);
-    const targetIdx = Math.min(pasted.length, 5);
-    otpInputRefs.current[targetIdx]?.focus();
+    setOtpStatus('idle');
+    setOtpError(null);
+
+    const targetIdx = Math.min(cleaned.length, 5);
+    setTimeout(() => {
+      otpInputRefs.current[targetIdx]?.focus();
+    }, 20);
   };
 
   const handleVerifyOtp = async (e) => {
     if (e) e.preventDefault();
     const token = otp.join('');
     if (token.length !== 6) {
-      addToast('Please enter all 6 digits of the OTP code', 'warn');
+      setOtpStatus('error');
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 450);
+      const channelLabel = otpMethod === 'phone' ? 'mobile' : 'email';
+      const msg = `Please enter the complete 6-digit verification code sent to your ${channelLabel}`;
+      setOtpError(msg);
+      addToast(msg, 'warn');
       return;
     }
 
     const currentId = getTargetIdentifier(otpMethod, activeTab);
     setVerifyingOtp(true);
+    setOtpError(null);
 
     try {
       const res = await verifyOtp({
@@ -180,32 +237,48 @@ export default function DriverOnboardingModal() {
         token
       });
       setVerifyingOtp(false);
+      setOtpStatus('success');
 
-      if (activeTab === 'register') {
-        loginDriverWithDetails({
-          name: `${firstName.trim()} ${lastName.trim()}`.trim() || 'Driver Partner',
-          email: regEmail.trim(),
-          phone: regMobile.trim(),
-          dlNumber: dlNumber.trim(),
-          experienceYears: parseInt(expYears) || 1,
-          authMethod: otpMethod,
-          supabaseUser: res.user,
-          isAuthenticated: true
-        });
-      } else {
-        loginDriverWithDetails({
-          name: res.user?.user_metadata?.full_name || 'Ravi Kumar',
-          phone: phone.trim(),
-          email: email.trim() || (otpMethod === 'email' ? currentId : 'driver@example.com'),
-          authMethod: otpMethod,
-          supabaseUser: res.user,
-          isAuthenticated: true
-        });
-      }
-      addToast('Verified successfully! Welcome to Chauffeur Portal.', 'check');
+      setTimeout(() => {
+        if (activeTab === 'register') {
+          loginDriverWithDetails({
+            name: `${firstName.trim()} ${lastName.trim()}`.trim() || 'Driver Partner',
+            email: regEmail.trim(),
+            phone: regMobile.trim(),
+            dlNumber: dlNumber.trim(),
+            experienceYears: parseInt(expYears) || 1,
+            authMethod: otpMethod,
+            supabaseUser: res.user,
+            isAuthenticated: true
+          });
+        } else {
+          loginDriverWithDetails({
+            name: res.user?.user_metadata?.full_name || 'Ravi Kumar',
+            phone: phone.trim(),
+            email: email.trim() || (otpMethod === 'email' ? currentId : 'driver@example.com'),
+            authMethod: otpMethod,
+            supabaseUser: res.user,
+            isAuthenticated: true
+          });
+        }
+        setOtpStatus('idle');
+        addToast('Verified successfully! Welcome to Chauffeur Portal.', 'check');
+      }, 650);
     } catch (err) {
       setVerifyingOtp(false);
-      addToast(err.message || 'Invalid verification code. Please check and retry.', 'warn');
+      setOtpStatus('error');
+      setIsShaking(true);
+      // Remove filled numbers on wrong OTP as requested
+      setOtp(['', '', '', '', '', '']);
+      setTimeout(() => {
+        setIsShaking(false);
+        otpInputRefs.current[0]?.focus();
+      }, 450);
+
+      const channelLabel = otpMethod === 'phone' ? 'mobile' : 'email';
+      const errorMsg = `Please enter the correct verification code sent to your ${channelLabel}`;
+      setOtpError(errorMsg);
+      addToast(errorMsg, 'warn');
     }
   };
 
@@ -248,12 +321,17 @@ export default function DriverOnboardingModal() {
       style={{
         position: 'absolute', inset: 0, zIndex: 100, background: 'var(--surface)',
         display: 'flex', flexDirection: 'column', borderRadius: '48px',
-        paddingTop: 'max(40px, calc(env(safe-area-inset-top, 0px) + 28px))',
-        paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+        paddingTop: isKeyboardVisible && step === 'otp'
+          ? 'max(14px, env(safe-area-inset-top, 0px))'
+          : 'max(40px, calc(env(safe-area-inset-top, 0px) + 28px))',
+        paddingBottom: isKeyboardVisible && step === 'otp'
+          ? '10px'
+          : 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
         paddingLeft: 'max(20px, env(safe-area-inset-left, 0px))',
         paddingRight: 'max(20px, env(safe-area-inset-right, 0px))',
         overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        scrollbarWidth: 'none', msOverflowStyle: 'none'
+        scrollbarWidth: 'none', msOverflowStyle: 'none',
+        transition: 'padding 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
       }}
     >
       {driverPartner && (
@@ -271,21 +349,78 @@ export default function DriverOnboardingModal() {
         </button>
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', maxWidth: '380px', margin: '0 auto', width: '100%', padding: '6px 4px' }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: isKeyboardVisible && step === 'otp' ? 'flex-start' : 'center',
+        alignItems: 'center',
+        maxWidth: '380px',
+        margin: '0 auto',
+        width: '100%',
+        padding: isKeyboardVisible && step === 'otp' ? '0 4px' : '6px 4px',
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}>
 
         {/* Brand + Partner Badge */}
-        <div style={{ textAlign: 'center', marginBottom: '18px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <BrandLogo height={44} width={176} center={true} style={{ margin: '0 auto 12px auto', display: 'flex', justifyContent: 'center' }} />
+        <div style={{
+          textAlign: 'center',
+          marginBottom: isKeyboardVisible && step === 'otp' ? '10px' : '18px',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          transition: 'margin-bottom 0.2s ease'
+        }}>
+          <BrandLogo
+            height={isKeyboardVisible && step === 'otp' ? 34 : 44}
+            width={isKeyboardVisible && step === 'otp' ? 136 : 176}
+            center={true}
+            style={{
+              margin: isKeyboardVisible && step === 'otp' ? '0 auto 8px auto' : '0 auto 12px auto',
+              display: 'flex',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
+            }}
+          />
 
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,199,10,0.14)', border: '1px solid rgba(255,199,10,0.3)', borderRadius: '999px', padding: '4px 12px', marginBottom: '12px', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink)' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(255,199,10,0.14)',
+            border: '1px solid rgba(255,199,10,0.3)',
+            borderRadius: '999px',
+            padding: '4px 12px',
+            marginBottom: isKeyboardVisible && step === 'otp' ? '6px' : '12px',
+            fontSize: '11.5px',
+            fontWeight: 700,
+            color: 'var(--ink)'
+          }}>
             <span>🚗</span>
             <span>Driver Partner Portal</span>
           </div>
 
-          <h1 style={{ fontSize: '23px', fontWeight: 800, color: 'var(--ink)', margin: '0 0 5px 0', textAlign: 'center', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+          <h1 style={{
+            fontSize: isKeyboardVisible && step === 'otp' ? '20px' : '23px',
+            fontWeight: 800,
+            color: 'var(--ink)',
+            margin: isKeyboardVisible && step === 'otp' ? '0 0 3px 0' : '0 0 5px 0',
+            textAlign: 'center',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.25,
+            transition: 'all 0.2s ease'
+          }}>
             {step === 'otp' ? 'Verify with OTP' : activeTab === 'signin' ? 'Welcome Back, Chauffeur' : 'Register as Partner'}
           </h1>
-          <p style={{ fontSize: '13.5px', color: 'var(--muted)', margin: 0, textAlign: 'center', lineHeight: 1.45, maxWidth: '300px' }}>
+          <p style={{
+            fontSize: isKeyboardVisible && step === 'otp' ? '12.5px' : '13.5px',
+            color: 'var(--muted)',
+            margin: 0,
+            textAlign: 'center',
+            lineHeight: 1.4,
+            maxWidth: '300px'
+          }}>
             {step === 'otp' ? 'Enter the 6-digit code sent to your mobile & email' : activeTab === 'signin' ? 'Sign in with your registered mobile & email' : 'Join the Ridingo chauffeur partner network'}
           </p>
         </div>
@@ -300,22 +435,23 @@ export default function DriverOnboardingModal() {
 
         {/* OTP Step */}
         {step === 'otp' ? (
-          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: isKeyboardVisible ? '10px' : '16px', width: '100%', transition: 'gap 0.2s ease' }}>
             {/* Target Channel Destination Indicator */}
             <div
               style={{
                 background: 'var(--field)',
                 border: '1px solid var(--line)',
                 borderRadius: '14px',
-                padding: '12px 14px',
+                padding: isKeyboardVisible ? '8px 12px' : '12px 14px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '8px'
+                gap: '8px',
+                transition: 'padding 0.2s ease'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '20px' }}>{otpMethod === 'phone' ? '📱' : '✉️'}</span>
+                <span style={{ fontSize: isKeyboardVisible ? '18px' : '20px' }}>{otpMethod === 'phone' ? '📱' : '✉️'}</span>
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     {otpMethod === 'phone' ? 'SMS Code Sent To' : 'Email Code Sent To'}
@@ -345,39 +481,41 @@ export default function DriverOnboardingModal() {
               </button>
             </div>
 
-
-
-            {/* 6-Digit OTP Box Grid */}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '4px 0' }}>
+            {/* 6-Digit OTP Box Grid with Paste, Glow & Shake */}
+            <div className={`otp-grid-wrap ${isShaking ? 'shake' : ''}`}>
               {otp.map((d, i) => (
                 <input
                   key={i}
                   id={'d-otp-box-' + i}
                   ref={el => (otpInputRefs.current[i] = el)}
-                  type="tel"
+                  type="text"
                   inputMode="numeric"
+                  autoComplete="one-time-code"
                   maxLength={1}
                   value={d}
                   onChange={e => handleOtpChange(i, e.target.value)}
                   onKeyDown={e => handleOtpKeyDown(i, e)}
                   onPaste={handleOtpPaste}
-                  style={{
-                    width: '46px',
-                    height: '56px',
-                    textAlign: 'center',
-                    fontSize: '22px',
-                    fontWeight: 800,
-                    borderRadius: '14px',
-                    background: 'var(--card)',
-                    border: d ? '2px solid var(--yellow)' : '1.5px solid var(--line)',
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                    transition: 'border-color 0.15s ease'
+                  onFocus={() => setIsKeyboardVisible(true)}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      if (!document.activeElement?.classList?.contains('otp-digit-box')) {
+                        setIsKeyboardVisible(false);
+                      }
+                    }, 150);
                   }}
+                  className={`otp-digit-box ${d ? 'filled' : ''} ${otpStatus === 'success' ? 'success' : otpStatus === 'error' ? 'error' : ''}`}
                 />
               ))}
             </div>
+
+            {/* Error Message with Correct English */}
+            {otpError && (
+              <div className="otp-error-banner">
+                <span>⚠️</span>
+                <span>{otpError}</span>
+              </div>
+            )}
 
             {/* Verify & Enter Dashboard Button */}
             <button
@@ -385,7 +523,7 @@ export default function DriverOnboardingModal() {
               disabled={verifyingOtp}
               className="btn"
               style={{
-                height: '48px',
+                height: isKeyboardVisible ? '44px' : '48px',
                 borderRadius: '14px',
                 background: '#000000',
                 color: '#FFFFFF',
@@ -397,8 +535,9 @@ export default function DriverOnboardingModal() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginTop: '4px',
-                opacity: verifyingOtp ? 0.7 : 1
+                marginTop: isKeyboardVisible ? '2px' : '4px',
+                opacity: verifyingOtp ? 0.7 : 1,
+                transition: 'all 0.2s ease'
               }}
             >
               {verifyingOtp ? 'Verifying Code...' : 'Verify & Enter Dashboard'}

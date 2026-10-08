@@ -1,0 +1,21 @@
+Subject: Your Ridingo verification code: {{ .Token }}
+
+--------------------------------------------------
+RIDINGO VERIFICATION
+--------------------------------------------------
+
+Hello,
+
+Your verification code for Ridingo is:
+
+{{ .Token }}
+
+Enter this code in the app to complete your verification. This code is valid for 10 minutes.
+
+For your security, please do not share this code with anyone. Ridingo will never ask you for your verification code.
+
+If you did not request this verification code, you can safely ignore this email.
+
+--------------------------------------------------
+Team Ridingo
+Contact: team.ridingo@gmail.com
