@@ -132,7 +132,15 @@ export const PRIORITIZED_UPI_IDS = ['gpay', 'phonepe', 'navi', 'cred', 'supermon
 export async function canOpenUrlSafely(url) {
   if (!url) return false;
 
-  // 1. Capacitor AppLauncher plugin
+  // 1. Native iOS / Android UpiAppDetector plugin canOpenUrl
+  try {
+    if (typeof UpiAppDetector?.canOpenUrl === 'function') {
+      const res = await UpiAppDetector.canOpenUrl({ url });
+      if (res && res.value) return true;
+    }
+  } catch (e) {}
+
+  // 2. Capacitor AppLauncher plugin
   try {
     if (typeof AppLauncher !== 'undefined' && typeof AppLauncher.canOpenUrl === 'function') {
       const { value } = await AppLauncher.canOpenUrl({ url });
@@ -140,7 +148,7 @@ export async function canOpenUrlSafely(url) {
     }
   } catch (e) {}
 
-  // 2. window.Capacitor.Plugins.AppLauncher
+  // 3. window.Capacitor.Plugins.AppLauncher
   try {
     if (typeof window !== 'undefined' && window.Capacitor?.Plugins?.AppLauncher?.canOpenUrl) {
       const { value } = await window.Capacitor.Plugins.AppLauncher.canOpenUrl({ url });
@@ -200,23 +208,38 @@ export async function getInstalledUpiApps() {
   const detectedApps = [];
   const detectedIds = new Set();
 
-  // 1. Android Native Plugin query via PackageManager
+  // 1. Native Plugin query via UpiAppDetector (Android PackageManager & iOS canOpenURL via Swift plugin)
   if (typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || Capacitor?.isNativePlatform?.())) {
     try {
-      const res = await UpiAppDetector.getInstalledUpiApps();
-      if (res && Array.isArray(res.apps) && res.apps.length > 0) {
-        for (const a of res.apps) {
-          const matched = KNOWN_UPI_APPS.find(k => k.packageName === a.packageName || a.appName?.toLowerCase().includes(k.name.toLowerCase()));
-          const id = matched ? matched.id : a.packageName;
-          if (!detectedIds.has(id)) {
+      let res = null;
+      if (typeof UpiAppDetector?.getInstalledUpiApps === 'function') {
+        res = await UpiAppDetector.getInstalledUpiApps();
+      } else if (typeof UpiAppDetector?.checkInstalledApps === 'function') {
+        res = await UpiAppDetector.checkInstalledApps();
+      }
+
+      const appList = res?.apps || res?.installedApps || [];
+      if (Array.isArray(appList) && appList.length > 0) {
+        for (const item of appList) {
+          const appObj = typeof item === 'string' ? { id: item, scheme: item } : item;
+          const matched = KNOWN_UPI_APPS.find(k => 
+            (appObj.id && k.id === appObj.id) || 
+            (appObj.scheme && k.scheme === appObj.scheme) || 
+            (appObj.packageName && k.packageName === appObj.packageName) ||
+            (appObj.appName && appObj.appName.toLowerCase().includes(k.name.toLowerCase())) ||
+            (appObj.name && appObj.name.toLowerCase().includes(k.name.toLowerCase()))
+          );
+          const id = matched ? matched.id : (appObj.id || appObj.packageName || appObj.scheme);
+          if (id && !detectedIds.has(id)) {
             detectedIds.add(id);
             detectedApps.push({
               id,
-              name: a.appName || matched?.name || 'UPI App',
+              name: matched?.name || appObj.appName || appObj.name || 'UPI App',
               subName: matched?.subName || 'UPI',
-              packageName: a.packageName,
-              launchPrefix: matched ? matched.launchPrefix : 'upi://pay',
-              customIcon: a.icon || null,
+              packageName: matched?.packageName || appObj.packageName,
+              scheme: matched?.scheme || appObj.scheme,
+              launchPrefix: matched ? matched.launchPrefix : `${appObj.scheme || 'upi'}://pay`,
+              customIcon: appObj.icon || null,
               color: matched?.color || '#0F172A'
             });
           }

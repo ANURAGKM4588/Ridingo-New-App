@@ -422,6 +422,13 @@ export default function PaymentSheet() {
       setCardCvv('');
       setCardError('');
       setCardOtp('482915');
+
+      // Live device query for installed UPI apps whenever checkout sheet opens
+      getInstalledUpiApps().then((apps) => {
+        setInstalledUpiApps(Array.isArray(apps) ? apps : []);
+      }).catch((err) => {
+        console.warn('Live UPI apps query error:', err);
+      });
     });
 
     return () => {
@@ -443,7 +450,7 @@ export default function PaymentSheet() {
       }
     });
     return () => { isSubscribed = false; };
-  }, []);
+  }, [config]);
 
   // OTP Countdown timer for 3D Secure Card Verification
   useEffect(() => {
