@@ -17,7 +17,8 @@ export const KNOWN_UPI_APPS = [
     testUrl: 'tez://upi/pay',
     launchPrefix: 'tez://upi/pay',
     packageName: 'com.google.android.apps.nbu.paisa.user',
-    color: '#4285F4'
+    color: '#4285F4',
+    priority: 1
   },
   {
     id: 'phonepe',
@@ -27,37 +28,8 @@ export const KNOWN_UPI_APPS = [
     testUrl: 'phonepe://pay',
     launchPrefix: 'phonepe://pay',
     packageName: 'com.phonepe.app',
-    color: '#5F259F'
-  },
-  {
-    id: 'paytm',
-    name: 'Paytm',
-    subName: 'Paytm UPI',
-    scheme: 'paytmmp',
-    testUrl: 'paytmmp://pay',
-    launchPrefix: 'paytmmp://pay',
-    packageName: 'net.one97.paytm',
-    color: '#00BAF2'
-  },
-  {
-    id: 'cred',
-    name: 'CRED Pay',
-    subName: 'CRED',
-    scheme: 'credpay',
-    testUrl: 'credpay://pay',
-    launchPrefix: 'credpay://pay',
-    packageName: 'com.dreamplug.androidapp',
-    color: '#0F172A'
-  },
-  {
-    id: 'bhim',
-    name: 'BHIM UPI',
-    subName: 'NPCI BHIM',
-    scheme: 'bhim',
-    testUrl: 'bhim://pay',
-    launchPrefix: 'bhim://pay',
-    packageName: 'in.org.npci.upiapp',
-    color: '#00833E'
+    color: '#5F259F',
+    priority: 2
   },
   {
     id: 'navi',
@@ -67,16 +39,110 @@ export const KNOWN_UPI_APPS = [
     testUrl: 'navi://pay',
     launchPrefix: 'navi://pay',
     packageName: 'com.naviapp',
-    color: '#00D09C'
+    color: '#00D09C',
+    priority: 3
+  },
+  {
+    id: 'cred',
+    name: 'CRED Pay',
+    subName: 'CRED',
+    scheme: 'credpay',
+    testUrl: 'credpay://pay',
+    launchPrefix: 'credpay://pay',
+    packageName: 'com.dreamplug.androidapp',
+    color: '#0F172A',
+    priority: 4
+  },
+  {
+    id: 'supermoney',
+    name: 'super.money',
+    subName: 'SuperMoney',
+    scheme: 'supermoney',
+    testUrl: 'supermoney://pay',
+    launchPrefix: 'supermoney://pay',
+    packageName: 'money.super.app',
+    color: '#7C3AED',
+    priority: 5
+  },
+  {
+    id: 'jupiter',
+    name: 'Jupiter',
+    subName: 'Jupiter UPI',
+    scheme: 'jupiter',
+    testUrl: 'jupiter://pay',
+    launchPrefix: 'jupiter://pay',
+    packageName: 'money.jupiter',
+    color: '#FF725E',
+    priority: 6
+  },
+  {
+    id: 'paytm',
+    name: 'Paytm',
+    subName: 'Paytm UPI',
+    scheme: 'paytmmp',
+    testUrl: 'paytmmp://pay',
+    launchPrefix: 'paytmmp://pay',
+    packageName: 'net.one97.paytm',
+    color: '#00BAF2',
+    priority: 7
+  },
+  {
+    id: 'bhim',
+    name: 'BHIM UPI',
+    subName: 'NPCI BHIM',
+    scheme: 'bhim',
+    testUrl: 'bhim://pay',
+    launchPrefix: 'bhim://pay',
+    packageName: 'in.org.npci.upiapp',
+    color: '#00833E',
+    priority: 8
+  },
+  {
+    id: 'amazonpay',
+    name: 'Amazon Pay',
+    subName: 'Amazon',
+    scheme: 'amazonpay',
+    testUrl: 'amazonpay://pay',
+    launchPrefix: 'amazonpay://pay',
+    packageName: 'in.amazon.mShop.android.shopping',
+    color: '#FF9900',
+    priority: 9
   }
 ];
+
+export const PRIORITIZED_UPI_IDS = ['gpay', 'phonepe', 'navi', 'cred', 'supermoney', 'jupiter'];
+
+/**
+ * Sorts detected UPI apps placing prioritized apps (GPay, PhonePe, Navi, Cred, SuperMoney, Jupiter) first
+ */
+export function sortUpiAppsByPriority(apps) {
+  if (!Array.isArray(apps)) return [];
+  const priorityMap = {
+    gpay: 1,
+    phonepe: 2,
+    navi: 3,
+    cred: 4,
+    supermoney: 5,
+    jupiter: 6,
+    paytm: 7,
+    bhim: 8,
+    amazonpay: 9
+  };
+
+  return [...apps].sort((a, b) => {
+    const rankA = priorityMap[a.id] || 99;
+    const rankB = priorityMap[b.id] || 99;
+    return rankA - rankB;
+  });
+}
 
 const DEFAULT_VPA = 'ridingo.rzp@icici';
 const DEFAULT_PAYEE_NAME = 'Ridingo Chauffeur Services';
 const MERCHANT_CODE = '4121';
 
 /**
- * Dynamically queries the device to find ONLY physically installed UPI apps
+ * Dynamically queries the device to find ONLY physically installed UPI apps,
+ * prioritized according to the configured list.
  * @returns {Promise<Array>} List of installed UPI apps with metadata
  */
 export async function getInstalledUpiApps() {
@@ -87,7 +153,7 @@ export async function getInstalledUpiApps() {
     try {
       const res = await window.Capacitor.Plugins.UpiAppDetector.getInstalledUpiApps();
       if (res && Array.isArray(res.apps) && res.apps.length > 0) {
-        return res.apps.map(a => {
+        const mapped = res.apps.map(a => {
           const matched = KNOWN_UPI_APPS.find(k => k.packageName === a.packageName || a.appName?.toLowerCase().includes(k.name.toLowerCase()));
           return {
             id: matched ? matched.id : a.packageName,
@@ -99,6 +165,7 @@ export async function getInstalledUpiApps() {
             color: matched?.color || '#0F172A'
           };
         });
+        return sortUpiAppsByPriority(mapped);
       }
     } catch (nativeErr) {
       console.warn('Native UpiAppDetector query note:', nativeErr);
@@ -120,7 +187,7 @@ export async function getInstalledUpiApps() {
       }
 
       if (detectedApps.length > 0) {
-        return detectedApps;
+        return sortUpiAppsByPriority(detectedApps);
       }
     } catch (launcherErr) {
       console.warn('AppLauncher query error:', launcherErr);

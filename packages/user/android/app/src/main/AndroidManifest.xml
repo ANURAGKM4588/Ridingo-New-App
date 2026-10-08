@@ -41,9 +41,12 @@
 
     <!-- Queries for Installed UPI Payment Apps Detection (Android 11+ Package Visibility) -->
     <queries>
-        <package android:name="com.phonepe.app" />
         <package android:name="com.google.android.apps.nbu.paisa.user" />
+        <package android:name="com.phonepe.app" />
+        <package android:name="com.naviapp" />
         <package android:name="com.dreamplug.androidapp" />
+        <package android:name="money.super.app" />
+        <package android:name="money.jupiter" />
         <package android:name="net.one97.paytm" />
         <package android:name="in.amazon.mShop.android.shopping" />
         <package android:name="in.org.npci.upiapp" />
@@ -61,11 +64,31 @@
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="paytmmp" />
+            <data android:scheme="navi" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="credpay" />
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="cred" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="supermoney" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="jupiter" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="paytmmp" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="bhim" />
         </intent>
     </queries>
 </manifest>

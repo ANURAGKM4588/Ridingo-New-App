@@ -81,12 +81,14 @@
 	<array>
 		<string>phonepe</string>
 		<string>tez</string>
+		<string>navi</string>
+		<string>credpay</string>
+		<string>cred</string>
+		<string>supermoney</string>
+		<string>jupiter</string>
 		<string>paytmmp</string>
 		<string>paytm</string>
 		<string>bhim</string>
-		<string>credpay</string>
-		<string>cred</string>
-		<string>navi</string>
 		<string>amazonpay</string>
 		<string>upi</string>
 	</array>

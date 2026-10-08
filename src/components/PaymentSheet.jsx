@@ -258,6 +258,98 @@ const BhimLogo = () => (
   </div>
 );
 
+const SuperMoneyLogo = () => (
+  <div style={{
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    boxShadow: '0 2px 6px rgba(124,58,237,0.3)'
+  }}>
+    <span style={{
+      fontSize: '11px',
+      fontWeight: 900,
+      color: '#FFFFFF',
+      letterSpacing: '-0.3px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      super
+    </span>
+  </div>
+);
+
+const JupiterLogo = () => (
+  <div style={{
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: '#FF725E',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    boxShadow: '0 2px 6px rgba(255,114,94,0.3)'
+  }}>
+    <span style={{
+      fontSize: '15px',
+      fontWeight: 900,
+      color: '#FFFFFF',
+      letterSpacing: '-0.5px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      J
+    </span>
+  </div>
+);
+
+const AmazonPayLogo = () => (
+  <div style={{
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: '#232F3E',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    boxShadow: '0 2px 6px rgba(35,47,62,0.25)'
+  }}>
+    <span style={{
+      fontSize: '10.5px',
+      fontWeight: 800,
+      color: '#FF9900',
+      letterSpacing: '-0.2px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      pay
+    </span>
+  </div>
+);
+
+const MoreAppsLogo = () => (
+  <div style={{
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: '#F1F5F9',
+    border: '1px dashed #94A3B8',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  }}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
+      <circle cx="5" cy="12" r="1.5" />
+    </svg>
+  </div>
+);
+
 const InstalledAppsLogo = () => (
   <div style={{
     width: '36px',
@@ -378,6 +470,12 @@ export default function PaymentSheet() {
     note: `Ridingo Trip - ${userName}`
   });
 
+  // Calculate prioritized primary apps vs 'More' list
+  const MAX_PRIMARY_UPI_APPS = 5;
+  const hasMoreApps = installedUpiApps.length > MAX_PRIMARY_UPI_APPS;
+  const primaryUpiApps = hasMoreApps ? installedUpiApps.slice(0, MAX_PRIMARY_UPI_APPS) : installedUpiApps;
+  const otherUpiApps = hasMoreApps ? installedUpiApps.slice(MAX_PRIMARY_UPI_APPS) : [];
+
   // Detect card network (Visa, Mastercard, RuPay)
   const getCardType = () => {
     const clean = cardNumber.replace(/\s+/g, '');
@@ -391,6 +489,7 @@ export default function PaymentSheet() {
     if (isAuthorizing || netbankingStatus === 'authorizing') return;
     if (config?.onDismiss) config.onDismiss();
     setConfig(null);
+    setShowAllUpiApps(false);
   };
 
   /**
@@ -402,6 +501,7 @@ export default function PaymentSheet() {
     setShowCardOtpModal(false);
     setShowNetbankingPortal(false);
     setShowQrModal(false);
+    setShowAllUpiApps(false);
     const onComplete = config?.onSuccess;
     setConfig(null);
     if (typeof onComplete === 'function') {
@@ -554,28 +654,7 @@ export default function PaymentSheet() {
     // 5. Installed UPI Apps (Dynamic native app launcher via upi://pay / canOpenURL / Native bridge)
     const activeApp = installedUpiApps.find(a => a.id === selectedMethod) || KNOWN_UPI_APPS.find(a => a.id === selectedMethod);
     if (activeApp) {
-      const appName = activeApp.name || 'UPI App';
-
-      setAuthorizingTitle(`Opening ${appName}...`);
-      setIsAuthorizing(true);
-
-      // Launch native app with dynamic UPI intent
-      launchUpiApp(activeApp.id, {
-        amount,
-        orderId: config?.orderId,
-        note: `Ridingo Trip - ${userName}`
-      }).then(() => {
-        addToast(`Opening ${appName}...`, 'info');
-      }).catch((err) => {
-        console.warn('launchUpiApp error:', err);
-      });
-
-      // Verification callback
-      setTimeout(() => {
-        setIsAuthorizing(false);
-        finalizeUpiPayment(`${appName} UPI`);
-        addToast(`Payment authorized via ${appName}!`, 'check');
-      }, 2400);
+      triggerUpiAppPayment(activeApp);
       return;
     }
 
@@ -754,6 +833,38 @@ export default function PaymentSheet() {
     addToast(`Paid ₹${amount} with Wallet! ₹${cashbackAmount} cashback credited.`, 'check');
   };
 
+  /**
+   * Securely triggers specific UPI app payment via dynamic intent
+   */
+  const triggerUpiAppPayment = (app) => {
+    const activeApp = app || installedUpiApps.find(a => a.id === selectedMethod) || KNOWN_UPI_APPS.find(a => a.id === selectedMethod);
+    if (!activeApp) return;
+
+    const appName = activeApp.name || 'UPI App';
+    setSelectedMethod(activeApp.id);
+    setAuthorizingTitle(`Opening ${appName}...`);
+    setIsAuthorizing(true);
+    setShowAllUpiApps(false);
+
+    // Launch native app with dynamic UPI intent
+    launchUpiApp(activeApp.id, {
+      amount,
+      orderId: config?.orderId,
+      note: `Ridingo Trip - ${userName}`
+    }).then(() => {
+      addToast(`Opening ${appName}...`, 'info');
+    }).catch((err) => {
+      console.warn('launchUpiApp error:', err);
+    });
+
+    // Verification callback
+    setTimeout(() => {
+      setIsAuthorizing(false);
+      finalizeUpiPayment(`${appName} UPI`);
+      addToast(`Payment authorized via ${appName}!`, 'check');
+    }, 2400);
+  };
+
   const renderUpiLogo = (app) => {
     if (app?.customIcon) {
       return (
@@ -785,14 +896,22 @@ export default function PaymentSheet() {
         return <GPayLogo />;
       case 'phonepe':
         return <PhonePeLogo />;
-      case 'paytm':
-        return <PaytmLogo />;
-      case 'cred':
-        return <CREDLogo />;
-      case 'bhim':
-        return <BhimLogo />;
       case 'navi':
         return <NaviLogo />;
+      case 'cred':
+        return <CREDLogo />;
+      case 'supermoney':
+        return <SuperMoneyLogo />;
+      case 'jupiter':
+        return <JupiterLogo />;
+      case 'paytm':
+        return <PaytmLogo />;
+      case 'bhim':
+        return <BhimLogo />;
+      case 'amazonpay':
+        return <AmazonPayLogo />;
+      case 'more':
+        return <MoreAppsLogo />;
       case 'generic':
       default:
         return <InstalledAppsLogo />;
@@ -1100,6 +1219,143 @@ export default function PaymentSheet() {
       `}</style>
 
       {/* ========================================================
+          MORE INSTALLED UPI APPS BOTTOM SHEET MODAL
+          ======================================================== */}
+      {showAllUpiApps && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 150,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            overflow: 'hidden',
+            pointerEvents: 'auto'
+          }}
+        >
+          {/* Dimmed Backdrop Scrim */}
+          <div
+            onClick={() => setShowAllUpiApps(false)}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(3px)',
+              WebkitBackdropFilter: 'blur(3px)',
+              transition: 'opacity 0.2s ease'
+            }}
+          />
+
+          {/* Bottom-to-Top Sliding Popup Sheet */}
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxHeight: '75%',
+              background: '#FFFFFF',
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
+              padding: '12px 20px 28px',
+              zIndex: 151,
+              boxShadow: '0 -10px 40px rgba(15, 23, 42, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'bottomSheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              boxSizing: 'border-box'
+            }}
+          >
+            {/* Top Grab Bar */}
+            <div style={{ width: '36px', height: '4px', background: '#E2E8F0', borderRadius: '999px', margin: '2px auto 10px' }} />
+
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid #F1F5F9', paddingBottom: '10px' }}>
+              <div>
+                <b style={{ fontSize: '16px', color: '#0F172A', display: 'block' }}>All Installed UPI Apps</b>
+                <span style={{ fontSize: '11.5px', color: '#64748B' }}>
+                  {installedUpiApps.length} apps detected on your device
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllUpiApps(false)}
+                aria-label="Close"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+
+            {/* List of all installed apps */}
+            <div
+              style={{
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                paddingRight: '2px',
+                maxHeight: '48vh'
+              }}
+            >
+              {installedUpiApps.map((app) => (
+                <div
+                  key={app.id}
+                  onClick={() => triggerUpiAppPayment(app)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 14px',
+                    borderRadius: '14px',
+                    border: selectedMethod === app.id ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
+                    background: selectedMethod === app.id ? '#F8FAFC' : '#FFFFFF',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                    {renderUpiLogo(app)}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {app.name}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        {app.subName || 'UPI'} · Instant Pay
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      background: '#0F172A',
+                      color: '#FFFFFF',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      flexShrink: 0
+                    }}
+                  >
+                    Pay ₹{amount}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
           4. BOTTOM-TO-TOP POPUP WINDOW STYLE: SCAN & PAY VIA QR
           Slides up from the bottom when clicking the bottom Pay button,
           displaying only the live QR code and payment amount,
@@ -1352,12 +1608,13 @@ export default function PaymentSheet() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: installedUpiApps.length === 1 ? '1fr' : installedUpiApps.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
                   gap: '10px',
                   transition: 'all 0.2s ease'
                 }}
               >
-                {installedUpiApps.map((app) => {
+                {/* Primary prioritized apps (GooglePay, PhonePe, NaviUPI, Cred, SuperMoney, Jupiter) */}
+                {primaryUpiApps.map((app) => {
                   const isSelected = selectedMethod === app.id;
                   return (
                     <div
@@ -1412,6 +1669,41 @@ export default function PaymentSheet() {
                     </div>
                   );
                 })}
+
+                {/* If more apps are installed than the primary list, add a "More" option opening a bottom sheet */}
+                {hasMoreApps && (
+                  <div
+                    onClick={() => setShowAllUpiApps(true)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '12px 6px',
+                      borderRadius: '14px',
+                      border: '1px dashed #94A3B8',
+                      background: '#F8FAFC',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      minHeight: '78px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {renderUpiLogo({ id: 'more' })}
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: '#475569',
+                        marginTop: '6px',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      More ({otherUpiApps.length})
+                    </span>
+                  </div>
+                )}
               </div>
             </>
           ) : (
