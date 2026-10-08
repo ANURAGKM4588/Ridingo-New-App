@@ -9,6 +9,7 @@ import {
   generateLiveUpiQrUrl
 } from '../utils/razorpay';
 import { getInstalledUpiApps, launchUpiApp, KNOWN_UPI_APPS } from '../services/installedUpiService';
+import { MAJOR_UPI_APPS } from '../utils/upiDeepLink';
 
 const POPULAR_BANKS = [
   { id: 'HDFC', name: 'HDFC Bank', code: 'HDFC', color: '#004c8f' },
@@ -482,6 +483,7 @@ export default function PaymentSheet() {
   const hasMoreApps = installedUpiApps.length > MAX_PRIMARY_UPI_APPS;
   const primaryUpiApps = hasMoreApps ? installedUpiApps.slice(0, MAX_PRIMARY_UPI_APPS) : installedUpiApps;
   const otherUpiApps = hasMoreApps ? installedUpiApps.slice(MAX_PRIMARY_UPI_APPS) : [];
+  const activeUpiApp = installedUpiApps.find(a => a.id === selectedMethod) || KNOWN_UPI_APPS.find(a => a.id === selectedMethod) || MAJOR_UPI_APPS.find(a => a.id === selectedMethod);
 
   // Detect card network (Visa, Mastercard, RuPay)
   const getCardType = () => {
@@ -1626,7 +1628,13 @@ export default function PaymentSheet() {
                   return (
                     <div
                       key={app.id}
-                      onClick={() => setSelectedMethod(app.id)}
+                      onClick={() => {
+                        if (selectedMethod === app.id) {
+                          triggerUpiAppPayment(app);
+                        } else {
+                          setSelectedMethod(app.id);
+                        }
+                      }}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -2014,14 +2022,14 @@ export default function PaymentSheet() {
             <span>
               {selectedMethod === 'wallet'
                 ? `Pay ₹${amount} with Wallet`
-                : MAJOR_UPI_APPS.some(a => a.id === selectedMethod)
-                ? `Open ${MAJOR_UPI_APPS.find(a => a.id === selectedMethod)?.name} & Pay ₹${amount}`
+                : activeUpiApp
+                ? `Open ${activeUpiApp.name} & Pay ₹${amount}`
                 : selectedMethod === 'qr'
                 ? `Scan & Pay ₹${amount}`
                 : selectedMethod === 'card'
                 ? `Pay ₹${amount} via Card`
                 : selectedMethod === 'netbanking'
-                ? `Pay ₹${amount} via ${selectedBank.code}`
+                ? `Pay ₹${amount} via ${selectedBank?.code || 'Netbanking'}`
                 : `Pay ₹${amount}`}
             </span>
           </button>

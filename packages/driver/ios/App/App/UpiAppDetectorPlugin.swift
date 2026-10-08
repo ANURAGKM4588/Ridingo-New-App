@@ -9,7 +9,8 @@ public class UpiAppDetectorPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "getInstalledUpiApps", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "checkInstalledApps", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "canOpenUrl", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "canOpenUrl", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openUrl", returnType: CAPPluginReturnPromise)
     ]
 
     private struct UpiAppCandidate {
@@ -94,6 +95,19 @@ public class UpiAppDetectorPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             let canOpen = UIApplication.shared.canOpenURL(url)
             call.resolve(["value": canOpen])
+        }
+    }
+
+    @objc func openUrl(_ call: CAPPluginCall) {
+        guard let urlString = call.getString("url"), let url = URL(string: urlString) else {
+            call.resolve(["completed": false])
+            return
+        }
+
+        DispatchQueue.main.async {
+            UIApplication.shared.open(url, options: [:]) { success in
+                call.resolve(["completed": success])
+            }
         }
     }
 }

@@ -317,19 +317,36 @@ export function buildUpiPaymentUrl(appId, {
  * Launches a generic deep link URL safely
  */
 export async function launchDeepLink(deepLinkUrl) {
-  if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+  if (!deepLinkUrl) return false;
+
+  // 1. Native iOS / Android UpiAppDetector plugin openUrl
+  try {
+    if (typeof UpiAppDetector?.openUrl === 'function') {
+      const res = await UpiAppDetector.openUrl({ url: deepLinkUrl });
+      if (res && res.completed) return true;
+    }
+  } catch (err) {
+    console.warn('UpiAppDetector.openUrl note:', err);
+  }
+
+  // 2. Capacitor AppLauncher plugin
+  if (typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || Capacitor?.isNativePlatform?.())) {
     try {
-      const { completed } = await AppLauncher.openUrl({ url: deepLinkUrl });
-      if (completed) return true;
+      if (typeof AppLauncher !== 'undefined' && typeof AppLauncher.openUrl === 'function') {
+        const { completed } = await AppLauncher.openUrl({ url: deepLinkUrl });
+        if (completed) return true;
+      }
     } catch (err) {
       console.warn('AppLauncher.openUrl error:', err);
     }
   }
 
-  // Web / mobile browser navigation
+  // 3. Web / mobile browser navigation
   if (typeof window !== 'undefined') {
-    window.location.href = deepLinkUrl;
-    return true;
+    try {
+      window.location.href = deepLinkUrl;
+      return true;
+    } catch (e) {}
   }
 
   return false;
