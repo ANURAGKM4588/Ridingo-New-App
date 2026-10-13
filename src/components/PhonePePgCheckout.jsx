@@ -11,22 +11,24 @@ import {
 import { MAJOR_UPI_APPS, triggerUpiDeepLink } from '../utils/upiDeepLink';
 
 /**
- * Direct PhonePe Payment Gateway (PhonePe PG) Standard Checkout UI
- * Eliminates custom application UI in favor of official PhonePe PG checkout experience.
+ * Full-Screen, New-Age Monochrome (Black & White) PhonePe Payment Gateway UI
+ * - Replaces popup modal with authentic edge-to-edge full-screen mobile experience
+ * - Modern luxury minimalist monochrome design system (Obsidian Black & Pure White)
+ * - Retains 100% of functional PhonePe PG payment processing, UPI intent, QR, Cards & Netbanking
  */
 export default function PhonePePgCheckout() {
   const [activeSession, setActiveSession] = useState(null);
-  const [selectedTab, setSelectedTab] = useState('upi'); // 'upi' | 'card' | 'netbanking' | 'qr'
+  const [selectedTab, setSelectedTab] = useState('upi'); // 'upi' | 'qr' | 'card' | 'netbanking'
   const [vpaInput, setVpaInput] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
   const [selectedBank, setSelectedBank] = useState('HDFC');
   const [pgStatus, setPgStatus] = useState('idle'); // 'idle' | 'processing' | 'success' | 'failed'
   const [statusMessage, setStatusMessage] = useState('');
 
   useEffect(() => {
-    // Register global PhonePe PG checkout dispatcher
     registerPaymentSheetHandler((sessionConfig) => {
       setActiveSession(sessionConfig);
       setPgStatus('idle');
@@ -35,8 +37,9 @@ export default function PhonePePgCheckout() {
       setCardNumber('');
       setCardExpiry('');
       setCardCvv('');
+      setCardHolder('');
 
-      // Attempt to invoke official PhonePe standard checkout SDK if loaded
+      // Invoke official PhonePe SDK transact method if available in environment
       if (typeof window !== 'undefined' && window.PhonePeCheckout && typeof window.PhonePeCheckout.transact === 'function') {
         try {
           const tokenUrl = sessionConfig.tokenUrl || `https://mercury-uat.phonepe.com/transact?token=${Date.now()}`;
@@ -67,7 +70,6 @@ export default function PhonePePgCheckout() {
   const amount = Number(activeSession.amount) || 200;
   const txnId = activeSession.transactionId || ('MT_' + Date.now().toString(36).toUpperCase());
   const userName = activeSession?.prefill?.name || 'Customer';
-  const userPhone = activeSession?.prefill?.contact || activeSession?.prefill?.phone || '9876543210';
 
   const liveQr = generateLivePhonePeQrUrl({
     amount,
@@ -98,7 +100,7 @@ export default function PhonePePgCheckout() {
         activeSession.onSuccess(verifiedPayload);
       }
       setActiveSession(null);
-    }, 1200);
+    }, 1100);
   };
 
   const handlePayViaUpiApp = (appId) => {
@@ -117,13 +119,13 @@ export default function PhonePePgCheckout() {
         method: `${appId.toUpperCase()} UPI`,
         paymentMode: 'UPI_INTENT'
       });
-    }, 2400);
+    }, 2200);
   };
 
   const handlePayViaVpa = (e) => {
     e.preventDefault();
     if (!vpaInput.includes('@')) {
-      alert('Please enter a valid UPI ID (e.g. yourname@upi)');
+      alert('Please enter a valid UPI ID (e.g. name@upi)');
       return;
     }
     setPgStatus('processing');
@@ -135,7 +137,7 @@ export default function PhonePePgCheckout() {
         paymentMode: 'UPI_COLLECT',
         vpa: vpaInput
       });
-    }, 2200);
+    }, 2000);
   };
 
   const handlePayViaCard = (e) => {
@@ -152,7 +154,7 @@ export default function PhonePePgCheckout() {
         method: `Card ending in ${cardNumber.slice(-4)}`,
         paymentMode: 'CARD'
       });
-    }, 2000);
+    }, 1900);
   };
 
   const handlePayViaNetbanking = (bankCode) => {
@@ -165,7 +167,7 @@ export default function PhonePePgCheckout() {
         paymentMode: 'NET_BANKING',
         bank: bankCode
       });
-    }, 2000);
+    }, 1900);
   };
 
   const formatCardNumber = (val) => {
@@ -181,573 +183,796 @@ export default function PhonePePgCheckout() {
     return digits;
   };
 
+  // Card detection
+  const getCardType = () => {
+    const clean = cardNumber.replace(/\s+/g, '');
+    if (clean.startsWith('4')) return 'VISA';
+    if (/^5[1-5]/.test(clean)) return 'MASTERCARD';
+    if (/^(60|65|81|82)/.test(clean)) return 'RUPAY';
+    return 'CARD';
+  };
+
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 99999,
-        background: 'rgba(0, 0, 0, 0.72)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 999999,
+        background: '#000000',
+        color: '#FFFFFF',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+        flexDirection: 'column',
+        overflow: 'hidden',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", sans-serif',
+        animation: 'phonepePageSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
       }}
     >
-      {/* Official PhonePe PG Dialog Container */}
+      {/* =========================================================
+          TOP NAVIGATION BAR (Full-screen mobile notch safe)
+          ========================================================= */}
       <div
         style={{
-          width: '100%',
-          maxWidth: '430px',
-          background: '#FFFFFF',
-          borderRadius: '20px',
-          overflow: 'hidden',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
+          paddingTop: 'max(14px, env(safe-area-inset-top, 0px))',
+          paddingBottom: '14px',
+          paddingLeft: '18px',
+          paddingRight: '18px',
           display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '92vh',
-          animation: 'phonepeSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          background: 'rgba(10, 10, 12, 0.85)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          zIndex: 10
         }}
       >
-        {/* =========================================================
-            PhonePe Official Header
-            ========================================================= */}
-        <div
+        {/* Left: Back / Close button */}
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={pgStatus === 'processing'}
           style={{
-            background: 'linear-gradient(135deg, #5F259F 0%, #4D1E82 100%)',
-            padding: '18px 20px',
-            color: '#FFFFFF',
-            position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            gap: '6px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '999px',
+            padding: '7px 14px',
+            color: '#FFFFFF',
+            fontSize: '13px',
+            fontWeight: 650,
+            cursor: pgStatus === 'processing' ? 'not-allowed' : 'pointer',
+            transition: 'all 0.15s ease'
           }}
         >
-          {/* Logo & Merchant */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* PhonePe Iconic White 'पे' Glyph in Rounded Square */}
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                flexShrink: 0
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
-                <rect width="40" height="40" rx="8" fill="#5F259F" />
-                <path
-                  d="M20.2 9H14.5v22h4.8v-7.2h2.2c5.4 0 9.2-3.4 9.2-7.4 0-4.1-3.8-7.4-9.2-7.4zm-.2 9.9h-2.1v-5.2h2.1c2.8 0 4.6 1.1 4.6 2.6 0 1.5-1.8 2.6-4.6 2.6z"
-                  fill="#FFFFFF"
-                />
-              </svg>
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '-0.2px' }}>PhonePe</span>
-                <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.22)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.04em' }}>
-                  GATEWAY
-                </span>
-              </div>
-              <span style={{ fontSize: '12px', opacity: 0.88, display: 'block' }}>Ridingo Chauffeur Services</span>
-            </div>
-          </div>
+          <span>✕</span>
+          <span>Cancel</span>
+        </button>
 
-          {/* Amount Badge & Close Button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '10.5px', textTransform: 'uppercase', opacity: 0.75, letterSpacing: '0.05em', display: 'block' }}>
-                Amount to Pay
+        {/* Center: Official PhonePe Monochrome Branding */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '8px',
+              background: '#FFFFFF',
+              color: '#000000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 900,
+              fontSize: '16px',
+              boxShadow: '0 2px 8px rgba(255, 255, 255, 0.15)'
+            }}
+          >
+            पे
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ fontSize: '13.5px', fontWeight: 800, letterSpacing: '-0.02em', color: '#FFFFFF' }}>PhonePe</span>
+              <span style={{ fontSize: '9px', fontWeight: 800, background: '#FFFFFF', color: '#000000', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.04em' }}>
+                PG
               </span>
-              <b style={{ fontSize: '19px', fontWeight: 800 }}>₹{amount}</b>
             </div>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={pgStatus === 'processing'}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.18)',
-                border: 'none',
-                color: '#FFFFFF',
-                fontSize: '15px',
-                cursor: pgStatus === 'processing' ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'background 0.15s ease'
-              }}
-            >
-              ✕
-            </button>
+            <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.55)', letterSpacing: '0.02em' }}>
+              SECURE CHECKOUT
+            </span>
           </div>
         </div>
 
-        {/* =========================================================
-            Active Processing / Success Loader Overlay
-            ========================================================= */}
-        {pgStatus === 'processing' && (
+        {/* Right: Security Badge */}
+        <div
+          style={{
+            padding: '5px 10px',
+            borderRadius: '999px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: 'rgba(255, 255, 255, 0.75)',
+            letterSpacing: '0.02em'
+          }}
+        >
+          256-BIT
+        </div>
+      </div>
+
+      {/* =========================================================
+          PROCESSING / SUCCESS SCREEN (Sleek New-Age Monochrome)
+          ========================================================= */}
+      {pgStatus === 'processing' && (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '32px 24px',
+            textAlign: 'center'
+          }}
+        >
+          {/* Dual Ring Monochrome Spinner */}
           <div
             style={{
-              padding: '48px 24px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center'
+              position: 'relative',
+              width: '64px',
+              height: '64px',
+              marginBottom: '24px'
             }}
           >
-            {/* PhonePe Pulsing Spinner */}
             <div
               style={{
-                width: '56px',
-                height: '56px',
+                position: 'absolute',
+                inset: 0,
                 borderRadius: '50%',
-                border: '3.5px solid #F0E6FA',
-                borderTopColor: '#5F259F',
-                animation: 'phonepeSpin 0.75s linear infinite',
-                marginBottom: '18px'
+                border: '3px solid rgba(255, 255, 255, 0.12)'
               }}
             />
-            <b style={{ fontSize: '16px', color: '#1E1B26', marginBottom: '6px' }}>
-              Processing via PhonePe...
-            </b>
-            <p style={{ fontSize: '13px', color: '#666171', margin: 0 }}>
-              {statusMessage || 'Please do not press back or refresh the page'}
-            </p>
-          </div>
-        )}
-
-        {pgStatus === 'success' && (
-          <div
-            style={{
-              padding: '48px 24px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
             <div
               style={{
-                width: '64px',
-                height: '64px',
+                position: 'absolute',
+                inset: 0,
                 borderRadius: '50%',
-                background: '#ECFDF5',
-                border: '2px solid #10B981',
-                color: '#10B981',
+                border: '3px solid transparent',
+                borderTopColor: '#FFFFFF',
+                animation: 'phonepeSpin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite'
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                inset: '18px',
+                borderRadius: '50%',
+                background: '#FFFFFF',
+                color: '#000000',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '32px',
-                marginBottom: '16px'
+                fontWeight: 900,
+                fontSize: '15px'
               }}
             >
-              ✓
+              पे
             </div>
-            <b style={{ fontSize: '18px', color: '#065F46', marginBottom: '6px' }}>
-              Payment Successful!
-            </b>
-            <span style={{ fontSize: '24px', fontWeight: 800, color: '#1E1B26', marginBottom: '8px' }}>
-              ₹{amount}
-            </span>
-            <span style={{ fontSize: '12px', color: '#6B7280' }}>
-              Ref: {txnId} · Confirmed by PhonePe
-            </span>
           </div>
-        )}
 
-        {/* =========================================================
-            Official PhonePe Payment Options Tabs
-            ========================================================= */}
-        {pgStatus === 'idle' && (
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
-            {/* PhonePe PG Navigation Tabs */}
+          <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
+            Authorizing Transaction
+          </h2>
+          <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.6)', maxWidth: '280px', margin: '0 0 16px', lineHeight: 1.45 }}>
+            {statusMessage || 'Verifying credentials with PhonePe payment network...'}
+          </p>
+          <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.35)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Ref: {txnId}
+          </span>
+        </div>
+      )}
+
+      {pgStatus === 'success' && (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '32px 24px',
+            textAlign: 'center'
+          }}
+        >
+          <div
+            style={{
+              width: '72px',
+              height: '72px',
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              color: '#000000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '36px',
+              fontWeight: 900,
+              marginBottom: '20px',
+              boxShadow: '0 10px 30px rgba(255, 255, 255, 0.25)'
+            }}
+          >
+            ✓
+          </div>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
+            Payment Approved
+          </h2>
+          <span style={{ fontSize: '38px', fontWeight: 850, margin: '6px 0 14px', letterSpacing: '-0.03em' }}>
+            ₹{amount}
+          </span>
+          <div
+            style={{
+              padding: '8px 18px',
+              borderRadius: '999px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              fontSize: '12px',
+              color: 'rgba(255, 255, 255, 0.75)'
+            }}
+          >
+            Confirmed via PhonePe Payment Gateway
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          MAIN PAYMENT SCREEN BODY (Edge-to-Edge Scrollable)
+          ========================================================= */}
+      {pgStatus === 'idle' && (
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {/* HERO SUMMARY CARD (New-Age Minimalist) */}
+          <div
+            style={{
+              padding: '24px 20px 20px',
+              background: 'linear-gradient(180deg, #121215 0%, #000000 100%)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <div>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 700 }}>
+                  Order Summary
+                </span>
+                <h1 style={{ fontSize: '16px', fontWeight: 700, margin: '3px 0 0', color: '#FFFFFF' }}>
+                  Ridingo Chauffeur Services
+                </h1>
+              </div>
+              <div
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }}
+              >
+                {txnId.slice(0, 14)}
+              </div>
+            </div>
+
+            {/* Total Fare Amount Large Display */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '10px' }}>
+              <span style={{ fontSize: '38px', fontWeight: 850, letterSpacing: '-0.03em', color: '#FFFFFF' }}>
+                ₹{amount}
+              </span>
+              <span style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.55)', fontWeight: 500 }}>
+                total payable amount
+              </span>
+            </div>
+          </div>
+
+          {/* NEW-AGE SEGMENTED TABS (Sleek Monochrome Capsule) */}
+          <div style={{ padding: '16px 20px 10px' }}>
             <div
               style={{
                 display: 'flex',
-                borderBottom: '1px solid #ECE8F2',
-                background: '#FAF8FC'
+                background: '#161619',
+                padding: '4px',
+                borderRadius: '14px',
+                border: '1px solid rgba(255, 255, 255, 0.08)'
               }}
             >
               {[
                 { id: 'upi', label: 'UPI Apps' },
-                { id: 'qr', label: 'QR Code' },
+                { id: 'qr', label: 'QR Scan' },
                 { id: 'card', label: 'Cards' },
                 { id: 'netbanking', label: 'Net Banking' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSelectedTab(tab.id)}
-                  style={{
-                    flex: 1,
-                    padding: '12px 6px',
-                    fontSize: '12.5px',
-                    fontWeight: selectedTab === tab.id ? 800 : 600,
-                    color: selectedTab === tab.id ? '#5F259F' : '#6B7280',
-                    border: 'none',
-                    borderBottom: selectedTab === tab.id ? '2.5px solid #5F259F' : '2.5px solid transparent',
-                    background: selectedTab === tab.id ? '#FFFFFF' : 'transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Body */}
-            <div style={{ padding: '18px 20px', flex: 1 }}>
-              {/* TAB 1: UPI APPS (Direct PhonePe & Major Apps) */}
-              {selectedTab === 'upi' && (
-                <div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6B7280', display: 'block', marginBottom: '10px' }}>
-                    Pay via Installed UPI App
-                  </span>
-
-                  {/* Primary PhonePe One-Touch CTA */}
+              ].map(tab => {
+                const isActive = selectedTab === tab.id;
+                return (
                   <button
+                    key={tab.id}
                     type="button"
-                    onClick={() => handlePayViaUpiApp('phonepe')}
+                    onClick={() => setSelectedTab(tab.id)}
                     style={{
-                      width: '100%',
-                      padding: '14px 16px',
-                      borderRadius: '14px',
-                      background: 'linear-gradient(135deg, #5F259F 0%, #4D1E82 100%)',
-                      color: '#FFFFFF',
+                      flex: 1,
+                      padding: '10px 4px',
+                      borderRadius: '10px',
+                      fontSize: '12.5px',
+                      fontWeight: isActive ? 800 : 600,
+                      color: isActive ? '#000000' : 'rgba(255, 255, 255, 0.65)',
+                      background: isActive ? '#FFFFFF' : 'transparent',
                       border: 'none',
                       cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '14px',
-                      boxShadow: '0 4px 16px rgba(95, 37, 159, 0.28)'
+                      transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                      boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.4)' : 'none'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#5F259F', fontWeight: 900, fontSize: '18px' }}>पे</span>
-                      </div>
-                      <div style={{ textAlign: 'left' }}>
-                        <b style={{ fontSize: '14.5px', display: 'block' }}>Pay with PhonePe</b>
-                        <span style={{ fontSize: '11px', opacity: 0.85 }}>Instant UPI PIN verification</span>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '13px', fontWeight: 800, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
-                      Pay ₹{amount} ➔
-                    </span>
+                    {tab.label}
                   </button>
+                );
+              })}
+            </div>
+          </div>
 
-                  {/* Other Supported UPI Apps */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
+          {/* CONTENT SECTION ACCORDING TO ACTIVE TAB */}
+          <div style={{ padding: '8px 20px 24px', flex: 1 }}>
+            {/* =====================================================
+                TAB 1: UPI APPS (Direct PhonePe & Major Apps)
+                ===================================================== */}
+            {selectedTab === 'upi' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* HERO PHONEPE PRIMARY INSTANT BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => handlePayViaUpiApp('phonepe')}
+                  style={{
+                    width: '100%',
+                    padding: '16px 18px',
+                    borderRadius: '16px',
+                    background: '#FFFFFF',
+                    color: '#000000',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 6px 20px rgba(255, 255, 255, 0.12)',
+                    transition: 'transform 0.12s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: '#000000',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 900,
+                        fontSize: '20px'
+                      }}
+                    >
+                      पे
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <b style={{ fontSize: '15px', color: '#000000', display: 'block', letterSpacing: '-0.01em' }}>
+                        Pay via PhonePe
+                      </b>
+                      <span style={{ fontSize: '12px', color: '#555555' }}>
+                        Instant 1-Click UPI PIN authorization
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: '#000000',
+                      color: '#FFFFFF',
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      letterSpacing: '-0.01em'
+                    }}
+                  >
+                    Pay ₹{amount} ➔
+                  </div>
+                </button>
+
+                {/* OTHER SUPPORTED UPI APPS IN CLEAN MONOCHROME GRID */}
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255, 255, 255, 0.45)', display: 'block', marginBottom: '10px' }}>
+                    Other UPI Apps
+                  </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                     {[
-                      { id: 'gpay', name: 'Google Pay', icon: 'GPay' },
-                      { id: 'paytm', name: 'Paytm', icon: 'Paytm' },
-                      { id: 'cred', name: 'CRED', icon: 'CRED' },
-                      { id: 'navi', name: 'Navi', icon: 'Navi' },
-                      { id: 'bhim', name: 'BHIM', icon: 'BHIM' },
-                      { id: 'amazonpay', name: 'Amazon Pay', icon: 'Amazon' }
+                      { id: 'gpay', name: 'Google Pay' },
+                      { id: 'paytm', name: 'Paytm' },
+                      { id: 'cred', name: 'CRED' },
+                      { id: 'navi', name: 'Navi' },
+                      { id: 'bhim', name: 'BHIM' },
+                      { id: 'amazonpay', name: 'Amazon Pay' }
                     ].map(app => (
                       <button
                         key={app.id}
                         type="button"
                         onClick={() => handlePayViaUpiApp(app.id)}
                         style={{
-                          padding: '10px 6px',
-                          borderRadius: '12px',
-                          border: '1px solid #ECE8F2',
-                          background: '#FAF8FC',
+                          padding: '14px 8px',
+                          borderRadius: '14px',
+                          background: '#141416',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          color: '#FFFFFF',
                           cursor: 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '6px',
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#1E1B26' }}>{app.name}</span>
-                        <span style={{ fontSize: '10px', color: '#5F259F', fontWeight: 600 }}>Pay ₹{amount}</span>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>{app.name}</span>
+                        <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)' }}>Pay ₹{amount}</span>
                       </button>
                     ))}
                   </div>
-
-                  {/* Or Enter UPI ID Form */}
-                  <form onSubmit={handlePayViaVpa} style={{ borderTop: '1px dashed #ECE8F2', paddingTop: '12px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', display: 'block', marginBottom: '8px' }}>
-                      Or Enter any UPI ID (VPA)
-                    </span>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="text"
-                        value={vpaInput}
-                        onChange={e => setVpaInput(e.target.value)}
-                        placeholder="e.g. mobile@ybl / upi"
-                        style={{
-                          flex: 1,
-                          height: '42px',
-                          borderRadius: '10px',
-                          border: '1.5px solid #D6D0E0',
-                          padding: '0 12px',
-                          fontSize: '13px',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                      <button
-                        type="submit"
-                        style={{
-                          padding: '0 16px',
-                          height: '42px',
-                          borderRadius: '10px',
-                          background: '#5F259F',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          fontSize: '13px',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Verify & Pay
-                      </button>
-                    </div>
-                  </form>
                 </div>
-              )}
 
-              {/* TAB 2: DYNAMIC PHONEPE UPI QR CODE */}
-              {selectedTab === 'qr' && (
-                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6B7280', marginBottom: '10px' }}>
-                    Scan with PhonePe or Any UPI App
-                  </span>
-
-                  <div
-                    style={{
-                      padding: '14px',
-                      background: '#FFFFFF',
-                      borderRadius: '18px',
-                      border: '2px solid #5F259F',
-                      boxShadow: '0 4px 20px rgba(95, 37, 159, 0.15)',
-                      display: 'inline-block',
-                      marginBottom: '12px'
-                    }}
-                  >
-                    <img
-                      src={liveQr.qrImageUrl}
-                      alt="PhonePe UPI QR"
-                      style={{ width: '180px', height: '180px', display: 'block', borderRadius: '8px' }}
+                {/* UPI ID (VPA) MANUAL ENTRY FORM */}
+                <form
+                  onSubmit={handlePayViaVpa}
+                  style={{
+                    padding: '16px',
+                    borderRadius: '16px',
+                    background: '#121214',
+                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                  }}
+                >
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)', display: 'block', marginBottom: '8px' }}>
+                    Pay via Any UPI ID (VPA)
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={vpaInput}
+                      onChange={e => setVpaInput(e.target.value)}
+                      placeholder="e.g. mobile@ybl / username@okaxis"
+                      style={{
+                        flex: 1,
+                        height: '46px',
+                        borderRadius: '12px',
+                        background: '#1C1C1F',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        padding: '0 14px',
+                        fontSize: '13.5px',
+                        color: '#FFFFFF',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
                     />
+                    <button
+                      type="submit"
+                      style={{
+                        padding: '0 18px',
+                        height: '46px',
+                        borderRadius: '12px',
+                        background: '#FFFFFF',
+                        color: '#000000',
+                        border: 'none',
+                        fontSize: '13.5px',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Verify & Pay
+                    </button>
                   </div>
+                </form>
+              </div>
+            )}
 
-                  <b style={{ fontSize: '16px', color: '#1E1B26', marginBottom: '4px' }}>
-                    ₹{amount}
-                  </b>
-                  <span style={{ fontSize: '11.5px', color: '#6B7280', maxWidth: '240px', lineHeight: 1.4 }}>
-                    GPay · PhonePe · Paytm · CRED · BHIM
-                  </span>
+            {/* =====================================================
+                TAB 2: DYNAMIC PHONEPE UPI QR CODE
+                ===================================================== */}
+            {selectedTab === 'qr' && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  padding: '16px 0'
+                }}
+              >
+                <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '16px' }}>
+                  Scan with PhonePe or Any UPI App
+                </span>
 
-                  <button
-                    type="button"
-                    onClick={() => handleCompleteSuccess({ method: 'PhonePe QR Code', paymentMode: 'UPI_QR' })}
-                    style={{
-                      marginTop: '16px',
-                      padding: '10px 20px',
-                      borderRadius: '10px',
-                      background: '#ECFDF5',
-                      border: '1px solid #10B981',
-                      color: '#065F46',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Simulate QR Scan Complete ✓
-                  </button>
+                {/* Pure White Crisp QR Container with Obsidian Frame */}
+                <div
+                  style={{
+                    padding: '16px',
+                    borderRadius: '24px',
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: '0 10px 40px rgba(255, 255, 255, 0.08)',
+                    marginBottom: '16px'
+                  }}
+                >
+                  <img
+                    src={liveQr.qrImageUrl}
+                    alt="PhonePe Live UPI QR"
+                    style={{ width: '210px', height: '210px', display: 'block', borderRadius: '12px' }}
+                  />
                 </div>
-              )}
 
-              {/* TAB 3: CARDS (Credit / Debit Card) */}
-              {selectedTab === 'card' && (
-                <form onSubmit={handlePayViaCard} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '4px' }}>
+                <div style={{ fontSize: '24px', fontWeight: 850, color: '#FFFFFF', marginBottom: '4px' }}>
+                  ₹{amount}
+                </div>
+                <p style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.6)', margin: '0 0 20px', maxWidth: '280px', lineHeight: 1.45 }}>
+                  Open PhonePe, GPay, Paytm, CRED or Navi on your phone and point camera to scan
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => handleCompleteSuccess({ method: 'PhonePe QR Code', paymentMode: 'UPI_QR' })}
+                  style={{
+                    width: '100%',
+                    maxWidth: '320px',
+                    padding: '14px',
+                    borderRadius: '14px',
+                    background: '#1C1C1F',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#FFFFFF',
+                    fontSize: '13.5px',
+                    fontWeight: 750,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Simulate QR Scan Complete ✓
+                </button>
+              </div>
+            )}
+
+            {/* =====================================================
+                TAB 3: CREDIT / DEBIT CARDS
+                ===================================================== */}
+            {selectedTab === 'card' && (
+              <form onSubmit={handlePayViaCard} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
                       Card Number
+                    </label>
+                    <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700 }}>
+                      {getCardType()}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={cardNumber}
+                    onChange={e => setCardNumber(formatCardNumber(e.target.value))}
+                    placeholder="0000 0000 0000 0000"
+                    maxLength={19}
+                    required
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      borderRadius: '12px',
+                      background: '#141416',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      padding: '0 14px',
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      color: '#FFFFFF',
+                      letterSpacing: '1px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)', display: 'block', marginBottom: '6px' }}>
+                      Valid Thru (MM/YY)
                     </label>
                     <input
                       type="text"
-                      value={cardNumber}
-                      onChange={e => setCardNumber(formatCardNumber(e.target.value))}
-                      placeholder="0000 0000 0000 0000"
-                      maxLength={19}
+                      value={cardExpiry}
+                      onChange={e => setCardExpiry(formatExpiry(e.target.value))}
+                      placeholder="MM/YY"
+                      maxLength={5}
                       required
                       style={{
                         width: '100%',
-                        height: '42px',
-                        borderRadius: '10px',
-                        border: '1.5px solid #D6D0E0',
-                        padding: '0 12px',
-                        fontSize: '13.5px',
+                        height: '48px',
+                        borderRadius: '12px',
+                        background: '#141416',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        padding: '0 14px',
+                        fontSize: '14px',
                         fontWeight: 600,
-                        letterSpacing: '1px',
+                        color: '#FFFFFF',
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '4px' }}>
-                        Valid Thru (MM/YY)
-                      </label>
-                      <input
-                        type="text"
-                        value={cardExpiry}
-                        onChange={e => setCardExpiry(formatExpiry(e.target.value))}
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        required
-                        style={{
-                          width: '100%',
-                          height: '42px',
-                          borderRadius: '10px',
-                          border: '1.5px solid #D6D0E0',
-                          padding: '0 12px',
-                          fontSize: '13px',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '4px' }}>
-                        CVV
-                      </label>
-                      <input
-                        type="password"
-                        value={cardCvv}
-                        onChange={e => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                        placeholder="•••"
-                        maxLength={4}
-                        required
-                        style={{
-                          width: '100%',
-                          height: '42px',
-                          borderRadius: '10px',
-                          border: '1.5px solid #D6D0E0',
-                          padding: '0 12px',
-                          fontSize: '13px',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    style={{
-                      marginTop: '6px',
-                      height: '46px',
-                      borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #5F259F 0%, #4D1E82 100%)',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      fontSize: '14.5px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 14px rgba(95, 37, 159, 0.25)'
-                    }}
-                  >
-                    Pay ₹{amount} Securely
-                  </button>
-                </form>
-              )}
-
-              {/* TAB 4: NET BANKING */}
-              {selectedTab === 'netbanking' && (
-                <div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6B7280', display: 'block', marginBottom: '10px' }}>
-                    Select Your Bank
-                  </span>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                    {[
-                      { code: 'HDFC', name: 'HDFC Bank' },
-                      { code: 'SBI', name: 'State Bank of India' },
-                      { code: 'ICICI', name: 'ICICI Bank' },
-                      { code: 'AXIS', name: 'Axis Bank' },
-                      { code: 'KOTAK', name: 'Kotak Bank' },
-                      { code: 'PNB', name: 'Punjab National Bank' }
-                    ].map(bank => (
-                      <button
-                        key={bank.code}
-                        type="button"
-                        onClick={() => handlePayViaNetbanking(bank.code)}
-                        style={{
-                          padding: '12px 10px',
-                          borderRadius: '12px',
-                          border: '1px solid #ECE8F2',
-                          background: '#FAF8FC',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <b style={{ fontSize: '12px', color: '#1E1B26' }}>{bank.name}</b>
-                        <span style={{ fontSize: '11px', color: '#5F259F', fontWeight: 700 }}>➔</span>
-                      </button>
-                    ))}
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)', display: 'block', marginBottom: '6px' }}>
+                      CVV / Security Code
+                    </label>
+                    <input
+                      type="password"
+                      value={cardCvv}
+                      onChange={e => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="•••"
+                      maxLength={4}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '48px',
+                        borderRadius: '12px',
+                        background: '#141416',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        padding: '0 14px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        color: '#FFFFFF',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
                   </div>
                 </div>
-              )}
-            </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)', display: 'block', marginBottom: '6px' }}>
+                    Cardholder Name
+                  </label>
+                  <input
+                    type="text"
+                    value={cardHolder}
+                    onChange={e => setCardHolder(e.target.value)}
+                    placeholder="Name as on Card"
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      borderRadius: '12px',
+                      background: '#141416',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      padding: '0 14px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: '#FFFFFF',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  style={{
+                    marginTop: '8px',
+                    height: '52px',
+                    borderRadius: '14px',
+                    background: '#FFFFFF',
+                    color: '#000000',
+                    border: 'none',
+                    fontSize: '15px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(255, 255, 255, 0.18)'
+                  }}
+                >
+                  Pay ₹{amount} with Card ➔
+                </button>
+              </form>
+            )}
+
+            {/* =====================================================
+                TAB 4: NET BANKING (Major Indian Banks)
+                ===================================================== */}
+            {selectedTab === 'netbanking' && (
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255, 255, 255, 0.45)', display: 'block', marginBottom: '12px' }}>
+                  Popular Indian Banks
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                  {[
+                    { code: 'HDFC', name: 'HDFC Bank' },
+                    { code: 'SBI', name: 'State Bank of India' },
+                    { code: 'ICICI', name: 'ICICI Bank' },
+                    { code: 'AXIS', name: 'Axis Bank' },
+                    { code: 'KOTAK', name: 'Kotak Mahindra' },
+                    { code: 'PNB', name: 'Punjab National' }
+                  ].map(bank => (
+                    <button
+                      key={bank.code}
+                      type="button"
+                      onClick={() => handlePayViaNetbanking(bank.code)}
+                      style={{
+                        padding: '14px 12px',
+                        borderRadius: '14px',
+                        background: '#141416',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        color: '#FFFFFF',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <b style={{ fontSize: '13px', color: '#FFFFFF' }}>{bank.name}</b>
+                      <span style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.45)' }}>➔</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* =========================================================
-            Official PhonePe Trust & Security Footer
-            ========================================================= */}
-        <div
-          style={{
-            background: '#FAF8FC',
-            borderTop: '1px solid #ECE8F2',
-            padding: '10px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            fontSize: '11px',
-            color: '#6B7280'
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F259F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          <span>Secured by <b>PhonePe Payment Gateway</b> · PCI-DSS 256-Bit</span>
+          {/* =========================================================
+              NEW-AGE FOOTER (Monochrome Trust & Security Badges)
+              ========================================================= */}
+          <div
+            style={{
+              padding: '16px 20px max(20px, env(safe-area-inset-bottom, 0px))',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              background: '#0B0B0C',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '5px',
+                  background: '#FFFFFF',
+                  color: '#000000',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 900
+                }}
+              >
+                पे
+              </div>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>
+                PhonePe Payment Gateway
+              </span>
+            </div>
+            <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.4)' }}>
+              100% Safe & Secure · PCI-DSS Level 1 · 256-Bit SSL Encryption
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* Global animations */}
       <style>{`
-        @keyframes phonepeSlideUp {
-          from { opacity: 0; transform: translateY(24px) scale(0.97); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes phonepePageSlide {
+          from { opacity: 0; transform: translateY(100%); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes phonepeSpin {
           0% { transform: rotate(0deg); }
