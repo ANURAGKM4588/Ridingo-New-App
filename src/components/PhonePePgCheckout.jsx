@@ -12,11 +12,11 @@ import {
 import { MAJOR_UPI_APPS, triggerUpiDeepLink } from '../utils/upiDeepLink';
 
 /**
- * Full-Screen, New-Age Monochrome PhonePe Payment Gateway UI
- * - Light (White Theme): Clean pure white background (#FFFFFF), crisp black typography (#000000), correct white theme UI
- * - Dark Theme: Rich obsidian black (#000000), crisp white typography (#FFFFFF)
- * - Retains 100% of functional PhonePe PG payment processing, UPI intent, QR, Cards & Netbanking
- * - Edge-to-edge full-screen mobile screen (no popup/card container)
+ * Full-Screen Payment Options Sheet with PhonePe Gateway & Ridingo Wallet
+ * - 1. Ridingo Wallet (Recommended): First payment option with real-time balance & 1-tap payment
+ * - 2. In-Built PhonePe Gateway: Authentic PhonePe UPI, dynamic QR, Cards & Netbanking
+ * - Dynamic Theme Adaptation: Pure White (#FFFFFF) in Light Mode / Obsidian Black (#000000) in Dark Mode
+ * - Clean Header: Top PhonePe logo/text removed; displays clean "Payment Options / Secure Checkout"
  */
 export default function PhonePePgCheckout() {
   const appContext = useApp?.();
@@ -70,8 +70,6 @@ export default function PhonePePgCheckout() {
     btnCancelBg: 'rgba(255, 255, 255, 0.08)',
     btnCancelBorder: 'rgba(255, 255, 255, 0.12)',
     btnCancelColor: '#FFFFFF',
-    brandBadgeBg: '#FFFFFF',
-    brandBadgeColor: '#000000',
     badgeSecurityBg: 'rgba(255, 255, 255, 0.05)',
     badgeSecurityBorder: 'rgba(255, 255, 255, 0.1)',
     badgeSecurityColor: 'rgba(255, 255, 255, 0.75)',
@@ -122,7 +120,8 @@ export default function PhonePePgCheckout() {
     successIconShadow: '0 10px 30px rgba(255, 255, 255, 0.25)',
     successPillBg: 'rgba(255, 255, 255, 0.08)',
     successPillBorder: 'rgba(255, 255, 255, 0.15)',
-    successPillColor: 'rgba(255, 255, 255, 0.75)'
+    successPillColor: 'rgba(255, 255, 255, 0.75)',
+    walletAccent: '#FFFFFF'
   } : {
     // LIGHT THEME (Clean white bg, crisp black typography, correct white theme UI)
     bg: '#FFFFFF',
@@ -135,8 +134,6 @@ export default function PhonePePgCheckout() {
     btnCancelBg: '#F2F2F7',
     btnCancelBorder: '#E5E5EA',
     btnCancelColor: '#000000',
-    brandBadgeBg: '#000000',
-    brandBadgeColor: '#FFFFFF',
     badgeSecurityBg: '#F2F2F7',
     badgeSecurityBorder: '#E5E5EA',
     badgeSecurityColor: '#55555E',
@@ -187,7 +184,8 @@ export default function PhonePePgCheckout() {
     successIconShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
     successPillBg: '#F2F2F7',
     successPillBorder: '#E5E5EA',
-    successPillColor: '#55555E'
+    successPillColor: '#55555E',
+    walletAccent: '#000000'
   };
 
   useEffect(() => {
@@ -233,6 +231,10 @@ export default function PhonePePgCheckout() {
   const txnId = activeSession.transactionId || ('MT_' + Date.now().toString(36).toUpperCase());
   const userName = activeSession?.prefill?.name || 'Customer';
 
+  // Real-time Ridingo Wallet Balance from AppContext
+  const cleanBalance = Math.max(0, Number(appContext?.userBalance) || 0);
+  const hasSufficientWalletBal = cleanBalance >= amount;
+
   const liveQr = generateLivePhonePeQrUrl({
     amount,
     transactionId: txnId,
@@ -247,12 +249,13 @@ export default function PhonePePgCheckout() {
 
   const handleCompleteSuccess = (paymentDetails = {}) => {
     setPgStatus('success');
-    setStatusMessage('Transaction Approved by PhonePe PG');
+    const isWallet = paymentDetails.gateway === 'Ridingo Wallet' || paymentDetails.paymentMode === 'WALLET';
+    setStatusMessage(isWallet ? 'Transaction Approved by Ridingo Wallet' : 'Transaction Approved by PhonePe PG');
 
     setTimeout(() => {
       const verifiedPayload = {
-        gateway: 'PhonePe',
-        phonepe_payment_id: 'PPE' + Date.now().toString().slice(-10),
+        gateway: isWallet ? 'Ridingo Wallet' : 'PhonePe',
+        phonepe_payment_id: paymentDetails.phonepe_payment_id || ('PPE' + Date.now().toString().slice(-10)),
         phonepe_transaction_id: txnId,
         amount,
         status: 'COMPLETED',
@@ -265,12 +268,51 @@ export default function PhonePePgCheckout() {
     }, 1100);
   };
 
-  const handlePayViaUpiApp = (appId) => {
+  // 1. Pay via Ridingo Wallet (Recommended 1-Tap Payment)
+  const handlePayViaWallet = () => {
+    if (!hasSufficientWalletBal) {
+      alert(`Insufficient Ridingo Wallet balance (₹${cleanBalance}). Please pay using PhonePe below.`);
+      return;
+    }
+
     setPgStatus('processing');
-    setStatusMessage(`Connecting to ${appId.toUpperCase()} via PhonePe PG...`);
+    setStatusMessage(`Deducting ₹${amount} from Ridingo Wallet...`);
+
+    const walletPid = 'WAL_' + Date.now().toString(36).toUpperCase();
+    const walletTx = {
+      ts: Date.now(),
+      type: 'trip',
+      amount: -amount,
+      title: 'Ride Advance · Ridingo Wallet',
+      sub: `Wallet Transaction (${walletPid}) · Just now`,
+      gateway: 'Ridingo Wallet',
+      paymentId: walletPid
+    };
+
+    if (appContext?.setUtx) {
+      appContext.setUtx(prev => [walletTx, ...(Array.isArray(prev) ? prev : [])]);
+    }
+
+    setTimeout(() => {
+      handleCompleteSuccess({
+        method: 'Ridingo Wallet (Balance)',
+        paymentMode: 'WALLET',
+        phonepe_payment_id: walletPid,
+        gateway: 'Ridingo Wallet'
+      });
+      if (appContext?.addToast) {
+        appContext.addToast(`₹${amount} paid from Ridingo Wallet!`, 'check');
+      }
+    }, 1200);
+  };
+
+  // 2. Pay via PhonePe 1-Click UPI Intent
+  const handlePayViaPhonePe = () => {
+    setPgStatus('processing');
+    setStatusMessage('Connecting to PhonePe UPI Gateway...');
 
     triggerUpiDeepLink({
-      appId,
+      appId: 'phonepe',
       amount,
       orderId: txnId,
       note: `Ridingo Trip - ${txnId}`
@@ -278,12 +320,13 @@ export default function PhonePePgCheckout() {
 
     setTimeout(() => {
       handleCompleteSuccess({
-        method: `${appId.toUpperCase()} UPI`,
+        method: 'PhonePe 1-Click UPI',
         paymentMode: 'UPI_INTENT'
       });
     }, 2200);
   };
 
+  // 3. Pay via Any UPI ID (VPA Collect)
   const handlePayViaVpa = (e) => {
     e.preventDefault();
     if (!vpaInput.includes('@')) {
@@ -302,6 +345,7 @@ export default function PhonePePgCheckout() {
     }, 2000);
   };
 
+  // 4. Pay via 3D Secure Card
   const handlePayViaCard = (e) => {
     e.preventDefault();
     if (cardNumber.replace(/\s/g, '').length < 15) {
@@ -319,6 +363,7 @@ export default function PhonePePgCheckout() {
     }, 1900);
   };
 
+  // 5. Pay via Netbanking
   const handlePayViaNetbanking = (bankCode) => {
     setPgStatus('processing');
     setStatusMessage(`Redirecting to ${bankCode} Netbanking portal...`);
@@ -371,6 +416,7 @@ export default function PhonePePgCheckout() {
     >
       {/* =========================================================
           TOP NAVIGATION BAR (Full-screen mobile notch safe)
+          Clean header with PhonePe PG logo/text removed
           ========================================================= */}
       <div
         style={{
@@ -412,7 +458,7 @@ export default function PhonePePgCheckout() {
           <span>Cancel</span>
         </button>
 
-        {/* Center: Clean Payment Options Title (Top PhonePe PG branding removed as requested) */}
+        {/* Center: Clean Payment Options Title */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '-0.02em', color: theme.textPrimary }}>
             Payment Options
@@ -494,7 +540,7 @@ export default function PhonePePgCheckout() {
                 fontSize: '15px'
               }}
             >
-              पे
+              ✓
             </div>
           </div>
 
@@ -502,7 +548,7 @@ export default function PhonePePgCheckout() {
             Authorizing Transaction
           </h2>
           <p style={{ fontSize: '14px', color: theme.textSecondary, maxWidth: '280px', margin: '0 0 16px', lineHeight: 1.45 }}>
-            {statusMessage || 'Verifying credentials with PhonePe payment network...'}
+            {statusMessage || 'Verifying credentials with payment network...'}
           </p>
           <span style={{ fontSize: '11px', color: theme.textDim, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             Ref: {txnId}
@@ -559,7 +605,7 @@ export default function PhonePePgCheckout() {
               color: theme.successPillColor
             }}
           >
-            Confirmed via PhonePe Payment Gateway
+            {statusMessage || 'Confirmed via Payment Gateway'}
           </div>
         </div>
       )}
@@ -580,7 +626,7 @@ export default function PhonePePgCheckout() {
           {/* HERO SUMMARY CARD */}
           <div
             style={{
-              padding: '24px 20px 20px',
+              padding: '22px 20px 18px',
               background: theme.heroBg,
               borderBottom: `1px solid ${theme.heroBorder}`
             }}
@@ -619,8 +665,142 @@ export default function PhonePePgCheckout() {
             </div>
           </div>
 
-          {/* NEW-AGE SEGMENTED TABS */}
+          {/* =========================================================
+              1. FIRST OPTION: RIDINGO WALLET [RECOMMENDED BY APP]
+              ========================================================= */}
           <div style={{ padding: '16px 20px 10px' }}>
+            <div
+              style={{
+                padding: '16px 18px',
+                borderRadius: '16px',
+                background: theme.cardBg,
+                border: hasSufficientWalletBal 
+                  ? `1.5px solid ${theme.textPrimary}` 
+                  : `1px solid ${theme.cardBorder}`,
+                boxShadow: hasSufficientWalletBal 
+                  ? (isDark ? '0 4px 20px rgba(255,255,255,0.06)' : '0 4px 20px rgba(0,0,0,0.06)') 
+                  : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {/* Header row: Recommended Badge & Wallet Balance */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: '10px',
+                      background: theme.textPrimary,
+                      color: theme.bg,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      fontWeight: 800
+                    }}
+                  >
+                    💳
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '14.5px', fontWeight: 800, color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                        Ridingo Wallet
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '9.5px',
+                          fontWeight: 800,
+                          background: theme.textPrimary,
+                          color: theme.bg,
+                          padding: '2px 7px',
+                          borderRadius: '6px',
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        Recommended
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: theme.textMuted }}>
+                      Fastest 1-tap checkout · Zero bank failure
+                    </span>
+                  </div>
+                </div>
+
+                {/* Balance display */}
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '10px', textTransform: 'uppercase', color: theme.textMuted, fontWeight: 700, display: 'block' }}>
+                    Balance
+                  </span>
+                  <span style={{ fontSize: '15px', fontWeight: 850, color: theme.textPrimary }}>
+                    ₹{cleanBalance.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Wallet Action Button or Insufficient Status */}
+              {hasSufficientWalletBal ? (
+                <button
+                  type="button"
+                  onClick={handlePayViaWallet}
+                  disabled={pgStatus === 'processing'}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    background: theme.submitBtnBg,
+                    color: theme.submitBtnColor,
+                    border: 'none',
+                    fontSize: '13.5px',
+                    fontWeight: 800,
+                    cursor: pgStatus === 'processing' ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: theme.submitBtnShadow,
+                    transition: 'transform 0.1s ease'
+                  }}
+                >
+                  <span>Pay with Ridingo Wallet</span>
+                  <span>Pay ₹{amount} ➔</span>
+                </button>
+              ) : (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: theme.inputBg,
+                    border: `1px solid ${theme.inputBorder}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <span style={{ fontSize: '12px', color: theme.textMuted }}>
+                    Low balance (₹{cleanBalance} of ₹{amount})
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 750, color: theme.textPrimary }}>
+                    Pay via PhonePe below ↓
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* DIVIDER: OR PAY VIA PAYMENT GATEWAY */}
+          <div style={{ padding: '6px 20px 8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ flex: 1, height: '1px', background: theme.cardBorder }} />
+            <span style={{ fontSize: '10.5px', fontWeight: 750, color: theme.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Or Pay via PhonePe Gateway
+            </span>
+            <div style={{ flex: 1, height: '1px', background: theme.cardBorder }} />
+          </div>
+
+          {/* =========================================================
+              2. IN-BUILT PHONEPE GATEWAY TABS
+              ========================================================= */}
+          <div style={{ padding: '4px 20px 10px' }}>
             <div
               style={{
                 display: 'flex',
@@ -631,7 +811,7 @@ export default function PhonePePgCheckout() {
               }}
             >
               {[
-                { id: 'upi', label: 'UPI Apps' },
+                { id: 'upi', label: 'PhonePe UPI' },
                 { id: 'qr', label: 'QR Scan' },
                 { id: 'card', label: 'Cards' },
                 { id: 'netbanking', label: 'Net Banking' }
@@ -646,7 +826,7 @@ export default function PhonePePgCheckout() {
                       flex: 1,
                       padding: '10px 4px',
                       borderRadius: '10px',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: isActive ? 800 : 600,
                       color: isActive ? theme.tabActiveColor : theme.tabInactiveColor,
                       background: isActive ? theme.tabActiveBg : 'transparent',
@@ -664,16 +844,16 @@ export default function PhonePePgCheckout() {
           </div>
 
           {/* CONTENT SECTION ACCORDING TO ACTIVE TAB */}
-          <div style={{ padding: '8px 20px 24px', flex: 1 }}>
+          <div style={{ padding: '6px 20px 24px', flex: 1 }}>
             {/* =====================================================
-                TAB 1: UPI APPS (Direct PhonePe & Major Apps)
+                TAB 1: IN-BUILT PHONEPE UPI (Instant 1-Click + VPA)
                 ===================================================== */}
             {selectedTab === 'upi' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {/* HERO PHONEPE PRIMARY INSTANT BUTTON */}
                 <button
                   type="button"
-                  onClick={() => handlePayViaUpiApp('phonepe')}
+                  onClick={handlePayViaPhonePe}
                   style={{
                     width: '100%',
                     padding: '16px 18px',
@@ -708,7 +888,7 @@ export default function PhonePePgCheckout() {
                     </div>
                     <div style={{ textAlign: 'left' }}>
                       <b style={{ fontSize: '15px', color: theme.heroPayBtnColor, display: 'block', letterSpacing: '-0.01em' }}>
-                        Pay via PhonePe
+                        Pay via PhonePe UPI
                       </b>
                       <span style={{ fontSize: '12px', color: theme.heroPayBtnSubColor }}>
                         Instant 1-Click UPI PIN authorization
@@ -730,46 +910,7 @@ export default function PhonePePgCheckout() {
                   </div>
                 </button>
 
-                {/* OTHER SUPPORTED UPI APPS */}
-                <div>
-                  <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.textMuted, display: 'block', marginBottom: '10px' }}>
-                    Other UPI Apps
-                  </span>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                    {[
-                      { id: 'gpay', name: 'Google Pay' },
-                      { id: 'paytm', name: 'Paytm' },
-                      { id: 'cred', name: 'CRED' },
-                      { id: 'navi', name: 'Navi' },
-                      { id: 'bhim', name: 'BHIM' },
-                      { id: 'amazonpay', name: 'Amazon Pay' }
-                    ].map(app => (
-                      <button
-                        key={app.id}
-                        type="button"
-                        onClick={() => handlePayViaUpiApp(app.id)}
-                        style={{
-                          padding: '14px 8px',
-                          borderRadius: '14px',
-                          background: theme.cardBg,
-                          border: `1px solid ${theme.cardBorder}`,
-                          color: theme.textPrimary,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: theme.textPrimary }}>{app.name}</span>
-                        <span style={{ fontSize: '11px', color: theme.textMuted }}>Pay ₹{amount}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* UPI ID (VPA) MANUAL ENTRY FORM */}
+                {/* IN-BUILT UPI ID (VPA) COLLECT FORM */}
                 <form
                   onSubmit={handlePayViaVpa}
                   style={{
@@ -782,12 +923,12 @@ export default function PhonePePgCheckout() {
                   <label style={{ fontSize: '12px', fontWeight: 700, color: theme.textPrimary, display: 'block', marginBottom: '8px' }}>
                     Pay via Any UPI ID (VPA)
                   </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
                     <input
                       type="text"
                       value={vpaInput}
                       onChange={e => setVpaInput(e.target.value)}
-                      placeholder="e.g. mobile@ybl / username@okaxis"
+                      placeholder="e.g. 9840123456@ybl / name@okaxis"
                       style={{
                         flex: 1,
                         height: '46px',
@@ -815,8 +956,34 @@ export default function PhonePePgCheckout() {
                         cursor: 'pointer'
                       }}
                     >
-                      Verify & Pay
+                      Pay ₹{amount}
                     </button>
+                  </div>
+
+                  {/* Quick UPI Handle suggestions */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {['@ybl', '@ibl', '@okhdfcbank', '@okaxis', '@paytm'].map(suffix => (
+                      <button
+                        key={suffix}
+                        type="button"
+                        onClick={() => {
+                          const base = vpaInput.split('@')[0] || '';
+                          if (base) setVpaInput(base + suffix);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          background: theme.cardBg,
+                          border: `1px solid ${theme.cardBorder}`,
+                          color: theme.textMuted,
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {suffix}
+                      </button>
+                    ))}
                   </div>
                 </form>
               </div>
@@ -839,7 +1006,7 @@ export default function PhonePePgCheckout() {
                   Scan with PhonePe or Any UPI App
                 </span>
 
-                {/* QR Container - always white surface so cameras can reliably detect the code */}
+                {/* QR Container - pure white so phone cameras can reliably scan */}
                 <div
                   style={{
                     padding: '16px',
@@ -1110,7 +1277,7 @@ export default function PhonePePgCheckout() {
         </div>
       )}
 
-      {/* Global animations & placeholder styles */}
+      {/* Global animations & styles */}
       <style>{`
         @keyframes phonepePageSlide {
           from { opacity: 0; transform: translateY(100%); }
