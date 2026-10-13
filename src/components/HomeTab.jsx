@@ -70,8 +70,6 @@ export default function HomeTab() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [isScrolledHidden, setIsScrolledHidden] = useState(false);
-  const isHiddenRef = useRef(false);
   const searchWrapRef = useRef(null);
 
   // Close dropdown on outside click
@@ -85,82 +83,12 @@ export default function HomeTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Ensure HomeTab always lands on the very top section on load
+  // Ensure HomeTab lands smoothly at the top on load
   useEffect(() => {
     const uc = document.getElementById('u-content');
     if (uc) {
       uc.scrollTop = 0;
     }
-    isHiddenRef.current = false;
-    setIsScrolledHidden(false);
-    if (searchWrapRef.current) {
-      searchWrapRef.current.classList.remove('scrolled-hidden');
-    }
-  }, []);
-
-  // Smooth blur fade-out / fade-in scroll animation
-  useEffect(() => {
-    const uc = document.getElementById('u-content');
-    let lastScroll = 0;
-    let ticking = false;
-
-    const getScrollTop = () => {
-      if (uc) return uc.scrollTop;
-      return window.scrollY || document.documentElement.scrollTop || 0;
-    };
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const st = getScrollTop();
-          const delta = st - lastScroll;
-
-          if (st <= 10) {
-            // Near top: always show search bar
-            if (isHiddenRef.current) {
-              isHiddenRef.current = false;
-              setIsScrolledHidden(false);
-              if (searchWrapRef.current) {
-                searchWrapRef.current.classList.remove('scrolled-hidden');
-              }
-            }
-          } else if (delta > 1.8 && st > 20) {
-            // Scrolling down: smooth minimal blur fade-out
-            if (!isHiddenRef.current) {
-              isHiddenRef.current = true;
-              setIsScrolledHidden(true);
-              setSearchOpen(false);
-              if (searchWrapRef.current) {
-                searchWrapRef.current.classList.add('scrolled-hidden');
-              }
-            }
-          } else if (delta < -3) {
-            // Scrolling up: smooth blur fade-in
-            if (isHiddenRef.current) {
-              isHiddenRef.current = false;
-              setIsScrolledHidden(false);
-              if (searchWrapRef.current) {
-                searchWrapRef.current.classList.remove('scrolled-hidden');
-              }
-            }
-          }
-
-          lastScroll = Math.max(0, st);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    if (uc) {
-      uc.addEventListener('scroll', handleScroll, { passive: true });
-    }
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      if (uc) uc.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('scroll', handleScroll);
-    };
   }, []);
 
   const inProg = (trips || []).find(t => t.status === 'inprogress' || t.status === 'ending_otp');
@@ -500,7 +428,7 @@ export default function HomeTab() {
 
       {/* Destination Search Bar with Typing Feature & Autocomplete */}
       <div
-        className={`search-wrap stagger-2 ${isScrolledHidden ? 'scrolled-hidden' : ''}`}
+        className="search-wrap stagger-2"
         id="u-search-wrap"
         ref={searchWrapRef}
         style={{ position: 'relative', zIndex: 20 }}
@@ -932,6 +860,28 @@ export default function HomeTab() {
           </div>
         ))}
       </div>
+
+      {/* Generous bottom scroll breathing room & brand footer */}
+      <div
+        style={{
+          marginTop: '36px',
+          marginBottom: '28px',
+          padding: '16px 0',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px'
+        }}
+      >
+        <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', opacity: 0.8 }}>
+          Ridingo Premium Chauffeurs
+        </span>
+        <span style={{ fontSize: '11px', color: 'var(--meter-dim)', opacity: 0.65 }}>
+          Verified drivers for your personal vehicle
+        </span>
+      </div>
+
       {/* Map Picker Modal */}
       <MapPickerModal
         isOpen={mapModalOpen}
