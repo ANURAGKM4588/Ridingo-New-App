@@ -70,6 +70,8 @@ export default function HomeTab() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [isSearchHidden, setIsSearchHidden] = useState(false);
+  const isHiddenRef = useRef(false);
   const searchWrapRef = useRef(null);
 
   // Close dropdown on outside click
@@ -89,6 +91,64 @@ export default function HomeTab() {
     if (uc) {
       uc.scrollTop = 0;
     }
+    isHiddenRef.current = false;
+    setIsSearchHidden(false);
+  }, []);
+
+  // Smooth Apple-grade scroll animation for search section
+  useEffect(() => {
+    const uc = document.getElementById('u-content');
+    let lastScroll = uc ? uc.scrollTop : 0;
+    let ticking = false;
+
+    const getScrollTop = () => {
+      if (uc) return uc.scrollTop;
+      return window.scrollY || document.documentElement.scrollTop || 0;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const st = getScrollTop();
+          const delta = st - lastScroll;
+
+          if (st <= 60) {
+            // Near top: always keep search bar smoothly visible
+            if (isHiddenRef.current) {
+              isHiddenRef.current = false;
+              setIsSearchHidden(false);
+            }
+          } else if (delta > 5 && st > 110) {
+            // Scrolling down past header with real momentum: smoothly tuck away
+            if (!isHiddenRef.current) {
+              isHiddenRef.current = true;
+              setIsSearchHidden(true);
+              setSearchOpen(false);
+            }
+          } else if (delta < -6) {
+            // Scrolling up: smooth fluid reveal
+            if (isHiddenRef.current) {
+              isHiddenRef.current = false;
+              setIsSearchHidden(false);
+            }
+          }
+
+          lastScroll = Math.max(0, st);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    if (uc) {
+      uc.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      if (uc) uc.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const inProg = (trips || []).find(t => t.status === 'inprogress' || t.status === 'ending_otp');
@@ -428,7 +488,7 @@ export default function HomeTab() {
 
       {/* Destination Search Bar with Typing Feature & Autocomplete */}
       <div
-        className="search-wrap stagger-2"
+        className={`search-wrap stagger-2 ${isSearchHidden ? 'scrolled-hidden' : ''}`}
         id="u-search-wrap"
         ref={searchWrapRef}
         style={{ position: 'relative', zIndex: 20 }}
@@ -861,26 +921,8 @@ export default function HomeTab() {
         ))}
       </div>
 
-      {/* Generous bottom scroll breathing room & brand footer */}
-      <div
-        style={{
-          marginTop: '36px',
-          marginBottom: '28px',
-          padding: '16px 0',
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '6px'
-        }}
-      >
-        <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', opacity: 0.8 }}>
-          Ridingo Premium Chauffeurs
-        </span>
-        <span style={{ fontSize: '11px', color: 'var(--meter-dim)', opacity: 0.65 }}>
-          Verified drivers for your personal vehicle
-        </span>
-      </div>
+      {/* Generous bottom scroll breathing room without visible text */}
+      <div style={{ height: '48px', width: '100%', flexShrink: 0 }} aria-hidden="true" />
 
       {/* Map Picker Modal */}
       <MapPickerModal
