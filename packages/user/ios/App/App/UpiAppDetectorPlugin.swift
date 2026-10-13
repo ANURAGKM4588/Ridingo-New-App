@@ -26,6 +26,7 @@ public class UpiAppDetectorPlugin: CAPPlugin, CAPBridgedPlugin {
         UpiAppCandidate(id: "navi", scheme: "navi", appName: "Navi UPI", packageName: "com.naviapp"),
         UpiAppCandidate(id: "cred", scheme: "credpay", appName: "CRED", packageName: "com.dreamplug.androidapp"),
         UpiAppCandidate(id: "supermoney", scheme: "supermoney", appName: "super.money", packageName: "money.super.app"),
+        UpiAppCandidate(id: "applepay", scheme: "shoebox", appName: "Apple Pay", packageName: "com.apple.wallet"),
         UpiAppCandidate(id: "jupiter", scheme: "jupiter", appName: "Jupiter", packageName: "money.jupiter"),
         UpiAppCandidate(id: "paytm", scheme: "paytmmp", appName: "Paytm", packageName: "net.one97.paytm"),
         UpiAppCandidate(id: "bhim", scheme: "bhim", appName: "BHIM UPI", packageName: "in.org.npci.upiapp"),

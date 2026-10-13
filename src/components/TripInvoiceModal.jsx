@@ -78,7 +78,7 @@ export default function TripInvoiceModal({
         style={{
           width: '100%',
           maxWidth: '430px',
-          background: '#FFFFFF',
+          background: 'var(--sheet, #FFFFFF)',
           borderTopLeftRadius: '24px',
           borderTopRightRadius: '24px',
           maxHeight: '94vh',
@@ -89,15 +89,15 @@ export default function TripInvoiceModal({
         }}
       >
         {/* Grab bar */}
-        <div style={{ width: '36px', height: '4px', background: '#E2E8F0', borderRadius: '999px', margin: '10px auto 4px' }} />
+        <div style={{ width: '36px', height: '4px', background: 'var(--line-strong, #E2E8F0)', borderRadius: '999px', margin: '10px auto 4px' }} />
 
         {/* Header */}
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--line, #F1F5F9)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#2563EB', letterSpacing: '0.06em' }}>
               TRIP COMPLETE · DIGITAL SETTLEMENT
             </span>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '2px 0 0' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink, #0F172A)', margin: '2px 0 0' }}>
               Final Invoice & Payment
             </h2>
           </div>
@@ -108,13 +108,13 @@ export default function TripInvoiceModal({
               width: '32px',
               height: '32px',
               borderRadius: '50%',
-              background: '#F1F5F9',
+              background: 'var(--field, #F1F5F9)',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#64748B'
+              color: 'var(--muted, #64748B)'
             }}
           >
             <Icon name="x" size={16} />
@@ -124,10 +124,10 @@ export default function TripInvoiceModal({
         {/* Scrollable Body */}
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Fare Summary Card */}
-          <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '16px', border: '1px solid #E2E8F0' }}>
+          <div style={{ background: 'var(--card, #F8FAFC)', borderRadius: '16px', padding: '16px', border: '1px solid var(--line, #E2E8F0)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13px' }}>
-              <span style={{ color: '#64748B' }}>Total Trip Fare</span>
-              <b style={{ color: '#0F172A' }}>₹{baseFare}</b>
+              <span style={{ color: 'var(--muted, #64748B)' }}>Total Trip Fare</span>
+              <b style={{ color: 'var(--ink, #0F172A)' }}>₹{baseFare}</b>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13px' }}>
               <span style={{ color: '#16A34A' }}>Advance Paid (30%)</span>
@@ -139,13 +139,13 @@ export default function TripInvoiceModal({
                 <span style={{ color: '#2563EB', fontWeight: 600 }}>+ ₹{tipAmount}</span>
               </div>
             )}
-            <div style={{ height: '1px', background: '#E2E8F0', margin: '10px 0' }} />
+            <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '10px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <div>
-                <b style={{ fontSize: '15px', color: '#0F172A' }}>Total Payable Balance</b>
-                <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>Includes 18% GST & Platform Escrow</span>
+                <b style={{ fontSize: '15px', color: 'var(--ink, #0F172A)' }}>Total Payable Balance</b>
+                <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', display: 'block' }}>Includes 18% GST & Platform Escrow</span>
               </div>
-              <b style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>
+              <b style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink, #0F172A)' }}>
                 ₹{totalAmountToPay}
               </b>
             </div>
@@ -154,7 +154,7 @@ export default function TripInvoiceModal({
           {/* Add Tips Section */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <b style={{ fontSize: '13px', color: '#0F172A' }}>Add Tip for Chauffeur</b>
+              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Add Tip for Chauffeur</b>
               <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>100% credited to chauffeur</span>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -171,9 +171,9 @@ export default function TripInvoiceModal({
                     style={{
                       padding: '8px 14px',
                       borderRadius: '12px',
-                      border: isSelected ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
-                      background: isSelected ? '#0F172A' : '#FFFFFF',
-                      color: isSelected ? '#FFFFFF' : '#475569',
+                      border: isSelected ? '1.5px solid var(--ink, #0F172A)' : '1px solid var(--line, #E2E8F0)',
+                      background: isSelected ? 'var(--solid, #0F172A)' : 'var(--card, #FFFFFF)',
+                      color: isSelected ? 'var(--on-solid, #FFFFFF)' : 'var(--muted, #475569)',
                       fontSize: '13px',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -190,10 +190,10 @@ export default function TripInvoiceModal({
           {/* Animated Razorpay Live UPI QR Code */}
           <div
             style={{
-              background: '#FFFFFF',
+              background: 'var(--card, #FFFFFF)',
               borderRadius: '20px',
               padding: '16px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid var(--line, #E2E8F0)',
               boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
               display: 'flex',
               flexDirection: 'column',
@@ -203,7 +203,7 @@ export default function TripInvoiceModal({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} />
-              <b style={{ fontSize: '13px', color: '#0F172A' }}>Scan Razorpay UPI QR Code</b>
+              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Scan Razorpay UPI QR Code</b>
             </div>
 
             {/* Live QR Image */}
@@ -212,7 +212,7 @@ export default function TripInvoiceModal({
                 padding: '12px',
                 background: '#FFFFFF',
                 borderRadius: '16px',
-                border: '1.5px solid #F1F5F9',
+                border: '1.5px solid var(--line, #F1F5F9)',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
               }}
             >
@@ -223,14 +223,14 @@ export default function TripInvoiceModal({
               />
             </div>
 
-            <span style={{ fontSize: '12px', color: '#64748B', marginTop: '10px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)', marginTop: '10px' }}>
               Scan with any UPI App: GPay, PhonePe, Paytm, CRED, Navi
             </span>
           </div>
 
           {/* Quick Pay with Installed UPI Apps */}
           <div>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted, #64748B)', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
               Instant Pay with UPI Apps
             </span>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
@@ -242,8 +242,8 @@ export default function TripInvoiceModal({
                   style={{
                     padding: '10px 4px',
                     borderRadius: '12px',
-                    border: '1px solid #E2E8F0',
-                    background: '#FFFFFF',
+                    border: '1px solid var(--line, #E2E8F0)',
+                    background: 'var(--card, #FFFFFF)',
                     cursor: 'pointer',
                     display: 'flex',
                     flexDirection: 'column',
@@ -251,7 +251,7 @@ export default function TripInvoiceModal({
                     gap: '4px'
                   }}
                 >
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink, #0F172A)' }}>
                     {app.name}
                   </span>
                 </button>
@@ -264,15 +264,15 @@ export default function TripInvoiceModal({
             style={{
               borderRadius: '16px',
               padding: '14px',
-              background: '#FEF2F2',
-              border: '1.5px solid #FCA5A5'
+              background: 'var(--bad-soft, #FEF2F2)',
+              border: '1.5px solid rgba(220, 38, 38, 0.4)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <span style={{ fontSize: '16px' }}>⚠️</span>
-              <b style={{ fontSize: '13px', color: '#991B1B' }}>Cash Payments Strictly Prohibited</b>
+              <b style={{ fontSize: '13px', color: 'var(--bad, #991B1B)' }}>Cash Payments Strictly Prohibited</b>
             </div>
-            <p style={{ fontSize: '11.5px', color: '#7F1D1D', margin: '0 0 10px', lineHeight: 1.45 }}>
+            <p style={{ fontSize: '11.5px', color: 'var(--bad, #7F1D1D)', margin: '0 0 10px', lineHeight: 1.45 }}>
               All Ridingo payments must be digital. If a chauffeur accepts cash from the customer, <b>1 Black Mark / Penalty Point</b> will be permanently added to the chauffeur profile.
             </p>
 
@@ -283,9 +283,9 @@ export default function TripInvoiceModal({
                 width: '100%',
                 padding: '10px',
                 borderRadius: '10px',
-                background: '#FFFFFF',
-                border: '1px solid #DC2626',
-                color: '#DC2626',
+                background: 'var(--card, #FFFFFF)',
+                border: '1px solid var(--bad, #DC2626)',
+                color: 'var(--bad, #DC2626)',
                 fontSize: '12px',
                 fontWeight: 700,
                 cursor: 'pointer'
@@ -297,7 +297,7 @@ export default function TripInvoiceModal({
         </div>
 
         {/* Footer Complete Button */}
-        <div style={{ padding: '16px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))', borderTop: '1px solid #F1F5F9', background: '#FFFFFF' }}>
+        <div style={{ padding: '16px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))', borderTop: '1px solid var(--line, #F1F5F9)', background: 'var(--sheet, #FFFFFF)' }}>
           <button
             type="button"
             onClick={() => handleQuickUpiPay('generic')}
@@ -306,11 +306,11 @@ export default function TripInvoiceModal({
               width: '100%',
               padding: '14px',
               borderRadius: '14px',
-              background: '#000000',
-              color: '#FFFFFF',
+              background: 'var(--solid, #000000)',
+              color: 'var(--on-solid, #FFFFFF)',
               fontSize: '15px',
               fontWeight: 800,
-              border: '1.5px solid #000000',
+              border: '1.5px solid var(--solid, #000000)',
               cursor: 'pointer',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
             }}
@@ -327,7 +327,7 @@ export default function TripInvoiceModal({
             position: 'fixed',
             inset: 0,
             zIndex: 250,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(0,0,0,0.7)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -336,22 +336,23 @@ export default function TripInvoiceModal({
         >
           <div
             style={{
-              background: '#FFFFFF',
+              background: 'var(--card, #FFFFFF)',
               borderRadius: '20px',
               padding: '24px',
               maxWidth: '340px',
               width: '100%',
               textAlign: 'center',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+              border: '1px solid var(--line, rgba(255,255,255,0.1))'
             }}
           >
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '24px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--bad-soft, #FEE2E2)', color: 'var(--bad, #DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '24px' }}>
               ⚠️
             </div>
-            <b style={{ fontSize: '17px', color: '#0F172A', display: 'block', marginBottom: '8px' }}>
+            <b style={{ fontSize: '17px', color: 'var(--ink, #0F172A)', display: 'block', marginBottom: '8px' }}>
               Confirm Cash Violation?
             </b>
-            <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.45, margin: '0 0 20px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: '0 0 20px' }}>
               Accepting cash is a direct policy violation. You will receive <b>1 Black Mark</b> on your chauffeur profile and platform trust score will decrease.
             </p>
 
@@ -363,9 +364,9 @@ export default function TripInvoiceModal({
                   flex: 1,
                   padding: '12px',
                   borderRadius: '12px',
-                  background: '#F1F5F9',
+                  background: 'var(--field, #F1F5F9)',
                   border: 'none',
-                  color: '#475569',
+                  color: 'var(--muted, #475569)',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -380,7 +381,7 @@ export default function TripInvoiceModal({
                   flex: 1,
                   padding: '12px',
                   borderRadius: '12px',
-                  background: '#DC2626',
+                  background: 'var(--bad, #DC2626)',
                   border: 'none',
                   color: '#FFFFFF',
                   fontSize: '13px',

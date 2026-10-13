@@ -752,11 +752,11 @@ export default function BookingSheet() {
                   style={{
                     fontSize: '11px',
                     fontWeight: 700,
-                    color: '#000000',
-                    background: '#FFFFFF',
+                    color: 'var(--ink, #000000)',
+                    background: 'var(--card, #FFFFFF)',
                     padding: '2px 8px',
                     borderRadius: '6px',
-                    border: '1px solid #E2E8F0'
+                    border: '1px solid var(--line, #E2E8F0)'
                   }}
                 >
                   {isFlat ? 'Flat route' : `${qty} ${qty > 1 ? currentCat.units : currentCat.unit}`}
@@ -814,14 +814,14 @@ export default function BookingSheet() {
               {/* Total Fare */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#000000' }}>
+                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink, #000000)' }}>
                     Total Trip Fare
                   </span>
                   <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
                     Driver gets ₹{remaining} after trip
                   </span>
                 </div>
-                <span style={{ fontSize: '17px', fontWeight: 800, color: '#000000', fontFamily: 'var(--font-mono, monospace)' }}>
+                <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink, #000000)', fontFamily: 'var(--font-mono, monospace)' }}>
                   ₹{fare}
                 </span>
               </div>
@@ -858,7 +858,7 @@ export default function BookingSheet() {
                     style={{
                       fontSize: '26px',
                       fontWeight: 900,
-                      color: '#000000',
+                      color: 'var(--ink, #000000)',
                       letterSpacing: '-0.03em',
                       fontFamily: 'var(--font-mono, monospace)',
                       lineHeight: 1
@@ -875,7 +875,7 @@ export default function BookingSheet() {
                     marginTop: '3px'
                   }}
                 >
-                  Total: <b style={{ color: '#000000', fontWeight: 750 }}>₹{fare}</b>
+                  Total: <b style={{ color: 'var(--ink, #000000)', fontWeight: 750 }}>₹{fare}</b>
                 </span>
               </div>
 
@@ -893,9 +893,9 @@ export default function BookingSheet() {
                   fontWeight: 800,
                   fontSize: '14.5px',
                   cursor: 'pointer',
-                  background: '#000000',
-                  color: '#FFFFFF',
-                  border: '1.5px solid #000000',
+                  background: 'var(--solid, #000000)',
+                  color: 'var(--on-solid, #FFFFFF)',
+                  border: '1.5px solid var(--solid, #000000)',
                   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
                   display: 'flex',
                   alignItems: 'center',
@@ -907,7 +907,7 @@ export default function BookingSheet() {
                 onClick={handleSubmit}
               >
                 <span>Pay Advance</span>
-                <span style={{ color: '#FFFFFF', fontSize: '15px' }}>➔</span>
+                <span style={{ color: 'var(--on-solid, #FFFFFF)', fontSize: '15px' }}>➔</span>
               </button>
             </div>
           </>

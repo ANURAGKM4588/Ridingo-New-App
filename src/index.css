@@ -170,7 +170,9 @@ img {
   --muted: #9A9AA1;
   --line: #2C2C2E;
   --line-strong: #48484A;
-  --yellow-soft: #3A3208;
+  --yellow: #FFC70A;
+  --on-yellow: #000000;
+  --yellow-soft: rgba(255, 199, 10, 0.18);
   --chip: #2C2C2E;
   --bar: #3A3A3C;
   --solid: #F5F5F7;
@@ -1420,6 +1422,22 @@ button.btn-primary,
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16) !important;
 }
 
+[data-theme="dark"] .btn.primary,
+[data-theme="dark"] .btn.solid,
+[data-theme="dark"] button.btn-primary,
+[data-theme="dark"] .cta-btn,
+[data-theme="dark"] .action-btn-black,
+:root[data-theme="dark"] .btn.primary,
+:root[data-theme="dark"] .btn.solid,
+:root[data-theme="dark"] button.btn-primary,
+:root[data-theme="dark"] .cta-btn,
+:root[data-theme="dark"] .action-btn-black {
+  background: #F5F5F7 !important;
+  color: #0B0B0C !important;
+  border: 1.5px solid #F5F5F7 !important;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1) !important;
+}
+
 .btn.primary:hover,
 .btn.solid:hover,
 button.btn-primary:hover,
@@ -1428,6 +1446,21 @@ button.btn-primary:hover,
   background: #18181B !important;
   border-color: #18181B !important;
   color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .btn.primary:hover,
+[data-theme="dark"] .btn.solid:hover,
+[data-theme="dark"] button.btn-primary:hover,
+[data-theme="dark"] .cta-btn:hover,
+[data-theme="dark"] .action-btn-black:hover,
+:root[data-theme="dark"] .btn.primary:hover,
+:root[data-theme="dark"] .btn.solid:hover,
+:root[data-theme="dark"] button.btn-primary:hover,
+:root[data-theme="dark"] .cta-btn:hover,
+:root[data-theme="dark"] .action-btn-black:hover {
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+  color: #000000 !important;
 }
 
 .btn.primary:active,
@@ -1439,6 +1472,21 @@ button.btn-primary:active,
   border-color: #27272A !important;
   color: #FFFFFF !important;
   transform: scale(0.98) !important;
+}
+
+[data-theme="dark"] .btn.primary:active,
+[data-theme="dark"] .btn.solid:active,
+[data-theme="dark"] button.btn-primary:active,
+[data-theme="dark"] .cta-btn:active,
+[data-theme="dark"] .action-btn-black:active,
+:root[data-theme="dark"] .btn.primary:active,
+:root[data-theme="dark"] .btn.solid:active,
+:root[data-theme="dark"] button.btn-primary:active,
+:root[data-theme="dark"] .cta-btn:active,
+:root[data-theme="dark"] .action-btn-black:active {
+  background: #E4E4E7 !important;
+  border-color: #E4E4E7 !important;
+  color: #000000 !important;
 }
 
 .btn.line,
@@ -2025,13 +2073,17 @@ button.btn-primary:active,
 
 .bento-badge {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: .04em;
   text-transform: uppercase;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: var(--yellow-soft);
-  color: var(--on-yellow);
+  background: var(--yellow) !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 8px rgba(255, 199, 10, 0.28);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .bento-hero-cta {

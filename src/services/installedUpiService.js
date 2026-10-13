@@ -13,31 +13,87 @@ import { registerPlugin, Capacitor } from '@capacitor/core';
 // Register native Android UpiAppDetector Capacitor plugin
 export const UpiAppDetector = registerPlugin('UpiAppDetector');
 
-export const KNOWN_UPI_APPS = [
-  {
-    id: 'gpay',
-    name: 'Google Pay',
-    subName: 'GPay',
-    scheme: 'tez',
-    testUrl: 'tez://upi/pay',
-    testUrls: ['tez://upi/pay', 'tez://', 'gpay://'],
-    launchPrefix: 'tez://upi/pay',
-    packageName: 'com.google.android.apps.nbu.paisa.user',
-    color: '#4285F4',
-    priority: 1
-  },
+// 5 Preset UPI Apps requested specifically by user (PhonePe, Google Pay, Apple Pay, CRED, super.money)
+export const PRESET_UPI_APPS = [
   {
     id: 'phonepe',
     name: 'PhonePe',
-    subName: 'PhonePe',
+    subName: 'Instant UPI Payments',
     scheme: 'phonepe',
     testUrl: 'phonepe://pay',
     testUrls: ['phonepe://pay', 'phonepe://'],
     launchPrefix: 'phonepe://pay',
     packageName: 'com.phonepe.app',
+    appStoreId: '1170055821',
+    appStoreUrl: 'https://apps.apple.com/in/app/phonepe-payments-recharge/id1170055821',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.phonepe.app',
     color: '#5F259F',
+    priority: 1
+  },
+  {
+    id: 'gpay',
+    name: 'Google Pay',
+    subName: 'Google Pay UPI',
+    scheme: 'tez',
+    testUrl: 'tez://upi/pay',
+    testUrls: ['tez://upi/pay', 'tez://', 'gpay://'],
+    launchPrefix: 'tez://upi/pay',
+    packageName: 'com.google.android.apps.nbu.paisa.user',
+    appStoreId: '1193357041',
+    appStoreUrl: 'https://apps.apple.com/in/app/google-pay-save-pay-with-upi/id1193357041',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',
+    color: '#4285F4',
     priority: 2
   },
+  {
+    id: 'applepay',
+    name: 'Apple Pay',
+    subName: 'Apple Wallet & Pay',
+    scheme: 'shoebox',
+    testUrl: 'shoebox://',
+    testUrls: ['shoebox://'],
+    launchPrefix: 'shoebox://',
+    packageName: null,
+    appStoreId: '1160487578',
+    appStoreUrl: 'https://apps.apple.com/in/app/apple-wallet/id1160487578',
+    playStoreUrl: 'https://www.apple.com/apple-pay/',
+    color: '#000000',
+    priority: 3
+  },
+  {
+    id: 'cred',
+    name: 'CRED',
+    subName: 'CRED Pay UPI',
+    scheme: 'credpay',
+    testUrl: 'credpay://pay',
+    testUrls: ['credpay://pay', 'credpay://', 'cred://'],
+    launchPrefix: 'credpay://pay',
+    packageName: 'com.dreamplug.androidapp',
+    appStoreId: '1422888280',
+    appStoreUrl: 'https://apps.apple.com/in/app/cred-credit-card-bills/id1422888280',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.dreamplug.androidapp',
+    color: '#0F172A',
+    priority: 4
+  },
+  {
+    id: 'supermoney',
+    name: 'super.money',
+    subName: 'Super UPI & 5% Cashback',
+    scheme: 'supermoney',
+    testUrl: 'supermoney://pay',
+    testUrls: ['supermoney://pay', 'supermoney://'],
+    launchPrefix: 'supermoney://pay',
+    packageName: 'money.super.app',
+    appStoreId: '6503923053',
+    appStoreUrl: 'https://apps.apple.com/in/app/super-money-upi-rewards/id6503923053',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=money.super.app',
+    color: '#7C3AED',
+    priority: 5
+  }
+];
+
+export const KNOWN_UPI_APPS = [
+  ...PRESET_UPI_APPS,
   {
     id: 'navi',
     name: 'Navi UPI',
@@ -47,32 +103,11 @@ export const KNOWN_UPI_APPS = [
     testUrls: ['navi://pay', 'navi://', 'naviapp://'],
     launchPrefix: 'navi://pay',
     packageName: 'com.naviapp',
+    appStoreId: '1585860477',
+    appStoreUrl: 'https://apps.apple.com/in/app/navi-upi-loans-investments/id1585860477',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.naviapp',
     color: '#00D09C',
-    priority: 3
-  },
-  {
-    id: 'cred',
-    name: 'CRED Pay',
-    subName: 'CRED',
-    scheme: 'credpay',
-    testUrl: 'credpay://pay',
-    testUrls: ['credpay://pay', 'credpay://', 'cred://'],
-    launchPrefix: 'credpay://pay',
-    packageName: 'com.dreamplug.androidapp',
-    color: '#0F172A',
-    priority: 4
-  },
-  {
-    id: 'supermoney',
-    name: 'super.money',
-    subName: 'SuperMoney',
-    scheme: 'supermoney',
-    testUrl: 'supermoney://pay',
-    testUrls: ['supermoney://pay', 'supermoney://'],
-    launchPrefix: 'supermoney://pay',
-    packageName: 'money.super.app',
-    color: '#7C3AED',
-    priority: 5
+    priority: 6
   },
   {
     id: 'jupiter',
@@ -83,8 +118,11 @@ export const KNOWN_UPI_APPS = [
     testUrls: ['jupiter://pay', 'jupiter://'],
     launchPrefix: 'jupiter://pay',
     packageName: 'money.jupiter',
+    appStoreId: '1533519803',
+    appStoreUrl: 'https://apps.apple.com/in/app/jupiter-money-upi-cards/id1533519803',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=money.jupiter',
     color: '#FF725E',
-    priority: 6
+    priority: 7
   },
   {
     id: 'paytm',
@@ -95,8 +133,11 @@ export const KNOWN_UPI_APPS = [
     testUrls: ['paytmmp://pay', 'paytmmp://', 'paytm://'],
     launchPrefix: 'paytmmp://pay',
     packageName: 'net.one97.paytm',
+    appStoreId: '473941634',
+    appStoreUrl: 'https://apps.apple.com/in/app/paytm-secure-upi-payments/id473941634',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=net.one97.paytm',
     color: '#00BAF2',
-    priority: 7
+    priority: 8
   },
   {
     id: 'bhim',
@@ -107,8 +148,11 @@ export const KNOWN_UPI_APPS = [
     testUrls: ['bhim://pay', 'bhim://'],
     launchPrefix: 'bhim://pay',
     packageName: 'in.org.npci.upiapp',
+    appStoreId: '1200315595',
+    appStoreUrl: 'https://apps.apple.com/in/app/bhim-making-india-cashless/id1200315595',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=in.org.npci.upiapp',
     color: '#00833E',
-    priority: 8
+    priority: 9
   },
   {
     id: 'amazonpay',
@@ -119,12 +163,91 @@ export const KNOWN_UPI_APPS = [
     testUrls: ['amazonpay://pay', 'amazonpay://'],
     launchPrefix: 'amazonpay://pay',
     packageName: 'in.amazon.mShop.android.shopping',
+    appStoreId: '297606951',
+    appStoreUrl: 'https://apps.apple.com/in/app/amazon-india-shop-pay-minitv/id297606951',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=in.amazon.mShop.android.shopping',
     color: '#FF9900',
-    priority: 9
+    priority: 10
   }
 ];
 
-export const PRIORITIZED_UPI_IDS = ['gpay', 'phonepe', 'navi', 'cred', 'supermoney', 'jupiter'];
+export const PRIORITIZED_UPI_IDS = ['phonepe', 'gpay', 'applepay', 'cred', 'supermoney'];
+
+/**
+ * Checks if a specific app is installed on the user's device
+ */
+export async function checkAppInstalled(app) {
+  if (!app) return false;
+
+  // 1. Apple Pay check
+  if (app.id === 'applepay') {
+    const isIOSDevice = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (typeof window !== 'undefined' && (window.Capacitor?.getPlatform?.() === 'ios' || Capacitor?.getPlatform?.() === 'ios')));
+    if (!isIOSDevice) return false;
+    if (typeof window !== 'undefined' && window.ApplePaySession && typeof window.ApplePaySession.canMakePayments === 'function') {
+      try {
+        if (window.ApplePaySession.canMakePayments()) return true;
+      } catch (e) {}
+    }
+    return canOpenUrlSafely('shoebox://');
+  }
+
+  // 2. Native iOS / Android check via UpiAppDetector or AppLauncher
+  if (typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || Capacitor?.isNativePlatform?.())) {
+    const testCandidates = app.testUrls || [app.testUrl];
+    for (const testUrl of testCandidates) {
+      try {
+        const canOpen = await canOpenUrlSafely(testUrl);
+        if (canOpen) return true;
+      } catch (e) {}
+    }
+    return false;
+  }
+
+  // 3. Web or desktop browser environment:
+  // Cannot query device installed apps directly due to browser sandboxing.
+  return false;
+}
+
+/**
+ * Redirects the user directly to the official App Store (iOS) or Google Play Store (Android)
+ * if the app is not installed on their device.
+ */
+export function openAppStoreForApp(app) {
+  if (!app) return false;
+
+  const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (typeof window !== 'undefined' && (window.Capacitor?.getPlatform?.() === 'ios' || Capacitor?.getPlatform?.() === 'ios')));
+  const isAndroid = typeof navigator !== 'undefined' && (/Android/.test(navigator.userAgent) ||
+    (typeof window !== 'undefined' && (window.Capacitor?.getPlatform?.() === 'android' || Capacitor?.getPlatform?.() === 'android')));
+
+  let targetUrl = '';
+  if (isIOS) {
+    targetUrl = app.appStoreUrl || (app.appStoreId ? `https://apps.apple.com/app/id${app.appStoreId}` : null);
+  } else if (isAndroid) {
+    // Prefer direct market:// scheme on Android if supported, fallback to Play Store https URL
+    targetUrl = app.packageName ? `market://details?id=${app.packageName}` : app.playStoreUrl;
+  }
+
+  if (!targetUrl) {
+    targetUrl = isIOS ? app.appStoreUrl : (app.playStoreUrl || app.appStoreUrl);
+  }
+
+  if (targetUrl && typeof window !== 'undefined') {
+    try {
+      if (window.Capacitor?.isNativePlatform?.() && targetUrl.startsWith('market://')) {
+        window.location.href = targetUrl;
+      } else {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      }
+      return true;
+    } catch (e) {
+      window.location.href = targetUrl;
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Checks if a specific URL scheme can be opened

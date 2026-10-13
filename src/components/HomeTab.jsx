@@ -539,7 +539,7 @@ export default function HomeTab() {
                 fontSize: '11px',
                 fontWeight: 700,
                 background: 'rgba(250, 204, 21, 0.2)',
-                color: '#B45309'
+                color: 'var(--warn, #F59E0B)'
               }}
             >
               <span className="live-pulse-dot" style={{ background: '#F59E0B' }} />
@@ -578,7 +578,9 @@ export default function HomeTab() {
           style={{ cursor: 'pointer', textAlign: 'left' }}
         >
           <div className="bento-hero-top">
-            <span className="bento-badge">Most Popular</span>
+            <span className="bento-badge" style={{ background: 'var(--yellow)', color: '#000000', fontWeight: 750, padding: '3px 10px', borderRadius: '999px', boxShadow: '0 2px 8px rgba(255, 199, 10, 0.3)' }}>
+              RECOMMENDED
+            </span>
             <span className="bento-hero-cta">
               Book now{' '}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -684,7 +686,20 @@ export default function HomeTab() {
           <h3 style={{ margin: 0, lineHeight: 1.2 }}>Keys in good hands</h3>
           <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Verified stories from car owners</span>
         </div>
-        <span className="pill" style={{ background: 'var(--yellow-soft)', color: 'var(--on-yellow)', fontWeight: 700 }}>
+        <span
+          className="pill"
+          style={{
+            background: 'var(--yellow)',
+            color: '#000000',
+            fontWeight: 800,
+            padding: '3px 10px',
+            borderRadius: '999px',
+            boxShadow: '0 2px 10px rgba(255, 199, 10, 0.35)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}
+        >
           4.9 ★
         </span>
       </div>
