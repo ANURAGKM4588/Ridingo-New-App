@@ -552,11 +552,11 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* Razorpay Escrow & Cashback Pill */}
+              {/* PhonePe Escrow & Cashback Pill */}
               <div style={{ padding: '8px 12px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '13px' }}>🛡️</span>
-                  <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--ink)' }}>Razorpay Escrow Protected</span>
+                  <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--ink)' }}>PhonePe Escrow Protected</span>
                 </div>
                 <span style={{ fontSize: '11px', fontWeight: 750, color: '#16A34A', background: 'rgba(34, 197, 94, 0.1)', padding: '2px 8px', borderRadius: '6px' }}>
                   +5% Cashback on Arrival

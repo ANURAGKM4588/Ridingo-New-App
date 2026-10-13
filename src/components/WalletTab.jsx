@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
-import { openRazorpayCheckout } from '../utils/razorpay';
+import { openPhonePeCheckout } from '../utils/phonepe';
 
 export default function WalletTab() {
   const { utx, setUtx, userBalance, user, addToast } = useApp();
@@ -16,7 +16,7 @@ export default function WalletTab() {
     const val = parseInt(amt, 10);
     if (!val || val <= 0) return;
 
-    openRazorpayCheckout({
+    openPhonePeCheckout({
       amount: val,
       name: 'Ridingo Wallet Top Up',
       description: `Add ₹${val} to Ridingo balance`,
@@ -29,19 +29,19 @@ export default function WalletTab() {
         purpose: 'wallet_topup'
       },
       onSuccess: (paymentRes) => {
-        const pId = paymentRes.razorpay_payment_id || ('pay_test_' + Date.now().toString(36));
+        const pId = paymentRes.phonepe_payment_id || paymentRes.phonepe_transaction_id || ('pay_ppe_' + Date.now().toString(36));
         const newTx = {
           ts: Date.now(),
           type: 'topup',
           amount: val,
-          title: 'Razorpay Wallet Top Up',
+          title: 'PhonePe Wallet Top Up',
           sub: `Payment ID: ${pId.slice(0, 14)} · Just now`,
-          gateway: 'Razorpay',
+          gateway: 'PhonePe',
           paymentId: pId
         };
         setUtx(prev => [newTx, ...prev]);
         setShowAddMoney(false);
-        addToast(`₹${val.toLocaleString('en-IN')} added via Razorpay!`, 'check');
+        addToast(`₹${val.toLocaleString('en-IN')} added via PhonePe!`, 'check');
       },
       onError: (err) => {
         addToast('Top-up payment cancelled or failed', 'warn');
@@ -81,7 +81,7 @@ export default function WalletTab() {
       {showAddMoney && (
         <div className="card stagger-3" style={{ padding: '16px', marginBottom: '18px', background: 'var(--field)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <b style={{ fontSize: '14px' }}>Top-up Wallet (Razorpay Gateway)</b>
+            <b style={{ fontSize: '14px' }}>Top-up Wallet (PhonePe Gateway)</b>
             <button onClick={() => setShowAddMoney(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>✕</button>
           </div>
           <div className="chips" style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
@@ -106,7 +106,7 @@ export default function WalletTab() {
               gap: '8px'
             }}
           >
-            <span>Pay ₹{addAmt} via Razorpay</span>
+            <span>Pay ₹{addAmt} via PhonePe</span>
             <span style={{ fontSize: '11px', background: 'rgba(0, 0, 0, 0.15)', padding: '2px 7px', borderRadius: '6px', fontWeight: 750 }}>
               Test Mode
             </span>

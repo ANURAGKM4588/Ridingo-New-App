@@ -5,7 +5,7 @@ import BrandLogo from './BrandLogo';
 import DriverOnboardingModal from './DriverOnboardingModal';
 import TripInvoiceModal from './TripInvoiceModal';
 import TripOtpModal from './TripOtpModal';
-import { processRazorpayDriverPayout } from '../utils/razorpay';
+import { processPhonePeDriverPayout } from '../utils/phonepe';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours' },
@@ -1173,8 +1173,8 @@ export default function DriverApp() {
     const acc = driverPartner?.bankAccount || '•••• 4521';
     const upi = driverPartner?.upiId;
 
-    // Process payout via RazorpayX instant settlement
-    const payout = processRazorpayDriverPayout({
+    // Process payout via PhonePe instant settlement
+    const payout = processPhonePeDriverPayout({
       amount: amt,
       driverName: driverPartner?.name || 'Ravi Kumar',
       bankName: bank,
@@ -1186,16 +1186,16 @@ export default function DriverApp() {
     setDriverBalance(prev => Math.max(0, prev - amt));
     const newTx = {
       id: payout.payoutId,
-      title: upi ? `RazorpayX UPI to ${upi}` : `RazorpayX Payout to ${bank}`,
+      title: upi ? `PhonePe UPI to ${upi}` : `PhonePe Payout to ${bank}`,
       sub: `UTR: ${payout.utr} (${acc}) · Just now`,
       amount: -amt,
       type: 'withdrawal',
-      gateway: 'RazorpayX',
+      gateway: 'PhonePe Payouts',
       utr: payout.utr,
       payoutId: payout.payoutId
     };
     setDriverTx(prev => [newTx, ...prev]);
-    addToast(`₹${amt.toLocaleString('en-IN')} paid out via RazorpayX (UTR: ${payout.utr}) to ${upi || bank}!`, 'check');
+    addToast(`₹${amt.toLocaleString('en-IN')} paid out via PhonePe (UTR: ${payout.utr}) to ${upi || bank}!`, 'check');
     if (driverPartner?.haptic !== false && navigator.vibrate) {
       try { navigator.vibrate([30, 50, 30]); } catch (e) {}
     }
@@ -2099,7 +2099,7 @@ export default function DriverApp() {
                               setShowInvoiceModal(true);
                             }}
                           >
-                            💳 Collect Payment via Razorpay QR
+                            💳 Collect Payment via PhonePe QR
                           </button>
                         )}
                       </div>
@@ -2212,7 +2212,7 @@ export default function DriverApp() {
                     <span>Withdraw</span>
                   </button>
                 )}
-                <span className="walletcard-cb">Settled via RazorpayX</span>
+                <span className="walletcard-cb">Settled via PhonePe</span>
               </div>
             </div>
 
@@ -2243,7 +2243,7 @@ export default function DriverApp() {
                 </div>
                 <b style={{ fontSize: '16px', color: 'var(--ink)', display: 'block', marginBottom: '4px' }}>No transactions yet</b>
                 <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '0 auto', maxWidth: '240px', lineHeight: 1.4 }}>
-                  Earnings and instant RazorpayX payouts will show up here.
+                  Earnings and instant PhonePe payouts will show up here.
                 </p>
               </div>
             ) : (
@@ -2604,7 +2604,7 @@ export default function DriverApp() {
               >
                 <div className="prof-set-info">
                   <b className="prof-set-title">{driverPartner?.bankName || 'HDFC Bank'} {driverPartner?.bankAccount || '•••• 4521'}</b>
-                  <span className="prof-set-sub">Instant RazorpayX payout account</span>
+                  <span className="prof-set-sub">Instant PhonePe payout account</span>
                 </div>
                 <div className="prof-set-action-btn">
                   <span>Primary</span>
@@ -3303,7 +3303,7 @@ export default function DriverApp() {
                             Payout Coordinates
                           </h3>
                           <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '2px 0 0', fontWeight: 500 }}>
-                            Instant RazorpayX destination for driver earnings
+                            Instant PhonePe destination for driver earnings
                           </p>
                         </div>
                       </div>
@@ -3376,7 +3376,7 @@ export default function DriverApp() {
                       </h3>
                       <div style={{ padding: '14px 16px', borderRadius: '20px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <b style={{ fontSize: '14px', color: '#16A34A' }}>RazorpayX Instant IMPS</b>
+                          <b style={{ fontSize: '14px', color: '#16A34A' }}>PhonePe Instant IMPS</b>
                           <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block', marginTop: '2px' }}>Direct transfer to your verified account</span>
                         </div>
                         <span style={{ fontSize: '12px', fontWeight: 800, color: '#16A34A', background: 'rgba(34, 197, 94, 0.2)', padding: '3px 9px', borderRadius: '999px' }}>Active</span>

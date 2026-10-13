@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
-import { openRazorpayCheckout } from '../utils/razorpay';
+import { openPhonePeCheckout } from '../utils/phonepe';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'hourly', unit: 'hr', units: 'hours' },
@@ -30,7 +30,7 @@ export default function TripsTab() {
     const rem = Math.max(0, trip.fare - (trip.advance || Math.round(trip.fare * 0.3)));
     if (rem <= 0) return;
 
-    openRazorpayCheckout({
+    openPhonePeCheckout({
       amount: rem,
       name: 'Ridingo Trip Final Settlement',
       description: `Remaining balance for ${trip.id}`,
@@ -43,7 +43,7 @@ export default function TripsTab() {
         tripId: trip.id
       },
       onSuccess: (paymentRes) => {
-        const pId = paymentRes.razorpay_payment_id || ('pay_test_' + Date.now().toString(36));
+        const pId = paymentRes.phonepe_payment_id || paymentRes.phonepe_transaction_id || ('pay_ppe_' + Date.now().toString(36));
         setTrips(prev =>
           prev.map(t => (t.id === trip.id ? { ...t, balancePaid: true, balancePaymentId: pId } : t))
         );
@@ -52,12 +52,12 @@ export default function TripsTab() {
           type: 'trip',
           amount: -rem,
           title: `Trip Settlement · ${trip.id}`,
-          sub: `Razorpay (${pId.slice(0, 14)}) · Just now`,
-          gateway: 'Razorpay',
+          sub: `PhonePe (${pId.slice(0, 14)}) · Just now`,
+          gateway: 'PhonePe',
           paymentId: pId
         };
         setUtx(prev => [newTx, ...prev]);
-        addToast(`Remaining ₹${rem} settled via Razorpay!`, 'check');
+        addToast(`Remaining ₹${rem} settled via PhonePe!`, 'check');
       },
       onError: () => {
         addToast('Settlement cancelled or failed', 'warn');
@@ -383,7 +383,7 @@ export default function TripsTab() {
                       </button>
                     )}
 
-                    {/* Pay Remaining Balance via Razorpay */}
+                    {/* Pay Remaining Balance via PhonePe */}
                     {['inprogress', 'completed'].includes(t.status) && !t.balancePaid && remainingDue > 0 && (
                       <button
                         type="button"
@@ -409,14 +409,14 @@ export default function TripsTab() {
                           marginTop: '4px'
                         }}
                       >
-                        <span>Pay Remaining ₹{remainingDue} via Razorpay</span>
+                        <span>Pay Remaining ₹{remainingDue} via PhonePe</span>
                       </button>
                     )}
 
                     {t.balancePaid && (
                       <div style={{ padding: '6px 10px', borderRadius: '8px', background: 'rgba(34, 197, 94, 0.1)', color: '#16A34A', fontSize: '11.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>✓</span>
-                        <span>100% Settled via Razorpay</span>
+                        <span>100% Settled via PhonePe</span>
                       </div>
                     )}
                   </div>

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar } from '@capacitor/status-bar';
 import { getDeviceLocation } from '../lib/deviceLocation';
-import { processRazorpayCashbackTransfer } from '../utils/razorpay';
+import { processPhonePeCashbackTransfer } from '../utils/phonepe';
 import { realtime } from '../utils/realtime';
 
 const AppContext = createContext(null);
@@ -620,9 +620,9 @@ export function AppProvider({ children }) {
     addToast('App reset. Clean install state active.', 'check');
   };
 
-  const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, razorpayPaymentId, schedule) => {
+  const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, phonepePaymentId, schedule) => {
     const tripId = 'TRP-' + Math.floor(1000 + Math.random() * 9000);
-    const pId = String(razorpayPaymentId || ('pay_test_' + Date.now().toString(36)));
+    const pId = String(phonepePaymentId || ('pay_ppe_' + Date.now().toString(36)));
     const safeFare = Number(fare) || 600;
     const adv = advanceAmount !== undefined ? Number(advanceAmount) : Math.round(safeFare * 0.3);
     const cb = Math.round(safeFare * 0.05);
@@ -654,7 +654,7 @@ export function AppProvider({ children }) {
       conditionScratches: [],
       conditionNotes: '',
       conditionVerified: false,
-      paymentGateway: 'Razorpay',
+      paymentGateway: 'PhonePe',
       paymentId: pId,
       driver: null,
       car: user?.car || { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' },
@@ -669,8 +669,8 @@ export function AppProvider({ children }) {
       type: 'trip',
       amount: -adv,
       title: `Ride Advance · ${safeCat.toUpperCase()}`,
-      sub: `Razorpay (${pId.slice(0, 14)}) · Just now`,
-      gateway: 'Razorpay',
+      sub: `PhonePe (${pId.slice(0, 14)}) · Just now`,
+      gateway: 'PhonePe',
       paymentId: pId
     };
 
@@ -682,7 +682,7 @@ export function AppProvider({ children }) {
     setBookingOpen(false);
     setUTab('home');
     setLiveTrackingOpen(true);
-    addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via Razorpay.`, 'check');
+    addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via PhonePe.`, 'check');
   };
 
   const acceptTrip = (tripId) => {
@@ -776,10 +776,10 @@ export function AppProvider({ children }) {
     setTrips(prev =>
       prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending' } : t))
     );
-    addToast('Drop OTP verified! Displaying Razorpay Invoice.', 'check');
+    addToast('Drop OTP verified! Displaying PhonePe Invoice.', 'check');
   };
 
-  const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'Razorpay UPI', isCash = false } = {}) => {
+  const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false } = {}) => {
     const tripFare = fare || 750;
     const companyCommission = Math.round(tripFare * 0.15); // 15% platform fee
     const driverEarnings = Math.round(tripFare * 0.85) + Number(tip || 0); // 85% + 100% tip
@@ -792,7 +792,7 @@ export function AppProvider({ children }) {
       }));
       addToast('⚠️ Violation: 1 Black Mark issued for cash transaction!', 'warn');
     } else {
-      addToast(`₹${driverEarnings} credited to Chauffeur Wallet via Razorpay Escrow!`, 'check');
+      addToast(`₹${driverEarnings} credited to Chauffeur Wallet via PhonePe Escrow!`, 'check');
     }
 
     // Update driver partner wallet
@@ -804,7 +804,7 @@ export function AppProvider({ children }) {
         sub: `Net 85% (₹${Math.round(tripFare * 0.85)}) + Tip (₹${tip})`,
         amount: driverEarnings,
         type: 'fare',
-        gateway: 'Razorpay Escrow',
+        gateway: 'PhonePe Escrow',
         ts: Date.now()
       },
       ...prev

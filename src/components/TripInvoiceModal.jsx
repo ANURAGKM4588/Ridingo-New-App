@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
-import { generateLiveUpiQrUrl } from '../utils/razorpay';
+import { generateLivePhonePeQrUrl } from '../utils/phonepe';
 import { MAJOR_UPI_APPS, triggerUpiDeepLink } from '../utils/upiDeepLink';
 
 export default function TripInvoiceModal({
@@ -20,10 +20,10 @@ export default function TripInvoiceModal({
   const tipAmount = customTip !== '' ? (Number(customTip) || 0) : selectedTip;
   const totalAmountToPay = balanceDue + tipAmount;
 
-  // Live Razorpay UPI QR Code
-  const qrData = generateLiveUpiQrUrl({
+  // Live PhonePe UPI QR Code
+  const qrData = generateLivePhonePeQrUrl({
     amount: totalAmountToPay,
-    orderId: trip?.id,
+    transactionId: trip?.id,
     note: `Ridingo Chauffeur Trip - ${trip?.id || 'TRP'}`
   });
 
@@ -44,7 +44,7 @@ export default function TripInvoiceModal({
         balance: balanceDue,
         tip: tipAmount,
         method: `${appId.toUpperCase()} UPI`,
-        gateway: 'Razorpay Escrow'
+        gateway: 'PhonePe Escrow'
       });
     }, 1800);
   };
@@ -187,7 +187,7 @@ export default function TripInvoiceModal({
             </div>
           </div>
 
-          {/* Animated Razorpay Live UPI QR Code */}
+          {/* Animated PhonePe Live UPI QR Code */}
           <div
             style={{
               background: 'var(--card, #FFFFFF)',
@@ -203,7 +203,7 @@ export default function TripInvoiceModal({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} />
-              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Scan Razorpay UPI QR Code</b>
+              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Scan PhonePe UPI QR Code</b>
             </div>
 
             {/* Live QR Image */}
@@ -218,7 +218,7 @@ export default function TripInvoiceModal({
             >
               <img
                 src={qrData.qrImageUrl}
-                alt="Razorpay UPI QR"
+                alt="PhonePe UPI QR"
                 style={{ width: '180px', height: '180px', display: 'block', borderRadius: '8px' }}
               />
             </div>
@@ -315,7 +315,7 @@ export default function TripInvoiceModal({
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
             }}
           >
-            {isProcessingPayment ? 'Verifying Razorpay Settlement...' : `Confirm Payment of ₹${totalAmountToPay} ✓`}
+            {isProcessingPayment ? 'Verifying PhonePe Settlement...' : `Confirm Payment of ₹${totalAmountToPay} ✓`}
           </button>
         </div>
       </div>

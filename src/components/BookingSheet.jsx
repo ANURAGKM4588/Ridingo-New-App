@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
-import { openRazorpayCheckout } from '../utils/razorpay';
+import { openPhonePeCheckout } from '../utils/phonepe';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours', min: 2, max: 12, def: 3, rate: 250 },
@@ -243,8 +243,8 @@ export default function BookingSheet() {
       const pickupLoc = (pickup && pickup.trim()) || cached?.address || 'Edappally Toll, Kochi';
       const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
 
-      // Trigger the new payment options popup sheet
-      openRazorpayCheckout({
+      // Trigger the new PhonePe payment options popup sheet
+      openPhonePeCheckout({
         amount: adv,
         fare: fare,
         category: currentCat.name,
@@ -261,8 +261,8 @@ export default function BookingSheet() {
           scheduled_time: timeStr
         },
         onSuccess: (paymentRes) => {
-          const pId = paymentRes?.razorpay_payment_id || ('pay_' + Date.now().toString(36));
-          const methodLabel = paymentRes?.method || 'UPI';
+          const pId = paymentRes?.phonepe_payment_id || paymentRes?.phonepe_transaction_id || paymentRes?.razorpay_payment_id || ('pay_ppe_' + Date.now().toString(36));
+          const methodLabel = paymentRes?.method || 'PhonePe';
           setBookingOpen(false);
           bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr });
           addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur scheduled for ${dateStr} · ${timeStr}.`, 'check');

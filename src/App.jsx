@@ -10,7 +10,7 @@ import NotificationsSheet from './components/NotificationsSheet';
 import LiveTrackingSheet from './components/LiveTrackingSheet';
 import OnboardingModal from './components/OnboardingModal';
 import LegalModal from './components/LegalModal';
-import PaymentSheet from './components/PaymentSheet';
+import PhonePePgCheckout from './components/PhonePePgCheckout';
 import DriverApp from './components/DriverApp';
 
 class ErrorBoundary extends React.Component {
@@ -132,7 +132,7 @@ function MainApp() {
                   <LiveTrackingSheet />
                   <OnboardingModal />
                   <LegalModal />
-                  <PaymentSheet />
+                  <PhonePePgCheckout />
 
                   <div className="toasts" id="u-toasts" aria-live="polite">
                     {toasts.map(t => (
