@@ -412,48 +412,14 @@ export default function PhonePePgCheckout() {
           <span>Cancel</span>
         </button>
 
-        {/* Center: Official PhonePe Monochrome Branding */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              background: theme.brandBadgeBg,
-              color: theme.brandBadgeColor,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: '16px',
-              boxShadow: isDark ? '0 2px 8px rgba(255, 255, 255, 0.15)' : '0 2px 8px rgba(0, 0, 0, 0.15)'
-            }}
-          >
-            पे
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span style={{ fontSize: '13.5px', fontWeight: 800, letterSpacing: '-0.02em', color: theme.textPrimary }}>
-                PhonePe
-              </span>
-              <span
-                style={{
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  background: theme.brandBadgeBg,
-                  color: theme.brandBadgeColor,
-                  padding: '1px 5px',
-                  borderRadius: '4px',
-                  letterSpacing: '0.04em'
-                }}
-              >
-                PG
-              </span>
-            </div>
-            <span style={{ fontSize: '10px', color: theme.textMuted, letterSpacing: '0.02em' }}>
-              SECURE CHECKOUT
-            </span>
-          </div>
+        {/* Center: Clean Payment Options Title (Top PhonePe PG branding removed as requested) */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '-0.02em', color: theme.textPrimary }}>
+            Payment Options
+          </span>
+          <span style={{ fontSize: '10px', color: theme.textMuted, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>
+            Secure Checkout
+          </span>
         </div>
 
         {/* Right: Security Badge */}
