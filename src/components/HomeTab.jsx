@@ -6,6 +6,7 @@ import MapPickerModal from './MapPickerModal';
 import GraphicLiveMap from './GraphicLiveMap';
 import { searchPlaces } from '../lib/locationService';
 import { getRecommendations, APP_SETTINGS } from '../lib/searchEngine';
+import realtime from '../utils/realtime';
 
 const CATS = {
   hourly: { name: 'Hourly', blurb: '2 to 12 hours', icon: 'hourly', from: '₹250 per hour' },
@@ -50,6 +51,7 @@ export default function HomeTab() {
   const {
     user,
     trips,
+    setTrips,
     setBookingOpen,
     setBookingCategory,
     setBookingDestination,
@@ -58,7 +60,8 @@ export default function HomeTab() {
     liveTrackingOpen,
     setLiveTrackingOpen,
     unotes,
-    setUTab
+    setUTab,
+    addToast
   } = useApp();
 
   const unreadCount = (unotes || []).filter(n => !n.read).length;
@@ -160,8 +163,17 @@ export default function HomeTab() {
     };
   }, []);
 
-  const inProg = trips.find(t => t.status === 'inprogress');
-  const requestedTrip = trips.find(t => t.status === 'requested');
+  const inProg = (trips || []).find(t => t.status === 'inprogress' || t.status === 'ending_otp');
+  const isAccepted = (trips || []).find(t => t.status === 'accepted' || t.status === 'pickup_arrived' || t.status === 'ready_to_start');
+  const requestedTrip = (trips || []).find(t => t.status === 'requested');
+
+  const handleCancelRequest = (tripId) => {
+    if (window.confirm('Are you sure you want to cancel this chauffeur request?')) {
+      setTrips(prev => prev.filter(t => t.id !== tripId));
+      if (addToast) addToast('Trip request cancelled', 'info');
+      realtime.declineRide(tripId);
+    }
+  };
   const rawFirst = user?.firstName || (user?.name ? user.name.trim().split(' ')[0] : 'there');
   const first = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : 'there';
 
@@ -249,6 +261,242 @@ export default function HomeTab() {
         <h1>Hi, {first}</h1>
         <p>Need a driver for your own car?</p>
       </div>
+
+      {/* =========================================================
+          1. TRIP REQUEST ACTIVE (WAITING FOR DRIVER TO ACCEPT)
+          Live status card with prominent "Track Live Status" button
+          ========================================================= */}
+      {requestedTrip && (
+        <div
+          className="stagger-1"
+          style={{
+            marginTop: '14px',
+            marginBottom: '16px',
+            padding: '16px 18px',
+            borderRadius: '20px',
+            background: 'var(--card)',
+            border: '1.5px solid var(--yellow, #F59E0B)',
+            boxShadow: '0 6px 24px rgba(245, 158, 11, 0.16)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Top pulse accent */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '3px',
+              background: 'linear-gradient(90deg, #F59E0B, #EAB308, #F59E0B)'
+            }}
+          />
+
+          {/* Header Row: Live Status Pill & Fare */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '5px 12px',
+                borderRadius: '999px',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.35)'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#F59E0B',
+                  boxShadow: '0 0 0 0 rgba(245, 158, 11, 0.7)',
+                  animation: 'pulse-dot 1.5s infinite'
+                }}
+              />
+              <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+                Finding Chauffeur · Live
+              </span>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '10px', color: 'var(--muted)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>
+                Total Fare
+              </span>
+              <b style={{ fontSize: '17px', fontWeight: 850, color: 'var(--ink)' }}>
+                ₹{requestedTrip.fare}
+              </b>
+            </div>
+          </div>
+
+          {/* Route Info */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
+              <span style={{ fontSize: '13px', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <b>Pickup:</b> {requestedTrip.pickup}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
+              <span style={{ fontSize: '13px', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <b>Drop:</b> {requestedTrip.drop_loc}
+              </span>
+            </div>
+          </div>
+
+          {/* Broadcast status notice */}
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: '10px',
+              background: 'var(--field)',
+              border: '1px solid var(--line)',
+              fontSize: '11.5px',
+              color: 'var(--muted)',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>📡</span>
+            <span>Request broadcasted to nearby verified chauffeurs. Waiting for acceptance...</span>
+          </div>
+
+          {/* Action Button: Track Live Request Status */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setLiveTrackingOpen(true)}
+              style={{
+                flex: 1,
+                height: '44px',
+                borderRadius: '12px',
+                background: 'var(--ink)',
+                color: 'var(--bg, #FFFFFF)',
+                border: 'none',
+                fontSize: '13.5px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)'
+              }}
+            >
+              <span>📍</span>
+              <span>Track Live Request Status</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCancelRequest(requestedTrip.id)}
+              style={{
+                padding: '0 14px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'var(--field)',
+                border: '1px solid var(--line)',
+                color: '#EF4444',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          2. CHAUFFEUR ACCEPTED & ARRIVING LIVE STATUS CARD
+          ========================================================= */}
+      {!inProg && isAccepted && (
+        <div
+          className="stagger-1"
+          style={{
+            marginTop: '14px',
+            marginBottom: '16px',
+            padding: '16px 18px',
+            borderRadius: '20px',
+            background: 'var(--card)',
+            border: '1.5px solid #22C55E',
+            boxShadow: '0 6px 24px rgba(34, 197, 94, 0.16)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '5px 12px',
+                borderRadius: '999px',
+                background: 'rgba(34, 197, 94, 0.12)',
+                border: '1px solid rgba(34, 197, 94, 0.3)'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#22C55E',
+                  boxShadow: '0 0 0 0 rgba(34, 197, 94, 0.7)',
+                  animation: 'pulse-dot 1.5s infinite'
+                }}
+              />
+              <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+                Chauffeur Arriving
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700 }}>OTP:</span>
+              <span style={{ background: 'var(--ink)', color: 'var(--bg, #FFFFFF)', padding: '2px 8px', borderRadius: '6px', fontSize: '13px', fontWeight: 800, letterSpacing: '1px' }}>
+                {isAccepted.startOtp || '4821'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '3px' }}>
+            {isAccepted.driver || 'Ravi Kumar'} is reaching your pickup
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '12px' }}>
+            Pickup: {isAccepted.pickup}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setLiveTrackingOpen(true)}
+            style={{
+              width: '100%',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'var(--ink)',
+              color: 'var(--bg, #FFFFFF)',
+              border: 'none',
+              fontSize: '13.5px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)'
+            }}
+          >
+            <span>Track Chauffeur Live ➔</span>
+          </button>
+        </div>
+      )}
 
       {/* Destination Search Bar with Typing Feature & Autocomplete */}
       <div
@@ -514,54 +762,7 @@ export default function HomeTab() {
         </div>
       )}
 
-      {/* Requested / Searching Ride Banner (when ride has been initiated) */}
-      {!inProg && requestedTrip && (
-        <div
-          className="card stagger-2"
-          style={{
-            marginTop: '14px',
-            padding: '14px 16px',
-            borderRadius: '20px',
-            border: '1.5px solid rgba(250, 204, 21, 0.4)',
-            background: 'var(--card)',
-            boxShadow: '0 4px 18px rgba(255, 199, 10, 0.12)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span
-              className="pill warn"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 700,
-                background: 'rgba(250, 204, 21, 0.2)',
-                color: 'var(--warn, #F59E0B)'
-              }}
-            >
-              <span className="live-pulse-dot" style={{ background: '#F59E0B' }} />
-              FINDING CHAUFFEUR
-            </span>
-            <b style={{ fontSize: '15px', color: 'var(--ink)' }}>₹{requestedTrip.fare}</b>
-          </div>
 
-          <div style={{ fontSize: '13px', color: 'var(--ink)', marginBottom: '10px' }}>
-            Broadcasting request for <b>{String(requestedTrip?.cat || 'hourly').toUpperCase()}</b> chauffeur near <b>{(typeof requestedTrip?.pickup === 'string' && requestedTrip.pickup ? requestedTrip.pickup.split(',')[0] : 'Edappally')}</b>
-          </div>
-
-          <button
-            className="btn primary sm block"
-            style={{ width: '100%', height: '38px', borderRadius: '12px', fontWeight: 750, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-            onClick={() => setLiveTrackingOpen(true)}
-          >
-            <Icon name="navigation" size={14} />
-            <span>Track Live Request Status</span>
-          </button>
-        </div>
-      )}
 
       {/* Services Section Header */}
       <div className="sec stagger-3">
