@@ -13,7 +13,6 @@ export const DEFAULT_USER = {
   phone: '+91 98401 23456',
   email: 'arjun.menon@example.com',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-  car: { model: 'Hyundai Creta (Automatic)', plate: 'KL 07 AB 4821', trans: 'Automatic' },
   notif: true,
   pin: true,
   pinCode: '4821',
@@ -52,6 +51,11 @@ export const DEFAULT_DRIVER = {
     airport: true,
     outstation: true,
     event: true
+  },
+  transmissions: {
+    manual: true,
+    automatic: true,
+    imt: true
   },
   blackMarks: 0,
   popups: true,
@@ -631,6 +635,7 @@ export function AppProvider({ children }) {
     const safeDrop = (typeof drop === 'string' && drop.trim()) || (safeCat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
     const scheduledDate = schedule?.date || null;
     const scheduledTime = schedule?.time || null;
+    const tripTrans = schedule?.trans || 'Automatic';
 
     const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
     const endOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -641,6 +646,8 @@ export function AppProvider({ children }) {
       qty: Number(qty) || 2,
       pickup: safePickup,
       drop_loc: safeDrop,
+      trans: tripTrans,
+      car: { trans: tripTrans },
       when_ts: Date.now(),
       scheduledDate,
       scheduledTime,
@@ -657,8 +664,7 @@ export function AppProvider({ children }) {
       paymentGateway: 'PhonePe',
       paymentId: pId,
       driver: null,
-      car: user?.car || { model: 'Hyundai Creta', plate: 'KL 07 AB 4821', trans: 'Automatic' },
-      rider: { name: user?.name || 'Car Owner', phone: user?.phone || '+91 98401 23456' },
+      rider: { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' },
       cashback: cb,
       cashbackStatus: 'pending'
     };

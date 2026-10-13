@@ -307,7 +307,7 @@ export default function TripsTab() {
                           {t.driver || (isWaiting ? 'Assigning Chauffeur...' : 'Ravi Kumar')}
                         </b>
                         <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--muted)', marginTop: '1px' }}>
-                          {t.car?.model || user?.car?.model || 'Hyundai Creta'} · {t.car?.trans || 'Automatic'}
+                          ⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission
                         </span>
                       </div>
                       {isAssigned && (

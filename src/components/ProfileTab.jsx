@@ -13,8 +13,6 @@ export default function ProfileTab() {
   const [editName, setEditName] = useState(user?.name || 'Arjun Menon');
   const [editPhone, setEditPhone] = useState(user?.phone || '+91 98401 23456');
   const [editEmail, setEditEmail] = useState(user?.email || 'arjun.menon@example.com');
-  const [editCarModel, setEditCarModel] = useState(user?.car?.model || 'Hyundai Creta (Automatic)');
-  const [editCarPlate, setEditCarPlate] = useState(user?.car?.plate || 'KL 07 AB 4821');
   const [editAvatar, setEditAvatar] = useState(user?.avatar || '');
   const fileInputRef = useRef(null);
 
@@ -23,8 +21,6 @@ export default function ProfileTab() {
       setEditName(user?.name || 'Arjun Menon');
       setEditPhone(user?.phone || '+91 98401 23456');
       setEditEmail(user?.email || 'arjun.menon@example.com');
-      setEditCarModel(user?.car?.model || 'Hyundai Creta (Automatic)');
-      setEditCarPlate(user?.car?.plate || 'KL 07 AB 4821');
       setEditAvatar(user?.avatar || '');
     }
   }, [activeModal, user]);
@@ -93,15 +89,10 @@ export default function ProfileTab() {
       name: editName.trim(),
       phone: editPhone.trim(),
       email: editEmail.trim(),
-      avatar: editAvatar,
-      car: {
-        model: editCarModel.trim(),
-        plate: editCarPlate.trim(),
-        trans: editCarModel.toLowerCase().includes('auto') ? 'Automatic' : 'Manual'
-      }
+      avatar: editAvatar
     });
     setActiveModal(null);
-    addToast('Profile, photo & car details updated', 'check');
+    addToast('Profile & contact details updated', 'check');
   };
 
   const handleSavePin = (e) => {
@@ -313,10 +304,6 @@ export default function ProfileTab() {
               Member since 2024
             </span>
           </div>
-
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
-            🚗 {user?.car?.model || 'Hyundai Creta'} ({user?.car?.plate || 'KL 07 AB 4821'})
-          </span>
         </div>
       </div>
 
@@ -883,31 +870,6 @@ export default function ProfileTab() {
                     onChange={e => setEditEmail(e.target.value)}
                     style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
                   />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
-                      Car Model
-                    </label>
-                    <input
-                      type="text"
-                      value={editCarModel}
-                      onChange={e => setEditCarModel(e.target.value)}
-                      style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '13.5px', color: 'var(--ink)', outline: 'none' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
-                      Plate Number
-                    </label>
-                    <input
-                      type="text"
-                      value={editCarPlate}
-                      onChange={e => setEditCarPlate(e.target.value)}
-                      style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '13.5px', color: 'var(--ink)', outline: 'none' }}
-                    />
-                  </div>
                 </div>
 
                 <button

@@ -20,9 +20,9 @@ export default function LiveTrackingSheet() {
     fare: 600,
     advance: 180,
     status: 'requested',
-    driver: null,
-    car: { model: user?.car?.model || 'Hyundai Creta', plate: user?.car?.plate || 'KL 07 AB 4821', trans: 'Automatic' },
-    rider: { name: user?.name || 'Car Owner', phone: user?.phone || '+91 98401 23456' }
+    trans: 'Automatic',
+    car: { trans: 'Automatic' },
+    rider: { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' }
   };
 
   const isStarted = trip.status === 'inprogress';
@@ -249,7 +249,7 @@ export default function LiveTrackingSheet() {
                 </div>
 
                 <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line)' }}>
-                  Vehicle: {user?.car?.model || trip?.car?.model || 'Hyundai Creta'} ({user?.car?.plate || trip?.car?.plate || 'KL 07 AB 4821'})
+                  Gearbox: ⚙️ {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
                 </div>
               </div>
 
@@ -527,7 +527,7 @@ export default function LiveTrackingSheet() {
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-                      Driving your {user?.car?.model || trip?.car?.model || 'Hyundai Creta'} · <b style={{ fontWeight: 600 }}>{user?.car?.plate || trip?.car?.plate || 'KL 07 AB 4821'}</b>
+                      Certified Chauffeur · ⚙️ {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
                     </div>
                   </div>
                 </div>

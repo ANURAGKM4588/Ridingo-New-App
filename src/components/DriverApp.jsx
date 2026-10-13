@@ -941,7 +941,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             <span>{trip.rider?.name || 'Customer'} · ★ 4.9</span>
           </div>
           <span style={{ color: 'var(--muted, #64748B)' }}>
-            {trip.car?.model || 'Hyundai Creta'} ({trip.car?.trans || 'Auto'})
+            ⚙️ {trip.trans || trip.car?.trans || 'Automatic'} Transmission
           </span>
         </div>
 
@@ -1277,6 +1277,28 @@ export default function DriverApp() {
     addToast(`${CATS[key]?.name || key} service ${nextVal ? 'enabled' : 'disabled'}`, 'check');
   };
 
+  const handleToggleTransmission = (key) => {
+    const currentTransmissions = driverPartner?.transmissions || {
+      manual: true,
+      automatic: true,
+      imt: true
+    };
+    const nextVal = !currentTransmissions[key];
+    const updated = { ...currentTransmissions, [key]: nextVal };
+
+    if (!updated.manual && !updated.automatic && !updated.imt) {
+      addToast('You must enable at least one transmission to receive rides', 'warn');
+      return;
+    }
+    updateDriverPartner({ transmissions: updated });
+    const labels = {
+      manual: 'Manual Transmission',
+      automatic: 'Automatic Transmission',
+      imt: 'iMT Transmission'
+    };
+    addToast(`${labels[key] || key} ${nextVal ? 'enabled' : 'disabled'}`, 'check');
+  };
+
   const handleSaveDriverProfile = (e) => {
     e.preventDefault();
     if (!editDriverName.trim()) {
@@ -1316,11 +1338,23 @@ export default function DriverApp() {
     event: true
   };
 
+  const driverTransmissions = driverPartner?.transmissions || {
+    manual: true,
+    automatic: true,
+    imt: true
+  };
+
   const requestedTrips = trips.filter(t => {
     if (t.status !== 'requested') return false;
     const cat = t.cat || 'hourly';
     // Exclude trip requests if driver explicitly toggled off this service
     if (driverServices[cat] === false) return false;
+
+    // Filter by gear transmission capability
+    const tripTrans = (t.trans || t.car?.trans || 'Automatic').toLowerCase();
+    if (tripTrans.includes('man') && driverTransmissions.manual === false) return false;
+    if (tripTrans.includes('auto') && driverTransmissions.automatic === false) return false;
+    if (tripTrans.includes('imt') && driverTransmissions.imt === false) return false;
     return true;
   });
   const upcomingTrips = trips.filter(t => [
@@ -1850,11 +1884,11 @@ export default function DriverApp() {
                         </div>
                       </div>
 
-                      {/* Rider & Car info */}
+                      {/* Rider & Transmission info */}
                       <div style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 600, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>👤 {t.rider?.name || 'Customer'} (★ 4.9)</span>
                         <span>·</span>
-                        <span>🚗 {t.car?.model || 'Hyundai Creta'}</span>
+                        <span>⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission</span>
                       </div>
 
                       {/* Action Buttons */}
@@ -1945,7 +1979,7 @@ export default function DriverApp() {
                         </div>
                         <div className="row small" style={{ marginTop: '8px', alignItems: 'center' }}>
                           <span className="mut grow ell">
-                            {t.rider?.name || 'Customer'} · {t.car?.model || 'Vehicle'}
+                            {t.rider?.name || 'Customer'} · ⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission
                           </span>
                           <span
                             className="pill good"
@@ -2530,67 +2564,55 @@ export default function DriverApp() {
               </div>
             </div>
 
-            {/* 5. CARS I CAN DRIVE */}
-            <div className="prof-section-title stagger-5">Cars I Can Drive</div>
+            {/* 5. GEAR TRANSMISSIONS I DRIVE */}
+            <div className="prof-section-title stagger-5">Gear Transmissions I Drive</div>
             <div className="card stagger-5" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
-              <div
-                className="prof-set-row"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveDriverModal('cars')}
-              >
+              {/* Automatic */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Automatic Transmission</b>
+                  <span className="prof-set-sub">Torque Converter, DCT, CVT, AMT gearbox</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${driverPartner?.transmissions?.automatic !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleTransmission('automatic')}
+                  aria-label="Toggle Automatic Transmission"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Manual */}
+              <div className="prof-set-row">
                 <div className="prof-set-info">
                   <b className="prof-set-title">Manual Transmission</b>
-                  <span className="prof-set-sub">H-pattern clutch & gearshift certified</span>
+                  <span className="prof-set-sub">Standard H-pattern manual with clutch pedal</span>
                 </div>
-                <div className="prof-set-action-btn">
-                  <span>Certified</span>
-                  <Icon name="chevronRight" size={15} />
-                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${driverPartner?.transmissions?.manual !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleTransmission('manual')}
+                  aria-label="Toggle Manual Transmission"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
               </div>
 
-              <div
-                className="prof-set-row"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveDriverModal('cars')}
-              >
+              {/* iMT */}
+              <div className="prof-set-row">
                 <div className="prof-set-info">
-                  <b className="prof-set-title">Automatic Gearbox</b>
-                  <span className="prof-set-sub">Torque Converter, DCT, CVT, AMT certified</span>
+                  <b className="prof-set-title">iMT (Intelligent Manual)</b>
+                  <span className="prof-set-sub">Clutchless manual & intelligent stick shift</span>
                 </div>
-                <div className="prof-set-action-btn">
-                  <span>Certified</span>
-                  <Icon name="chevronRight" size={15} />
-                </div>
-              </div>
-
-              <div
-                className="prof-set-row"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveDriverModal('cars')}
-              >
-                <div className="prof-set-info">
-                  <b className="prof-set-title">IMT & Hybrid</b>
-                  <span className="prof-set-sub">Clutchless manual & strong hybrids</span>
-                </div>
-                <div className="prof-set-action-btn">
-                  <span>Certified</span>
-                  <Icon name="chevronRight" size={15} />
-                </div>
-              </div>
-
-              <div
-                className="prof-set-row"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveDriverModal('cars')}
-              >
-                <div className="prof-set-info">
-                  <b className="prof-set-title">Luxury & High-end EVs</b>
-                  <span className="prof-set-sub">Mercedes, BMW, Audi, and electric luxury</span>
-                </div>
-                <div className="prof-set-action-btn">
-                  <span>Certified</span>
-                  <Icon name="chevronRight" size={15} />
-                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${driverPartner?.transmissions?.imt !== false ? 'on' : ''}`}
+                  onClick={() => handleToggleTransmission('imt')}
+                  aria-label="Toggle iMT Transmission"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
               </div>
             </div>
 
@@ -3247,46 +3269,65 @@ export default function DriverApp() {
                     </form>
                   )}
 
-                  {/* MODAL 2: CAR TRANSMISSION CERTIFICATIONS */}
+                  {/* MODAL 2: TRANSMISSION PREFERENCES */}
                   {activeDriverModal === 'cars' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                        Vehicle Certifications
+                        Transmission Preferences
                       </h3>
                       <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                        All certified transmission competencies verified by Ridingo Master Instructors.
+                        Select the vehicle gear transmissions you are capable of driving. You will only receive bookings matching your selected transmission skills.
                       </p>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {[
-                          { title: 'Manual Transmission', badge: 'Level 3 Master', valid: 'Permanent' },
-                          { title: 'Automatic (TC / DCT / CVT / AMT)', badge: 'Level 3 Master', valid: 'Permanent' },
-                          { title: 'Intelligent Manual (iMT) & Strong Hybrids', badge: 'Certified Specialist', valid: 'Valid till 2028' },
-                          { title: 'Luxury Sedans & High-Voltage EVs', badge: 'VIP Chauffeur Certified', valid: 'Valid till 2027' }
-                        ].map((c, i) => (
-                          <div
-                            key={i}
-                            style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                          >
-                            <div>
-                              <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>{c.title}</b>
-                              <span style={{ fontSize: '12px', color: '#16A34A', fontWeight: 600 }}>● {c.badge}</span>
+                          { key: 'automatic', title: 'Automatic Transmission', desc: 'Torque Converter, DCT, CVT, AMT' },
+                          { key: 'manual', title: 'Manual Transmission', desc: 'H-pattern stick shift with clutch pedal' },
+                          { key: 'imt', title: 'iMT (Intelligent Manual)', desc: 'Clutchless electronic manual shift' }
+                        ].map((c) => {
+                          const isEnabled = driverPartner?.transmissions?.[c.key] !== false;
+                          return (
+                            <div
+                              key={c.key}
+                              style={{
+                                padding: '14px 16px',
+                                borderRadius: '16px',
+                                background: isEnabled ? 'rgba(255, 199, 10, 0.08)' : 'var(--card)',
+                                border: isEnabled ? '1.5px solid var(--yellow)' : '1px solid var(--line)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => handleToggleTransmission(c.key)}
+                            >
+                              <div>
+                                <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>{c.title}</b>
+                                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{c.desc}</span>
+                              </div>
+                              <button
+                                type="button"
+                                className={`ios-toggle ${isEnabled ? 'on' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleTransmission(c.key);
+                                }}
+                                aria-label={`Toggle ${c.title}`}
+                              >
+                                <span className="ios-toggle-thumb" />
+                              </button>
                             </div>
-                            <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{c.valid}</span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          addToast('Endorsement request submitted to Operations Desk', 'check');
-                          setActiveDriverModal(null);
-                        }}
+                        onClick={() => setActiveDriverModal(null)}
                         className="btn"
                         style={{ height: '46px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', marginTop: '6px' }}
                       >
-                        + Request New Vehicle Endorsement
+                        Done
                       </button>
                     </div>
                   )}
