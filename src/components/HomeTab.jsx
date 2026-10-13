@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
@@ -95,10 +96,12 @@ export default function HomeTab() {
     setIsSearchHidden(false);
   }, []);
 
-  // Smooth Apple-grade scroll animation for search section
+  // Framer Motion Apple-grade scroll tracking with distance accumulation
   useEffect(() => {
     const uc = document.getElementById('u-content');
     let lastScroll = uc ? uc.scrollTop : 0;
+    let accumulatedDown = 0;
+    let accumulatedUp = 0;
     let ticking = false;
 
     const getScrollTop = () => {
@@ -112,24 +115,49 @@ export default function HomeTab() {
           const st = getScrollTop();
           const delta = st - lastScroll;
 
-          if (st <= 60) {
-            // Near top: always keep search bar smoothly visible
+          // Don't auto-hide if user is actively searching or dropdown is open
+          if (searchOpen || searchQuery.trim()) {
             if (isHiddenRef.current) {
               isHiddenRef.current = false;
               setIsSearchHidden(false);
             }
-          } else if (delta > 5 && st > 110) {
-            // Scrolling down past header with real momentum: smoothly tuck away
-            if (!isHiddenRef.current) {
-              isHiddenRef.current = true;
-              setIsSearchHidden(true);
-              setSearchOpen(false);
-            }
-          } else if (delta < -6) {
-            // Scrolling up: smooth fluid reveal
+            lastScroll = Math.max(0, st);
+            ticking = false;
+            return;
+          }
+
+          // 1. If at/near top of feed (within 40px), always smoothly reveal
+          if (st <= 40) {
+            accumulatedDown = 0;
+            accumulatedUp = 0;
             if (isHiddenRef.current) {
               isHiddenRef.current = false;
               setIsSearchHidden(false);
+            }
+          } else if (delta > 0) {
+            // Scrolling down: accumulate downward distance, reset upward
+            accumulatedDown += delta;
+            accumulatedUp = 0;
+
+            // Only gracefully vanish once past the header (>90px) and deliberately scrolling (>45px)
+            if (st > 90 && accumulatedDown > 45) {
+              if (!isHiddenRef.current) {
+                isHiddenRef.current = true;
+                setIsSearchHidden(true);
+                setSearchOpen(false);
+              }
+            }
+          } else if (delta < 0) {
+            // Scrolling up: accumulate upward distance, reset downward
+            accumulatedUp += Math.abs(delta);
+            accumulatedDown = 0;
+
+            // When scrolling upwards deliberately (>30px), smoothly reveal
+            if (accumulatedUp > 30) {
+              if (isHiddenRef.current) {
+                isHiddenRef.current = false;
+                setIsSearchHidden(false);
+              }
             }
           }
 
@@ -149,7 +177,7 @@ export default function HomeTab() {
       if (uc) uc.removeEventListener('scroll', handleScroll);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [searchOpen, searchQuery]);
 
   const inProg = (trips || []).find(t => t.status === 'inprogress' || t.status === 'ending_otp');
   const isAccepted = (trips || []).find(t => t.status === 'accepted' || t.status === 'pickup_arrived' || t.status === 'ready_to_start');
@@ -486,13 +514,45 @@ export default function HomeTab() {
         </div>
       )}
 
-      {/* Destination Search Bar with Typing Feature & Autocomplete */}
-      <div
-        className={`search-wrap stagger-2 ${isSearchHidden ? 'scrolled-hidden' : ''}`}
-        id="u-search-wrap"
-        ref={searchWrapRef}
-        style={{ position: 'relative', zIndex: 20 }}
-      >
+      {/* Destination Search Bar with Apple Framer Motion Reveal & Vanish Animation */}
+      <AnimatePresence initial={false}>
+        {!isSearchHidden && (
+          <motion.div
+            key="home-search-bar"
+            id="u-search-wrap"
+            ref={searchWrapRef}
+            className="search-wrap stagger-2"
+            initial={{ height: 0, opacity: 0, y: -16, scale: 0.96 }}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              transition: {
+                height: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
+                opacity: { duration: 0.32, ease: [0.16, 1, 0.3, 1] },
+                y: { type: 'spring', stiffness: 300, damping: 28 },
+                scale: { type: 'spring', stiffness: 300, damping: 28 }
+              }
+            }}
+            exit={{
+              height: 0,
+              opacity: 0,
+              y: -14,
+              scale: 0.96,
+              transition: {
+                height: { type: 'spring', stiffness: 260, damping: 30, mass: 0.9 },
+                opacity: { duration: 0.24, ease: 'easeOut' },
+                y: { duration: 0.26, ease: [0.32, 0, 0.67, 0] },
+                scale: { duration: 0.26, ease: [0.32, 0, 0.67, 0] }
+              }
+            }}
+            style={{
+              position: 'relative',
+              zIndex: 20,
+              overflow: 'hidden'
+            }}
+          >
         <div className="search-anim-inner">
           <div className="search-box">
             <span className="search-ic">
@@ -696,7 +756,9 @@ export default function HomeTab() {
             )}
           </div>
         )}
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Live In-Progress Trip Card */}
       {inProg && (

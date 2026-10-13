@@ -25,6 +25,7 @@
     "@supabase/supabase-js": "^2.117.2",
     "expo": "^57.0.26",
     "firebase": "^12.19.0",
+    "framer-motion": "^14.2.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
