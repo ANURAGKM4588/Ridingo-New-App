@@ -11,8 +11,8 @@ import NotificationsSheet from './src/components/NotificationsSheet';
 import LiveTrackingSheet from './src/components/LiveTrackingSheet';
 import OnboardingModal from './src/components/OnboardingModal';
 import LegalModal from './src/components/LegalModal';
-import PhonePePgCheckout from './src/components/PhonePePgCheckout';
-import DriverApp from './src/components/DriverApp';
+import PhonePePgCheckout from '../src/components/PhonePePgCheckout';
+import DriverApp from '../src/components/DriverApp';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
