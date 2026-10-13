@@ -14,14 +14,15 @@ import { MAJOR_UPI_APPS, triggerUpiDeepLink } from '../utils/upiDeepLink';
 /**
  * Full-Screen Payment Options Sheet with PhonePe Gateway & Ridingo Wallet
  * - 1. Ridingo Wallet (Recommended): First payment option with real-time balance & 1-tap payment
- * - 2. In-Built PhonePe Gateway: Authentic PhonePe UPI, dynamic QR, Cards & Netbanking
- * - Dynamic Theme Adaptation: Pure White (#FFFFFF) in Light Mode / Obsidian Black (#000000) in Dark Mode
- * - Clean Header: Top PhonePe logo/text removed; displays clean "Payment Options / Secure Checkout"
+ * - 2. UPI in List Style: PhonePe, Google Pay, Apple Pay, CRED, and Other UPI Apps (access all device apps)
+ * - 3. Dynamic Theme Adaptation: Pure White (#FFFFFF) in Light Mode / Obsidian Black (#000000) in Dark Mode
+ * - 4. Clean Header: Top PhonePe logo/text removed; displays clean "Payment Options / Secure Checkout"
  */
 export default function PhonePePgCheckout() {
   const appContext = useApp?.();
   const [activeSession, setActiveSession] = useState(null);
   const [selectedTab, setSelectedTab] = useState('upi'); // 'upi' | 'qr' | 'card' | 'netbanking'
+  const [showOtherApps, setShowOtherApps] = useState(false);
   const [vpaInput, setVpaInput] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
@@ -121,7 +122,7 @@ export default function PhonePePgCheckout() {
     successPillBg: 'rgba(255, 255, 255, 0.08)',
     successPillBorder: 'rgba(255, 255, 255, 0.15)',
     successPillColor: 'rgba(255, 255, 255, 0.75)',
-    walletAccent: '#FFFFFF'
+    rowHoverBg: 'rgba(255, 255, 255, 0.04)'
   } : {
     // LIGHT THEME (Clean white bg, crisp black typography, correct white theme UI)
     bg: '#FFFFFF',
@@ -185,7 +186,7 @@ export default function PhonePePgCheckout() {
     successPillBg: '#F2F2F7',
     successPillBorder: '#E5E5EA',
     successPillColor: '#55555E',
-    walletAccent: '#000000'
+    rowHoverBg: 'rgba(0, 0, 0, 0.02)'
   };
 
   useEffect(() => {
@@ -193,6 +194,7 @@ export default function PhonePePgCheckout() {
       setActiveSession(sessionConfig);
       setPgStatus('idle');
       setSelectedTab('upi');
+      setShowOtherApps(false);
       setVpaInput('');
       setCardNumber('');
       setCardExpiry('');
@@ -250,11 +252,11 @@ export default function PhonePePgCheckout() {
   const handleCompleteSuccess = (paymentDetails = {}) => {
     setPgStatus('success');
     const isWallet = paymentDetails.gateway === 'Ridingo Wallet' || paymentDetails.paymentMode === 'WALLET';
-    setStatusMessage(isWallet ? 'Transaction Approved by Ridingo Wallet' : 'Transaction Approved by PhonePe PG');
+    setStatusMessage(isWallet ? 'Transaction Approved by Ridingo Wallet' : 'Transaction Approved by Gateway');
 
     setTimeout(() => {
       const verifiedPayload = {
-        gateway: isWallet ? 'Ridingo Wallet' : 'PhonePe',
+        gateway: isWallet ? 'Ridingo Wallet' : (paymentDetails.gateway || 'PhonePe'),
         phonepe_payment_id: paymentDetails.phonepe_payment_id || ('PPE' + Date.now().toString().slice(-10)),
         phonepe_transaction_id: txnId,
         amount,
@@ -271,7 +273,7 @@ export default function PhonePePgCheckout() {
   // 1. Pay via Ridingo Wallet (Recommended 1-Tap Payment)
   const handlePayViaWallet = () => {
     if (!hasSufficientWalletBal) {
-      alert(`Insufficient Ridingo Wallet balance (₹${cleanBalance}). Please pay using PhonePe below.`);
+      alert(`Insufficient Ridingo Wallet balance (₹${cleanBalance}). Please pay using UPI or Cards below.`);
       return;
     }
 
@@ -308,11 +310,48 @@ export default function PhonePePgCheckout() {
 
   // 2. Pay via PhonePe 1-Click UPI Intent
   const handlePayViaPhonePe = () => {
+    handlePayViaUpiApp('phonepe', 'PhonePe');
+  };
+
+  // 3. Pay via Google Pay UPI
+  const handlePayViaGPay = () => {
+    handlePayViaUpiApp('gpay', 'Google Pay');
+  };
+
+  // 4. Pay via Apple Pay (Apple Wallet & Touch/Face ID)
+  const handlePayViaApplePay = () => {
     setPgStatus('processing');
-    setStatusMessage('Connecting to PhonePe UPI Gateway...');
+    setStatusMessage('Authenticating with Apple Pay & Touch ID / Face ID...');
+
+    try {
+      if (typeof window !== 'undefined' && window.ApplePaySession && window.ApplePaySession.canMakePayments()) {
+        // Can make Apple Pay payments
+      } else {
+        window.location.href = 'shoebox://';
+      }
+    } catch (e) {}
+
+    setTimeout(() => {
+      handleCompleteSuccess({
+        method: 'Apple Pay',
+        paymentMode: 'APPLE_PAY',
+        gateway: 'Apple Pay'
+      });
+    }, 2000);
+  };
+
+  // 5. Pay via CRED UPI
+  const handlePayViaCred = () => {
+    handlePayViaUpiApp('cred', 'CRED');
+  };
+
+  // Generic UPI deep link dispatcher
+  const handlePayViaUpiApp = (appId, appName = appId.toUpperCase()) => {
+    setPgStatus('processing');
+    setStatusMessage(`Connecting to ${appName} via UPI...`);
 
     triggerUpiDeepLink({
-      appId: 'phonepe',
+      appId,
       amount,
       orderId: txnId,
       note: `Ridingo Trip - ${txnId}`
@@ -320,13 +359,14 @@ export default function PhonePePgCheckout() {
 
     setTimeout(() => {
       handleCompleteSuccess({
-        method: 'PhonePe 1-Click UPI',
-        paymentMode: 'UPI_INTENT'
+        method: `${appName} UPI`,
+        paymentMode: 'UPI_INTENT',
+        appId
       });
     }, 2200);
   };
 
-  // 3. Pay via Any UPI ID (VPA Collect)
+  // Pay via Any UPI ID (VPA Collect)
   const handlePayViaVpa = (e) => {
     e.preventDefault();
     if (!vpaInput.includes('@')) {
@@ -345,7 +385,7 @@ export default function PhonePePgCheckout() {
     }, 2000);
   };
 
-  // 4. Pay via 3D Secure Card
+  // Pay via 3D Secure Card
   const handlePayViaCard = (e) => {
     e.preventDefault();
     if (cardNumber.replace(/\s/g, '').length < 15) {
@@ -363,7 +403,7 @@ export default function PhonePePgCheckout() {
     }, 1900);
   };
 
-  // 5. Pay via Netbanking
+  // Pay via Netbanking
   const handlePayViaNetbanking = (bankCode) => {
     setPgStatus('processing');
     setStatusMessage(`Redirecting to ${bankCode} Netbanking portal...`);
@@ -781,7 +821,7 @@ export default function PhonePePgCheckout() {
                     Low balance (₹{cleanBalance} of ₹{amount})
                   </span>
                   <span style={{ fontSize: '11px', fontWeight: 750, color: theme.textPrimary }}>
-                    Pay via PhonePe below ↓
+                    Pay via UPI below ↓
                   </span>
                 </div>
               )}
@@ -792,13 +832,13 @@ export default function PhonePePgCheckout() {
           <div style={{ padding: '6px 20px 8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ flex: 1, height: '1px', background: theme.cardBorder }} />
             <span style={{ fontSize: '10.5px', fontWeight: 750, color: theme.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Or Pay via PhonePe Gateway
+              Or Pay via UPI & Gateway
             </span>
             <div style={{ flex: 1, height: '1px', background: theme.cardBorder }} />
           </div>
 
           {/* =========================================================
-              2. IN-BUILT PHONEPE GATEWAY TABS
+              2. PAYMENT GATEWAY TABS
               ========================================================= */}
           <div style={{ padding: '4px 20px 10px' }}>
             <div
@@ -811,7 +851,7 @@ export default function PhonePePgCheckout() {
               }}
             >
               {[
-                { id: 'upi', label: 'PhonePe UPI' },
+                { id: 'upi', label: 'UPI Apps' },
                 { id: 'qr', label: 'QR Scan' },
                 { id: 'card', label: 'Cards' },
                 { id: 'netbanking', label: 'Net Banking' }
@@ -846,78 +886,432 @@ export default function PhonePePgCheckout() {
           {/* CONTENT SECTION ACCORDING TO ACTIVE TAB */}
           <div style={{ padding: '6px 20px 24px', flex: 1 }}>
             {/* =====================================================
-                TAB 1: IN-BUILT PHONEPE UPI (Instant 1-Click + VPA)
+                TAB 1: UPI APPS IN CLEAN VERTICAL LIST STYLE
+                - PhonePe
+                - Google Pay
+                - Apple Pay
+                - CRED
+                - Other UPI Apps (access all device installed apps)
+                - Pay via Any UPI ID (VPA)
                 ===================================================== */}
             {selectedTab === 'upi' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {/* HERO PHONEPE PRIMARY INSTANT BUTTON */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.textMuted, display: 'block', marginBottom: '2px' }}>
+                  Select UPI Option
+                </span>
+
+                {/* 1. PhonePe (Instant 1-Click) */}
                 <button
                   type="button"
                   onClick={handlePayViaPhonePe}
                   style={{
                     width: '100%',
-                    padding: '16px 18px',
+                    padding: '13px 16px',
                     borderRadius: '16px',
-                    background: theme.heroPayBtnBg,
-                    color: theme.heroPayBtnColor,
-                    border: 'none',
+                    background: theme.cardBg,
+                    border: `1px solid ${theme.cardBorder}`,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    boxShadow: isDark ? '0 6px 20px rgba(255, 255, 255, 0.12)' : '0 6px 20px rgba(0, 0, 0, 0.12)',
-                    transition: 'transform 0.12s ease'
+                    gap: '12px',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div
                       style={{
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '10px',
-                        background: theme.heroPayBtnIconBg,
-                        color: theme.heroPayBtnIconColor,
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '11px',
+                        background: isDark ? '#1C1C1F' : '#FFFFFF',
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.cardBorder}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 900,
-                        fontSize: '20px'
+                        fontSize: '19px',
+                        flexShrink: 0
                       }}
                     >
                       पे
                     </div>
-                    <div style={{ textAlign: 'left' }}>
-                      <b style={{ fontSize: '15px', color: theme.heroPayBtnColor, display: 'block', letterSpacing: '-0.01em' }}>
-                        Pay via PhonePe UPI
-                      </b>
-                      <span style={{ fontSize: '12px', color: theme.heroPayBtnSubColor }}>
-                        Instant 1-Click UPI PIN authorization
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <b style={{ fontSize: '14.5px', color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                          PhonePe
+                        </b>
+                        <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: theme.btnCancelBg, color: theme.textPrimary }}>
+                          Instant
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '11.5px', color: theme.textMuted }}>
+                        1-Click UPI PIN authorization
                       </span>
                     </div>
                   </div>
                   <div
                     style={{
-                      background: theme.heroPayBtnPillBg,
-                      color: theme.heroPayBtnPillColor,
-                      padding: '8px 14px',
-                      borderRadius: '10px',
-                      fontSize: '13px',
+                      background: theme.btnCancelBg,
+                      border: `1px solid ${theme.btnCancelBorder}`,
+                      color: theme.textPrimary,
+                      padding: '6px 12px',
+                      borderRadius: '999px',
+                      fontSize: '12px',
                       fontWeight: 800,
-                      letterSpacing: '-0.01em'
+                      flexShrink: 0
                     }}
                   >
                     Pay ₹{amount} ➔
                   </div>
                 </button>
 
-                {/* IN-BUILT UPI ID (VPA) COLLECT FORM */}
+                {/* 2. Google Pay */}
+                <button
+                  type="button"
+                  onClick={handlePayViaGPay}
+                  style={{
+                    width: '100%',
+                    padding: '13px 16px',
+                    borderRadius: '16px',
+                    background: theme.cardBg,
+                    border: `1px solid ${theme.cardBorder}`,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '11px',
+                        background: isDark ? '#1C1C1F' : '#FFFFFF',
+                        border: `1px solid ${theme.cardBorder}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 900,
+                        fontSize: '18px',
+                        flexShrink: 0
+                      }}
+                    >
+                      <span style={{ fontWeight: 900, color: '#4285F4', fontSize: '20px' }}>G</span>
+                    </div>
+                    <div>
+                      <b style={{ fontSize: '14.5px', color: theme.textPrimary, display: 'block', letterSpacing: '-0.01em' }}>
+                        Google Pay
+                      </b>
+                      <span style={{ fontSize: '11.5px', color: theme.textMuted }}>
+                        Pay directly via GPay UPI
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: theme.btnCancelBg,
+                      border: `1px solid ${theme.btnCancelBorder}`,
+                      color: theme.textPrimary,
+                      padding: '6px 12px',
+                      borderRadius: '999px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      flexShrink: 0
+                    }}
+                  >
+                    Pay ₹{amount} ➔
+                  </div>
+                </button>
+
+                {/* 3. Apple Pay */}
+                <button
+                  type="button"
+                  onClick={handlePayViaApplePay}
+                  style={{
+                    width: '100%',
+                    padding: '13px 16px',
+                    borderRadius: '16px',
+                    background: theme.cardBg,
+                    border: `1px solid ${theme.cardBorder}`,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '11px',
+                        background: isDark ? '#1C1C1F' : '#FFFFFF',
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.cardBorder}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        fontWeight: 800,
+                        flexShrink: 0
+                      }}
+                    >
+                      
+                    </div>
+                    <div>
+                      <b style={{ fontSize: '14.5px', color: theme.textPrimary, display: 'block', letterSpacing: '-0.01em' }}>
+                        Apple Pay
+                      </b>
+                      <span style={{ fontSize: '11.5px', color: theme.textMuted }}>
+                        Apple Wallet & Touch ID / Face ID
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: theme.btnCancelBg,
+                      border: `1px solid ${theme.btnCancelBorder}`,
+                      color: theme.textPrimary,
+                      padding: '6px 12px',
+                      borderRadius: '999px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      flexShrink: 0
+                    }}
+                  >
+                    Pay ₹{amount} ➔
+                  </div>
+                </button>
+
+                {/* 4. CRED */}
+                <button
+                  type="button"
+                  onClick={handlePayViaCred}
+                  style={{
+                    width: '100%',
+                    padding: '13px 16px',
+                    borderRadius: '16px',
+                    background: theme.cardBg,
+                    border: `1px solid ${theme.cardBorder}`,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '11px',
+                        background: isDark ? '#1C1C1F' : '#FFFFFF',
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.cardBorder}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                        fontWeight: 900,
+                        letterSpacing: '0.5px',
+                        flexShrink: 0
+                      }}
+                    >
+                      C
+                    </div>
+                    <div>
+                      <b style={{ fontSize: '14.5px', color: theme.textPrimary, display: 'block', letterSpacing: '-0.01em' }}>
+                        CRED
+                      </b>
+                      <span style={{ fontSize: '11.5px', color: theme.textMuted }}>
+                        CRED Pay UPI · Assured rewards
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: theme.btnCancelBg,
+                      border: `1px solid ${theme.btnCancelBorder}`,
+                      color: theme.textPrimary,
+                      padding: '6px 12px',
+                      borderRadius: '999px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      flexShrink: 0
+                    }}
+                  >
+                    Pay ₹{amount} ➔
+                  </div>
+                </button>
+
+                {/* 5. Other UPI Apps (Device installed apps chooser) */}
+                <div
+                  style={{
+                    borderRadius: '16px',
+                    background: theme.cardBg,
+                    border: `1px solid ${theme.cardBorder}`,
+                    overflow: 'hidden',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOtherApps(prev => !prev);
+                      // Trigger native UPI intent so device shows installed apps chooser
+                      triggerUpiDeepLink({
+                        appId: 'generic',
+                        amount,
+                        orderId: txnId,
+                        note: `Ridingo Trip - ${txnId}`
+                      });
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '13px 16px',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '11px',
+                          background: isDark ? '#1C1C1F' : '#FFFFFF',
+                          color: theme.textPrimary,
+                          border: `1px solid ${theme.cardBorder}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '19px',
+                          flexShrink: 0
+                        }}
+                      >
+                        📱
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <b style={{ fontSize: '14.5px', color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                            Other UPI Apps
+                          </b>
+                          <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: theme.btnCancelBg, color: theme.textPrimary }}>
+                            Device
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '11.5px', color: theme.textMuted }}>
+                          Paytm, BHIM, Navi & all device UPI apps
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        background: theme.btnCancelBg,
+                        border: `1px solid ${theme.btnCancelBorder}`,
+                        color: theme.textPrimary,
+                        padding: '6px 12px',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        flexShrink: 0
+                      }}
+                    >
+                      {showOtherApps ? 'Hide ▲' : 'Open Apps ➔'}
+                    </div>
+                  </button>
+
+                  {/* Expanded Device Apps Grid */}
+                  {showOtherApps && (
+                    <div
+                      style={{
+                        padding: '12px 14px 16px',
+                        borderTop: `1px solid ${theme.cardBorder}`,
+                        background: theme.formBg
+                      }}
+                    >
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                        Quick Select Installed App on Device:
+                      </span>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                        {[
+                          { id: 'paytm', name: 'Paytm' },
+                          { id: 'bhim', name: 'BHIM' },
+                          { id: 'navi', name: 'Navi' },
+                          { id: 'amazonpay', name: 'Amazon Pay' },
+                          { id: 'whatsapp', name: 'WhatsApp' },
+                          { id: 'generic', name: 'Device Apps' }
+                        ].map(app => (
+                          <button
+                            key={app.id}
+                            type="button"
+                            onClick={() => handlePayViaUpiApp(app.id, app.name)}
+                            style={{
+                              padding: '10px 6px',
+                              borderRadius: '10px',
+                              background: theme.cardBg,
+                              border: `1px solid ${theme.cardBorder}`,
+                              color: theme.textPrimary,
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {app.name}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handlePayViaUpiApp('generic', 'Installed UPI App')}
+                        style={{
+                          width: '100%',
+                          padding: '11px',
+                          borderRadius: '10px',
+                          background: theme.submitBtnBg,
+                          color: theme.submitBtnColor,
+                          border: 'none',
+                          fontSize: '12.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Launch Native UPI App Chooser on Device ➔
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. UPI ID (VPA) Manual Input */}
                 <form
                   onSubmit={handlePayViaVpa}
                   style={{
-                    padding: '16px',
+                    padding: '14px 16px',
                     borderRadius: '16px',
                     background: theme.formBg,
-                    border: `1px solid ${theme.formBorder}`
+                    border: `1px solid ${theme.formBorder}`,
+                    marginTop: '4px'
                   }}
                 >
                   <label style={{ fontSize: '12px', fontWeight: 700, color: theme.textPrimary, display: 'block', marginBottom: '8px' }}>
@@ -931,7 +1325,7 @@ export default function PhonePePgCheckout() {
                       placeholder="e.g. 9840123456@ybl / name@okaxis"
                       style={{
                         flex: 1,
-                        height: '46px',
+                        height: '44px',
                         borderRadius: '12px',
                         background: theme.inputBg,
                         border: `1px solid ${theme.inputBorder}`,
@@ -946,12 +1340,12 @@ export default function PhonePePgCheckout() {
                       type="submit"
                       style={{
                         padding: '0 18px',
-                        height: '46px',
+                        height: '44px',
                         borderRadius: '12px',
                         background: theme.submitBtnBg,
                         color: theme.submitBtnColor,
                         border: 'none',
-                        fontSize: '13.5px',
+                        fontSize: '13px',
                         fontWeight: 800,
                         cursor: 'pointer'
                       }}
@@ -960,7 +1354,6 @@ export default function PhonePePgCheckout() {
                     </button>
                   </div>
 
-                  {/* Quick UPI Handle suggestions */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     {['@ybl', '@ibl', '@okhdfcbank', '@okaxis', '@paytm'].map(suffix => (
                       <button
@@ -1003,7 +1396,7 @@ export default function PhonePePgCheckout() {
                 }}
               >
                 <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: theme.textMuted, marginBottom: '16px' }}>
-                  Scan with PhonePe or Any UPI App
+                  Scan with PhonePe, GPay or Any UPI App
                 </span>
 
                 {/* QR Container - pure white so phone cameras can reliably scan */}
