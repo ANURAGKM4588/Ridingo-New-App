@@ -825,6 +825,38 @@ export default function PhonePePgCheckout() {
                   </span>
                 </div>
               )}
+
+              {/* Instant Demo Access Payment Button for 1-click test */}
+              <button
+                type="button"
+                onClick={() => {
+                  handleCompleteSuccess({
+                    method: 'PhonePe Instant Demo',
+                    paymentMode: 'DEMO',
+                    gateway: 'PhonePe PG Demo'
+                  });
+                }}
+                disabled={pgStatus === 'processing'}
+                style={{
+                  width: '100%',
+                  marginTop: '10px',
+                  padding: '11px 14px',
+                  borderRadius: '12px',
+                  background: isDark ? '#1F1F24' : '#F1F5F9',
+                  color: isDark ? '#FFFFFF' : '#0F172A',
+                  border: `1.5px dashed ${theme.cardBorder}`,
+                  fontSize: '13px',
+                  fontWeight: 750,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span style={{ color: '#EAB308', fontSize: '15px' }}>⚡</span>
+                <span>Instant Demo Pay & Dispatch Driver</span>
+              </button>
             </div>
           </div>
 

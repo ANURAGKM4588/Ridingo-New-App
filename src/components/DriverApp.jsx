@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { realtime } from '../utils/realtime';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
 import DriverOnboardingModal from './DriverOnboardingModal';
@@ -1069,6 +1070,25 @@ export default function DriverApp() {
       }
     }
   }, [incomingTripRequest?.id]);
+
+  // Real-time synchronization check: ensure pending trip request is captured immediately
+  useEffect(() => {
+    const syncActiveTrip = () => {
+      const active = realtime.getActiveTripRequest();
+      if (active && (!incomingTripRequest || incomingTripRequest.id !== active.id)) {
+        if (minimizedRequestTripId !== active.id) {
+          setIncomingTripRequest(active);
+          setTrips(prev => {
+            const exists = prev.some(t => t.id === active.id);
+            return exists ? prev : [active, ...prev.filter(t => t.status !== 'requested')];
+          });
+        }
+      }
+    };
+    syncActiveTrip();
+    const interval = setInterval(syncActiveTrip, 1500);
+    return () => clearInterval(interval);
+  }, [incomingTripRequest?.id, minimizedRequestTripId]);
 
   const hasBankAccount = Boolean(driverPartner?.bankAccount && driverPartner?.bankName);
 
@@ -3698,7 +3718,7 @@ export default function DriverApp() {
       {/* Real-Time Incoming Ride Request Pop-Up Modal */}
       {(() => {
         const activeTripReq = incomingTripRequest || (requestedTrips && requestedTrips.length > 0 ? requestedTrips[0] : null);
-        if (!driverOnline || !activeTripReq) return null;
+        if (!activeTripReq) return null;
         if (minimizedRequestTripId === activeTripReq.id) return null;
 
         return (

@@ -219,23 +219,48 @@ export function AppProvider({ children }) {
   const closeLegal = () => setLegalModal(prev => ({ ...prev, open: false }));
 
   // Trips, Wallet & Notifications
-  const [trips, setTrips] = useState(INITIAL_TRIPS);
+  const [trips, setTrips] = useState(() => {
+    try {
+      const activeReq = realtime.getActiveTripRequest();
+      const shared = realtime.getSharedTrips();
+      let combined = (Array.isArray(shared) && shared.length > 0) ? shared : INITIAL_TRIPS;
+      if (activeReq && !combined.some(t => t.id === activeReq.id)) {
+        combined = [activeReq, ...combined.filter(t => t.status !== 'requested')];
+      }
+      return combined;
+    } catch (e) {
+      return INITIAL_TRIPS;
+    }
+  });
   const [utx, setUtx] = useState(INITIAL_UTX);
   const [unotes, setUnotes] = useState(INITIAL_UNOTES);
   const [driverOnline, setDriverOnline] = useState(true);
-  const [incomingTripRequest, setIncomingTripRequest] = useState(null);
+  const [incomingTripRequest, setIncomingTripRequest] = useState(() => {
+    return realtime.getActiveTripRequest();
+  });
   const [driverBalance, setDriverBalance] = useState(0);
   const [driverTx, setDriverTx] = useState([]);
   const [toasts, setToasts] = useState([]);
 
   // Subscribe to real-time communication between User and Driver apps
   useEffect(() => {
+    // Check initial active trip on mount
+    const initialActive = realtime.getActiveTripRequest();
+    if (initialActive) {
+      setIncomingTripRequest(initialActive);
+      setTrips(prev => {
+        const exists = prev.some(t => t.id === initialActive.id);
+        return exists ? prev : [initialActive, ...prev.filter(t => t.status !== 'requested')];
+      });
+    }
+
     const unbindReq = realtime.on('TRIP_REQUESTED', (newTrip) => {
       setTrips(prev => {
         const exists = prev.some(t => t.id === newTrip.id);
         return exists ? prev : [newTrip, ...prev.filter(t => t.status !== 'requested')];
       });
       setIncomingTripRequest(newTrip);
+      setDriverOnline(true);
     });
 
     const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver }) => {

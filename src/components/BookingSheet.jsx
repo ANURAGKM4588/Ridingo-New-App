@@ -1039,36 +1039,74 @@ export default function BookingSheet() {
                 </span>
               </div>
 
-              {/* Right Side: Half right-aligned Pay Button */}
-              <button
-                type="button"
-                className="btn primary"
-                id="bk-submit-btn"
-                style={{
-                  flex: 1,
-                  maxWidth: '190px',
-                  height: '48px',
-                  borderRadius: '14px',
-                  padding: '0 16px',
-                  fontWeight: 800,
-                  fontSize: '14.5px',
-                  cursor: 'pointer',
-                  background: 'var(--solid, #000000)',
-                  color: 'var(--on-solid, #FFFFFF)',
-                  border: '1.5px solid var(--solid, #000000)',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginLeft: 'auto',
-                  flexShrink: 0
-                }}
-                onClick={handleSubmit}
-              >
-                <span>Pay Advance</span>
-                <span style={{ color: 'var(--on-solid, #FFFFFF)', fontSize: '15px' }}>➔</span>
-              </button>
+              {/* Right Side: Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  id="bk-instant-btn"
+                  onClick={() => {
+                    const cleanPickup = pickup?.trim();
+                    if (!cleanPickup) {
+                      if (addToast) addToast('Please enter pickup location or choose on map', 'alert');
+                      return;
+                    }
+                    const pickupLoc = cleanPickup;
+                    const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Airport Terminal' : 'As directed by passenger');
+                    const pId = 'pay_instant_' + Date.now().toString(36);
+                    setBookingOpen(false);
+                    bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr, trans });
+                    addToast(`Chauffeur requested! Dispatched to nearby drivers.`, 'check');
+                  }}
+                  title="Instant dispatch without payment gateway"
+                  style={{
+                    height: '48px',
+                    borderRadius: '14px',
+                    padding: '0 12px',
+                    fontWeight: 750,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    background: 'var(--card)',
+                    color: 'var(--ink)',
+                    border: '1.5px solid var(--line)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <span style={{ color: '#EAB308', fontSize: '14px' }}>⚡</span>
+                  <span>Instant Request</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn primary"
+                  id="bk-submit-btn"
+                  style={{
+                    height: '48px',
+                    borderRadius: '14px',
+                    padding: '0 16px',
+                    fontWeight: 800,
+                    fontSize: '14.5px',
+                    cursor: 'pointer',
+                    background: 'var(--solid, #000000)',
+                    color: 'var(--on-solid, #FFFFFF)',
+                    border: '1.5px solid var(--solid, #000000)',
+                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onClick={handleSubmit}
+                >
+                  <span>Pay Advance</span>
+                  <span style={{ color: 'var(--on-solid, #FFFFFF)', fontSize: '15px' }}>➔</span>
+                </button>
+              </div>
             </div>
           </>
         )}
