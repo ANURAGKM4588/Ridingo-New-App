@@ -29,7 +29,25 @@ export default function BottomNav() {
           }}
         >
           <span className="nv-i">
-            <Icon name={n.icon} size={23} filled={uTab === n.id} />
+            {n.id === 'profile' ? (
+              <img
+                src="/App icon.png"
+                alt="Profile"
+                style={{
+                  width: '23px',
+                  height: '23px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  border: uTab === 'profile' ? '2px solid var(--accent, #FFC70A)' : '1.5px solid transparent',
+                  opacity: uTab === 'profile' ? 1 : 0.75,
+                  transition: 'all 0.2s ease',
+                  boxShadow: uTab === 'profile' ? '0 0 8px rgba(255, 199, 10, 0.4)' : 'none'
+                }}
+              />
+            ) : (
+              <Icon name={n.icon} size={23} filled={uTab === n.id} />
+            )}
           </span>
           <span className="nv-l">{n.label}</span>
         </button>

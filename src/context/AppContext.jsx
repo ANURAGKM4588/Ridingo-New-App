@@ -73,7 +73,7 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-promo',
     ts: Date.now() - 1000 * 60 * 5,
-    title: 'Weekend Chauffeur Pass · 20% Cashback 🎉',
+    title: 'Weekend Chauffeur Pass · 20% Cashback',
     body: 'Get ₹250 instant cashback credited to your Ridingo Wallet on full-day or outstation bookings this weekend. Use code RIDE20.',
     icon: 'star',
     category: 'promo',
@@ -82,7 +82,7 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-pay',
     ts: Date.now() - 1000 * 60 * 25,
-    title: 'Payment Successful · ₹600 Paid ✅',
+    title: 'Payment Successful · ₹600 Paid',
     body: 'Trip payment completed via PhonePe UPI. Zero commission deducted. Your tax invoice #RID-8842 has been generated.',
     icon: 'card',
     category: 'payment',
@@ -91,7 +91,7 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-complete',
     ts: Date.now() - 1000 * 60 * 45,
-    title: 'Trip Completed · Vehicle Handed Over 🏁',
+    title: 'Trip Completed · Vehicle Handed Over',
     body: 'Chauffeur Rajesh K. parked your vehicle safely and returned keys at Lulu Mall. Tap to rate your chauffeur’s driving skills.',
     icon: 'check',
     category: 'trip_complete',
@@ -100,7 +100,7 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-start',
     ts: Date.now() - 1000 * 60 * 90,
-    title: 'Trip Started · Safe Driving Active 🛡️',
+    title: 'Trip Started · Safe Driving Active',
     body: 'Start OTP verified. Rajesh is driving your car. Live telemetry and SOS tracking are active and shared with your emergency contact.',
     icon: 'route',
     category: 'trip_start',
@@ -109,7 +109,7 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-arrival',
     ts: Date.now() - 1000 * 60 * 110,
-    title: 'Chauffeur Arrived at Your Car 🚗',
+    title: 'Chauffeur Arrived at Your Car',
     body: 'Rajesh K. is waiting at Edappally Toll. Share Start OTP 4821 before handing over your keys.',
     icon: 'pin',
     category: 'driver_arrival',
@@ -118,8 +118,8 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-confirm',
     ts: Date.now() - 1000 * 60 * 130,
-    title: 'Booking Confirmed · Chauffeur Assigned 👨‍✈️',
-    body: 'Rajesh K. (⭐ 4.9 · 850+ drives) has accepted your Hourly Chauffeur booking. Reaching your car in 12 mins.',
+    title: 'Booking Confirmed · Chauffeur Assigned',
+    body: 'Rajesh K. (Rating 4.9 · 850+ drives) has accepted your Hourly Chauffeur booking. Reaching your car in 12 mins.',
     icon: 'bell',
     category: 'booking_confirm',
     read: true
@@ -277,11 +277,11 @@ export function AppProvider({ children }) {
       );
       setIncomingTripRequest(null);
       addNotification(
-        'Chauffeur Assigned!',
+        'Chauffeur Assigned',
         `${driverName} is on the way to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
         'car'
       );
-      addToast(`Chauffeur confirmed! ${driverName} accepted your ride.`, 'check');
+      addToast(`Chauffeur confirmed. ${driverName} accepted your ride.`, 'check');
     });
 
     const unbindArr = realtime.on('ARRIVED_PICKUP', ({ tripId }) => {
@@ -296,25 +296,25 @@ export function AppProvider({ children }) {
         })
       );
       addNotification(
-        'Chauffeur Arrived at Pickup!',
+        'Chauffeur Arrived at Pickup',
         `Your chauffeur is at your pickup location. Please share your 4-digit OTP: ${targetOtp}.`,
         'car'
       );
-      addToast('Chauffeur has arrived at pickup!', 'info');
+      addToast('Chauffeur has arrived at pickup location.', 'info');
     });
 
     const unbindOtp1 = realtime.on('START_OTP_VERIFIED', ({ tripId }) => {
       setTrips(prev =>
         prev.map(t => (t.id === tripId ? { ...t, status: 'ready_to_start' } : t))
       );
-      addToast('Pickup OTP verified! Trip ready to start.', 'check');
+      addToast('Pickup OTP verified. Trip ready to start.', 'check');
     });
 
     const unbindCond = realtime.on('CONDITION_VERIFIED', ({ tripId, photos, scratches }) => {
       setTrips(prev =>
         prev.map(t => (t.id === tripId ? { ...t, status: 'ready_to_start', conditionPhotos: photos, conditionScratches: scratches } : t))
       );
-      addToast('Vehicle 4-angle condition check verified!', 'check');
+      addToast('Vehicle condition check verified.', 'check');
     });
 
     const unbindStart = realtime.on('TRIP_STARTED', ({ tripId }) => {
@@ -322,11 +322,11 @@ export function AppProvider({ children }) {
         prev.map(t => (t.id === tripId ? { ...t, status: 'inprogress', startedAt: Date.now() } : t))
       );
       addNotification(
-        'Trip in Progress!',
+        'Trip in Progress',
         'Your chauffeur has started the trip. Live GPS route tracking is active.',
         'map'
       );
-      addToast('Trip started! Live tracking active.', 'check');
+      addToast('Trip started. Live tracking active.', 'check');
     });
 
     const unbindEndReq = realtime.on('END_OTP_REQUESTED', ({ tripId, endOtp }) => {
@@ -341,11 +341,11 @@ export function AppProvider({ children }) {
         })
       );
       addNotification(
-        'Arrived at Destination!',
+        'Arrived at Destination',
         `Trip ending. Please share Drop OTP: ${targetOtp} with your chauffeur to complete.`,
         'flag'
       );
-      addToast(`Arrived at destination! Share Drop OTP ${targetOtp} to finalize.`, 'info');
+      addToast(`Arrived at destination. Share Drop OTP ${targetOtp} to finalize.`, 'info');
     });
 
     const unbindDec = realtime.on('TRIP_DECLINED', ({ tripId }) => {
@@ -357,7 +357,7 @@ export function AppProvider({ children }) {
         prev.map(t => (t.id === tripId ? { ...t, status: 'completed' } : t))
       );
       addNotification(
-        'Trip Completed!',
+        'Trip Completed',
         'Thank you for riding with Ridingo. Your digital invoice has been settled.',
         'check'
       );
@@ -737,7 +737,9 @@ export function AppProvider({ children }) {
       driver: null,
       rider: { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' },
       cashback: cb,
-      cashbackStatus: 'pending'
+      cashbackStatus: 'pending',
+      pickupCoords: schedule?.pickupCoords || null,
+      dropCoords: schedule?.dropCoords || null
     };
 
     // Record 30% advance payment in user transactions
@@ -778,11 +780,11 @@ export function AppProvider({ children }) {
 
     // Notify User App in real time
     addNotification(
-      'Chauffeur Assigned!',
-      `${driver.name} (★ ${driver.rating || '4.8'}) is heading to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
+      'Chauffeur Assigned',
+      `${driver.name} (Rating ${driver.rating || '4.8'}) is en route to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
       'car'
     );
-    addToast(`Trip confirmed! ${driver.name} accepted your ride.`, 'check');
+    addToast(`Trip confirmed. ${driver.name} accepted your ride.`, 'check');
 
     // Broadcast across realtime bus
     realtime.acceptRide(tripId, driver);

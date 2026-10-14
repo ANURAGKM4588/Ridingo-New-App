@@ -191,7 +191,11 @@ export default function ProfileTab() {
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                 ) : (
-                  (user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AM')
+                  <img
+                    src="/App icon.png"
+                    alt="Ridingo"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                 )}
               </div>
               <div

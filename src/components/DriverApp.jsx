@@ -2414,7 +2414,11 @@ export default function DriverApp() {
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
-                        (driverPartner?.name ? driverPartner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'RK')
+                        <img
+                          src="/App icon.png"
+                          alt="Ridingo"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
                       )}
                     </div>
                     <div
@@ -3709,7 +3713,21 @@ export default function DriverApp() {
           }}
         >
           <span className="nv-i">
-            <Icon name="user" size={23} filled={dTab === 'profile'} />
+            <img
+              src="/App icon.png"
+              alt="Profile"
+              style={{
+                width: '23px',
+                height: '23px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                display: 'block',
+                border: dTab === 'profile' ? '2px solid #FFC70A' : '1.5px solid transparent',
+                opacity: dTab === 'profile' ? 1 : 0.75,
+                transition: 'all 0.2s ease',
+                boxShadow: dTab === 'profile' ? '0 0 8px rgba(255, 199, 10, 0.4)' : 'none'
+              }}
+            />
           </span>
           <span className="nv-l">Profile</span>
         </button>

@@ -4,6 +4,7 @@ import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
+import { searchGooglePlaces } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 
 const CATS = {
@@ -104,30 +105,34 @@ export default function BookingSheet() {
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   const [dropSuggestions, setDropSuggestions] = useState([]);
   const [activeSuggestField, setActiveSuggestField] = useState(null); // 'pickup' | 'drop' | null
+  const [pickupCoords, setPickupCoords] = useState(null);
+  const [dropCoords, setDropCoords] = useState(null);
 
   const handlePickupChange = (val) => {
     setPickup(val);
     if (val.trim()) {
-      searchPlaces(val, (results) => {
+      searchGooglePlaces(val, (results) => {
         setPickupSuggestions(results || []);
         setActiveSuggestField('pickup');
       });
     } else {
       setPickupSuggestions([]);
       setActiveSuggestField(null);
+      setPickupCoords(null);
     }
   };
 
   const handleDropChange = (val) => {
     setDrop(val);
     if (val.trim()) {
-      searchPlaces(val, (results) => {
+      searchGooglePlaces(val, (results) => {
         setDropSuggestions(results || []);
         setActiveSuggestField('drop');
       });
     } else {
       setDropSuggestions([]);
       setActiveSuggestField(null);
+      setDropCoords(null);
     }
   };
 
@@ -294,7 +299,7 @@ export default function BookingSheet() {
           const pId = paymentRes?.phonepe_payment_id || paymentRes?.phonepe_transaction_id || paymentRes?.razorpay_payment_id || ('pay_ppe_' + Date.now().toString(36));
           const methodLabel = paymentRes?.method || 'PhonePe';
           setBookingOpen(false);
-          bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr, trans });
+          bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr, trans, pickupCoords, dropCoords });
           addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
         onDismiss: () => {
@@ -465,7 +470,11 @@ export default function BookingSheet() {
                       type="button"
                       className="loc-suggest-item"
                       onClick={() => {
-                        setPickup(item.title);
+                        const fullLoc = item.title + (item.sub ? `, ${item.sub}` : '');
+                        setPickup(fullLoc);
+                        if (item.lat && item.lng) {
+                          setPickupCoords({ lat: item.lat, lng: item.lng, name: item.title });
+                        }
                         setActiveSuggestField(null);
                       }}
                     >
@@ -565,7 +574,11 @@ export default function BookingSheet() {
                       type="button"
                       className="loc-suggest-item"
                       onClick={() => {
-                        setDrop(item.title);
+                        const fullLoc = item.title + (item.sub ? `, ${item.sub}` : '');
+                        setDrop(fullLoc);
+                        if (item.lat && item.lng) {
+                          setDropCoords({ lat: item.lat, lng: item.lng, name: item.title });
+                        }
                         setActiveSuggestField(null);
                       }}
                     >
@@ -1055,7 +1068,7 @@ export default function BookingSheet() {
                     const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Airport Terminal' : 'As directed by passenger');
                     const pId = 'pay_instant_' + Date.now().toString(36);
                     setBookingOpen(false);
-                    bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr, trans });
+                    bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr, trans, pickupCoords, dropCoords });
                     addToast(`Chauffeur requested! Dispatched to nearby drivers.`, 'check');
                   }}
                   title="Instant dispatch without payment gateway"

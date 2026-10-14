@@ -107,8 +107,22 @@ export default function GraphicLiveMap({
       mapRef.current = null;
     }
 
-    const centerLat = (ROUTE_COORDS[0].lat + ROUTE_COORDS[ROUTE_COORDS.length - 1].lat) / 2;
-    const centerLng = (ROUTE_COORDS[0].lng + ROUTE_COORDS[ROUTE_COORDS.length - 1].lng) / 2;
+    const hasCustomPoints = Boolean(trip?.pickupCoords?.lat && trip?.dropCoords?.lat);
+    const originPt = trip?.pickupCoords?.lat ? { lat: trip.pickupCoords.lat, lng: trip.pickupCoords.lng } : ROUTE_COORDS[0];
+    const destPt = trip?.dropCoords?.lat ? { lat: trip.dropCoords.lat, lng: trip.dropCoords.lng } : ROUTE_COORDS[ROUTE_COORDS.length - 1];
+
+    let activeWaypoints = ROUTE_COORDS;
+    if (hasCustomPoints) {
+      activeWaypoints = [
+        originPt,
+        { lat: (originPt.lat * 2 + destPt.lat) / 3 + 0.002, lng: (originPt.lng * 2 + destPt.lng) / 3 + 0.003 },
+        { lat: (originPt.lat + destPt.lat * 2) / 3 - 0.001, lng: (originPt.lng + destPt.lng * 2) / 3 - 0.002 },
+        destPt
+      ];
+    }
+
+    const centerLat = (originPt.lat + destPt.lat) / 2;
+    const centerLng = (originPt.lng + destPt.lng) / 2;
 
     const map = L.map(containerRef.current, {
       center: [centerLat, centerLng],
@@ -128,7 +142,7 @@ export default function GraphicLiveMap({
     tileLayerRef.current = gLayer;
 
     // Google Maps Classic Blue Route Line
-    const latlngs = ROUTE_COORDS.map(p => [p.lat, p.lng]);
+    const latlngs = activeWaypoints.map(p => [p.lat, p.lng]);
     
     // Outer outline casing for Google Maps route
     const polyOuter = L.polyline(latlngs, {
@@ -157,7 +171,7 @@ export default function GraphicLiveMap({
       iconSize: [14, 14],
       iconAnchor: [7, 7]
     });
-    L.marker([ROUTE_COORDS[0].lat, ROUTE_COORDS[0].lng], { icon: originIcon }).addTo(map);
+    L.marker([originPt.lat, originPt.lng], { icon: originIcon }).addTo(map);
 
     // Destination Marker: Official Google Maps Red Teardrop Pin
     const destIcon = L.divIcon({
@@ -170,7 +184,7 @@ export default function GraphicLiveMap({
       iconSize: [26, 36],
       iconAnchor: [13, 36]
     });
-    L.marker([ROUTE_COORDS[ROUTE_COORDS.length - 1].lat, ROUTE_COORDS[ROUTE_COORDS.length - 1].lng], { icon: destIcon }).addTo(map);
+    L.marker([destPt.lat, destPt.lng], { icon: destIcon }).addTo(map);
 
     // Live Moving Vehicle Marker on the Road
     const carIcon = L.divIcon({

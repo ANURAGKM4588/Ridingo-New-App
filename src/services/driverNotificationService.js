@@ -188,8 +188,8 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
           if (reg && reg.showNotification) {
             await reg.showNotification(title, {
               body,
-              icon: '/favicon.ico',
-              badge: '/favicon.ico',
+              icon: '/App icon.png',
+              badge: '/App icon.png',
               tag,
               renotify: true,
               requireInteraction: true,
@@ -203,7 +203,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
         // Direct OS Notification
         const n = new Notification(title, {
           body,
-          icon: '/favicon.ico',
+          icon: '/App icon.png',
           tag,
           silent: false
         });
@@ -216,7 +216,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
         // Request on the fly if user hasn't explicitly denied
         const perm = await Notification.requestPermission();
         if (perm === 'granted') {
-          new Notification(title, { body, icon: '/favicon.ico', tag });
+          new Notification(title, { body, icon: '/App icon.png', tag });
           return true;
         }
       }
@@ -230,6 +230,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
 
 /**
  * Specialized Driver Alert Dispatches
+ * Standardized corporate notification copy without emojis for clean OS presentation.
  */
 
 // 1. Incoming Ride Request Alert
@@ -238,8 +239,8 @@ export function notifyIncomingRideRequest(trip) {
   const fare = trip?.fare || 650;
   const category = trip?.category ? trip.category.toUpperCase() : 'HOURLY';
   return sendDriverNativeNotification(
-    '🚗 New Booking Request Nearby!',
-    `${category} Chauffeur · ₹${fare} · Pickup at ${pickup}. Tap to accept now.`,
+    'New Booking Request',
+    `${category} Chauffeur · ₹${fare} · Pickup at ${pickup}. Review and accept.`,
     {
       id: Math.floor(Math.random() * 500000) + 10000,
       tag: `booking_req_${trip?.id || Date.now()}`,
@@ -255,8 +256,8 @@ export function notifyPayoutSuccess(amount, bankDetails = {}, utr = '') {
   const bankName = bankDetails.bankName || 'HDFC Bank';
   const refCode = utr || `UTR${Date.now().toString().slice(-8)}`;
   return sendDriverNativeNotification(
-    `💰 PhonePe Payout Transferred: ₹${Number(amount).toLocaleString('en-IN')}`,
-    `Credited to ${bankName} (${bankAcc}). UTR: ${refCode}. Amount available immediately.`,
+    `Payout Processed: ₹${Number(amount).toLocaleString('en-IN')}`,
+    `Transferred to ${bankName} (${bankAcc}). Reference: ${refCode}. Funds available immediately.`,
     {
       id: Math.floor(Math.random() * 500000) + 500000,
       tag: `payout_tx_${Date.now()}`,
@@ -269,7 +270,7 @@ export function notifyPayoutSuccess(amount, bankDetails = {}, utr = '') {
 // 3. Pickup OTP Verified Alert
 export function notifyStartOtpVerified(trip) {
   return sendDriverNativeNotification(
-    '✓ Pickup OTP Verified',
+    'Pickup OTP Verified',
     'Customer identity confirmed. Vehicle condition inspection unlocked.',
     {
       id: 2001,
@@ -284,8 +285,8 @@ export function notifyStartOtpVerified(trip) {
 export function notifyTripCompleted(trip, fare) {
   const earned = fare || trip?.fare || 650;
   return sendDriverNativeNotification(
-    '🏁 Trip Completed & Payment Settled',
-    `₹${earned} earnings deposited into your Ridingo Driver wallet. Great job!`,
+    'Trip Completed',
+    `₹${earned} earnings deposited into your Ridingo Driver wallet. Trip concluded.`,
     {
       id: 2002,
       tag: 'trip_completed_fare',
@@ -299,8 +300,8 @@ export function notifyTripCompleted(trip, fare) {
 export function notifyDriverOnlineStatus(isOnline) {
   if (!isOnline) return;
   return sendDriverNativeNotification(
-    '🟢 You Are Online on Ridingo Radar',
-    'Live dispatch active. You will receive OS alerts for incoming ride requests.',
+    'Duty Status: Online',
+    'Dispatch system active. Device will receive alerts for incoming ride requests.',
     {
       id: 1001,
       tag: 'driver_online_radar',
