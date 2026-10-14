@@ -60,5 +60,24 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+		<string>location</string>
+		<string>processing</string>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ridingo Driver requires accurate GPS location to receive nearby trip dispatch requests and provide turn-by-turn navigation.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Continuous background location allows Ridingo to dispatch bookings while you are on duty and keep customers updated on your arrival even when the app is minimized.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Continuous background location allows Ridingo to dispatch bookings while you are on duty.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera permission is required to photograph your Driving Licence, Aadhaar card, and capture vehicle condition inspection photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Allow access to your photos to upload KYC documents and vehicle inspection records.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Allow access to save receipts and inspection summaries to your photo library.</string>
 </dict>
 </plist>

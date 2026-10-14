@@ -46,25 +46,54 @@ class RealtimeHub {
         }
       });
 
-      // 3. Supabase Cloud Realtime WebSocket Channel
-      try {
-        if (supabase && typeof supabase.channel === 'function') {
-          this.sbChannel = supabase.channel('ridingo_dispatch_bus');
-          this.sbChannel
-            .on('broadcast', { event: 'dispatch' }, ({ payload }) => {
-              if (payload && payload.type && payload.senderId !== this.clientId) {
-                this._dispatchLocal(payload.type, payload.data);
-              }
-            })
-            .subscribe((status) => {
-              if (status === 'SUBSCRIBED') {
-                // Connected to Supabase real-time cloud dispatch
-              }
-            });
-        }
-      } catch (err) {
-        console.warn('Supabase Realtime bus initialization error:', err);
+      // 3. Supabase Cloud Realtime WebSocket Channel with Broadcast & Presence
+      this._initSupabaseChannel();
+
+      // Auto-reconnect on visibility change / app resume
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            this.reconnect();
+          }
+        });
       }
+    }
+  }
+
+  _initSupabaseChannel() {
+    try {
+      if (supabase && typeof supabase.channel === 'function') {
+        if (this.sbChannel) {
+          try { supabase.removeChannel(this.sbChannel); } catch (e) {}
+        }
+        this.sbChannel = supabase.channel('ridingo_dispatch_bus', {
+          config: {
+            broadcast: { self: false, ack: true },
+            presence: { key: this.clientId }
+          }
+        });
+        this.sbChannel
+          .on('broadcast', { event: 'dispatch' }, ({ payload }) => {
+            if (payload && payload.type && payload.senderId !== this.clientId) {
+              this._dispatchLocal(payload.type, payload.data);
+            }
+          })
+          .subscribe((status) => {
+            console.info('[Realtime] Supabase subscription status:', status);
+          });
+      }
+    } catch (err) {
+      console.warn('Supabase Realtime bus initialization error:', err);
+    }
+  }
+
+  reconnect() {
+    console.info('[Realtime] Resyncing realtime channels on app resume...');
+    this._initSupabaseChannel();
+    // Dispatch active pending trip if available
+    const pending = this.getActiveTripRequest();
+    if (pending) {
+      this._dispatchLocal('TRIP_REQUESTED', pending);
     }
   }
 

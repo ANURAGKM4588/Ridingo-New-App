@@ -5,6 +5,7 @@ import { StatusBar } from '@capacitor/status-bar';
 import { getDeviceLocation } from '../lib/deviceLocation';
 import { processPhonePeCashbackTransfer } from '../utils/phonepe';
 import { realtime } from '../utils/realtime';
+import { notifyIncomingRideRequest } from '../services/driverNotificationService';
 
 const AppContext = createContext(null);
 
@@ -261,7 +262,21 @@ export function AppProvider({ children }) {
       });
       setIncomingTripRequest(newTrip);
       setDriverOnline(true);
+      // Trigger native OS push notification & acoustic alert chime
+      try {
+        notifyIncomingRideRequest(newTrip);
+      } catch (e) {}
     });
+
+    // App state resume listener for background sync
+    let appStateHandle = null;
+    try {
+      CapApp.addListener('appStateChange', (state) => {
+        if (state.isActive) {
+          realtime.reconnect();
+        }
+      }).then(h => { appStateHandle = h; });
+    } catch (e) {}
 
     const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver }) => {
       const driverName = driver?.name || 'Ravi Kumar';

@@ -86,6 +86,98 @@ async function ensureNativeChannel() {
   }
 }
 
+import { App } from '@capacitor/app';
+import { PushNotifications } from '@capacitor/push-notifications';
+
+/**
+ * Register Driver App with Apple Push Notification service (APNs)
+ * Enables remote native notifications when app is minimized or phone is locked.
+ */
+export async function registerDriverAPNsPush(onTripRequestReceived) {
+  if (!Capacitor.isNativePlatform()) return null;
+
+  try {
+    // 1. Request APNs Push Permission
+    let perm = await PushNotifications.checkPermissions();
+    if (perm.receive !== 'granted') {
+      perm = await PushNotifications.requestPermissions();
+    }
+
+    if (perm.receive === 'granted') {
+      // 2. Register with Apple Push Notification service
+      await PushNotifications.register();
+
+      // 3. APNs Device Token Listener
+      PushNotifications.addListener('registration', (token) => {
+        console.info('[APNs] Device Token successfully generated:', token.value);
+        try {
+          localStorage.setItem('ridingo_apns_device_token', token.value);
+        } catch (e) {}
+      });
+
+      PushNotifications.addListener('registrationError', (error) => {
+        console.warn('[APNs] Registration Error:', error);
+      });
+
+      // 4. Remote Push Received (Foreground or Background)
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.info('[APNs] Push notification received in background/foreground:', notification);
+        playNativeAlertChime('alert');
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate([150, 75, 150, 75, 300]); } catch (e) {}
+        }
+
+        const data = notification.data || {};
+        if ((data.type === 'TRIP_REQUESTED' || notification.title?.includes('Booking')) && onTripRequestReceived) {
+          onTripRequestReceived(data.trip || data);
+        }
+      });
+
+      // 5. User taps APNs Banner from Lockscreen / Notification Center
+      PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+        console.info('[APNs] User opened app from notification banner:', action);
+        const data = action.notification?.data || {};
+        if (onTripRequestReceived) {
+          onTripRequestReceived(data.trip || data);
+        }
+      });
+
+      return true;
+    }
+  } catch (err) {
+    console.warn('[APNs] Push notification setup error:', err);
+  }
+  return false;
+}
+
+/**
+ * Background Task & App Lifecycle Handler:
+ * When the Driver App wakes up or transitions to the foreground,
+ * checks for any pending active trip requests and syncs Supabase socket immediately.
+ */
+export function setupBackgroundNotificationHandler(onWakeupCheck) {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      App.addListener('appStateChange', (state) => {
+        console.info('[BackgroundSync] App state changed:', state.isActive ? 'ACTIVE' : 'BACKGROUND');
+        if (state.isActive && onWakeupCheck) {
+          onWakeupCheck();
+        }
+      });
+    } catch (e) {}
+  }
+
+  // Web visibilitychange listener fallback
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && onWakeupCheck) {
+        onWakeupCheck();
+      }
+    });
+  }
+}
+
 /**
  * Request OS-level notification permissions
  */
@@ -93,8 +185,9 @@ export async function requestDriverNotificationPermission() {
   try {
     if (Capacitor.isNativePlatform()) {
       await ensureNativeChannel();
-      const result = await LocalNotifications.requestPermissions();
-      return result.display === 'granted';
+      const localResult = await LocalNotifications.requestPermissions();
+      await registerDriverAPNsPush();
+      return localResult.display === 'granted';
     }
 
     if (typeof window !== 'undefined' && 'Notification' in window) {

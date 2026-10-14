@@ -14,7 +14,9 @@ import {
   notifyPayoutSuccess,
   notifyStartOtpVerified,
   notifyTripCompleted,
-  notifyDriverOnlineStatus
+  notifyDriverOnlineStatus,
+  registerDriverAPNsPush,
+  setupBackgroundNotificationHandler
 } from '../services/driverNotificationService';
 
 const CATS = {
@@ -1057,8 +1059,18 @@ export default function DriverApp() {
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
 
   useEffect(() => {
-    // Request device-level OS notification permission on driver app initialization
+    // Request device-level OS notification permission & register APNs push on driver app initialization
     requestDriverNotificationPermission();
+    registerDriverAPNsPush((trip) => {
+      if (trip) {
+        realtime.emit('TRIP_REQUESTED', trip);
+      }
+    });
+
+    // Handle app resume from background / phone lock screen to sync active dispatches
+    setupBackgroundNotificationHandler(() => {
+      realtime.reconnect();
+    });
   }, []);
 
   useEffect(() => {

@@ -76,5 +76,22 @@
 		<string>upi</string>
 		<string>shoebox</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+		<string>location</string>
+		<string>processing</string>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ridingo requires your GPS location to set accurate pickup points and route your chauffeur.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Continuous location access allows Ridingo to keep you updated on your chauffeur's arrival in real time.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera permission is used to capture support photos and vehicle condition inspection images.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Allow photo library access to upload your profile photo or attach receipts.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Allow access to save receipts and trip summaries to your photo library.</string>
 </dict>
 </plist>

@@ -29,6 +29,14 @@
       "iosClientId": "496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com",
       "clientId": "496710932146-dff905ju49pr9j04ph4ii6u5c9moktge.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#FFC70A",
+      "sound": "beep.wav"
     }
   }
 }
