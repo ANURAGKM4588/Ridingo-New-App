@@ -1046,7 +1046,8 @@ export default function DriverApp() {
     driverBalance,
     setDriverBalance,
     driverTx,
-    setDriverTx
+    setDriverTx,
+    syncTripsFromSupabase
   } = useApp();
 
   const [dFilter, setDFilter] = useState('all');
@@ -1070,6 +1071,9 @@ export default function DriverApp() {
     // Handle app resume from background / phone lock screen to sync active dispatches
     setupBackgroundNotificationHandler(() => {
       realtime.reconnect();
+      if (typeof syncTripsFromSupabase === 'function') {
+        syncTripsFromSupabase();
+      }
     });
   }, []);
 

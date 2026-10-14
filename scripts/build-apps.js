@@ -15,10 +15,8 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const reactDistDir = path.join(rootDir, 'dist');
 
-if (!fs.existsSync(path.join(reactDistDir, 'index.html'))) {
-  console.log('🔨 Building production bundle in root...');
-  execSync('npm run build', { cwd: rootDir, stdio: 'inherit' });
-}
+console.log('🔨 Building fresh production bundle in root...');
+execSync('npm run build', { cwd: rootDir, stdio: 'inherit' });
 
 const sourceHtmlPath = path.join(reactDistDir, 'index.html');
 console.log(`📦 Using source React production bundle from: ${path.relative(rootDir, sourceHtmlPath)}`);

@@ -243,9 +243,108 @@ export function AppProvider({ children }) {
   const [driverTx, setDriverTx] = useState([]);
   const [toasts, setToasts] = useState([]);
 
+  // Helper to map Supabase public.trips database row to App Trip Object
+  const mapSupabaseRowToTrip = (row) => {
+    if (!row) return null;
+    const carObj = row.car || {};
+    return {
+      id: row.id,
+      cat: row.cat || 'hourly',
+      qty: Number(row.qty) || 2,
+      pickup: row.pickup || 'Pickup Location',
+      drop_loc: row.drop_loc || 'Drop Location',
+      trans: carObj.trans || row.trans || 'Automatic',
+      car: {
+        model: carObj.model || 'Sedan',
+        trans: carObj.trans || row.trans || 'Automatic',
+        plate: carObj.plate || 'KL 07 AB 4821',
+        ...carObj
+      },
+      when_ts: Number(row.when_ts) || Date.now(),
+      scheduledDate: carObj.scheduledDate || null,
+      scheduledTime: carObj.scheduledTime || null,
+      scheduleDisplay: carObj.scheduledDate ? `${carObj.scheduledDate} · ${carObj.scheduledTime}` : 'Immediate Pickup',
+      fare: Number(row.fare) || 600,
+      advance: Number(row.advance) || 180,
+      status: row.status || 'requested',
+      startOtp: carObj.startOtp || row.startOtp || '4821',
+      endOtp: carObj.endOtp || row.endOtp || '8392',
+      conditionPhotos: row.conditionPhotos || { front: null, left: null, back: null, top: null },
+      conditionScratches: row.conditionScratches || [],
+      conditionNotes: '',
+      conditionVerified: !!row.conditionVerified,
+      paymentGateway: 'PhonePe',
+      paymentId: row.paymentId || 'pay_ppe_' + row.id,
+      driver: row.driver || null,
+      rider: row.rider || { name: 'Customer', phone: '+91 98401 23456' },
+      cashback: Number(row.cashback) || 20,
+      cashbackStatus: row.status === 'completed' ? 'credited' : 'pending',
+      pickupCoords: carObj.pickupCoords || null,
+      dropCoords: carObj.dropCoords || null
+    };
+  };
+
+  // Sync trips from Supabase database table (bridges sandboxed iOS apps)
+  const syncTripsFromSupabase = async () => {
+    try {
+      if (!supabase || typeof supabase.from !== 'function') return;
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .order('when_ts', { ascending: false })
+        .limit(25);
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const mapped = data.map(mapSupabaseRowToTrip).filter(Boolean);
+        setTrips(prev => {
+          const mapById = new Map();
+          prev.forEach(t => mapById.set(t.id, t));
+          mapped.forEach(t => {
+            if (mapById.has(t.id)) {
+              mapById.set(t.id, { ...mapById.get(t.id), ...t });
+            } else {
+              mapById.set(t.id, t);
+            }
+          });
+          return Array.from(mapById.values());
+        });
+
+        // Check for latest active 'requested' trip created within 30 minutes
+        const activeReq = mapped.find(t => t.status === 'requested' && Math.abs(Date.now() - t.when_ts) < 30 * 60 * 1000);
+        if (activeReq) {
+          setIncomingTripRequest(prev => {
+            if (!prev || prev.id !== activeReq.id) {
+              try { notifyIncomingRideRequest(activeReq); } catch (e) {}
+              return activeReq;
+            }
+            return prev;
+          });
+        } else {
+          // If the pending request was accepted or declined in Supabase, clear it
+          setIncomingTripRequest(prev => {
+            if (prev && mapped.some(t => t.id === prev.id && t.status !== 'requested')) {
+              return null;
+            }
+            return prev;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[Supabase] Sync trips error:', err);
+    }
+  };
+
   // Subscribe to real-time communication between User and Driver apps
   useEffect(() => {
-    // Check initial active trip on mount
+    // 1. Initial sync from Supabase database
+    syncTripsFromSupabase();
+
+    // 2. Continuous 3.5s polling loop to guarantee sandboxed iOS app sync
+    const pollInterval = setInterval(() => {
+      syncTripsFromSupabase();
+    }, 3500);
+
+    // 3. Check initial active trip on mount from cache
     const initialActive = realtime.getActiveTripRequest();
     if (initialActive) {
       setIncomingTripRequest(initialActive);
@@ -268,15 +367,23 @@ export function AppProvider({ children }) {
       } catch (e) {}
     });
 
-    // App state resume listener for background sync
+    // App state resume listener for background sync (when user switches to Driver App on same device)
     let appStateHandle = null;
     try {
       CapApp.addListener('appStateChange', (state) => {
         if (state.isActive) {
           realtime.reconnect();
+          syncTripsFromSupabase();
         }
       }).then(h => { appStateHandle = h; });
     } catch (e) {}
+
+    const onVisChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncTripsFromSupabase();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisChange);
 
     const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver }) => {
       const driverName = driver?.name || 'Ravi Kumar';
@@ -379,6 +486,11 @@ export function AppProvider({ children }) {
     });
 
     return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', onVisChange);
+      if (appStateHandle && typeof appStateHandle.remove === 'function') {
+        appStateHandle.remove();
+      }
       unbindReq();
       unbindAcc();
       unbindArr();
@@ -768,15 +880,75 @@ export function AppProvider({ children }) {
       paymentId: pId
     };
 
+    // Helper to persist full trip record in Supabase database
+    const persistTripToSupabase = async (tripObj) => {
+      try {
+        if (!supabase || typeof supabase.from !== 'function') return;
+        const row = {
+          id: tripObj.id,
+          cat: tripObj.cat,
+          qty: tripObj.qty,
+          pickup: tripObj.pickup,
+          drop_loc: tripObj.drop_loc,
+          when_ts: tripObj.when_ts,
+          done_ts: 0,
+          fare: tripObj.fare,
+          advance: tripObj.advance,
+          status: tripObj.status || 'requested',
+          driver: null,
+          car: {
+            model: tripObj.car?.model || 'Sedan',
+            trans: tripObj.trans || tripObj.car?.trans || 'Automatic',
+            plate: tripObj.car?.plate || 'KL 07 AB 4821',
+            startOtp: tripObj.startOtp,
+            endOtp: tripObj.endOtp,
+            scheduledDate: tripObj.scheduledDate,
+            scheduledTime: tripObj.scheduledTime,
+            pickupCoords: tripObj.pickupCoords,
+            dropCoords: tripObj.dropCoords
+          },
+          rider: tripObj.rider || { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' },
+          cashback: tripObj.cashback || 0,
+          by_who: user?.phone || 'user'
+        };
+        const { error } = await supabase.from('trips').upsert(row);
+        if (error) {
+          console.warn('[Supabase] Persist trip error:', error);
+        } else {
+          console.info('[Supabase] Trip stored in database:', tripObj.id);
+        }
+      } catch (e) {
+        console.warn('[Supabase] Persist error:', e);
+      }
+    };
+
     setUtx(prev => [newTx, ...(Array.isArray(prev) ? prev : [])]);
     // Purge any old 'requested' trips so only the active new booking is routed
     setTrips(prev => [newTrip, ...(Array.isArray(prev) ? prev.filter(t => t.status !== 'requested') : [])]);
     setIncomingTripRequest(newTrip);
+
+    // 1. Broadcast over WebSocket channel
     realtime.requestRide(newTrip);
+    // 2. Persist in cloud Supabase table (accessible to sandboxed iOS apps)
+    persistTripToSupabase(newTrip);
+
     setBookingOpen(false);
     setUTab('home');
     setLiveTrackingOpen(true);
     addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via PhonePe.`, 'check');
+  };
+
+  const updateTripStatusInSupabase = async (tripId, status, extra = {}) => {
+    try {
+      if (!supabase || typeof supabase.from !== 'function') return;
+      await supabase.from('trips').update({
+        status,
+        updated_at: new Date().toISOString(),
+        ...extra
+      }).eq('id', tripId);
+    } catch (e) {
+      console.warn('[Supabase] Status update error:', e);
+    }
   };
 
   const acceptTrip = (tripId) => {
@@ -801,8 +973,9 @@ export function AppProvider({ children }) {
     );
     addToast(`Trip confirmed. ${driver.name} accepted your ride.`, 'check');
 
-    // Broadcast across realtime bus
+    // Broadcast across realtime bus & update Supabase
     realtime.acceptRide(tripId, driver);
+    updateTripStatusInSupabase(tripId, 'accepted', { driver: driver.name });
   };
 
   const arrivedAtPickup = (tripId) => {
@@ -817,6 +990,7 @@ export function AppProvider({ children }) {
       })
     );
     realtime.arrivedAtPickup(tripId);
+    updateTripStatusInSupabase(tripId, 'pickup_arrived');
     addToast('Arrived at pickup location! Enter customer OTP to start ride.', 'info');
   };
 
@@ -825,6 +999,7 @@ export function AppProvider({ children }) {
       prev.map(t => (t.id === tripId ? { ...t, status: 'ready_to_start' } : t))
     );
     realtime.verifyStartOtp(tripId);
+    updateTripStatusInSupabase(tripId, 'ready_to_start');
     addToast('Pickup OTP verified! Ready to start trip.', 'check');
   };
 
@@ -848,6 +1023,7 @@ export function AppProvider({ children }) {
       prev.map(t => (t.id === tripId ? { ...t, status: 'inprogress', startedAt: Date.now() } : t))
     );
     realtime.startRide(tripId);
+    updateTripStatusInSupabase(tripId, 'inprogress');
     addToast('Trip started! Live GPS sharing activated.', 'check');
   };
 
@@ -863,6 +1039,7 @@ export function AppProvider({ children }) {
       })
     );
     realtime.requestEndTrip(tripId, targetOtp);
+    updateTripStatusInSupabase(tripId, 'ending_otp');
     addToast(`Destination reached! Trip End OTP: ${targetOtp}`, 'info');
   };
 
@@ -922,12 +1099,14 @@ export function AppProvider({ children }) {
     );
 
     realtime.completeRide(tripId, { amount, fare, tip, isCash });
+    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now() });
   };
 
   const declineTrip = (tripId) => {
     setIncomingTripRequest(null);
     setTrips(prev => prev.filter(t => t.id !== tripId));
     realtime.declineRide(tripId);
+    updateTripStatusInSupabase(tripId, 'declined');
     addToast('Trip request dismissed', 'info');
   };
 
@@ -1025,7 +1204,8 @@ export function AppProvider({ children }) {
         legalModal,
         setLegalModal,
         openLegal,
-        closeLegal
+        closeLegal,
+        syncTripsFromSupabase
       }}
     >
       {children}

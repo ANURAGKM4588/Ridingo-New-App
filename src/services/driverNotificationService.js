@@ -328,9 +328,9 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
 
 // 1. Incoming Ride Request Alert
 export function notifyIncomingRideRequest(trip) {
-  const pickup = trip?.from || 'Customer Pickup Location';
+  const pickup = trip?.pickup || trip?.from || 'Customer Pickup Location';
   const fare = trip?.fare || 650;
-  const category = trip?.category ? trip.category.toUpperCase() : 'HOURLY';
+  const category = (trip?.cat || trip?.category || 'hourly').toUpperCase();
   return sendDriverNativeNotification(
     'New Booking Request',
     `${category} Chauffeur · ₹${fare} · Pickup at ${pickup}. Review and accept.`,
