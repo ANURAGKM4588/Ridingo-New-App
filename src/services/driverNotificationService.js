@@ -352,23 +352,45 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
  * Standardized corporate notification copy without emojis for clean OS presentation.
  */
 
-// 1. Incoming Ride Request Alert (Interactive miniature trip card)
+// 1. Incoming Ride Request Alert (Miniature Popup Card in Notification)
 export function notifyIncomingRideRequest(trip) {
-  const pickup = trip?.pickup || trip?.from || 'Customer Pickup Location';
-  const fare = trip?.fare || 650;
-  const category = (trip?.cat || trip?.category || 'hourly').toUpperCase();
-  const advance = trip?.advance || Math.round(fare * 0.3);
+  const pickup = trip?.pickup || trip?.from || 'Customer Pickup';
+  const drop = trip?.drop_loc || trip?.drop || trip?.to || 'City Route';
+  const fare = Number(trip?.fare) || 600;
+  const advance = Number(trip?.advance) || Math.round(fare * 0.3);
+  const catKey = (trip?.cat || trip?.category || 'hourly').toLowerCase();
+  const catNames = {
+    hourly: 'Hourly Chauffeur',
+    daily: 'Full Day Chauffeur',
+    airport: 'Airport Transfer',
+    outstation: 'Outstation Drive',
+    event: 'Event Chauffeur'
+  };
+  const categoryName = catNames[catKey] || 'Chauffeur Ride';
+  const qty = Number(trip?.qty) || (catKey === 'hourly' ? 2 : 1);
+  const duration = `${qty} ${catKey === 'hourly' || catKey === 'event' ? (qty > 1 ? 'Hours' : 'Hour') : (qty > 1 ? 'Days' : 'Day')}`;
+
+  const title = `NEW TRIP: ₹${fare} · ${categoryName}`;
+  const body = `📍 Pickup: ${pickup}\n🏁 Drop: ${drop}\n⏱️ Duration: ${duration}\n💰 Total: ₹${fare} (₹${advance} Paid via PhonePe)`;
 
   return sendDriverNativeNotification(
-    `TRIP REQUEST · ₹${fare} (${category})`,
-    `Pickup: ${pickup} • Advance ₹${advance} Paid • Tap to open and accept trip.`,
+    title,
+    body,
     {
       id: Math.floor(Math.random() * 500000) + 10000,
       tag: `booking_req_${trip?.id || Date.now()}`,
       type: 'request',
       actionTypeId: 'TRIP_DISPATCH_CARD',
-      summaryArgument: `₹${fare} ${category}`,
-      extra: { tripId: trip?.id, fare, pickup, category }
+      summaryArgument: `₹${fare} · ${pickup} to ${drop}`,
+      extra: {
+        tripId: trip?.id,
+        fare,
+        advance,
+        pickup,
+        drop,
+        duration,
+        category: categoryName
+      }
     }
   );
 }

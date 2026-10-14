@@ -252,23 +252,6 @@ export async function requestAppPermission(feature, role = 'user', options = { s
 
   const permKey = getPlatformPermissionKey(feature, role);
   if (!permKey || !RNP?.request) {
-    // Web fallback for Geolocation (Only in desktop browser, NEVER on native iOS/Android to prevent "localhost" alert)
-    if (!Capacitor.isNativePlatform() && feature === PERMISSION_TYPES.LOCATION_FOREGROUND && typeof navigator !== 'undefined' && navigator.geolocation) {
-      return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          () => resolve(PERMISSION_RESULTS.GRANTED),
-          (err) => {
-            if (err.code === 1) { // PERMISSION_DENIED
-              if (options.showAlertOnBlocked) openAppSettingsGuide(feature, role);
-              resolve(PERMISSION_RESULTS.BLOCKED);
-            } else {
-              resolve(PERMISSION_RESULTS.UNAVAILABLE);
-            }
-          },
-          { timeout: 8000 }
-        );
-      });
-    }
     return PERMISSION_RESULTS.GRANTED;
   }
 

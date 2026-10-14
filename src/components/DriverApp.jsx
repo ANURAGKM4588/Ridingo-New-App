@@ -6,7 +6,6 @@ import BrandLogo from './BrandLogo';
 import DriverOnboardingModal from './DriverOnboardingModal';
 import TripInvoiceModal from './TripInvoiceModal';
 import TripOtpModal from './TripOtpModal';
-import DynamicIslandTripCard from './DynamicIslandTripCard';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
 import {
   requestDriverNotificationPermission,
@@ -726,7 +725,10 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
       setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          onDecline(trip.id);
+          // On timeout: smoothly close the popup without declining so the request stays in Dashboard "Trip Requests"
+          if (typeof onMinimize === 'function') {
+            onMinimize();
+          }
           return 0;
         }
         return prev - 1;
@@ -3736,42 +3738,22 @@ export default function DriverApp() {
         </button>
       </nav>
 
-      {/* Real-Time Incoming Ride Request Dynamic Island & Pop-Up Modal */}
+      {/* Real-Time Incoming Ride Request Pop-Up Modal */}
       {(() => {
         const activeTripReq = incomingTripRequest || (requestedTrips && requestedTrips.length > 0 ? requestedTrips[0] : null);
         if (!activeTripReq) return null;
-
-        if (minimizedRequestTripId === activeTripReq.id) {
-          return (
-            <DynamicIslandTripCard
-              trip={activeTripReq}
-              onAccept={handleAccept}
-              onDecline={handleDecline}
-              onExpand={() => setMinimizedRequestTripId(null)}
-              isMinimized={true}
-            />
-          );
-        }
+        if (minimizedRequestTripId === activeTripReq.id) return null;
 
         return (
-          <>
-            <DynamicIslandTripCard
-              trip={activeTripReq}
-              onAccept={handleAccept}
-              onDecline={handleDecline}
-              onExpand={() => setMinimizedRequestTripId(null)}
-              isMinimized={false}
-            />
-            <IncomingRideModal
-              trip={activeTripReq}
-              onAccept={handleAccept}
-              onDecline={handleDecline}
-              onMinimize={() => {
-                setMinimizedRequestTripId(activeTripReq.id);
-                addToast('Request minimized to Dynamic Island pill on Dashboard', 'info');
-              }}
-            />
-          </>
+          <IncomingRideModal
+            trip={activeTripReq}
+            onAccept={handleAccept}
+            onDecline={handleDecline}
+            onMinimize={() => {
+              setMinimizedRequestTripId(activeTripReq.id);
+              addToast('Request moved to Trip Requests on Dashboard', 'info');
+            }}
+          />
         );
       })()}
 
