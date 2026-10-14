@@ -241,9 +241,39 @@ class RealtimeHub {
     this.emit('END_OTP_REQUESTED', { tripId, endOtp, timestamp: Date.now() });
   }
 
+  // Live GPS Telemetry Stream (Driver App -> User App)
+  updateDriverLocation({ tripId, lat, lng, heading = 0, speed = 0 }) {
+    this.emit('LOCATION_UPDATE', {
+      tripId,
+      lat,
+      lng,
+      heading,
+      speed,
+      timestamp: Date.now()
+    });
+  }
+
   completeRide(tripId, details = {}) {
     this.emit('TRIP_COMPLETED', { tripId, ...details, timestamp: Date.now() });
   }
+}
+
+/**
+ * Secure 4-digit OTP Generator using WebCrypto API
+ */
+export function generateSecureOtp(length = 4) {
+  try {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      const min = Math.pow(10, length - 1);
+      const max = Math.pow(10, length) - 1;
+      return String(min + (array[0] % (max - min + 1)));
+    }
+  } catch (e) {}
+  const min = Math.pow(10, length - 1);
+  const max = Math.pow(10, length) - 1;
+  return String(Math.floor(min + Math.random() * (max - min + 1)));
 }
 
 export const realtime = new RealtimeHub();
