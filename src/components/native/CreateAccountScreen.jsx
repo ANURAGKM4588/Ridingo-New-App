@@ -156,21 +156,14 @@ export default function CreateAccountScreen({
     }
   };
 
-  const fetchCurrentLocation = () => {
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLocationGranted(true);
-          // Simulate reverse-geocoding for demo
-          setDetectedCity('Ernakulam, Kochi');
-        },
-        (err) => {
-          console.warn('Geolocation error:', err);
-          setDetectedCity('Kochi, Kerala (Default)');
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-      );
-    } else {
+  const fetchCurrentLocation = async () => {
+    try {
+      const { getDeviceLocation } = await import('../../lib/deviceLocation');
+      const loc = await getDeviceLocation();
+      setLocationGranted(true);
+      setDetectedCity(loc?.address || 'Ernakulam, Kochi');
+    } catch (err) {
+      console.warn('Location query error:', err);
       setLocationGranted(true);
       setDetectedCity('Kochi, Kerala');
     }

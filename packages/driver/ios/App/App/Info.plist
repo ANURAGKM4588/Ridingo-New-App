@@ -66,6 +66,7 @@
 		<string>fetch</string>
 		<string>location</string>
 		<string>processing</string>
+		<string>audio</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Ridingo Driver requires accurate GPS location to receive nearby trip dispatch requests and provide turn-by-turn navigation.</string>

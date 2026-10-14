@@ -6,6 +6,7 @@ import BrandLogo from './BrandLogo';
 import DriverOnboardingModal from './DriverOnboardingModal';
 import TripInvoiceModal from './TripInvoiceModal';
 import TripOtpModal from './TripOtpModal';
+import DynamicIslandTripCard from './DynamicIslandTripCard';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
 import {
   requestDriverNotificationPermission,
@@ -3735,22 +3736,42 @@ export default function DriverApp() {
         </button>
       </nav>
 
-      {/* Real-Time Incoming Ride Request Pop-Up Modal */}
+      {/* Real-Time Incoming Ride Request Dynamic Island & Pop-Up Modal */}
       {(() => {
         const activeTripReq = incomingTripRequest || (requestedTrips && requestedTrips.length > 0 ? requestedTrips[0] : null);
         if (!activeTripReq) return null;
-        if (minimizedRequestTripId === activeTripReq.id) return null;
+
+        if (minimizedRequestTripId === activeTripReq.id) {
+          return (
+            <DynamicIslandTripCard
+              trip={activeTripReq}
+              onAccept={handleAccept}
+              onDecline={handleDecline}
+              onExpand={() => setMinimizedRequestTripId(null)}
+              isMinimized={true}
+            />
+          );
+        }
 
         return (
-          <IncomingRideModal
-            trip={activeTripReq}
-            onAccept={handleAccept}
-            onDecline={handleDecline}
-            onMinimize={() => {
-              setMinimizedRequestTripId(activeTripReq.id);
-              addToast('Request minimized to Trip Requests on Dashboard', 'info');
-            }}
-          />
+          <>
+            <DynamicIslandTripCard
+              trip={activeTripReq}
+              onAccept={handleAccept}
+              onDecline={handleDecline}
+              onExpand={() => setMinimizedRequestTripId(null)}
+              isMinimized={false}
+            />
+            <IncomingRideModal
+              trip={activeTripReq}
+              onAccept={handleAccept}
+              onDecline={handleDecline}
+              onMinimize={() => {
+                setMinimizedRequestTripId(activeTripReq.id);
+                addToast('Request minimized to Dynamic Island pill on Dashboard', 'info');
+              }}
+            />
+          </>
         );
       })()}
 

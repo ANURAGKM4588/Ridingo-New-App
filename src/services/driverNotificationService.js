@@ -79,6 +79,30 @@ async function ensureNativeChannel() {
         lights: true,
         lightColor: '#FFC70A'
       });
+
+      // Register interactive action buttons for lockscreen & notification center
+      try {
+        await LocalNotifications.registerActionTypes({
+          types: [
+            {
+              id: 'TRIP_DISPATCH_CARD',
+              actions: [
+                {
+                  id: 'accept',
+                  title: 'Accept Ride',
+                  foreground: true
+                },
+                {
+                  id: 'view',
+                  title: 'View Details',
+                  foreground: true
+                }
+              ]
+            }
+          ]
+        });
+      } catch (actErr) {}
+
       isChannelCreated = true;
     } catch (e) {
       console.warn('Channel creation error:', e);
@@ -252,6 +276,8 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
             id,
             title,
             body,
+            actionTypeId: options.actionTypeId || 'TRIP_DISPATCH_CARD',
+            summaryArgument: options.summaryArgument,
             channelId: 'driver_dispatch_alerts',
             smallIcon: 'ic_stat_icon_config_sample',
             largeIcon: 'res://drawable/ic_launcher',
@@ -326,19 +352,23 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
  * Standardized corporate notification copy without emojis for clean OS presentation.
  */
 
-// 1. Incoming Ride Request Alert
+// 1. Incoming Ride Request Alert (Interactive miniature trip card)
 export function notifyIncomingRideRequest(trip) {
   const pickup = trip?.pickup || trip?.from || 'Customer Pickup Location';
   const fare = trip?.fare || 650;
   const category = (trip?.cat || trip?.category || 'hourly').toUpperCase();
+  const advance = trip?.advance || Math.round(fare * 0.3);
+
   return sendDriverNativeNotification(
-    'New Booking Request',
-    `${category} Chauffeur · ₹${fare} · Pickup at ${pickup}. Review and accept.`,
+    `TRIP REQUEST · ₹${fare} (${category})`,
+    `Pickup: ${pickup} • Advance ₹${advance} Paid • Tap to open and accept trip.`,
     {
       id: Math.floor(Math.random() * 500000) + 10000,
       tag: `booking_req_${trip?.id || Date.now()}`,
       type: 'request',
-      extra: { tripId: trip?.id, fare }
+      actionTypeId: 'TRIP_DISPATCH_CARD',
+      summaryArgument: `₹${fare} ${category}`,
+      extra: { tripId: trip?.id, fare, pickup, category }
     }
   );
 }

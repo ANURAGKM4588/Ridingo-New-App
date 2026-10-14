@@ -329,28 +329,26 @@ export function useSupabaseLiveTrip({
     console.info('[RealtimeManager] Starting continuous driver GPS telemetry streaming...');
 
     // Stream coordinates every 3.5 seconds
-    locationWatchRef.current = setInterval(() => {
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const telemetry = {
-              tripId: activeTripId,
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              heading: pos.coords.heading || 0,
-              speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0, // km/h
-              timestamp: Date.now()
-            };
+    locationWatchRef.current = setInterval(async () => {
+      try {
+        const { getDeviceLocation } = await import('../../lib/deviceLocation');
+        const loc = await getDeviceLocation();
+        if (loc && loc.lat && loc.lng) {
+          const telemetry = {
+            tripId: activeTripId,
+            lat: loc.lat,
+            lng: loc.lng,
+            heading: 0,
+            speed: 0,
+            timestamp: Date.now()
+          };
 
-            // Broadcast to Supabase Realtime channel
-            realtimeManager.broadcastEvent(channelName, TRIP_EVENTS.LOCATION_UPDATE, telemetry);
-            lastLocationSentRef.current = Date.now();
-          },
-          (err) => {
-            console.warn('[RealtimeManager] GPS telemetry reading warning:', err.message);
-          },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 2000 }
-        );
+          // Broadcast to Supabase Realtime channel
+          realtimeManager.broadcastEvent(channelName, TRIP_EVENTS.LOCATION_UPDATE, telemetry);
+          lastLocationSentRef.current = Date.now();
+        }
+      } catch (err) {
+        console.warn('[RealtimeManager] GPS telemetry reading warning:', err);
       }
     }, 3500);
   }, [channelName, role]);

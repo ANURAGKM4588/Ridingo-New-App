@@ -106,10 +106,10 @@ export async function getDeviceLocation(forceRefresh = false) {
     let lng = null;
     let accuracy = null;
 
-    // 1. Try Native Capacitor Geolocation if available
+    // 1. Try Native Capacitor Geolocation on native platforms (iOS/Android)
     try {
-      if (Capacitor.isPluginAvailable('Geolocation')) {
-        const { Geolocation } = await import('@capacitor/geolocation');
+      const { Geolocation } = await import('@capacitor/geolocation');
+      if (Geolocation && typeof Geolocation.getCurrentPosition === 'function') {
         const perm = await Geolocation.checkPermissions();
         if (perm.location !== 'granted') {
           await Geolocation.requestPermissions();
@@ -126,11 +126,11 @@ export async function getDeviceLocation(forceRefresh = false) {
         }
       }
     } catch (nativeErr) {
-      console.warn('Capacitor native geolocation error/unavailable, falling back to navigator:', nativeErr);
+      console.warn('Native geolocation check:', nativeErr);
     }
 
-    // 2. Try HTML5 Geolocation API with high accuracy
-    if (lat === null && typeof navigator !== 'undefined' && navigator.geolocation) {
+    // 2. Try HTML5 Geolocation API ONLY in regular desktop browser (NEVER in native apps to prevent "localhost" popup)
+    if (lat === null && !Capacitor.isNativePlatform() && typeof navigator !== 'undefined' && navigator.geolocation) {
       try {
         const pos = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
@@ -149,7 +149,7 @@ export async function getDeviceLocation(forceRefresh = false) {
           accuracy = pos.coords.accuracy;
         }
       } catch (geoErr) {
-        console.warn('Navigator geolocation error:', geoErr);
+        console.warn('Browser geolocation error:', geoErr);
       }
     }
 

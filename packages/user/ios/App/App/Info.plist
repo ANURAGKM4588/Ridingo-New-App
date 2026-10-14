@@ -82,6 +82,7 @@
 		<string>fetch</string>
 		<string>location</string>
 		<string>processing</string>
+		<string>audio</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Ridingo requires your GPS location to set accurate pickup points and route your chauffeur.</string>

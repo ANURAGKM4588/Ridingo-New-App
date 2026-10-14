@@ -234,10 +234,26 @@ export async function requestAppPermission(feature, role = 'user', options = { s
     return PERMISSION_RESULTS.GRANTED;
   }
 
+  // 1. Native Capacitor Geolocation handling (iOS / Android)
+  if (Capacitor.isNativePlatform() && (feature === PERMISSION_TYPES.LOCATION_FOREGROUND || feature === PERMISSION_TYPES.LOCATION_BACKGROUND)) {
+    try {
+      const { Geolocation } = await import('@capacitor/geolocation');
+      if (Geolocation && typeof Geolocation.requestPermissions === 'function') {
+        const res = await Geolocation.requestPermissions();
+        if (res.location === 'granted') return PERMISSION_RESULTS.GRANTED;
+        if (res.location === 'denied') return PERMISSION_RESULTS.DENIED;
+        return PERMISSION_RESULTS.BLOCKED;
+      }
+    } catch (e) {
+      console.warn('Native geolocation permission request:', e);
+      return PERMISSION_RESULTS.GRANTED;
+    }
+  }
+
   const permKey = getPlatformPermissionKey(feature, role);
   if (!permKey || !RNP?.request) {
-    // Web fallback for Geolocation
-    if (feature === PERMISSION_TYPES.LOCATION_FOREGROUND && typeof navigator !== 'undefined' && navigator.geolocation) {
+    // Web fallback for Geolocation (Only in desktop browser, NEVER on native iOS/Android to prevent "localhost" alert)
+    if (!Capacitor.isNativePlatform() && feature === PERMISSION_TYPES.LOCATION_FOREGROUND && typeof navigator !== 'undefined' && navigator.geolocation) {
       return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           () => resolve(PERMISSION_RESULTS.GRANTED),
