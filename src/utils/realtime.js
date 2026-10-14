@@ -90,11 +90,6 @@ class RealtimeHub {
   reconnect() {
     console.info('[Realtime] Resyncing realtime channels on app resume...');
     this._initSupabaseChannel();
-    // Dispatch active pending trip if available
-    const pending = this.getActiveTripRequest();
-    if (pending) {
-      this._dispatchLocal('TRIP_REQUESTED', pending);
-    }
   }
 
   on(type, callback) {

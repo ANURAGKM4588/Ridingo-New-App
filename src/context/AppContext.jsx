@@ -219,26 +219,12 @@ export function AppProvider({ children }) {
   const openLegal = (tab = 'terms') => setLegalModal({ open: true, tab });
   const closeLegal = () => setLegalModal(prev => ({ ...prev, open: false }));
 
-  // Trips, Wallet & Notifications
-  const [trips, setTrips] = useState(() => {
-    try {
-      const activeReq = realtime.getActiveTripRequest();
-      const shared = realtime.getSharedTrips();
-      let combined = (Array.isArray(shared) && shared.length > 0) ? shared : INITIAL_TRIPS;
-      if (activeReq && !combined.some(t => t.id === activeReq.id)) {
-        combined = [activeReq, ...combined.filter(t => t.status !== 'requested')];
-      }
-      return combined;
-    } catch (e) {
-      return INITIAL_TRIPS;
-    }
-  });
+  // Trips, Wallet & Notifications (Clean start: no stale historical trip flash on home screen)
+  const [trips, setTrips] = useState([]);
   const [utx, setUtx] = useState(INITIAL_UTX);
   const [unotes, setUnotes] = useState(INITIAL_UNOTES);
   const [driverOnline, setDriverOnline] = useState(true);
-  const [incomingTripRequest, setIncomingTripRequest] = useState(() => {
-    return realtime.getActiveTripRequest();
-  });
+  const [incomingTripRequest, setIncomingTripRequest] = useState(null);
   const [driverBalance, setDriverBalance] = useState(0);
   const [driverTx, setDriverTx] = useState([]);
   const [toasts, setToasts] = useState([]);
@@ -309,12 +295,11 @@ export function AppProvider({ children }) {
           return Array.from(mapById.values());
         });
 
-        // Check for latest active 'requested' trip created within 30 minutes
-        const activeReq = mapped.find(t => t.status === 'requested' && Math.abs(Date.now() - t.when_ts) < 30 * 60 * 1000);
+        // Check for latest active 'requested' trip created within 15 minutes
+        const activeReq = mapped.find(t => t.status === 'requested' && Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000);
         if (activeReq) {
           setIncomingTripRequest(prev => {
             if (!prev || prev.id !== activeReq.id) {
-              try { notifyIncomingRideRequest(activeReq); } catch (e) {}
               return activeReq;
             }
             return prev;
@@ -344,16 +329,6 @@ export function AppProvider({ children }) {
       syncTripsFromSupabase();
     }, 3500);
 
-    // 3. Check initial active trip on mount from cache
-    const initialActive = realtime.getActiveTripRequest();
-    if (initialActive) {
-      setIncomingTripRequest(initialActive);
-      setTrips(prev => {
-        const exists = prev.some(t => t.id === initialActive.id);
-        return exists ? prev : [initialActive, ...prev.filter(t => t.status !== 'requested')];
-      });
-    }
-
     const unbindReq = realtime.on('TRIP_REQUESTED', (newTrip) => {
       setTrips(prev => {
         const exists = prev.some(t => t.id === newTrip.id);
@@ -361,10 +336,12 @@ export function AppProvider({ children }) {
       });
       setIncomingTripRequest(newTrip);
       setDriverOnline(true);
-      // Trigger native OS push notification & acoustic alert chime
-      try {
-        notifyIncomingRideRequest(newTrip);
-      } catch (e) {}
+      // Trigger native OS push notification for Driver App
+      if (typeof window !== 'undefined' && (window.RIDINGO_TARGET === 'driver' || view === 'driver')) {
+        try {
+          notifyIncomingRideRequest(newTrip);
+        } catch (e) {}
+      }
     });
 
     // 4. Instant push sync via Supabase Realtime publication on public.trips table
@@ -391,7 +368,9 @@ export function AppProvider({ children }) {
 
                   if (tripObj.status === 'requested') {
                     setIncomingTripRequest(tripObj);
-                    try { notifyIncomingRideRequest(tripObj); } catch (e) {}
+                    if (typeof window !== 'undefined' && (window.RIDINGO_TARGET === 'driver' || view === 'driver')) {
+                      try { notifyIncomingRideRequest(tripObj); } catch (e) {}
+                    }
                   } else if (['accepted', 'declined', 'completed'].includes(tripObj.status)) {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                   }

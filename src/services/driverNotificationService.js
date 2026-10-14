@@ -146,7 +146,6 @@ export async function registerDriverAPNsPush(onTripRequestReceived) {
       // 4. Remote Push Received (Foreground or Background)
       PushNotifications.addListener('pushNotificationReceived', (notification) => {
         console.info('[APNs] Push notification received in background/foreground:', notification);
-        playNativeAlertChime('alert');
 
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           try { navigator.vibrate([150, 75, 150, 75, 300]); } catch (e) {}
@@ -263,10 +262,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
     } catch (e) {}
   }
 
-  // 2. Play acoustic transaction / alert chime
-  playNativeAlertChime(type);
-
-  // 3. Native Device Notification (iOS Notification Center / Android Notification Tray)
+  // 2. Native Device Notification (iOS Notification Center / Android Notification Tray)
   if (Capacitor.isNativePlatform()) {
     try {
       await ensureNativeChannel();

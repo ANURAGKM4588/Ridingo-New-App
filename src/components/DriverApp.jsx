@@ -16,7 +16,8 @@ import {
   notifyTripCompleted,
   notifyDriverOnlineStatus,
   registerDriverAPNsPush,
-  setupBackgroundNotificationHandler
+  setupBackgroundNotificationHandler,
+  playNativeAlertChime
 } from '../services/driverNotificationService';
 
 const CATS = {
@@ -720,6 +721,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
     setCountdown(30);
     triggerTactileHaptic('ready');
     playAcousticTick(620, 20, 0.08);
+    playNativeAlertChime('alert');
 
     const interval = setInterval(() => {
       setCountdown(prev => {
