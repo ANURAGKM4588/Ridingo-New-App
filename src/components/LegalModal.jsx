@@ -237,22 +237,27 @@ export default function LegalModal() {
                     background: 'var(--card)'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
                     <span
                       style={{
                         fontSize: '11px',
                         fontWeight: 800,
                         color: 'var(--on-yellow)',
                         background: 'var(--yellow)',
-                        padding: '2px 6px',
-                        borderRadius: '6px'
+                        padding: '3px 7px',
+                        borderRadius: '6px',
+                        lineHeight: 1,
+                        marginTop: '2px',
+                        flexShrink: 0
                       }}
                     >
                       {item.num}
                     </span>
-                    <b style={{ fontSize: '14px', color: 'var(--ink)' }}>{item.title}</b>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.35 }}>
+                      {item.title}
+                    </h4>
                   </div>
-                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.45 }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.48 }}>
                     {item.body}
                   </p>
                 </div>
@@ -314,7 +319,7 @@ export default function LegalModal() {
                 {
                   num: '07',
                   title: 'Grievance Officer & Contact Desk',
-                  body: 'For privacy inquiries, grievance redressal, or data assistance, contact our dedicated compliance desk at teme.ridingo@gmail.com or call +91 8156938843.'
+                  body: 'For privacy inquiries, grievance redressal, or data assistance, contact our dedicated compliance desk at support.ridingo@gmail.com or call +91 8156938843.'
                 }
               ].map((item, idx) => (
                 <div
@@ -327,22 +332,27 @@ export default function LegalModal() {
                     background: 'var(--card)'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
                     <span
                       style={{
                         fontSize: '11px',
                         fontWeight: 800,
                         color: '#16A34A',
                         background: 'rgba(34, 197, 94, 0.15)',
-                        padding: '2px 6px',
-                        borderRadius: '6px'
+                        padding: '3px 7px',
+                        borderRadius: '6px',
+                        lineHeight: 1,
+                        marginTop: '2px',
+                        flexShrink: 0
                       }}
                     >
                       {item.num}
                     </span>
-                    <b style={{ fontSize: '14px', color: 'var(--ink)' }}>{item.title}</b>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.35 }}>
+                      {item.title}
+                    </h4>
                   </div>
-                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.45 }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.48 }}>
                     {item.body}
                   </p>
                 </div>
@@ -369,8 +379,8 @@ export default function LegalModal() {
               Kochi, Kerala, India · PIN 682024
             </span>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '8px', fontSize: '12px' }}>
-              <a href="mailto:teme.ridingo@gmail.com" style={{ color: 'var(--ink)', fontWeight: 600, textDecoration: 'underline' }}>
-                teme.ridingo@gmail.com
+              <a href="mailto:support.ridingo@gmail.com" style={{ color: 'var(--ink)', fontWeight: 600, textDecoration: 'underline' }}>
+                support.ridingo@gmail.com
               </a>
               <span style={{ color: 'var(--line-strong)' }}>•</span>
               <a href="tel:+918156938843" style={{ color: 'var(--ink)', fontWeight: 600, textDecoration: 'underline' }}>

@@ -108,17 +108,23 @@ jobs:
             -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
-            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES
           
+          rm -rf Payload
           mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          if [ -d "build/Build/Products/Release-iphoneos/App.app" ]; then
+            cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          else
+            cp -r build/Build/Products/Release-iphoneos/*.app Payload/
+          fi
           mkdir -p "${{ github.workspace }}/build-outputs"
           zip -r -q "${{ github.workspace }}/build-outputs/Ridingo-User.ipa" Payload
+          echo "✅ Ridingo-User.ipa successfully generated"
 
       # --- Build Driver App iOS ---
       - name: Sync & Build Ridingo-Driver.ipa
@@ -132,17 +138,23 @@ jobs:
             -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
-            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES
 
+          rm -rf Payload
           mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          if [ -d "build/Build/Products/Release-iphoneos/App.app" ]; then
+            cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          else
+            cp -r build/Build/Products/Release-iphoneos/*.app Payload/
+          fi
           mkdir -p "${{ github.workspace }}/build-outputs"
           zip -r -q "${{ github.workspace }}/build-outputs/Ridingo-Driver.ipa" Payload
+          echo "✅ Ridingo-Driver.ipa successfully generated"
 
       - name: Upload iOS IPAs
         uses: actions/upload-artifact@v4

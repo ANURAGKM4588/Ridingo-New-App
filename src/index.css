@@ -1000,7 +1000,27 @@ body.standalone-app .map-picker-foot {
 }
 
 .nv.on {
-  color: var(--ink);
+  color: #000000 !important;
+}
+
+.nv.on .nv-i svg {
+  color: #000000 !important;
+}
+
+[data-theme="dark"] .nv.on,
+:root[data-theme="dark"] .nv.on,
+#col-u[data-theme="dark"] .nv.on,
+#col-d[data-theme="dark"] .nv.on,
+body.standalone-app[data-theme="dark"] .nv.on {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .nv.on .nv-i svg,
+:root[data-theme="dark"] .nv.on .nv-i svg,
+#col-u[data-theme="dark"] .nv.on .nv-i svg,
+#col-d[data-theme="dark"] .nv.on .nv-i svg,
+body.standalone-app[data-theme="dark"] .nv.on .nv-i svg {
+  color: #FFFFFF !important;
 }
 
 .nv.on::before {
@@ -2590,6 +2610,10 @@ button.btn-primary:active,
   background: var(--card);
   font-size: 14px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   transition: transform .12s cubic-bezier(.2, .9, .3, 1), opacity .12s;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -3856,14 +3880,35 @@ button.btn-primary:active,
   width: 42px;
   height: 40px;
   border-radius: 10px;
-  background: var(--card);
+  background: #FFFFFF !important;
+  color: #000000 !important;
   display: grid;
   place-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.stepper button:active {
+  transform: scale(0.94);
+}
+
+.stepper button:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .stepper button,
+:root[data-theme="dark"] .stepper button {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
 }
 
 .stepper b {
   font: 600 17px var(--font-display);
+  color: var(--ink);
 }
 
 .carrow {
@@ -5604,19 +5649,334 @@ button.btn-primary:active,
   background: #0D0E12 !important;
 }
 
-/* Minimal graphic outline styling: 
-       - Eliminates colored clutter
-       - Big roads styled with distinct dual outline casings
-       - Small roads with clean thin hairline strokes
-       - Buildings render in accurate top-view footprint polygon shapes with sharp outlines
-       - All place names and street labels remain 100% crisp and readable */
+/* Stock Google Maps Appearance: Natural full-color Google Maps tiles */
 .leaflet-tile {
-  filter: grayscale(100%) contrast(185%) brightness(107%);
-  transition: filter .3s ease;
+  filter: none !important;
+  transition: opacity .2s ease;
 }
 
 :root[data-theme="dark"] .leaflet-tile {
-  filter: grayscale(100%) invert(100%) contrast(195%) brightness(82%) hue-rotate(180deg);
+  filter: none !important;
+}
+
+/* ==========================================================================
+   Stock Google Maps UI Controls
+   ========================================================================== */
+
+/* Official Google Maps Watermark Logo */
+.gmap-stock-logo {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 2px 6px;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  user-select: none;
+  font-family: Roboto, -apple-system, sans-serif;
+}
+
+/* Stock Google Maps [Map | Satellite] Switcher Control */
+.gmap-stock-type-ctrl {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 400;
+  display: flex;
+  background: #FFFFFF;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.gmap-stock-type-btn {
+  border: none;
+  background: #FFFFFF;
+  color: #565656;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: Roboto, -apple-system, sans-serif;
+  line-height: 1;
+}
+
+.gmap-stock-type-btn:hover {
+  background: #F1F3F4;
+  color: #202124;
+}
+
+.gmap-stock-type-btn.active {
+  font-weight: 700;
+  color: #1A73E8;
+  background: #FFFFFF;
+  box-shadow: inset 0 -2px 0 0 #1A73E8;
+}
+
+/* Stock Google Maps Zoom Controls (+ / -) */
+.gmap-stock-zoom-ctrl {
+  position: absolute;
+  bottom: 24px;
+  right: 12px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.gmap-stock-zoom-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #FFFFFF;
+  color: #5F6368;
+  font-size: 18px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+  transition: background 0.12s ease;
+}
+
+.gmap-stock-zoom-btn:hover {
+  background: #F1F3F4;
+  color: #202124;
+}
+
+.gmap-stock-zoom-divider {
+  height: 1px;
+  background: #E8EAED;
+  width: 24px;
+  margin: 0 auto;
+}
+
+/* Stock Google Maps GPS Recenter Button */
+.gmap-stock-loc-btn {
+  position: absolute;
+  bottom: 96px;
+  right: 12px;
+  z-index: 400;
+  width: 32px;
+  height: 32px;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #5F6368;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.gmap-stock-loc-btn:hover {
+  background: #F1F3F4;
+  color: #1A73E8;
+}
+
+/* ==========================================================================
+   Google Maps Dark / Night Theme Adaptations
+   Seamlessly inverts vector roadmap tiles into authentic Google Night theme
+   without affecting markers, vehicle pins, or satellite imagery.
+   ========================================================================== */
+
+/* Dark mode tile night styling (applied only to standard map, not satellite) */
+[data-theme="dark"] .map-picker-container:not(.layer-satellite) .leaflet-tile,
+[data-theme="dark"] .gmap-container:not(.layer-satellite) .leaflet-tile,
+.gmap-dark-mode .leaflet-tile:not(.satellite-tile) {
+  filter: invert(100%) hue-rotate(180deg) brightness(92%) contrast(90%) saturate(125%) !important;
+}
+
+/* Dark mode controls: background #202124 (Google Maps native dark surface) */
+[data-theme="dark"] .gmap-stock-logo {
+  background: rgba(32, 33, 36, 0.94);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .gmap-stock-type-ctrl {
+  background: #202124;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+}
+
+[data-theme="dark"] .gmap-stock-type-btn {
+  background: #202124;
+  color: #BDC1C6;
+}
+
+[data-theme="dark"] .gmap-stock-type-btn:hover {
+  background: #303134;
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .gmap-stock-type-btn.active {
+  font-weight: 700;
+  color: #8AB4F8;
+  background: #202124;
+  box-shadow: inset 0 -2px 0 0 #8AB4F8;
+}
+
+[data-theme="dark"] .gmap-stock-zoom-ctrl {
+  background: #202124;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+}
+
+[data-theme="dark"] .gmap-stock-zoom-btn {
+  background: #202124;
+  color: #E8EAED;
+}
+
+[data-theme="dark"] .gmap-stock-zoom-btn:hover {
+  background: #303134;
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .gmap-stock-zoom-divider {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"] .gmap-stock-loc-btn {
+  background: #202124;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+  color: #E8EAED;
+}
+
+[data-theme="dark"] .gmap-stock-loc-btn:hover {
+  background: #303134;
+  color: #8AB4F8;
+}
+
+/* Pulsing GPS beacon marker indicating real device position */
+.device-gps-pulse-marker {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.gps-pulse-dot {
+  width: 14px;
+  height: 14px;
+  background: #1A73E8;
+  border: 2.5px solid #FFFFFF;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.gps-pulse-ring {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(26, 115, 232, 0.32);
+  animation: gpsBeaconPulse 2.2s infinite ease-out;
+  pointer-events: none;
+}
+
+@keyframes gpsBeaconPulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.95;
+  }
+  75% {
+    transform: scale(1.6);
+    opacity: 0.1;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   Login Page Continue Button (Dark Theme: White Button, Black Text)
+   ========================================================================== */
+[data-theme="dark"] .onboarding-continue-btn,
+:root[data-theme="dark"] .onboarding-continue-btn,
+body[data-theme="dark"] .onboarding-continue-btn {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  border: 1.5px solid #FFFFFF !important;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.22) !important;
+}
+
+[data-theme="dark"] .onboarding-continue-btn:hover,
+:root[data-theme="dark"] .onboarding-continue-btn:hover {
+  background: #F0F0F0 !important;
+  color: #000000 !important;
+}
+
+/* ==========================================================================
+   Location Typing Bar Minimal Dropdown Menu Style
+   ========================================================================== */
+.location-suggest-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  background: var(--card);
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  z-index: 99;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+  animation: dropSlideDown 0.18s ease-out;
+}
+
+@keyframes dropSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loc-suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.loc-suggest-item:last-child {
+  border-bottom: none;
+}
+
+.loc-suggest-item:hover {
+  background: var(--field);
 }
 
 .leaflet-control-zoom {

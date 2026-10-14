@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import GraphicLiveMap, { getRouteTelemetry } from './GraphicLiveMap';
+import { openInGoogleMaps } from '../services/googleMapsService';
 
 export default function LiveTrackingSheet() {
   const { liveTrackingOpen, setLiveTrackingOpen, trips, setTrips, user, addToast } = useApp();
@@ -623,8 +624,25 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* Action Buttons: Share Trip & Emergency SOS */}
+              {/* Action Buttons: Google Maps, Share Trip & Emergency SOS */}
               <div className="live-sheet-actions-wrap">
+                <button
+                  type="button"
+                  className="live-act-btn"
+                  onClick={() => openInGoogleMaps({ origin: trip?.pickup, destination: trip?.drop_loc })}
+                  style={{
+                    background: 'var(--field)',
+                    color: 'var(--ink)',
+                    border: '1.5px solid var(--line)'
+                  }}
+                  title="Open live route in Google Maps app"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#EA4335"/>
+                  </svg>
+                  <span>Google Maps</span>
+                </button>
+
                 <button
                   type="button"
                   className="live-act-btn live-btn-share"

@@ -20,7 +20,15 @@ function formatTimeAgo(ts) {
  * - Auto-demo hint: For first-time users, the first notification card smoothly peeks right (Yellow Read),
  *   then across to left (Red Delete), and glides back to center automatically.
  */
-function SwipeableNotifItem({ note, onMarkRead, onDelete, isDemoHint, onDemoHintComplete }) {
+function SwipeableNotifItem({
+  note,
+  index = 0,
+  isClearingAll = false,
+  onMarkRead,
+  onDelete,
+  isDemoHint,
+  onDemoHintComplete
+}) {
   const [offsetX, setOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -132,11 +140,14 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete, isDemoHint, onDemoHint
   };
 
   const triggerDelete = () => {
-    setOffsetX(-320);
     setIsDeleting(true);
+    setOffsetX(-360);
+    if (navigator.vibrate) {
+      try { navigator.vibrate(30); } catch (e) {}
+    }
     setTimeout(() => {
       onDelete(note.id);
-    }, 280);
+    }, 380);
   };
 
   const isGift = note.icon === 'gift';
@@ -146,6 +157,9 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete, isDemoHint, onDemoHint
   const rightSwipeRatio = Math.max(0, Math.min(offsetX / SWIPE_THRESHOLD, 1));
   const leftSwipeRatio = Math.max(0, Math.min(Math.abs(offsetX) / SWIPE_THRESHOLD, 1));
 
+  const staggerDelay = index * 45;
+  const isLeaving = isClearingAll || isDeleting;
+
   return (
     <div
       style={{
@@ -153,12 +167,21 @@ function SwipeableNotifItem({ note, onMarkRead, onDelete, isDemoHint, onDemoHint
         borderRadius: '18px',
         overflow: 'hidden',
         userSelect: 'none',
-        transition: isDeleting
-          ? 'max-height 0.28s ease, margin 0.28s ease, opacity 0.24s ease'
+        transform: isClearingAll
+          ? 'translateX(-115%) scale(0.93)'
+          : isDeleting
+          ? 'translateX(-115%) scale(0.93)'
           : 'none',
-        maxHeight: isDeleting ? '0px' : '180px',
-        marginBottom: isDeleting ? '0px' : '8px',
-        opacity: isDeleting ? 0 : 1
+        opacity: isLeaving ? 0 : 1,
+        maxHeight: isLeaving ? '0px' : '180px',
+        marginBottom: isLeaving ? '0px' : '8px',
+        pointerEvents: isLeaving ? 'none' : 'auto',
+        transition: isClearingAll
+          ? `transform 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${staggerDelay}ms, opacity 0.36s ease ${staggerDelay}ms, max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${staggerDelay + 70}ms, margin-bottom 0.4s ease ${staggerDelay + 70}ms`
+          : isDeleting
+          ? 'transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.32s ease, max-height 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.05s, margin-bottom 0.36s ease 0.05s'
+          : 'none',
+        willChange: 'transform, opacity, max-height'
       }}
       onMouseLeave={() => {
         if (isDragging) {
@@ -384,6 +407,8 @@ export default function NotificationsSheet() {
     setShouldPlayDemoHint(false);
   };
 
+  const [isClearingAll, setIsClearingAll] = useState(false);
+
   if (!notifsOpen) return null;
 
   const handleClose = () => {
@@ -391,12 +416,20 @@ export default function NotificationsSheet() {
   };
 
   const handleClearAll = () => {
-    if (!unotes || unotes.length === 0) {
+    if (!unotes || unotes.length === 0 || isClearingAll) {
       handleClose();
       return;
     }
-    clearAllNotifs();
-    addToast('All notifications cleared', 'info');
+    setIsClearingAll(true);
+    if (navigator.vibrate) {
+      try { navigator.vibrate([25, 45, 25]); } catch (e) {}
+    }
+    const cleanDuration = 440 + Math.min(unotes.length * 45, 300);
+    setTimeout(() => {
+      clearAllNotifs();
+      setIsClearingAll(false);
+      addToast('All notifications cleared', 'info');
+    }, cleanDuration);
   };
 
   const handleItemMarkRead = (id) => {
@@ -482,11 +515,13 @@ export default function NotificationsSheet() {
                 )}
               </div>
 
-              {/* Swipeable Notification Cards */}
+              {/* Swipeable Notification Cards with Smooth Staggered Cleaning */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {unotes.map((n, idx) => (
                   <SwipeableNotifItem
                     key={n.id}
+                    index={idx}
+                    isClearingAll={isClearingAll}
                     note={n}
                     onMarkRead={handleItemMarkRead}
                     onDelete={handleItemDelete}
@@ -497,7 +532,7 @@ export default function NotificationsSheet() {
               </div>
             </>
           ) : (
-            <div className="empty" style={{ padding: '40px 16px', textAlign: 'center' }}>
+            <div className="empty" style={{ padding: '40px 16px', textAlign: 'center', animation: 'fade 0.35s ease' }}>
               <span
                 style={{
                   width: '54px',
@@ -507,7 +542,8 @@ export default function NotificationsSheet() {
                   color: 'var(--muted)',
                   display: 'grid',
                   placeItems: 'center',
-                  margin: '0 auto 12px'
+                  margin: '0 auto 12px',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
                 }}
               >
                 <Icon name="bell" size={24} />
@@ -521,32 +557,35 @@ export default function NotificationsSheet() {
             </div>
           )}
 
-          {/* Bottom Button: Changed from "Done" to "Clear All" */}
+          {/* Bottom Button: Clear All with Smooth Cleaning State */}
           {unotes && unotes.length > 0 ? (
             <button
               type="button"
               className="btn"
+              disabled={isClearingAll}
               style={{
                 width: '100%',
                 height: '50px',
                 borderRadius: '16px',
                 marginTop: '16px',
-                background: 'rgba(239, 68, 68, 0.1)',
+                background: isClearingAll ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.1)',
                 color: '#EF4444',
                 border: '1.5px solid rgba(239, 68, 68, 0.25)',
                 fontWeight: 700,
                 fontSize: '14.5px',
-                cursor: 'pointer',
+                cursor: isClearingAll ? 'default' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                transition: 'all 0.15s ease'
+                opacity: isClearingAll ? 0.75 : 1,
+                transform: isClearingAll ? 'scale(0.98)' : 'scale(1)',
+                transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
               onClick={handleClearAll}
             >
               <Icon name="trash" size={17} />
-              <span>Clear All Notifications ({unotes.length})</span>
+              <span>{isClearingAll ? 'Cleaning notifications...' : `Clear All Notifications (${unotes.length})`}</span>
             </button>
           ) : (
             <button

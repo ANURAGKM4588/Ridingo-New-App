@@ -8,6 +8,9 @@ Thumbs.db
 build-outputs/
 dist/
 .expo/
+.env
+.env.local
+.env.*.local
 
 # Android build outputs & caches
 **/android/.gradle/

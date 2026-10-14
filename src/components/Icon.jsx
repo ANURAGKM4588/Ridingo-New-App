@@ -41,16 +41,25 @@ export const ICONS = {
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'
 };
 
-export default function Icon({ name, size = 20, className = '' }) {
-  const path = ICONS[name] || '';
+export const FILLED_ICONS = {
+  home: '<path d="M12 2.1 2.5 9.5a1 1 0 0 0-.5.8V20a2 2 0 0 0 2 2h6v-7h4v7h6a2 2 0 0 0 2-2v-9.7a1 1 0 0 0-.5-.8L12 2.1z" fill="currentColor" stroke="none"/>',
+  grid: '<rect width="8" height="8" x="2.5" y="2.5" rx="2" fill="currentColor" stroke="none"/><rect width="8" height="8" x="13.5" y="2.5" rx="2" fill="currentColor" stroke="none"/><rect width="8" height="8" x="13.5" y="13.5" rx="2" fill="currentColor" stroke="none"/><rect width="8" height="8" x="2.5" y="13.5" rx="2" fill="currentColor" stroke="none"/>',
+  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M3 3v5h5" fill="currentColor" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="7.5" fill="currentColor" stroke="none"/><path d="M12 7.5v4.5l3.2 2" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round"/>',
+  wallet: '<path d="M21 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2h-5a3 3 0 0 1 0-6h5zm-2 7a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" fill="currentColor" stroke="none"/><circle cx="19" cy="13" r="1.2" fill="var(--surface)" stroke="none"/>',
+  user: '<circle cx="12" cy="7" r="4.2" fill="currentColor" stroke="none"/><path d="M4 21v-2a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v2z" fill="currentColor" stroke="none"/>'
+};
+
+export default function Icon({ name, size = 20, className = '', filled = false }) {
+  const isFilled = Boolean(filled && FILLED_ICONS[name]);
+  const path = isFilled ? FILLED_ICONS[name] : (ICONS[name] || '');
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={isFilled ? "currentColor" : "none"}
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth={isFilled ? "0" : "1.8"}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -59,3 +68,4 @@ export default function Icon({ name, size = 20, className = '' }) {
     />
   );
 }
+

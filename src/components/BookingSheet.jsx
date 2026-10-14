@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
+import { searchPlaces } from '../lib/locationService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 
 const CATS = {
@@ -100,44 +101,72 @@ export default function BookingSheet() {
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
   const [mapPickerTarget, setMapPickerTarget] = useState('drop');
   const [isDetectingCurrent, setIsDetectingCurrent] = useState(false);
+  const [pickupSuggestions, setPickupSuggestions] = useState([]);
+  const [dropSuggestions, setDropSuggestions] = useState([]);
+  const [activeSuggestField, setActiveSuggestField] = useState(null); // 'pickup' | 'drop' | null
+
+  const handlePickupChange = (val) => {
+    setPickup(val);
+    if (val.trim()) {
+      searchPlaces(val, (results) => {
+        setPickupSuggestions(results || []);
+        setActiveSuggestField('pickup');
+      });
+    } else {
+      setPickupSuggestions([]);
+      setActiveSuggestField(null);
+    }
+  };
+
+  const handleDropChange = (val) => {
+    setDrop(val);
+    if (val.trim()) {
+      searchPlaces(val, (results) => {
+        setDropSuggestions(results || []);
+        setActiveSuggestField('drop');
+      });
+    } else {
+      setDropSuggestions([]);
+      setActiveSuggestField(null);
+    }
+  };
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (!e.target.closest('.loc-input-wrap') && !e.target.closest('.location-suggest-dropdown')) {
+        setActiveSuggestField(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
 
   // Sync category with parent selection
   useEffect(() => {
     if (bookingCategory && CATS[bookingCategory]) {
       setCat(bookingCategory);
       setQty(CATS[bookingCategory].def || 1);
-      if (bookingCategory === 'airport') {
-        setDrop('Cochin International Airport (COK)');
-      }
     }
   }, [bookingCategory, bookingOpen]);
 
-  // Sync destination if selected from home search or landmark
+  // Sync destination only if explicitly selected from home search or landmark
   useEffect(() => {
     if (bookingDestination) {
       setDrop(bookingDestination);
     }
   }, [bookingDestination, bookingOpen]);
 
-  // Auto-detect strict device location on booking sheet open if pickup is empty
-  useEffect(() => {
-    if (bookingOpen && !pickup) {
-      const cached = getCachedDeviceLocation();
-      if (cached?.address) {
-        setPickup(cached.address);
-      } else {
-        getDeviceLocation(false).then(loc => {
-          if (loc?.address) setPickup(loc.address);
-        }).catch(() => {});
-      }
-    }
-  }, [bookingOpen]);
-
-  // Reset form states when booking sheet opens
+  // Reset form states when booking sheet opens - starts completely clean without preset locations
   useEffect(() => {
     if (bookingOpen) {
       setIsSuccess(false);
       setConfirmedTrip(null);
+      // Clean inputs (no preset locations)
+      if (!bookingDestination) {
+        setDrop('');
+      }
+      setPickup('');
       setSelectedDate(prev => {
         const today = getTodayISO();
         return prev < today ? today : prev;
@@ -199,9 +228,6 @@ export default function BookingSheet() {
     setBookingCategory(selectedKey);
     const c = CATS[selectedKey];
     setQty(c.def || 1);
-    if (selectedKey === 'airport') {
-      setDrop('Cochin International Airport (COK)');
-    }
   };
 
   const handleMapSelect = (addr) => {
@@ -239,9 +265,13 @@ export default function BookingSheet() {
 
   const handleSubmit = () => {
     try {
-      const cached = getCachedDeviceLocation();
-      const pickupLoc = (pickup && pickup.trim()) || cached?.address || 'Edappally Toll, Kochi';
-      const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
+      const cleanPickup = pickup?.trim();
+      if (!cleanPickup) {
+        if (addToast) addToast('Please enter pickup location or choose on map', 'alert');
+        return;
+      }
+      const pickupLoc = cleanPickup;
+      const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Airport Terminal' : 'As directed by passenger');
 
       // Trigger the new PhonePe payment options popup sheet
       openPhonePeCheckout({
@@ -388,7 +418,7 @@ export default function BookingSheet() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#000000',
+                  color: 'var(--ink)',
                   fontSize: '12px',
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -402,23 +432,75 @@ export default function BookingSheet() {
                 <span>{isDetectingCurrent ? 'Locating...' : 'Use current location'}</span>
               </button>
             </div>
-            <div className="loc-input-wrap">
+            <div className="loc-input-wrap" style={{ position: 'relative' }}>
               <input
                 className="inp"
                 id="bk-pickup"
                 placeholder="Where should the driver meet you?"
                 value={pickup}
-                onChange={e => setPickup(e.target.value)}
+                onChange={e => handlePickupChange(e.target.value)}
+                onFocus={() => {
+                  if (pickup.trim() && pickupSuggestions.length > 0) setActiveSuggestField('pickup');
+                }}
                 autoComplete="off"
               />
               <button
                 className="loc-map-btn"
                 type="button"
                 title="Choose on map"
-                onClick={() => openMap('pickup')}
+                onClick={() => {
+                  setActiveSuggestField(null);
+                  openMap('pickup');
+                }}
               >
                 <Icon name="pin" size={16} />
               </button>
+
+              {/* Minimal Location Dropdown with filled pin icon */}
+              {activeSuggestField === 'pickup' && pickupSuggestions.length > 0 && (
+                <div className="location-suggest-dropdown">
+                  {pickupSuggestions.slice(0, 5).map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="loc-suggest-item"
+                      onClick={() => {
+                        setPickup(item.title);
+                        setActiveSuggestField(null);
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '50%',
+                          background: 'var(--field)',
+                          color: 'var(--ink)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 34" fill="currentColor">
+                          <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
+                          <circle cx="12" cy="11.5" r="4.2" fill="var(--surface, #FFFFFF)" />
+                        </svg>
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.title}
+                        </b>
+                        {item.sub && (
+                          <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.sub}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Destination (optional) */}
@@ -428,11 +510,15 @@ export default function BookingSheet() {
               </label>
               <button
                 type="button"
-                onClick={() => openMap('drop')}
+                onClick={() => {
+                  setActiveSuggestField(null);
+                  openMap('drop');
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--muted)',
+                  color: 'var(--ink)',
+                  opacity: 0.9,
                   fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -446,23 +532,75 @@ export default function BookingSheet() {
                 <span>Choose on map</span>
               </button>
             </div>
-            <div className="loc-input-wrap">
+            <div className="loc-input-wrap" style={{ position: 'relative' }}>
               <input
                 className="inp"
                 id="bk-drop"
                 placeholder="Add if you know it"
                 value={drop}
-                onChange={e => setDrop(e.target.value)}
+                onChange={e => handleDropChange(e.target.value)}
+                onFocus={() => {
+                  if (drop.trim() && dropSuggestions.length > 0) setActiveSuggestField('drop');
+                }}
                 autoComplete="off"
               />
               <button
                 className="loc-map-btn"
                 type="button"
                 title="Choose on map"
-                onClick={() => openMap('drop')}
+                onClick={() => {
+                  setActiveSuggestField(null);
+                  openMap('drop');
+                }}
               >
                 <Icon name="pin" size={16} />
               </button>
+
+              {/* Minimal Location Dropdown with filled pin icon */}
+              {activeSuggestField === 'drop' && dropSuggestions.length > 0 && (
+                <div className="location-suggest-dropdown">
+                  {dropSuggestions.slice(0, 5).map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="loc-suggest-item"
+                      onClick={() => {
+                        setDrop(item.title);
+                        setActiveSuggestField(null);
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '50%',
+                          background: 'var(--field)',
+                          color: 'var(--ink)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 34" fill="currentColor">
+                          <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
+                          <circle cx="12" cy="11.5" r="4.2" fill="var(--surface, #FFFFFF)" />
+                        </svg>
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.title}
+                        </b>
+                        {item.sub && (
+                          <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.sub}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Hours Stepper (Only for hourly/daily/event) */}
@@ -477,10 +615,21 @@ export default function BookingSheet() {
                     onClick={() => handleQtyChange(-1)}
                     disabled={qty <= (currentCat.min || 1)}
                     aria-label="Less"
+                    style={{
+                      background: '#FFFFFF',
+                      color: '#000000',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: qty <= (currentCat.min || 1) ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                      opacity: qty <= (currentCat.min || 1) ? 0.4 : 1,
+                      display: 'grid',
+                      placeItems: 'center'
+                    }}
                   >
                     <Icon name="minus" size={18} />
                   </button>
-                  <b>
+                  <b style={{ color: 'var(--ink)' }}>
                     {qty} {qty === 1 ? currentCat.unit : currentCat.units}
                   </b>
                   <button
@@ -488,6 +637,17 @@ export default function BookingSheet() {
                     onClick={() => handleQtyChange(1)}
                     disabled={qty >= (currentCat.max || 12)}
                     aria-label="More"
+                    style={{
+                      background: '#FFFFFF',
+                      color: '#000000',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: qty >= (currentCat.max || 12) ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                      opacity: qty >= (currentCat.max || 12) ? 0.4 : 1,
+                      display: 'grid',
+                      placeItems: 'center'
+                    }}
                   >
                     <Icon name="plus" size={18} />
                   </button>
@@ -500,7 +660,7 @@ export default function BookingSheet() {
               <div className="lab" style={{ margin: 0 }}>
                 Pickup date & time
               </div>
-              <span style={{ fontSize: '11.5px', color: '#000000', fontWeight: 700 }}>
+              <span style={{ fontSize: '11.5px', color: 'var(--ink)', fontWeight: 700 }}>
                 {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : 'Scheduled'} · {timeStr}
               </span>
             </div>
@@ -548,7 +708,7 @@ export default function BookingSheet() {
                   width: '100%',
                   background: 'var(--field)',
                   borderRadius: '14px',
-                  border: isCustomDate ? '1.5px solid #000000' : '1px solid #E2E8F0',
+                  border: isCustomDate ? '1.5px solid var(--ink)' : '1px solid var(--line)',
                   padding: '9px 12px',
                   display: 'flex',
                   alignItems: 'center',
@@ -564,7 +724,7 @@ export default function BookingSheet() {
                   }
                 }}
               >
-                <div style={{ color: '#000000', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ color: 'var(--ink)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                   <Icon name="calendar" size={17} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
@@ -603,7 +763,7 @@ export default function BookingSheet() {
                   width: '100%',
                   background: 'var(--field)',
                   borderRadius: '14px',
-                  border: '1px solid #E2E8F0',
+                  border: '1px solid var(--line)',
                   padding: '9px 12px',
                   display: 'flex',
                   alignItems: 'center',
@@ -619,7 +779,7 @@ export default function BookingSheet() {
                   }
                 }}
               >
-                <div style={{ color: '#000000', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ color: 'var(--ink)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                   <Icon name="clock" size={17} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>

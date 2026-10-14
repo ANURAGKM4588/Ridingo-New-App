@@ -71,12 +71,58 @@ export const INITIAL_UTX = [];
 
 export const INITIAL_UNOTES = [
   {
-    id: 'notif-welcome',
-    ts: Date.now(),
-    title: 'Welcome to Ridingo',
-    body: 'Your account is ready. Book your first verified chauffeur on demand.',
-    icon: 'check',
+    id: 'notif-promo',
+    ts: Date.now() - 1000 * 60 * 5,
+    title: 'Weekend Chauffeur Pass · 20% Cashback 🎉',
+    body: 'Get ₹250 instant cashback credited to your Ridingo Wallet on full-day or outstation bookings this weekend. Use code RIDE20.',
+    icon: 'star',
+    category: 'promo',
     read: false
+  },
+  {
+    id: 'notif-pay',
+    ts: Date.now() - 1000 * 60 * 25,
+    title: 'Payment Successful · ₹600 Paid ✅',
+    body: 'Trip payment completed via PhonePe UPI. Zero commission deducted. Your tax invoice #RID-8842 has been generated.',
+    icon: 'card',
+    category: 'payment',
+    read: false
+  },
+  {
+    id: 'notif-complete',
+    ts: Date.now() - 1000 * 60 * 45,
+    title: 'Trip Completed · Vehicle Handed Over 🏁',
+    body: 'Chauffeur Rajesh K. parked your vehicle safely and returned keys at Lulu Mall. Tap to rate your chauffeur’s driving skills.',
+    icon: 'check',
+    category: 'trip_complete',
+    read: true
+  },
+  {
+    id: 'notif-start',
+    ts: Date.now() - 1000 * 60 * 90,
+    title: 'Trip Started · Safe Driving Active 🛡️',
+    body: 'Start OTP verified. Rajesh is driving your car. Live telemetry and SOS tracking are active and shared with your emergency contact.',
+    icon: 'route',
+    category: 'trip_start',
+    read: true
+  },
+  {
+    id: 'notif-arrival',
+    ts: Date.now() - 1000 * 60 * 110,
+    title: 'Chauffeur Arrived at Your Car 🚗',
+    body: 'Rajesh K. is waiting at Edappally Toll. Share Start OTP 4821 before handing over your keys.',
+    icon: 'pin',
+    category: 'driver_arrival',
+    read: true
+  },
+  {
+    id: 'notif-confirm',
+    ts: Date.now() - 1000 * 60 * 130,
+    title: 'Booking Confirmed · Chauffeur Assigned 👨‍✈️',
+    body: 'Rajesh K. (⭐ 4.9 · 850+ drives) has accepted your Hourly Chauffeur booking. Reaching your car in 12 mins.',
+    icon: 'bell',
+    category: 'booking_confirm',
+    read: true
   }
 ];
 

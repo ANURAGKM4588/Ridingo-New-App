@@ -6,6 +6,7 @@ import BrandLogo from './BrandLogo';
 import MapPickerModal from './MapPickerModal';
 import GraphicLiveMap from './GraphicLiveMap';
 import { searchPlaces } from '../lib/locationService';
+import { getDeviceLocation } from '../lib/deviceLocation';
 import { getRecommendations, APP_SETTINGS } from '../lib/searchEngine';
 import realtime from '../utils/realtime';
 
@@ -71,8 +72,6 @@ export default function HomeTab() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [isSearchHidden, setIsSearchHidden] = useState(false);
-  const isHiddenRef = useRef(false);
   const searchWrapRef = useRef(null);
 
   // Close dropdown on outside click
@@ -92,92 +91,9 @@ export default function HomeTab() {
     if (uc) {
       uc.scrollTop = 0;
     }
-    isHiddenRef.current = false;
-    setIsSearchHidden(false);
   }, []);
 
-  // Framer Motion Apple-grade scroll tracking with distance accumulation
-  useEffect(() => {
-    const uc = document.getElementById('u-content');
-    let lastScroll = uc ? uc.scrollTop : 0;
-    let accumulatedDown = 0;
-    let accumulatedUp = 0;
-    let ticking = false;
-
-    const getScrollTop = () => {
-      if (uc) return uc.scrollTop;
-      return window.scrollY || document.documentElement.scrollTop || 0;
-    };
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const st = getScrollTop();
-          const delta = st - lastScroll;
-
-          // Don't auto-hide if user is actively searching or dropdown is open
-          if (searchOpen || searchQuery.trim()) {
-            if (isHiddenRef.current) {
-              isHiddenRef.current = false;
-              setIsSearchHidden(false);
-            }
-            lastScroll = Math.max(0, st);
-            ticking = false;
-            return;
-          }
-
-          // 1. If at/near top of feed (within 40px), always smoothly reveal
-          if (st <= 40) {
-            accumulatedDown = 0;
-            accumulatedUp = 0;
-            if (isHiddenRef.current) {
-              isHiddenRef.current = false;
-              setIsSearchHidden(false);
-            }
-          } else if (delta > 0) {
-            // Scrolling down: accumulate downward distance, reset upward
-            accumulatedDown += delta;
-            accumulatedUp = 0;
-
-            // Only gracefully vanish once past the header (>90px) and deliberately scrolling (>45px)
-            if (st > 90 && accumulatedDown > 45) {
-              if (!isHiddenRef.current) {
-                isHiddenRef.current = true;
-                setIsSearchHidden(true);
-                setSearchOpen(false);
-              }
-            }
-          } else if (delta < 0) {
-            // Scrolling up: accumulate upward distance, reset downward
-            accumulatedUp += Math.abs(delta);
-            accumulatedDown = 0;
-
-            // When scrolling upwards deliberately (>30px), smoothly reveal
-            if (accumulatedUp > 30) {
-              if (isHiddenRef.current) {
-                isHiddenRef.current = false;
-                setIsSearchHidden(false);
-              }
-            }
-          }
-
-          lastScroll = Math.max(0, st);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    if (uc) {
-      uc.addEventListener('scroll', handleScroll, { passive: true });
-    }
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      if (uc) uc.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [searchOpen, searchQuery]);
+  
 
   const inProg = (trips || []).find(t => t.status === 'inprogress' || t.status === 'ending_otp');
   const isAccepted = (trips || []).find(t => t.status === 'accepted' || t.status === 'pickup_arrived' || t.status === 'ready_to_start');
@@ -277,6 +193,248 @@ export default function HomeTab() {
         <h1>Hi, {first}</h1>
         <p>Need a driver for your own car?</p>
       </div>
+
+      {/* Destination Search Bar - Always pinned on top */}
+      <div
+        id="u-search-wrap"
+        ref={searchWrapRef}
+        className="search-wrap stagger-2"
+        style={{
+          position: 'relative',
+          zIndex: 20,
+          marginTop: '12px',
+          marginBottom: '14px'
+        }}
+      >
+        <div className="search-anim-inner">
+          <div className="search-box">
+            <span className="search-ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              className="search-inp"
+              id="u-dest-search"
+              placeholder="Where you go today?"
+              autoComplete="off"
+              spellCheck="false"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={() => {
+                if (searchQuery.trim()) setSearchOpen(true);
+              }}
+            />
+            {searchQuery && (
+              <button
+                className="search-clr"
+                type="button"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Keyword-based Recommendations Dropdown (Trips, Settings, Services, Places) */}
+        {searchOpen && searchQuery.trim() && (
+          <div className="search-dropdown" id="u-search-drop">
+            {/* 1. Recent Trips Section */}
+            {recs.trips.length > 0 && (
+              <>
+                <div className="search-drop-h">Recent Trips</div>
+                {recs.trips.map(t => (
+                  <button
+                    key={t.id}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickTrip(t)}
+                  >
+                    <span className="search-item-ic" style={{ background: 'var(--yellow-soft)', color: 'var(--on-yellow)' }}>
+                      <Icon name="route" size={16} />
+                    </span>
+                    <div className="search-item-meta">
+                      <div className="search-item-route">
+                        <span className="loc-to" style={{ fontWeight: 700 }}>
+                          {t.drop_loc}
+                        </span>
+                      </div>
+                      <span className="search-item-sub">
+                        From {t.pickup} · Driver: {t.driver || 'Assigned'}
+                      </span>
+                    </div>
+                    <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
+                      Rebook
+                    </span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* 2. Settings & Preferences Section */}
+            {recs.settings.length > 0 && (
+              <>
+                <div className="search-drop-h">Settings & Features</div>
+                {recs.settings.map(s => (
+                  <button
+                    key={s.id}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickSetting(s)}
+                  >
+                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
+                      <Icon name={s.icon} size={16} />
+                    </span>
+                    <div className="search-item-meta">
+                      <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>
+                        {s.title}
+                      </b>
+                      <span className="search-item-sub">{s.sub}</span>
+                    </div>
+                    <span className="search-item-badge" style={{ background: 'var(--field)', color: 'var(--muted)' }}>
+                      {s.badge}
+                    </span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* 3. Driver Services Section */}
+            {recs.services.length > 0 && (
+              <>
+                <div className="search-drop-h">Driver Services</div>
+                {recs.services.map(s => (
+                  <button
+                    key={s.id}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickService(s)}
+                  >
+                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
+                      <Icon name={s.icon} size={16} />
+                    </span>
+                    <div className="search-item-meta">
+                      <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>
+                        {s.title}
+                      </b>
+                      <span className="search-item-sub">{s.sub}</span>
+                    </div>
+                    <span className="search-item-badge">Book</span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* 4. Locations & Landmarks Section */}
+            {recs.landmarks.length > 0 && (
+              <>
+                <div className="search-drop-h">Locations & Places</div>
+                {recs.landmarks.map((p, idx) => (
+                  <button
+                    key={`${p.title}-${idx}`}
+                    className="search-item"
+                    type="button"
+                    onClick={() => handlePickPlace(p.title)}
+                  >
+                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+                      </svg>
+                    </span>
+                    <div className="search-item-meta">
+                      <div className="search-item-route">
+                        <span className="loc-to" style={{ fontWeight: 700 }}>
+                          {p.title}
+                        </span>
+                      </div>
+                      <span className="search-item-sub">{p.sub}</span>
+                    </div>
+                    <span className="search-item-badge">Go</span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* Quick GPS Device Current Location Option */}
+            <button
+              className="search-item"
+              type="button"
+              onClick={async () => {
+                setSearchOpen(false);
+                if (addToast) addToast('Acquiring real device GPS...', 'crosshair');
+                try {
+                  const loc = await getDeviceLocation(true);
+                  if (loc?.address) {
+                    setBookingCategory('hourly');
+                    setBookingDestination(loc.address);
+                    setBookingOpen(true);
+                    if (addToast) addToast(`Set to device location: ${loc.address.split(',')[0]}`, 'check');
+                  }
+                } catch (e) {
+                  setMapModalOpen(true);
+                }
+              }}
+              style={{ borderTop: '1px solid var(--line)', marginTop: '4px' }}
+            >
+              <span className="search-item-ic" style={{ background: 'var(--yellow)', color: '#15140F' }}>
+                <Icon name="crosshair" size={16} />
+              </span>
+              <div className="search-item-meta">
+                <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Use current device location</b>
+                <span className="search-item-sub">Pick from real device GPS position</span>
+              </div>
+              <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
+                GPS
+              </span>
+            </button>
+
+            {/* Choose on Map option */}
+            <button
+              className="search-item"
+              type="button"
+              onClick={() => {
+                setSearchOpen(false);
+                setMapModalOpen(true);
+              }}
+            >
+              <span className="search-item-ic">
+                <Icon name="pin" size={16} />
+              </span>
+              <div className="search-item-meta">
+                <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Choose destination on map</b>
+                <span className="search-item-sub">Drag pin to any exact street</span>
+              </div>
+              <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
+                Map
+              </span>
+            </button>
+
+            {/* Fallback if no matching results */}
+            {!hasAnyRecs && (
+              <div className="search-empty">
+                <span className="search-empty-ic">
+                  <Icon name="pin" size={20} />
+                </span>
+                <p>Search for "{searchQuery}"</p>
+                <button
+                  className="btn primary sm"
+                  style={{ marginTop: '8px' }}
+                  type="button"
+                  onClick={() => handlePickPlace(searchQuery)}
+                >
+                  Book driver to {searchQuery}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+          
+      </div>
+
 
       {/* =========================================================
           1. TRIP REQUEST ACTIVE (WAITING FOR DRIVER TO ACCEPT)
@@ -514,251 +672,7 @@ export default function HomeTab() {
         </div>
       )}
 
-      {/* Destination Search Bar with Apple Framer Motion Reveal & Vanish Animation */}
-      <AnimatePresence initial={false}>
-        {!isSearchHidden && (
-          <motion.div
-            key="home-search-bar"
-            id="u-search-wrap"
-            ref={searchWrapRef}
-            className="search-wrap stagger-2"
-            initial={{ height: 0, opacity: 0, y: -16, scale: 0.96 }}
-            animate={{
-              height: 'auto',
-              opacity: 1,
-              y: 0,
-              scale: 1,
-              transition: {
-                height: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
-                opacity: { duration: 0.32, ease: [0.16, 1, 0.3, 1] },
-                y: { type: 'spring', stiffness: 300, damping: 28 },
-                scale: { type: 'spring', stiffness: 300, damping: 28 }
-              }
-            }}
-            exit={{
-              height: 0,
-              opacity: 0,
-              y: -14,
-              scale: 0.96,
-              transition: {
-                height: { type: 'spring', stiffness: 260, damping: 30, mass: 0.9 },
-                opacity: { duration: 0.24, ease: 'easeOut' },
-                y: { duration: 0.26, ease: [0.32, 0, 0.67, 0] },
-                scale: { duration: 0.26, ease: [0.32, 0, 0.67, 0] }
-              }
-            }}
-            style={{
-              position: 'relative',
-              zIndex: 20,
-              overflow: 'hidden'
-            }}
-          >
-        <div className="search-anim-inner">
-          <div className="search-box">
-            <span className="search-ic">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-            </span>
-            <input
-              type="text"
-              className="search-inp"
-              id="u-dest-search"
-              placeholder="Where you go today?"
-              autoComplete="off"
-              spellCheck="false"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onFocus={() => {
-                if (searchQuery.trim()) setSearchOpen(true);
-              }}
-            />
-            {searchQuery && (
-              <button
-                className="search-clr"
-                type="button"
-                onClick={handleClearSearch}
-                aria-label="Clear search"
-              >
-                &times;
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Keyword-based Recommendations Dropdown (Trips, Settings, Services, Places) */}
-        {searchOpen && searchQuery.trim() && (
-          <div className="search-dropdown" id="u-search-drop">
-            {/* 1. Recent Trips Section */}
-            {recs.trips.length > 0 && (
-              <>
-                <div className="search-drop-h">Recent Trips</div>
-                {recs.trips.map(t => (
-                  <button
-                    key={t.id}
-                    className="search-item"
-                    type="button"
-                    onClick={() => handlePickTrip(t)}
-                  >
-                    <span className="search-item-ic" style={{ background: 'var(--yellow-soft)', color: 'var(--on-yellow)' }}>
-                      <Icon name="route" size={16} />
-                    </span>
-                    <div className="search-item-meta">
-                      <div className="search-item-route">
-                        <span className="loc-to" style={{ fontWeight: 700 }}>
-                          {t.drop_loc}
-                        </span>
-                      </div>
-                      <span className="search-item-sub">
-                        From {t.pickup} · Driver: {t.driver || 'Assigned'}
-                      </span>
-                    </div>
-                    <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
-                      Rebook
-                    </span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* 2. Settings & Preferences Section */}
-            {recs.settings.length > 0 && (
-              <>
-                <div className="search-drop-h">Settings & Features</div>
-                {recs.settings.map(s => (
-                  <button
-                    key={s.id}
-                    className="search-item"
-                    type="button"
-                    onClick={() => handlePickSetting(s)}
-                  >
-                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
-                      <Icon name={s.icon} size={16} />
-                    </span>
-                    <div className="search-item-meta">
-                      <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>
-                        {s.title}
-                      </b>
-                      <span className="search-item-sub">{s.sub}</span>
-                    </div>
-                    <span className="search-item-badge" style={{ background: 'var(--field)', color: 'var(--muted)' }}>
-                      {s.badge}
-                    </span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* 3. Driver Services Section */}
-            {recs.services.length > 0 && (
-              <>
-                <div className="search-drop-h">Driver Services</div>
-                {recs.services.map(s => (
-                  <button
-                    key={s.id}
-                    className="search-item"
-                    type="button"
-                    onClick={() => handlePickService(s)}
-                  >
-                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
-                      <Icon name={s.icon} size={16} />
-                    </span>
-                    <div className="search-item-meta">
-                      <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>
-                        {s.title}
-                      </b>
-                      <span className="search-item-sub">{s.sub}</span>
-                    </div>
-                    <span className="search-item-badge">Book</span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* 4. Locations & Landmarks Section */}
-            {recs.landmarks.length > 0 && (
-              <>
-                <div className="search-drop-h">Locations & Places</div>
-                {recs.landmarks.map((p, idx) => (
-                  <button
-                    key={`${p.title}-${idx}`}
-                    className="search-item"
-                    type="button"
-                    onClick={() => handlePickPlace(p.title)}
-                  >
-                    <span className="search-item-ic">
-                      <Icon
-                        name={
-                          p.type === 'airport'
-                            ? 'plane'
-                            : p.type === 'station' || p.type === 'metro'
-                            ? 'route'
-                            : p.type === 'mall' || p.type === 'tech'
-                            ? 'bank'
-                            : 'pin'
-                        }
-                        size={16}
-                      />
-                    </span>
-                    <div className="search-item-meta">
-                      <div className="search-item-route">
-                        <span className="loc-to" style={{ fontWeight: 700 }}>
-                          {p.title}
-                        </span>
-                      </div>
-                      <span className="search-item-sub">{p.sub}</span>
-                    </div>
-                    <span className="search-item-badge">Go</span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* Choose on Map option */}
-            <button
-              className="search-item"
-              type="button"
-              onClick={() => {
-                setSearchOpen(false);
-                setMapModalOpen(true);
-              }}
-              style={{ borderTop: '1px solid var(--line)', marginTop: '4px' }}
-            >
-              <span className="search-item-ic">
-                <Icon name="pin" size={16} />
-              </span>
-              <div className="search-item-meta">
-                <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Choose destination on map</b>
-                <span className="search-item-sub">Drag pin to any exact street</span>
-              </div>
-              <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
-                Map
-              </span>
-            </button>
-
-            {/* Fallback if no matching results */}
-            {!hasAnyRecs && (
-              <div className="search-empty">
-                <span className="search-empty-ic">
-                  <Icon name="pin" size={20} />
-                </span>
-                <p>Search for "{searchQuery}"</p>
-                <button
-                  className="btn primary sm"
-                  style={{ marginTop: '8px' }}
-                  type="button"
-                  onClick={() => handlePickPlace(searchQuery)}
-                >
-                  Book driver to {searchQuery}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      
 
       {/* Live In-Progress Trip Card */}
       {inProg && (

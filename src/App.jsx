@@ -44,8 +44,8 @@ class ErrorBoundary extends React.Component {
             ⚠️
           </div>
           <b style={{ fontSize: '15.5px', color: 'var(--ink)' }}>Display Issue Recovered</b>
-          <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '8px 0 14px', maxWidth: '240px', lineHeight: 1.4 }}>
-            {this.props.fallbackMessage || 'The view encountered an unexpected issue.'}
+          <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '8px 0 14px', maxWidth: '280px', lineHeight: 1.4 }}>
+            {this.state.error?.message || this.props.fallbackMessage || 'The view encountered an unexpected issue.'}
           </p>
           <button
             onClick={this.handleReset}
@@ -102,7 +102,7 @@ function MainApp() {
         if (el2) el2.scrollTop = 0;
       });
     }
-  }, [uTab, onboardingOpen, user]);
+  }, [uTab]);
 
   return (
     <div className="stage full-preview-stage" id="stage" data-view={view}>

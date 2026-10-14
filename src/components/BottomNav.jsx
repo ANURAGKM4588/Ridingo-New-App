@@ -29,7 +29,7 @@ export default function BottomNav() {
           }}
         >
           <span className="nv-i">
-            <Icon name={n.icon} size={23} />
+            <Icon name={n.icon} size={23} filled={uTab === n.id} />
           </span>
           <span className="nv-l">{n.label}</span>
         </button>

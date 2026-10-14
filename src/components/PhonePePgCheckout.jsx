@@ -872,6 +872,11 @@ export default function PhonePePgCheckout() {
                       background: isActive ? theme.tabActiveBg : 'transparent',
                       border: 'none',
                       cursor: 'pointer',
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      whiteSpace: 'nowrap',
                       transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
                       boxShadow: isActive ? (isDark ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.15)') : 'none'
                     }}
@@ -926,17 +931,25 @@ export default function PhonePePgCheckout() {
                         height: '40px',
                         borderRadius: '11px',
                         background: isDark ? '#1C1C1F' : '#FFFFFF',
-                        color: theme.textPrimary,
                         border: `1px solid ${theme.cardBorder}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontWeight: 900,
-                        fontSize: '19px',
+                        overflow: 'hidden',
                         flexShrink: 0
                       }}
                     >
-                      पे
+                      <img
+                        src="./UPI App/phonepe-icon.webp"
+                        alt="PhonePe"
+                        onError={e => {
+                          if (!e.target.dataset.fb) {
+                            e.target.dataset.fb = '1';
+                            e.target.src = '/UPI App/phonepe-icon.webp';
+                          }
+                        }}
+                        style={{ width: '32px', height: '32px', objectFit: 'contain', display: 'block' }}
+                      />
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -998,12 +1011,21 @@ export default function PhonePePgCheckout() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontWeight: 900,
-                        fontSize: '18px',
+                        overflow: 'hidden',
                         flexShrink: 0
                       }}
                     >
-                      <span style={{ fontWeight: 900, color: '#4285F4', fontSize: '20px' }}>G</span>
+                      <img
+                        src="./UPI App/google-pay-icon.webp"
+                        alt="Google Pay"
+                        onError={e => {
+                          if (!e.target.dataset.fb) {
+                            e.target.dataset.fb = '1';
+                            e.target.src = '/UPI App/google-pay-icon.webp';
+                          }
+                        }}
+                        style={{ width: '28px', height: '28px', objectFit: 'contain', display: 'block' }}
+                      />
                     </div>
                     <div>
                       <b style={{ fontSize: '14.5px', color: theme.textPrimary, display: 'block', letterSpacing: '-0.01em' }}>
@@ -1056,17 +1078,31 @@ export default function PhonePePgCheckout() {
                         height: '40px',
                         borderRadius: '11px',
                         background: isDark ? '#1C1C1F' : '#FFFFFF',
-                        color: theme.textPrimary,
                         border: `1px solid ${theme.cardBorder}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '20px',
-                        fontWeight: 800,
+                        overflow: 'hidden',
                         flexShrink: 0
                       }}
                     >
-                      
+                      <img
+                        src="./UPI App/apple-icon-4.png"
+                        alt="Apple Pay"
+                        onError={e => {
+                          if (!e.target.dataset.fb) {
+                            e.target.dataset.fb = '1';
+                            e.target.src = '/UPI App/apple-icon-4.png';
+                          }
+                        }}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          objectFit: 'contain',
+                          display: 'block',
+                          filter: isDark ? 'invert(1)' : 'none'
+                        }}
+                      />
                     </div>
                     <div>
                       <b style={{ fontSize: '14.5px', color: theme.textPrimary, display: 'block', letterSpacing: '-0.01em' }}>
@@ -1119,18 +1155,31 @@ export default function PhonePePgCheckout() {
                         height: '40px',
                         borderRadius: '11px',
                         background: isDark ? '#1C1C1F' : '#FFFFFF',
-                        color: theme.textPrimary,
                         border: `1px solid ${theme.cardBorder}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '16px',
-                        fontWeight: 900,
-                        letterSpacing: '0.5px',
+                        overflow: 'hidden',
                         flexShrink: 0
                       }}
                     >
-                      C
+                      <img
+                        src="./UPI App/Cred-Logo-PNG-Image.png"
+                        alt="CRED"
+                        onError={e => {
+                          if (!e.target.dataset.fb) {
+                            e.target.dataset.fb = '1';
+                            e.target.src = '/UPI App/Cred-Logo-PNG-Image.png';
+                          }
+                        }}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          objectFit: 'contain',
+                          display: 'block',
+                          filter: isDark ? 'invert(1)' : 'none'
+                        }}
+                      />
                     </div>
                     <div>
                       <b style={{ fontSize: '14.5px', color: theme.textPrimary, display: 'block', letterSpacing: '-0.01em' }}>
@@ -1294,7 +1343,11 @@ export default function PhonePePgCheckout() {
                           border: 'none',
                           fontSize: '12.5px',
                           fontWeight: 800,
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
                       >
                         Launch Native UPI App Chooser on Device ➔
@@ -1347,7 +1400,11 @@ export default function PhonePePgCheckout() {
                         border: 'none',
                         fontSize: '13px',
                         fontWeight: 800,
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}
                     >
                       Pay ₹{amount}
@@ -1437,7 +1494,11 @@ export default function PhonePePgCheckout() {
                     color: theme.qrSimulateBtnColor,
                     fontSize: '13.5px',
                     fontWeight: 750,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   Simulate QR Scan Complete ✓
@@ -1576,7 +1637,11 @@ export default function PhonePePgCheckout() {
                     fontSize: '15px',
                     fontWeight: 800,
                     cursor: 'pointer',
-                    boxShadow: theme.submitBtnShadow
+                    boxShadow: theme.submitBtnShadow,
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   Pay ₹{amount} with Card ➔
@@ -1643,22 +1708,22 @@ export default function PhonePePgCheckout() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
+              <img
+                src="./UPI App/phonepe-icon.webp"
+                alt="PhonePe"
+                onError={e => {
+                  if (!e.target.dataset.fb) {
+                    e.target.dataset.fb = '1';
+                    e.target.src = '/UPI App/phonepe-icon.webp';
+                  }
+                }}
                 style={{
                   width: '18px',
                   height: '18px',
-                  borderRadius: '5px',
-                  background: theme.footerBrandBg,
-                  color: theme.footerBrandColor,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '11px',
-                  fontWeight: 900
+                  objectFit: 'contain',
+                  display: 'block'
                 }}
-              >
-                पे
-              </div>
+              />
               <span style={{ fontSize: '12px', fontWeight: 700, color: theme.footerText }}>
                 PhonePe Payment Gateway
               </span>

@@ -1,13 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
 export default function ProfileTab() {
-  const { user, updateUserProfile, addNotification, userTheme, setUserTheme, logout, addToast, openLegal } = useApp();
+  const { user, updateUserProfile, userTheme, setUserTheme, logout, addToast, openLegal } = useApp();
 
-  // Active Bottom Sheet Modal:
-  // null | 'editProfile' | 'changePin' | 'sos' | 'insurance' | 'temp' | 'lang' | 'privacy' | 'concierge' | 'safety'
+  // Active Minimal Modal:
+  // null | 'editProfile' | 'sos' | 'temp' | 'lang' | 'concierge' | 'notif_alerts' | 'notif_whatsapp' | 'notif_promo' | 'app_biometric' | 'app_haptic'
   const [activeModal, setActiveModal] = useState(null);
+  const [mountNode, setMountNode] = useState(null);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const node = document.querySelector('#col-u .inner') || document.body;
+      setMountNode(node);
+    }
+  }, []);
 
   // Form states for modals
   const [editName, setEditName] = useState(user?.name || 'Arjun Menon');
@@ -40,9 +49,6 @@ export default function ProfileTab() {
     reader.readAsDataURL(file);
   };
 
-  // Change PIN modal state
-  const [pinInput, setPinInput] = useState(user?.pinCode || '4821');
-
   // SOS Contacts modal state
   const [sosList, setSosList] = useState(
     user?.sosContacts || [
@@ -54,10 +60,6 @@ export default function ProfileTab() {
   const [newSosRelation, setNewSosRelation] = useState('');
   const [newSosPhone, setNewSosPhone] = useState('');
 
-  // Insurance modal state
-  const [insTier, setInsTier] = useState(user?.insuranceTier || 'standard');
-  const [insNominee, setInsNominee] = useState(user?.nominee?.name || 'Priya Menon');
-
   // AC Preferences modal state
   const [acTemp, setAcTemp] = useState(user?.acTemp || '22°C');
   const [acMode, setAcMode] = useState(user?.acMode || 'Chill');
@@ -65,10 +67,6 @@ export default function ProfileTab() {
 
   // Language modal state
   const [selectedLangs, setSelectedLangs] = useState(user?.languages || ['English', 'Hindi', 'Malayalam']);
-
-  // Privacy toggles
-  const [maskNumber, setMaskNumber] = useState(user?.maskNumber ?? true);
-  const [locPrivacy, setLocPrivacy] = useState(user?.locPrivacy ?? true);
 
   // Direct toggle handlers with instant state and storage persistence
   const handleToggle = (key, val, label) => {
@@ -93,18 +91,6 @@ export default function ProfileTab() {
     });
     setActiveModal(null);
     addToast('Profile & contact details updated', 'check');
-  };
-
-  const handleSavePin = (e) => {
-    e.preventDefault();
-    const clean = pinInput.replace(/\D/g, '').slice(0, 4);
-    if (clean.length < 4) {
-      addToast('PIN must be 4 digits', 'warn');
-      return;
-    }
-    updateUserProfile({ pinCode: clean });
-    setActiveModal(null);
-    addToast(`Ride Start PIN updated to ${clean}`, 'check');
   };
 
   const handleAddSos = (e) => {
@@ -132,15 +118,6 @@ export default function ProfileTab() {
     addToast('Emergency contact removed', 'info');
   };
 
-  const handleSaveInsurance = () => {
-    updateUserProfile({
-      insuranceTier: insTier,
-      nominee: { name: insNominee, relation: 'Spouse' }
-    });
-    setActiveModal(null);
-    addToast(`Insurance tier updated to ${insTier.toUpperCase()}`, 'check');
-  };
-
   const handleSaveAc = () => {
     updateUserProfile({
       acTemp,
@@ -166,42 +143,27 @@ export default function ProfileTab() {
     updateUserProfile({ languages: next });
   };
 
-  const handleNotificationTest = () => {
-    addNotification('System Test Alert', 'Your Ridingo push notification alerts are active and running properly.', 'bell');
-    addToast('🔔 Test alert sent! Added to Notifications', 'check');
-    if (navigator.vibrate) {
-      try { navigator.vibrate([40, 60, 40]); } catch (e) {}
-    }
-  };
-
-  const handleExportData = () => {
-    const csvContent = 'data:text/csv;charset=utf-8,Trip ID,Date,Fare,Driver,Status\nTRP-1092,2026-10-05,796,Ravi Kumar,Completed\nTRP-1085,2026-10-03,699,Vikram Joshi,Completed';
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `ridingo_trips_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    addToast('Trip history exported successfully (.csv)', 'check');
-  };
+  const portalTarget = mountNode || (typeof document !== 'undefined' ? (document.querySelector('#col-u .inner') || document.body) : null);
 
   return (
     <div style={{ paddingBottom: '32px' }}>
       {/* 1. Header */}
-      <div className="hello stagger-1" style={{ marginBottom: '16px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: 'var(--ink)' }}>
-          Profile
-        </h1>
-        <p style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px', margin: 0 }}>
-          Account & preferences
-        </p>
+      <div className="section-header stagger-1" style={{ marginBottom: '16px' }}>
+        <div>
+          <div className="eyebrow">Owner Settings</div>
+          <h2 style={{ margin: '2px 0 0 0', fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+            Profile &amp; Account
+          </h2>
+        </div>
       </div>
 
       {/* 2. User Profile Card */}
       <div className="card prof-card stagger-2" style={{ padding: '16px', borderRadius: '20px', marginBottom: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0, cursor: 'pointer' }}
+            onClick={() => setActiveModal('editProfile')}
+          >
             {/* Avatar with Camera badge */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <div
@@ -248,7 +210,7 @@ export default function ProfileTab() {
                   justifyContent: 'center',
                   cursor: 'pointer'
                 }}
-                onClick={() => setActiveModal('editProfile')}
+                onClick={(e) => { e.stopPropagation(); setActiveModal('editProfile'); }}
                 title="Change Photo & Details"
               >
                 <Icon name="camera" size={11} />
@@ -308,58 +270,9 @@ export default function ProfileTab() {
       </div>
 
       {/* 3. SAFETY & SECURITY */}
-      <div className="prof-section-title stagger-3">Safety & Security</div>
+      <div className="prof-section-title stagger-3">Safety &amp; Security</div>
       <div className="card stagger-3" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
-        {/* Row 1: Ride Start PIN */}
-        <div className="prof-set-row">
-          <div className="prof-set-info">
-            <b className="prof-set-title">Ride Start PIN</b>
-            <span className="prof-set-sub">PIN: {user?.pinCode || '4821'} · Driver verifies before departure</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button
-              type="button"
-              onClick={() => setActiveModal('changePin')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                fontSize: '13.5px',
-                fontWeight: 700,
-                color: 'var(--ink)',
-                cursor: 'pointer'
-              }}
-            >
-              Change
-            </button>
-            <button
-              type="button"
-              className={`ios-toggle ${user?.pin !== false ? 'on' : ''}`}
-              onClick={() => handleToggle('pin', user?.pin === false, 'Ride Start PIN')}
-              aria-label="Toggle Ride Start PIN"
-            >
-              <span className="ios-toggle-thumb" />
-            </button>
-          </div>
-        </div>
-
-        {/* Row 2: Share Live Trip Status */}
-        <div className="prof-set-row">
-          <div className="prof-set-info">
-            <b className="prof-set-title">Share Live Trip Status</b>
-            <span className="prof-set-sub">Auto-send live GPS link to your emergency contacts</span>
-          </div>
-          <button
-            type="button"
-            className={`ios-toggle ${user?.liveShare !== false ? 'on' : ''}`}
-            onClick={() => handleToggle('liveShare', user?.liveShare === false, 'Live Trip Sharing')}
-            aria-label="Toggle Share Live Trip Status"
-          >
-            <span className="ios-toggle-thumb" />
-          </button>
-        </div>
-
-        {/* Row 3: Emergency SOS Contacts */}
+        {/* Emergency SOS Contacts */}
         <div
           className="prof-set-row"
           style={{ cursor: 'pointer' }}
@@ -376,53 +289,19 @@ export default function ProfileTab() {
             <Icon name="chevronRight" size={15} />
           </div>
         </div>
-
-        {/* Row 4: Trip Insurance Policy */}
-        <div
-          className="prof-set-row"
-          style={{ cursor: 'pointer' }}
-          onClick={() => setActiveModal('insurance')}
-        >
-          <div className="prof-set-info">
-            <b className="prof-set-title">Trip Insurance Policy</b>
-            <span className="prof-set-sub">
-              {insTier === 'executive' ? 'Executive (₹25L)' : insTier === 'comprehensive' ? 'Comprehensive (₹10L)' : 'Standard (₹5L)'} on-trip protection
-            </span>
-          </div>
-          <div className="prof-set-action-btn">
-            <span>Active</span>
-            <Icon name="chevronRight" size={15} />
-          </div>
-        </div>
       </div>
 
       {/* 4. RIDE PREFERENCES */}
       <div className="prof-section-title stagger-4">Ride Preferences</div>
       <div className="card stagger-4" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
-        {/* Row 1: Quiet Ride Mode */}
-        <div className="prof-set-row">
-          <div className="prof-set-info">
-            <b className="prof-set-title">Quiet Ride Mode</b>
-            <span className="prof-set-sub">Driver keeps cabin quiet for calls and focus</span>
-          </div>
-          <button
-            type="button"
-            className={`ios-toggle ${user?.quietCabin ? 'on' : ''}`}
-            onClick={() => handleToggle('quietCabin', !user?.quietCabin, 'Quiet Ride Mode')}
-            aria-label="Toggle Quiet Ride Mode"
-          >
-            <span className="ios-toggle-thumb" />
-          </button>
-        </div>
-
-        {/* Row 2: Cabin Temperature & AC */}
+        {/* Cabin Temperature & AC */}
         <div
           className="prof-set-row"
           style={{ cursor: 'pointer' }}
           onClick={() => setActiveModal('temp')}
         >
           <div className="prof-set-info">
-            <b className="prof-set-title">Cabin Temperature & AC</b>
+            <b className="prof-set-title">Cabin Temperature &amp; AC</b>
             <span className="prof-set-sub">{acTemp} ({acMode}) · {acPrecool ? 'Pre-cool on' : 'Standard'}</span>
           </div>
           <div className="prof-set-action-btn">
@@ -431,7 +310,7 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        {/* Row 3: Driver Language */}
+        {/* Driver Language */}
         <div
           className="prof-set-row"
           style={{ cursor: 'pointer' }}
@@ -451,76 +330,76 @@ export default function ProfileTab() {
       {/* 5. NOTIFICATIONS */}
       <div className="prof-section-title stagger-5">Notifications</div>
       <div className="card stagger-5" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
-        {/* Row 1: Trip Status Alerts */}
-        <div className="prof-set-row">
+        {/* Trip Status Alerts */}
+        <div
+          className="prof-set-row"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setActiveModal('notif_alerts')}
+        >
           <div className="prof-set-info">
             <b className="prof-set-title">Trip Status Alerts</b>
-            <span className="prof-set-sub">Push alerts when driver is assigned & arrives</span>
+            <span className="prof-set-sub">Push alerts when driver is assigned &amp; arrives</span>
           </div>
           <button
             type="button"
             className={`ios-toggle ${user?.notif !== false ? 'on' : ''}`}
-            onClick={() => handleToggle('notif', user?.notif === false, 'Trip Status Alerts')}
+            onClick={(e) => { e.stopPropagation(); handleToggle('notif', user?.notif === false, 'Trip Status Alerts'); }}
             aria-label="Toggle Trip Status Alerts"
           >
             <span className="ios-toggle-thumb" />
           </button>
         </div>
 
-        {/* Row 2: WhatsApp Booking Slip */}
-        <div className="prof-set-row">
+        {/* WhatsApp Booking Slip */}
+        <div
+          className="prof-set-row"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setActiveModal('notif_whatsapp')}
+        >
           <div className="prof-set-info">
             <b className="prof-set-title">WhatsApp Booking Slip</b>
-            <span className="prof-set-sub">Receive driver license & tracking on WhatsApp</span>
+            <span className="prof-set-sub">Receive driver license &amp; tracking on WhatsApp</span>
           </div>
           <button
             type="button"
             className={`ios-toggle ${user?.whatsapp !== false ? 'on' : ''}`}
-            onClick={() => handleToggle('whatsapp', user?.whatsapp === false, 'WhatsApp Booking Slip')}
+            onClick={(e) => { e.stopPropagation(); handleToggle('whatsapp', user?.whatsapp === false, 'WhatsApp Booking Slip'); }}
             aria-label="Toggle WhatsApp Booking Slip"
           >
             <span className="ios-toggle-thumb" />
           </button>
         </div>
 
-        {/* Row 3: Rewards & Cashbacks */}
-        <div className="prof-set-row">
+        {/* Rewards & Cashbacks */}
+        <div
+          className="prof-set-row"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setActiveModal('notif_promo')}
+        >
           <div className="prof-set-info">
-            <b className="prof-set-title">Rewards & Cashbacks</b>
+            <b className="prof-set-title">Rewards &amp; Cashbacks</b>
             <span className="prof-set-sub">Alerts when trip cashback is added to wallet</span>
           </div>
           <button
             type="button"
             className={`ios-toggle ${user?.promo !== false ? 'on' : ''}`}
-            onClick={() => handleToggle('promo', user?.promo === false, 'Rewards & Cashback Alerts')}
+            onClick={(e) => { e.stopPropagation(); handleToggle('promo', user?.promo === false, 'Rewards & Cashback Alerts'); }}
             aria-label="Toggle Rewards & Cashbacks"
           >
             <span className="ios-toggle-thumb" />
           </button>
         </div>
-
-        {/* Row 4: System Notification Test */}
-        <div
-          className="prof-set-row"
-          style={{ cursor: 'pointer' }}
-          onClick={handleNotificationTest}
-        >
-          <div className="prof-set-info">
-            <b className="prof-set-title">System Notification Test</b>
-            <span className="prof-set-sub">Tap to verify device alerts and notification chime</span>
-          </div>
-          <div className="prof-set-action-btn">
-            <span>Test Alert</span>
-            <Icon name="bell" size={15} />
-          </div>
-        </div>
       </div>
 
       {/* 6. APP & PRIVACY */}
-      <div className="prof-section-title stagger-6">App & Privacy</div>
+      <div className="prof-section-title stagger-6">App &amp; Privacy</div>
       <div className="card stagger-6" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
-        {/* Row 1: Biometric / App Lock */}
-        <div className="prof-set-row">
+        {/* Biometric / App Lock */}
+        <div
+          className="prof-set-row"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setActiveModal('app_biometric')}
+        >
           <div className="prof-set-info">
             <b className="prof-set-title">Biometric / App Lock</b>
             <span className="prof-set-sub">Require Face ID or Fingerprint before booking</span>
@@ -528,15 +407,19 @@ export default function ProfileTab() {
           <button
             type="button"
             className={`ios-toggle ${user?.biometric !== false ? 'on' : ''}`}
-            onClick={() => handleToggle('biometric', user?.biometric === false, 'Biometric Lock')}
+            onClick={(e) => { e.stopPropagation(); handleToggle('biometric', user?.biometric === false, 'Biometric Lock'); }}
             aria-label="Toggle Biometric Lock"
           >
             <span className="ios-toggle-thumb" />
           </button>
         </div>
 
-        {/* Row 2: Haptic Feedback */}
-        <div className="prof-set-row">
+        {/* Haptic Feedback */}
+        <div
+          className="prof-set-row"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setActiveModal('app_haptic')}
+        >
           <div className="prof-set-info">
             <b className="prof-set-title">Haptic Feedback</b>
             <span className="prof-set-sub">Subtle vibrations on taps and alerts</span>
@@ -544,30 +427,14 @@ export default function ProfileTab() {
           <button
             type="button"
             className={`ios-toggle ${user?.haptic !== false ? 'on' : ''}`}
-            onClick={() => handleToggle('haptic', user?.haptic === false, 'Haptic Feedback')}
+            onClick={(e) => { e.stopPropagation(); handleToggle('haptic', user?.haptic === false, 'Haptic Feedback'); }}
             aria-label="Toggle Haptic Feedback"
           >
             <span className="ios-toggle-thumb" />
           </button>
         </div>
 
-        {/* Row 3: Privacy & Data Controls */}
-        <div
-          className="prof-set-row"
-          style={{ cursor: 'pointer' }}
-          onClick={() => setActiveModal('privacy')}
-        >
-          <div className="prof-set-info">
-            <b className="prof-set-title">Privacy & Data Controls</b>
-            <span className="prof-set-sub">Number masking, live location privacy, data export</span>
-          </div>
-          <div className="prof-set-action-btn">
-            <span>Manage</span>
-            <Icon name="chevronRight" size={15} />
-          </div>
-        </div>
-
-        {/* Row 4: Terms of Service */}
+        {/* Terms of Service */}
         <div
           className="prof-set-row"
           style={{ cursor: 'pointer' }}
@@ -575,7 +442,7 @@ export default function ProfileTab() {
         >
           <div className="prof-set-info">
             <b className="prof-set-title">Terms of Service</b>
-            <span className="prof-set-sub">Chauffeur transit rules, eligibility & service agreement</span>
+            <span className="prof-set-sub">Chauffeur transit rules, eligibility &amp; service agreement</span>
           </div>
           <div className="prof-set-action-btn">
             <span>View</span>
@@ -583,7 +450,7 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        {/* Row 5: Privacy Policy */}
+        {/* Privacy Policy */}
         <div
           className="prof-set-row"
           style={{ cursor: 'pointer' }}
@@ -591,7 +458,7 @@ export default function ProfileTab() {
         >
           <div className="prof-set-info">
             <b className="prof-set-title">Privacy Policy</b>
-            <span className="prof-set-sub">Data encryption, number masking & location handling</span>
+            <span className="prof-set-sub">Data encryption, number masking &amp; location handling</span>
           </div>
           <div className="prof-set-action-btn">
             <span>View</span>
@@ -599,7 +466,7 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        {/* Row 6: Appearance */}
+        {/* Appearance */}
         <div className="prof-set-row" style={{ display: 'block', padding: '14px 0' }}>
           <b className="prof-set-title" style={{ marginBottom: '10px' }}>
             Appearance
@@ -620,36 +487,20 @@ export default function ProfileTab() {
       </div>
 
       {/* 7. HELP & SUPPORT */}
-      <div className="prof-section-title stagger-6">Help & Support</div>
+      <div className="prof-section-title stagger-6">Help &amp; Support</div>
       <div className="card stagger-6" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '22px' }}>
-        {/* Row 1: 24x7 Concierge Helpline */}
+        {/* 24/7 Helpline */}
         <div
           className="prof-set-row"
           style={{ cursor: 'pointer' }}
           onClick={() => setActiveModal('concierge')}
         >
           <div className="prof-set-info">
-            <b className="prof-set-title">24x7 Concierge Helpline</b>
-            <span className="prof-set-sub">Dedicated roadside & trip customer care</span>
+            <b className="prof-set-title">24/7 Helpline</b>
+            <span className="prof-set-sub">Dedicated roadside, trip &amp; account assistance</span>
           </div>
           <div className="prof-set-action-btn">
             <span>Call Free</span>
-            <Icon name="chevronRight" size={15} />
-          </div>
-        </div>
-
-        {/* Row 2: Driver Standards & Safety */}
-        <div
-          className="prof-set-row"
-          style={{ cursor: 'pointer' }}
-          onClick={() => setActiveModal('safety')}
-        >
-          <div className="prof-set-info">
-            <b className="prof-set-title">Driver Standards & Safety</b>
-            <span className="prof-set-sub">Driver background checks & license verification</span>
-          </div>
-          <div className="prof-set-action-btn">
-            <span>Guidelines</span>
             <Icon name="chevronRight" size={15} />
           </div>
         </div>
@@ -687,19 +538,24 @@ export default function ProfileTab() {
       </div>
 
       {/* ==========================================================
-          INTERACTIVE SETTING MODAL SHEETS
+          MINIMAL INTERACTIVE SETTING POPUP (CENTERED ON CURRENT VIEW)
          ========================================================== */}
-      {activeModal && (
+      {activeModal && portalTarget && createPortal(
         <div
           style={{
-            position: 'absolute',
+            position: portalTarget === document.body ? 'fixed' : 'absolute',
             inset: 0,
-            zIndex: 200,
-            background: 'rgba(0, 0, 0, 0.45)',
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.58)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            animation: 'fade 0.2s ease'
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            animation: 'fade 0.2s ease',
+            borderRadius: portalTarget === document.body ? 0 : '48px',
+            overflow: 'hidden'
           }}
         >
           {/* Backdrop dismiss click */}
@@ -709,51 +565,88 @@ export default function ProfileTab() {
           />
 
           <div
+            className="apple-page-enter"
             style={{
               position: 'relative',
               background: 'var(--surface)',
-              borderTopLeftRadius: '24px',
-              borderTopRightRadius: '24px',
+              borderRadius: '24px',
+              border: '1px solid var(--line)',
+              width: '100%',
+              maxWidth: '350px',
               maxHeight: '85%',
               overflowY: 'auto',
-              padding: '16px 20px 32px',
-              boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
+              padding: '18px 20px 22px',
+              boxShadow: '0 20px 48px rgba(0, 0, 0, 0.4)',
               zIndex: 2,
-              WebkitOverflowScrolling: 'touch'
+              WebkitOverflowScrolling: 'touch',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              boxSizing: 'border-box'
             }}
           >
-            {/* Grab bar */}
-            <div style={{ width: '38px', height: '4px', borderRadius: '999px', background: 'var(--line)', margin: '0 auto 16px' }} />
+            {/* Header: Title + Minimal Close Button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                {activeModal === 'editProfile' && 'Edit Profile & Details'}
+                {activeModal === 'sos' && 'Emergency SOS Contacts'}
+                {activeModal === 'temp' && 'Cabin Climate & AC'}
+                {activeModal === 'lang' && 'Driver Languages'}
+                {activeModal === 'notif_alerts' && 'Trip Status Alerts'}
+                {activeModal === 'notif_whatsapp' && 'WhatsApp Trip Slip'}
+                {activeModal === 'notif_promo' && 'Rewards & Cashbacks'}
+                {activeModal === 'app_biometric' && 'Biometric / App Lock'}
+                {activeModal === 'app_haptic' && 'Haptic Feedback'}
+                {activeModal === 'concierge' && '24/7 Ridingo Support'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  background: 'var(--card)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  flexShrink: 0
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
 
             {/* MODAL 1: EDIT PROFILE */}
             {activeModal === 'editProfile' && (
-              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Edit Profile & Vehicle
-                </h3>
-
-                {/* Profile Photo Upload / Edit */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '6px 0 10px' }}>
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
                   <div style={{ position: 'relative' }}>
                     <div
                       onClick={() => fileInputRef.current?.click()}
                       style={{
-                        width: '84px',
-                        height: '84px',
+                        width: '74px',
+                        height: '74px',
                         borderRadius: '50%',
                         background: 'var(--yellow)',
                         color: '#111827',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '28px',
+                        fontSize: '24px',
                         fontWeight: 800,
                         overflow: 'hidden',
                         border: '3px solid var(--surface)',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
                         cursor: 'pointer'
                       }}
-                      title="Tap to change profile photo"
+                      title="Tap to change photo"
                     >
                       {editAvatar ? (
                         <img src={editAvatar} alt="Profile Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -761,29 +654,6 @@ export default function ProfileTab() {
                         (editName ? editName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AM')
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        background: '#111827',
-                        border: '2px solid var(--card)',
-                        color: '#FFFFFF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                      }}
-                      title="Upload Photo"
-                    >
-                      <Icon name="camera" size={13} />
-                    </button>
                   </div>
 
                   <input
@@ -794,7 +664,7 @@ export default function ProfileTab() {
                     onChange={handleAvatarFileSelect}
                   />
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -802,28 +672,24 @@ export default function ProfileTab() {
                         background: 'rgba(250, 204, 21, 0.18)',
                         border: '1px solid var(--yellow)',
                         color: 'var(--ink)',
-                        padding: '6px 14px',
+                        padding: '5px 12px',
                         borderRadius: '999px',
-                        fontSize: '12.5px',
+                        fontSize: '12px',
                         fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
+                        cursor: 'pointer'
                       }}
                     >
-                      <Icon name="camera" size={12} />
-                      <span>{editAvatar ? 'Change Photo' : 'Upload Photo'}</span>
+                      {editAvatar ? 'Change Photo' : 'Upload Photo'}
                     </button>
                     {editAvatar && (
                       <button
                         type="button"
-                        onClick={() => { setEditAvatar(''); addToast('Photo removed (initials will be used)', 'info'); }}
+                        onClick={() => { setEditAvatar(''); addToast('Photo removed', 'info'); }}
                         style={{
                           background: 'transparent',
                           border: '1px solid var(--line)',
                           color: '#EF4444',
-                          padding: '6px 12px',
+                          padding: '5px 10px',
                           borderRadius: '999px',
                           fontSize: '12px',
                           fontWeight: 600,
@@ -844,7 +710,7 @@ export default function ProfileTab() {
                     type="text"
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                    style={{ width: '100%', height: '44px', borderRadius: '12px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
@@ -856,7 +722,7 @@ export default function ProfileTab() {
                     type="text"
                     value={editPhone}
                     onChange={e => setEditPhone(e.target.value)}
-                    style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                    style={{ width: '100%', height: '44px', borderRadius: '12px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
@@ -868,116 +734,90 @@ export default function ProfileTab() {
                     type="email"
                     value={editEmail}
                     onChange={e => setEditEmail(e.target.value)}
-                    style={{ width: '100%', height: '46px', borderRadius: '13px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 14px', fontSize: '14.5px', color: 'var(--ink)', outline: 'none' }}
+                    style={{ width: '100%', height: '44px', borderRadius: '12px', border: '1.5px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 <button
                   type="submit"
                   className="btn"
-                  style={{ height: '48px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginTop: '6px' }}
+                  style={{ height: '46px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}
                 >
                   Save Profile Details
                 </button>
               </form>
             )}
 
-            {/* MODAL 2: CHANGE PIN */}
-            {activeModal === 'changePin' && (
-              <form onSubmit={handleSavePin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Change Ride Start PIN
-                </h3>
-                <p style={{ fontSize: '13.5px', color: 'var(--muted)', margin: 0 }}>
-                  Enter a new 4-digit security PIN. You will share this PIN with your driver to commence every booking.
-                </p>
-
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '6px' }}>
-                    New 4-Digit PIN
-                  </label>
-                  <input
-                    type="tel"
-                    maxLength={4}
-                    value={pinInput}
-                    onChange={e => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    placeholder="4821"
-                    style={{ width: '100%', height: '52px', borderRadius: '14px', border: '2px solid var(--yellow)', background: 'var(--card)', padding: '0 16px', fontSize: '24px', fontWeight: 800, letterSpacing: '0.4em', textAlign: 'center', color: 'var(--ink)', outline: 'none' }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="btn"
-                  style={{ height: '48px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Update PIN
-                </button>
-              </form>
-            )}
-
-            {/* MODAL 3: SOS CONTACTS */}
+            {/* MODAL 2: SOS CONTACTS */}
             {activeModal === 'sos' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Emergency SOS Contacts
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                  These trusted contacts receive your live trip link and automatic SOS SMS alerts if an emergency is triggered.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--muted)', margin: 0, lineHeight: 1.35 }}>
+                  Trusted emergency contacts who receive your live vehicle tracking link &amp; instant alerts.
                 </p>
 
-                {/* List of contacts */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {sosList.map((c, idx) => (
+                {/* List of contacts - compact & cleanly fitted without vertical scroll */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {sosList.slice(0, 2).map((c, idx) => (
                     <div
                       key={idx}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '7px 10px',
+                        borderRadius: '10px',
+                        background: 'var(--card)',
+                        border: '1px solid var(--line)'
+                      }}
                     >
-                      <div>
-                        <b style={{ fontSize: '14px', color: 'var(--ink)' }}>{c.name}</b>
-                        <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>{c.relation} · {c.phone}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13px' }}>👤</span>
+                        <div>
+                          <b style={{ fontSize: '12.5px', color: 'var(--ink)' }}>{c.name}</b>
+                          <span style={{ fontSize: '11px', color: 'var(--muted)', marginLeft: '6px' }}>({c.relation} · {c.phone})</span>
+                        </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleDeleteSos(idx)}
-                        style={{ color: '#EF4444', fontSize: '12.5px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                        style={{ color: '#EF4444', fontSize: '11px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
                       >
-                        Remove
+                        ✕
                       </button>
                     </div>
                   ))}
                 </div>
 
-                {/* Add new contact form */}
-                <form onSubmit={handleAddSos} style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '6px', borderTop: '1px solid var(--line)' }}>
-                  <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Add New Contact</b>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
+                {/* Add new contact form - perfectly fitted without scroll */}
+                <form onSubmit={handleAddSos} style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px', borderTop: '1px solid var(--line)' }}>
+                  <b style={{ fontSize: '11.5px', color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Add Contact</b>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '6px' }}>
                     <input
                       type="text"
                       placeholder="Contact Name"
                       value={newSosName}
                       onChange={e => setNewSosName(e.target.value)}
-                      style={{ height: '42px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '13.5px', outline: 'none', color: 'var(--ink)' }}
+                      style={{ height: '36px', borderRadius: '9px', border: '1px solid var(--line)', background: 'var(--card)', padding: '0 10px', fontSize: '12.5px', outline: 'none', color: 'var(--ink)', width: '100%', boxSizing: 'border-box' }}
                     />
                     <input
                       type="text"
                       placeholder="Relation (e.g. Spouse)"
                       value={newSosRelation}
                       onChange={e => setNewSosRelation(e.target.value)}
-                      style={{ height: '42px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '13.5px', outline: 'none', color: 'var(--ink)' }}
+                      style={{ height: '36px', borderRadius: '9px', border: '1px solid var(--line)', background: 'var(--card)', padding: '0 10px', fontSize: '12.5px', outline: 'none', color: 'var(--ink)', width: '100%', boxSizing: 'border-box' }}
                     />
                   </div>
                   <input
                     type="tel"
-                    placeholder="Mobile (+91 98765 43210)"
+                    placeholder="Mobile Number (+91 98765 43210)"
                     value={newSosPhone}
                     onChange={e => setNewSosPhone(e.target.value)}
-                    style={{ height: '42px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '13.5px', outline: 'none', color: 'var(--ink)' }}
+                    style={{ height: '36px', borderRadius: '9px', border: '1px solid var(--line)', background: 'var(--card)', padding: '0 10px', fontSize: '12.5px', outline: 'none', color: 'var(--ink)', width: '100%', boxSizing: 'border-box' }}
                   />
                   <button
                     type="submit"
                     className="btn"
-                    style={{ height: '44px', borderRadius: '12px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                    style={{ height: '38px', borderRadius: '10px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', marginTop: '2px', width: '100%', boxSizing: 'border-box' }}
                   >
                     + Add Emergency Contact
                   </button>
@@ -985,76 +825,11 @@ export default function ProfileTab() {
               </div>
             )}
 
-            {/* MODAL 4: TRIP INSURANCE */}
-            {activeModal === 'insurance' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Trip Insurance Policy
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                  Every trip on Ridingo is backed by comprehensive passenger & chauffeur transit cover underwritten by ICICI Lombard.
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {[
-                    { id: 'standard', name: 'Standard Shield', cover: '₹5 Lakhs Coverage', price: 'Included Free' },
-                    { id: 'comprehensive', name: 'Comprehensive Shield', cover: '₹10 Lakhs Coverage + OPD', price: '₹29 / trip' },
-                    { id: 'executive', name: 'Executive Shield', cover: '₹25 Lakhs Coverage + Baggage Loss', price: '₹79 / trip' }
-                  ].map(t => (
-                    <div
-                      key={t.id}
-                      onClick={() => setInsTier(t.id)}
-                      style={{
-                        padding: '12px 14px',
-                        borderRadius: '14px',
-                        border: insTier === t.id ? '2px solid var(--yellow)' : '1px solid var(--line)',
-                        background: insTier === t.id ? 'rgba(255, 199, 10, 0.12)' : 'var(--card)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}
-                    >
-                      <div>
-                        <b style={{ fontSize: '14px', color: 'var(--ink)' }}>{t.name}</b>
-                        <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>{t.cover}</span>
-                      </div>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>{t.price}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
-                    Nominee Name
-                  </label>
-                  <input
-                    type="text"
-                    value={insNominee}
-                    onChange={e => setInsNominee(e.target.value)}
-                    style={{ width: '100%', height: '44px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--card)', padding: '0 12px', fontSize: '14px', outline: 'none', color: 'var(--ink)' }}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSaveInsurance}
-                  className="btn"
-                  style={{ height: '46px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Save Policy Preferences
-                </button>
-              </div>
-            )}
-
-            {/* MODAL 5: CABIN TEMPERATURE & AC */}
+            {/* MODAL 3: CABIN TEMPERATURE & AC */}
             {activeModal === 'temp' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Cabin Temperature & Climate
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                  Drivers configure your vehicle's climate control system to these settings upon arrival.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
+                  Chauffeurs configure your vehicle's air conditioning to these settings upon arrival.
                 </p>
 
                 {/* Temp selector */}
@@ -1069,17 +844,23 @@ export default function ProfileTab() {
                         type="button"
                         onClick={() => setAcTemp(t)}
                         style={{
-                          height: '42px',
-                          borderRadius: '12px',
+                          height: '38px',
+                          borderRadius: '10px',
                           border: acTemp === t ? '2px solid var(--yellow)' : '1px solid var(--line)',
                           background: acTemp === t ? 'var(--yellow)' : 'var(--card)',
                           color: acTemp === t ? '#111827' : 'var(--ink)',
-                          fontSize: '13.5px',
+                          fontSize: '13px',
                           fontWeight: 700,
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          textAlign: 'center',
+                          padding: 0,
+                          lineHeight: '1'
                         }}
                       >
-                        {t}
+                        <span>{t}</span>
                       </button>
                     ))}
                   </div>
@@ -1091,33 +872,39 @@ export default function ProfileTab() {
                     AC Mode
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                    {['Chill', 'Normal', 'Eco', 'Fan Only'].map(m => (
+                    {['Chill', 'Normal', 'Eco', 'Fan'].map(m => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => setAcMode(m)}
                         style={{
-                          height: '38px',
+                          height: '36px',
                           borderRadius: '10px',
                           border: acMode === m ? '1.5px solid var(--solid)' : '1px solid var(--line)',
                           background: acMode === m ? 'var(--solid)' : 'var(--card)',
                           color: acMode === m ? 'var(--on-solid)' : 'var(--muted)',
                           fontSize: '12.5px',
                           fontWeight: 700,
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          textAlign: 'center',
+                          padding: 0,
+                          lineHeight: '1'
                         }}
                       >
-                        {m}
+                        <span>{m}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Pre-cool toggle */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--line)' }}>
                   <div>
-                    <b style={{ fontSize: '14px', color: 'var(--ink)' }}>Auto Pre-cool Cabin</b>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>Turn on AC 5 mins before arrival</span>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>Auto Pre-cool Cabin</b>
+                    <span style={{ fontSize: '11.5px', color: 'var(--muted)', display: 'block' }}>Turn on AC 5 mins before arrival</span>
                   </div>
                   <button
                     type="button"
@@ -1132,21 +919,18 @@ export default function ProfileTab() {
                   type="button"
                   onClick={handleSaveAc}
                   className="btn"
-                  style={{ height: '46px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ height: '44px', borderRadius: '12px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Save Climate Preferences
                 </button>
               </div>
             )}
 
-            {/* MODAL 6: DRIVER LANGUAGES */}
+            {/* MODAL 4: DRIVER LANGUAGES */}
             {activeModal === 'lang' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Driver Language Preferences
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                  Select the languages you prefer your chauffeur to be fluent in.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
+                  Select the languages you prefer your assigned chauffeur to communicate in.
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1158,18 +942,18 @@ export default function ProfileTab() {
                         type="button"
                         onClick={() => handleToggleLang(lang)}
                         style={{
-                          height: '42px',
-                          borderRadius: '12px',
+                          height: '38px',
+                          borderRadius: '10px',
                           border: active ? '2px solid var(--yellow)' : '1px solid var(--line)',
                           background: active ? 'rgba(255, 199, 10, 0.15)' : 'var(--card)',
                           color: active ? 'var(--ink)' : 'var(--muted)',
-                          fontSize: '13.5px',
+                          fontSize: '13px',
                           fontWeight: 700,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '0 12px'
+                          padding: '0 10px'
                         }}
                       >
                         <span>{lang}</span>
@@ -1186,195 +970,286 @@ export default function ProfileTab() {
                     addToast(`Updated languages: ${selectedLangs.join(', ')}`, 'check');
                   }}
                   className="btn"
-                  style={{ height: '46px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}
+                  style={{ height: '44px', borderRadius: '12px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Confirm Languages
                 </button>
               </div>
             )}
 
-            {/* MODAL 7: PRIVACY & DATA */}
-            {activeModal === 'privacy' && (
+            {/* MODAL 5: TRIP STATUS ALERTS */}
+            {activeModal === 'notif_alerts' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Privacy & Data Controls
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                  Manage how your personal information and trip data are shared.
+                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
+                  Receive prompt push notifications when your chauffeur is assigned, begins travel, arrives at your car, and ends the booking.
                 </p>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
                   <div>
-                    <b style={{ fontSize: '14px', color: 'var(--ink)' }}>Phone Number Masking</b>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>Hide real phone number from chauffeurs</span>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>Push Notifications</b>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>
+                      {user?.notif !== false ? 'Enabled' : 'Disabled'}
+                    </span>
                   </div>
                   <button
                     type="button"
-                    className={`ios-toggle ${maskNumber ? 'on' : ''}`}
-                    onClick={() => {
-                      const next = !maskNumber;
-                      setMaskNumber(next);
-                      updateUserProfile({ maskNumber: next });
-                      addToast(`Number masking ${next ? 'enabled' : 'disabled'}`, 'check');
-                    }}
+                    className={`ios-toggle ${user?.notif !== false ? 'on' : ''}`}
+                    onClick={() => handleToggle('notif', user?.notif === false, 'Trip Status Alerts')}
                   >
                     <span className="ios-toggle-thumb" />
                   </button>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
-                  <div>
-                    <b style={{ fontSize: '14px', color: 'var(--ink)' }}>Strict Location Privacy</b>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>Only transmit GPS during an active trip</span>
-                  </div>
-                  <button
-                    type="button"
-                    className={`ios-toggle ${locPrivacy ? 'on' : ''}`}
-                    onClick={() => {
-                      const next = !locPrivacy;
-                      setLocPrivacy(next);
-                      updateUserProfile({ locPrivacy: next });
-                      addToast(`Location privacy ${next ? 'enabled' : 'disabled'}`, 'check');
-                    }}
-                  >
-                    <span className="ios-toggle-thumb" />
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleExportData}
-                  style={{
-                    height: '44px',
-                    borderRadius: '12px',
-                    background: 'var(--card)',
-                    border: '1px solid var(--line)',
-                    color: 'var(--ink)',
-                    fontSize: '13.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  📥 Export Trip Records (.CSV)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveModal(null);
-                    addToast('Local app cache cleared successfully', 'check');
-                  }}
-                  style={{
-                    height: '44px',
-                    borderRadius: '12px',
-                    background: 'var(--card)',
-                    border: '1px solid var(--line)',
-                    color: '#EF4444',
-                    fontSize: '13.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear App Cache (4.2 MB)
-                </button>
-              </div>
-            )}
-
-            {/* MODAL 8: CONCIERGE HELPLINE */}
-            {activeModal === 'concierge' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  24x7 Ridingo Concierge
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                  Immediate roadside assistance, chauffeur dispatch, and VIP support desk.
-                </p>
-
-                <div style={{ padding: '16px', borderRadius: '16px', background: 'var(--card)', border: '1.5px solid var(--line)', textAlign: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
-                    Toll-Free Helpline
-                  </span>
-                  <b style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink)', display: 'block', marginTop: '4px' }}>
-                    1800 425 4821
-                  </b>
-                  <span style={{ fontSize: '12.5px', color: '#16A34A', fontWeight: 600, display: 'block', marginTop: '4px' }}>
-                    ● 24/7 Available (Avg wait &lt; 15s)
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      addToast('Connecting to 1800 425 4821...', 'info');
-                      window.location.href = 'tel:18004254821';
-                    }}
-                    style={{ height: '48px', borderRadius: '14px', background: '#16A34A', color: '#FFFFFF', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  >
-                    <span>📞 Call Free</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      addToast('Opening WhatsApp Concierge...', 'check');
-                      window.open('https://wa.me/919840123456?text=Hi%20Ridingo%20Concierge,%20I%20need%20assistance', '_blank');
-                    }}
-                    style={{ height: '48px', borderRadius: '14px', background: '#25D366', color: '#FFFFFF', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  >
-                    <span>💬 WhatsApp</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* MODAL 9: SAFETY STANDARDS GUIDELINES */}
-            {activeModal === 'safety' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                  Driver Safety & Standards
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                  Every Ridingo chauffeur completes our stringent 7-point certification before handling member vehicles.
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {[
-                    { title: 'Police Clearance Certificate', desc: 'Verified criminal & civil records clearance by State Police' },
-                    { title: 'Commercial Driver Badge', desc: 'Valid RTO-issued commercial badge with minimum 5+ years experience' },
-                    { title: 'Transmission Mastery Exam', desc: 'Practical test on Manual, Dual-Clutch, CVT, and Luxury EV dynamics' },
-                    { title: 'Identity & Biometric KYC', desc: 'Aadhaar biometric & address verification on file' },
-                    { title: 'Zero Tolerance Policy', desc: 'Zero alcohol & narcotics tolerance with breathalyzer on-duty checks' }
-                  ].map((s, idx) => (
-                    <div
-                      key={idx}
-                      style={{ padding: '10px 12px', borderRadius: '12px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}
-                    >
-                      <span style={{ color: '#16A34A', fontWeight: 800, fontSize: '15px' }}>✓</span>
-                      <div>
-                        <b style={{ fontSize: '13.5px', color: 'var(--ink)', display: 'block' }}>{s.title}</b>
-                        <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>{s.desc}</span>
-                      </div>
-                    </div>
-                  ))}
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
                   className="btn"
-                  style={{ height: '46px', borderRadius: '14px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}
+                  style={{ height: '44px', borderRadius: '12px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
                 >
-                  Understood
+                  Done
+                </button>
+              </div>
+            )}
+
+            {/* MODAL 6: WHATSAPP BOOKING SLIP */}
+            {activeModal === 'notif_whatsapp' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
+                  Receive your chauffeur's verified commercial badge, pre-ride vehicle inspection report, and live GPS tracking link on WhatsApp.
+                </p>
+
+                <div style={{ fontSize: '12.5px', color: 'var(--ink)', padding: '10px 12px', borderRadius: '12px', background: 'rgba(37, 211, 102, 0.12)', border: '1px solid rgba(37, 211, 102, 0.3)' }}>
+                  📱 Linked WhatsApp: <b>{user?.phone || '+91 98401 23456'}</b>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
+                  <div>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>WhatsApp Updates</b>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>
+                      {user?.whatsapp !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`ios-toggle ${user?.whatsapp !== false ? 'on' : ''}`}
+                    onClick={() => handleToggle('whatsapp', user?.whatsapp === false, 'WhatsApp Booking Slip')}
+                  >
+                    <span className="ios-toggle-thumb" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="btn"
+                  style={{ height: '44px', borderRadius: '12px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            {/* MODAL 7: REWARDS & CASHBACKS */}
+            {activeModal === 'notif_promo' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
+                  Get real-time alerts whenever chauffeur cashbacks, wallet vouchers, and seasonal member perks are added to your account.
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
+                  <div>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>Cashback &amp; Perk Alerts</b>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>
+                      {user?.promo !== false ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`ios-toggle ${user?.promo !== false ? 'on' : ''}`}
+                    onClick={() => handleToggle('promo', user?.promo === false, 'Rewards & Cashback Alerts')}
+                  >
+                    <span className="ios-toggle-thumb" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="btn"
+                  style={{ height: '44px', borderRadius: '12px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            {/* MODAL 8: BIOMETRIC / APP LOCK */}
+            {activeModal === 'app_biometric' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
+                  Require Face ID or Fingerprint authentication before confirming any chauffeur booking or accessing vehicle telemetry.
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
+                  <div>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>Biometric Security</b>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>
+                      {user?.biometric !== false ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`ios-toggle ${user?.biometric !== false ? 'on' : ''}`}
+                    onClick={() => handleToggle('biometric', user?.biometric === false, 'Biometric Lock')}
+                  >
+                    <span className="ios-toggle-thumb" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="btn"
+                  style={{ height: '44px', borderRadius: '12px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            {/* MODAL 9: HAPTIC FEEDBACK */}
+            {activeModal === 'app_haptic' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
+                  Subtle sensory vibrations when selecting pickup pins, adjusting cabin AC, and tapping confirmation switches.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.vibrate) {
+                      try { navigator.vibrate([40, 50, 40]); } catch (e) {}
+                    }
+                    addToast('📳 Haptic pulse tested', 'check');
+                  }}
+                  style={{
+                    height: '40px',
+                    borderRadius: '12px',
+                    background: 'var(--card)',
+                    border: '1px solid var(--line)',
+                    color: 'var(--ink)',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Test Vibration 📳
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
+                  <div>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>Tactile Vibrations</b>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>
+                      {user?.haptic !== false ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`ios-toggle ${user?.haptic !== false ? 'on' : ''}`}
+                    onClick={() => handleToggle('haptic', user?.haptic === false, 'Haptic Feedback')}
+                  >
+                    <span className="ios-toggle-thumb" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="btn"
+                  style={{ height: '44px', borderRadius: '12px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            {/* MODAL 10: 24/7 RIDINGO SUPPORT */}
+            {activeModal === 'concierge' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
+                  Dedicated roadside assistance, live chauffeur dispatching, and 24/7 account support desk.
+                </p>
+
+                {/* Helpline Phone Number Card */}
+                <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                      📞
+                    </span>
+                    <div>
+                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
+                        24/7 Helpline
+                      </span>
+                      <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)' }}>
+                        8156938843
+                      </b>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addToast('Calling 8156938843...', 'info');
+                      window.location.href = 'tel:8156938843';
+                    }}
+                    style={{ height: '36px', padding: '0 14px', borderRadius: '10px', background: '#16A34A', color: '#FFFFFF', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  >
+                    <span>Call</span>
+                  </button>
+                </div>
+
+                {/* Email Support Card */}
+                <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                    <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                      ✉️
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
+                        Support Email
+                      </span>
+                      <b style={{ fontSize: '13px', fontWeight: 750, color: 'var(--ink)', wordBreak: 'break-all', display: 'block' }}>
+                        support.ridingo@gmail.com
+                      </b>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addToast('Opening mail to support.ridingo@gmail.com...', 'info');
+                      window.location.href = 'mailto:support.ridingo@gmail.com';
+                    }}
+                    style={{ height: '36px', padding: '0 12px', borderRadius: '10px', background: '#2563EB', color: '#FFFFFF', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    Email
+                  </button>
+                </div>
+
+                {/* WhatsApp Chat Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    addToast('Opening WhatsApp Support...', 'check');
+                    window.open('https://wa.me/918156938843?text=Hi%20Ridingo%20Support,%20I%20need%20assistance', '_blank');
+                  }}
+                  style={{ height: '42px', borderRadius: '12px', background: '#25D366', color: '#FFFFFF', border: 'none', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <span>💬 WhatsApp Chat (8156938843)</span>
                 </button>
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        portalTarget
       )}
     </div>
   );

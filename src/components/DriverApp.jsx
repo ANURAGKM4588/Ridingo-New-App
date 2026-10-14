@@ -6,6 +6,15 @@ import DriverOnboardingModal from './DriverOnboardingModal';
 import TripInvoiceModal from './TripInvoiceModal';
 import TripOtpModal from './TripOtpModal';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
+import {
+  requestDriverNotificationPermission,
+  sendDriverNativeNotification,
+  notifyIncomingRideRequest,
+  notifyPayoutSuccess,
+  notifyStartOtpVerified,
+  notifyTripCompleted,
+  notifyDriverOnlineStatus
+} from '../services/driverNotificationService';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours' },
@@ -1047,8 +1056,17 @@ export default function DriverApp() {
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
 
   useEffect(() => {
+    // Request device-level OS notification permission on driver app initialization
+    requestDriverNotificationPermission();
+  }, []);
+
+  useEffect(() => {
     if (incomingTripRequest?.id && incomingTripRequest.id !== minimizedRequestTripId) {
       setMinimizedRequestTripId(null);
+      // Native Device Push Alert: Bypasses in-app UI into the OS notification center
+      if (driverPartner?.nativeNotifs !== false) {
+        notifyIncomingRideRequest(incomingTripRequest);
+      }
     }
   }, [incomingTripRequest?.id]);
 
@@ -1196,6 +1214,10 @@ export default function DriverApp() {
     };
     setDriverTx(prev => [newTx, ...prev]);
     addToast(`₹${amt.toLocaleString('en-IN')} paid out via PhonePe (UTR: ${payout.utr}) to ${upi || bank}!`, 'check');
+    // Dispatch native device OS notification (transaction alert)
+    if (driverPartner?.nativeNotifs !== false) {
+      notifyPayoutSuccess(amt, { bankName: bank, bankAccount: acc, upiId: upi }, payout.utr);
+    }
     if (driverPartner?.haptic !== false && navigator.vibrate) {
       try { navigator.vibrate([30, 50, 30]); } catch (e) {}
     }
@@ -1222,17 +1244,13 @@ export default function DriverApp() {
     }
   }, [activeDriverModal, driverPartner]);
 
-  // Ensure Driver App scrolls to very top section on tab switch or partner change
+  // Scroll to top only when switching tabs (not on setting/partner state changes)
   useEffect(() => {
     const el = document.getElementById('d-content');
     if (el) {
       el.scrollTop = 0;
-      window.requestAnimationFrame(() => {
-        const el2 = document.getElementById('d-content');
-        if (el2) el2.scrollTop = 0;
-      });
     }
-  }, [dTab, driverPartner]);
+  }, [dTab]);
 
   const handleDriverAvatarFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -1297,6 +1315,23 @@ export default function DriverApp() {
       imt: 'iMT Transmission'
     };
     addToast(`${labels[key] || key} ${nextVal ? 'enabled' : 'disabled'}`, 'check');
+  };
+
+  const handleToggleCar = (key, title) => {
+    const currentCars = driverPartner?.carsDriven || {
+      manual: true,
+      automatic: true,
+      hatchback: true,
+      sedan: true,
+      suv: true,
+      luxury: true,
+      ev: true
+    };
+    const nextVal = currentCars[key] === false ? true : false;
+    const updated = { ...currentCars, [key]: nextVal };
+    const updatedTrans = { ...(driverPartner?.transmissions || {}), [key]: nextVal };
+    updateDriverPartner({ carsDriven: updated, transmissions: updatedTrans });
+    addToast(`${title || key} ${nextVal ? 'enabled' : 'disabled'}`, 'check');
   };
 
   const handleSaveDriverProfile = (e) => {
@@ -1409,6 +1444,9 @@ export default function DriverApp() {
     setShowStartOtpModal(false);
     if (verifyStartOtp && activeTripAction) {
       verifyStartOtp(activeTripAction.id);
+      if (driverPartner?.nativeNotifs !== false) {
+        notifyStartOtpVerified(activeTripAction);
+      }
     }
   };
 
@@ -1450,6 +1488,9 @@ export default function DriverApp() {
         ...paymentDetails,
         isCash: false
       });
+      if (driverPartner?.nativeNotifs !== false) {
+        notifyTripCompleted(activeTripAction, paymentDetails?.driverCut || activeTripAction?.fare || 650);
+      }
     }
     playApplePaymentChime();
     triggerTactileHaptic('success');
@@ -1566,9 +1607,15 @@ export default function DriverApp() {
                 <button
                   type="button"
                   id="driver-duty-toggle-btn"
-                  onClick={() => {
+                  onClick={async () => {
                     const next = !driverOnline;
                     setDriverOnline(next);
+                    if (next) {
+                      await requestDriverNotificationPermission();
+                      if (driverPartner?.nativeNotifs !== false) {
+                        notifyDriverOnlineStatus(true);
+                      }
+                    }
                     addToast(
                       next ? 'You are now Online! Receiving bookings.' : 'You went Offline. No bookings will be received.',
                       next ? 'check' : 'info'
@@ -2462,22 +2509,6 @@ export default function DriverApp() {
                   <span className="ios-toggle-thumb" />
                 </button>
               </div>
-
-              {/* Row 3: Auto-queue next booking */}
-              <div className="prof-set-row">
-                <div className="prof-set-info">
-                  <b className="prof-set-title">Auto-Queue Next Booking</b>
-                  <span className="prof-set-sub">Automatically queue next trip when current completes</span>
-                </div>
-                <button
-                  type="button"
-                  className={`ios-toggle ${driverPartner?.autoQueue ? 'on' : ''}`}
-                  onClick={() => handleDriverToggle('autoQueue', !driverPartner?.autoQueue, 'Auto-Queue Next Booking')}
-                  aria-label="Toggle Auto-Queue"
-                >
-                  <span className="ios-toggle-thumb" />
-                </button>
-              </div>
             </div>
 
             {/* 4. SERVICES I ACCEPT */}
@@ -2564,56 +2595,36 @@ export default function DriverApp() {
               </div>
             </div>
 
-            {/* 5. GEAR TRANSMISSIONS I DRIVE */}
-            <div className="prof-section-title stagger-5">Gear Transmissions I Drive</div>
+            {/* 5. CARS I CAN DRIVE */}
+            <div className="prof-section-title stagger-5">Cars I Can Drive</div>
             <div className="card stagger-5" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '20px' }}>
-              {/* Automatic */}
-              <div className="prof-set-row">
-                <div className="prof-set-info">
-                  <b className="prof-set-title">Automatic Transmission</b>
-                  <span className="prof-set-sub">Torque Converter, DCT, CVT, AMT gearbox</span>
-                </div>
-                <button
-                  type="button"
-                  className={`ios-toggle ${driverPartner?.transmissions?.automatic !== false ? 'on' : ''}`}
-                  onClick={() => handleToggleTransmission('automatic')}
-                  aria-label="Toggle Automatic Transmission"
-                >
-                  <span className="ios-toggle-thumb" />
-                </button>
-              </div>
-
-              {/* Manual */}
-              <div className="prof-set-row">
-                <div className="prof-set-info">
-                  <b className="prof-set-title">Manual Transmission</b>
-                  <span className="prof-set-sub">Standard H-pattern manual with clutch pedal</span>
-                </div>
-                <button
-                  type="button"
-                  className={`ios-toggle ${driverPartner?.transmissions?.manual !== false ? 'on' : ''}`}
-                  onClick={() => handleToggleTransmission('manual')}
-                  aria-label="Toggle Manual Transmission"
-                >
-                  <span className="ios-toggle-thumb" />
-                </button>
-              </div>
-
-              {/* iMT */}
-              <div className="prof-set-row">
-                <div className="prof-set-info">
-                  <b className="prof-set-title">iMT (Intelligent Manual)</b>
-                  <span className="prof-set-sub">Clutchless manual & intelligent stick shift</span>
-                </div>
-                <button
-                  type="button"
-                  className={`ios-toggle ${driverPartner?.transmissions?.imt !== false ? 'on' : ''}`}
-                  onClick={() => handleToggleTransmission('imt')}
-                  aria-label="Toggle iMT Transmission"
-                >
-                  <span className="ios-toggle-thumb" />
-                </button>
-              </div>
+              {[
+                { key: 'manual', title: 'Manual Transmission', desc: 'Standard H-pattern manual with clutch pedal' },
+                { key: 'automatic', title: 'Automatic Transmission', desc: 'Torque Converter, DCT, CVT, AMT gearbox' },
+                { key: 'hatchback', title: 'Hatchback & Compact Cars', desc: 'Swift, i20, Tiago, Polo, Baleno' },
+                { key: 'sedan', title: 'Sedan & Executive Cars', desc: 'City, Verna, Dzire, Ciaz, Virtus, Slavia' },
+                { key: 'suv', title: 'SUV & 7-Seater / MUV', desc: 'Creta, Innova, Fortuner, XUV700, Scorpio' },
+                { key: 'luxury', title: 'Luxury & Premium Cars', desc: 'Mercedes-Benz, BMW, Audi, Jaguar, Range Rover' },
+                { key: 'ev', title: 'Electric Vehicles (EV)', desc: 'Tata EV, BYD, MG ZS EV, Hyundai Ioniq' }
+              ].map((c) => {
+                const isEnabled = driverPartner?.carsDriven?.[c.key] !== false && driverPartner?.transmissions?.[c.key] !== false;
+                return (
+                  <div key={c.key} className="prof-set-row">
+                    <div className="prof-set-info">
+                      <b className="prof-set-title">{c.title}</b>
+                      <span className="prof-set-sub">{c.desc}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`ios-toggle ${isEnabled ? 'on' : ''}`}
+                      onClick={() => handleToggleCar(c.key, c.title)}
+                      aria-label={`Toggle ${c.title}`}
+                    >
+                      <span className="ios-toggle-thumb" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             {/* 6. PAYOUT & BANK ACCOUNT */}
@@ -2682,21 +2693,6 @@ export default function DriverApp() {
                   <Icon name="chevronRight" size={15} />
                 </div>
               </div>
-
-              <div
-                className="prof-set-row"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveDriverModal('documents')}
-              >
-                <div className="prof-set-info">
-                  <b className="prof-set-title">Chauffeur Badge</b>
-                  <span className="prof-set-sub">Badge #{driverPartner?.badgeNumber || 'KL-07-2024-CH08'} · Ernakulam RTO</span>
-                </div>
-                <div className="prof-set-action-btn">
-                  <span>Active</span>
-                  <Icon name="chevronRight" size={15} />
-                </div>
-              </div>
             </div>
 
             {/* 8. APP & PRIVACY */}
@@ -2734,6 +2730,62 @@ export default function DriverApp() {
                 </button>
               </div>
 
+              {/* Native Device Push Notifications */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">OS Push Notifications</b>
+                  <span className="prof-set-sub">Bypass UI to deliver alerts directly to device notification center</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${driverPartner?.nativeNotifs !== false ? 'on' : ''}`}
+                  onClick={async () => {
+                    const next = driverPartner?.nativeNotifs === false;
+                    if (next) {
+                      await requestDriverNotificationPermission();
+                    }
+                    handleDriverToggle('nativeNotifs', next, 'OS Push Notifications');
+                  }}
+                  aria-label="Toggle OS Push Notifications"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Test OS Notification Center Action */}
+              <div className="prof-set-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Device Notification Center</b>
+                  <span className="prof-set-sub">Send test alert directly to system notification tray</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await requestDriverNotificationPermission();
+                    sendDriverNativeNotification(
+                      '🔔 Ridingo Driver OS Alert',
+                      'Device-level native push notification working directly in your OS notification center.',
+                      { type: 'alert' }
+                    );
+                    addToast('Notification dispatched to OS Notification Center', 'check');
+                  }}
+                  style={{
+                    height: '34px',
+                    padding: '0 12px',
+                    borderRadius: '10px',
+                    background: 'var(--ink)',
+                    color: 'var(--surface)',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
+                >
+                  Test Alert
+                </button>
+              </div>
+
               {/* Appearance */}
               <div className="prof-set-row" style={{ display: 'block', padding: '14px 0' }}>
                 <b className="prof-set-title" style={{ marginBottom: '10px' }}>
@@ -2754,8 +2806,8 @@ export default function DriverApp() {
               </div>
             </div>
 
-            {/* 9. DRIVER PARTNER CARE */}
-            <div className="prof-section-title stagger-6">Driver Partner Care</div>
+            {/* 9. HELP & SUPPORT */}
+            <div className="prof-section-title stagger-6">Help &amp; Support</div>
             <div className="card stagger-6" style={{ padding: '0 16px', borderRadius: '18px', marginBottom: '22px' }}>
               <div
                 className="prof-set-row"
@@ -2763,26 +2815,11 @@ export default function DriverApp() {
                 onClick={() => setActiveDriverModal('help')}
               >
                 <div className="prof-set-info">
-                  <b className="prof-set-title">24x7 Partner Helpline</b>
-                  <span className="prof-set-sub">Dedicated chauffeur roadside & emergency care</span>
+                  <b className="prof-set-title">24/7 Helpline</b>
+                  <span className="prof-set-sub">Dedicated support &amp; emergency care</span>
                 </div>
                 <div className="prof-set-action-btn">
-                  <span>Call Free</span>
-                  <Icon name="chevronRight" size={15} />
-                </div>
-              </div>
-
-              <div
-                className="prof-set-row"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveDriverModal('incentives')}
-              >
-                <div className="prof-set-info">
-                  <b className="prof-set-title">Partner Guidelines & Incentives</b>
-                  <span className="prof-set-sub">Weekly trip milestones, bonus rates & safety rules</span>
-                </div>
-                <div className="prof-set-action-btn">
-                  <span>Guidelines</span>
+                  <span>Contact</span>
                   <Icon name="chevronRight" size={15} />
                 </div>
               </div>
@@ -3497,90 +3534,80 @@ export default function DriverApp() {
                     </div>
                   )}
 
-                  {/* MODAL 6: DRIVER PARTNER CARE */}
+                  {/* MODAL 6: 24/7 Ridingo Support (Matching User App) */}
                   {activeDriverModal === 'help' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                        24x7 Driver Partner Care
-                      </h3>
-                      <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                        Dedicated roadside assistance, passenger dispute resolution, and on-trip security.
-                      </p>
-
-                      <div style={{ padding: '16px', borderRadius: '16px', background: 'var(--card)', border: '1.5px solid var(--line)', textAlign: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
-                          Partner Emergency Desk
-                        </span>
-                        <b style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink)', display: 'block', marginTop: '4px' }}>
-                          +91 80001 88888
-                        </b>
-                        <span style={{ fontSize: '12.5px', color: '#16A34A', fontWeight: 600, display: 'block', marginTop: '4px' }}>
-                          ● Instant Dispatch Response
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addToast('Dialing Driver Partner Care...', 'info');
-                            window.location.href = 'tel:918000188888';
-                          }}
-                          style={{ height: '48px', borderRadius: '14px', background: '#16A34A', color: '#FFFFFF', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                        >
-                          <span>📞 Call Care Free</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addToast('Roadside SOS triggered! Operations dispatched.', 'check');
-                            setActiveDriverModal(null);
-                          }}
-                          style={{ height: '48px', borderRadius: '14px', background: '#DC2626', color: '#FFFFFF', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                        >
-                          <span>🚨 Roadside SOS</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* MODAL 7: PARTNER INCENTIVES */}
-                  {activeDriverModal === 'incentives' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                        Weekly Partner Incentives
+                        24/7 Ridingo Support
                       </h3>
                       <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                        Complete target trips each week to unlock guaranteed bonus payouts.
+                        Dedicated roadside assistance, live chauffeur dispatching, and 24/7 partner support desk.
                       </p>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {[
-                          { target: 'Tier 1: 20 Completed Trips', reward: '+₹1,500 Bonus', status: 'In Progress (14/20)' },
-                          { target: 'Tier 2: 35 Completed Trips', reward: '+₹3,000 Bonus', status: 'Locked' },
-                          { target: 'Tier 3: 50 Completed Trips', reward: '+₹5,500 Bonus', status: 'Locked' },
-                          { target: '5-Star Rating Maintenance', reward: '+₹500 Safety Bonus', status: 'Active (4.8 ★)' }
-                        ].map((m, idx) => (
-                          <div key={idx} style={{ padding: '12px 14px', borderRadius: '12px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <b style={{ fontSize: '13.5px', color: 'var(--ink)', display: 'block' }}>{m.target}</b>
-                              <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>{m.status}</span>
-                            </div>
-                            <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--on-yellow)', background: 'rgba(255, 199, 10, 0.15)', padding: '4px 8px', borderRadius: '8px' }}>
-                              {m.reward}
+                      {/* Helpline Phone Number Card */}
+                      <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                            📞
+                          </span>
+                          <div>
+                            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
+                              24/7 Helpline
                             </span>
+                            <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)' }}>
+                              8156938843
+                            </b>
                           </div>
-                        ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addToast('Calling 8156938843...', 'info');
+                            window.location.href = 'tel:8156938843';
+                          }}
+                          style={{ height: '36px', padding: '0 14px', borderRadius: '10px', background: '#16A34A', color: '#FFFFFF', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                        >
+                          <span>Call</span>
+                        </button>
                       </div>
 
+                      {/* Email Support Card */}
+                      <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                          <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                            ✉️
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
+                              Support Email
+                            </span>
+                            <b style={{ fontSize: '13px', fontWeight: 750, color: 'var(--ink)', wordBreak: 'break-all', display: 'block' }}>
+                              support.ridingo@gmail.com
+                            </b>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addToast('Opening mail to support.ridingo@gmail.com...', 'info');
+                            window.location.href = 'mailto:support.ridingo@gmail.com';
+                          }}
+                          style={{ height: '36px', padding: '0 12px', borderRadius: '10px', background: '#2563EB', color: '#FFFFFF', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                        >
+                          Email
+                        </button>
+                      </div>
+
+                      {/* WhatsApp Chat Button */}
                       <button
                         type="button"
-                        onClick={() => setActiveDriverModal(null)}
-                        className="btn"
-                        style={{ height: '46px', borderRadius: '14px', background: 'var(--solid)', color: 'var(--on-solid)', border: 'none', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}
+                        onClick={() => {
+                          addToast('Opening WhatsApp Support...', 'check');
+                          window.open('https://wa.me/918156938843?text=Hi%20Ridingo%20Support,%20I%20am%20a%20partner%20and%20need%20assistance', '_blank');
+                        }}
+                        style={{ height: '42px', borderRadius: '12px', background: '#25D366', color: '#FFFFFF', border: 'none', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       >
-                        Understood
+                        <span>💬 WhatsApp Chat (8156938843)</span>
                       </button>
                     </div>
                   )}
@@ -3605,6 +3632,8 @@ export default function DriverApp() {
       <nav className="nav" id="d-nav" aria-label="Driver app">
         <button
           className={`nv ${dTab === 'dash' ? 'on' : ''}`}
+          aria-label="Dashboard"
+          aria-current={dTab === 'dash'}
           onClick={() => {
             setDTab('dash');
             const el = document.getElementById('d-content');
@@ -3612,13 +3641,15 @@ export default function DriverApp() {
           }}
         >
           <span className="nv-i">
-            <Icon name="grid" size={23} />
+            <Icon name="grid" size={23} filled={dTab === 'dash'} />
           </span>
           <span className="nv-l">Dashboard</span>
         </button>
 
         <button
           className={`nv ${dTab === 'history' ? 'on' : ''}`}
+          aria-label="History"
+          aria-current={dTab === 'history'}
           onClick={() => {
             setDTab('history');
             const el = document.getElementById('d-content');
@@ -3626,13 +3657,15 @@ export default function DriverApp() {
           }}
         >
           <span className="nv-i">
-            <Icon name="history" size={23} />
+            <Icon name="history" size={23} filled={dTab === 'history'} />
           </span>
           <span className="nv-l">History</span>
         </button>
 
         <button
           className={`nv ${dTab === 'wallet' ? 'on' : ''}`}
+          aria-label="Wallet"
+          aria-current={dTab === 'wallet'}
           onClick={() => {
             setDTab('wallet');
             const el = document.getElementById('d-content');
@@ -3640,13 +3673,15 @@ export default function DriverApp() {
           }}
         >
           <span className="nv-i">
-            <Icon name="wallet" size={23} />
+            <Icon name="wallet" size={23} filled={dTab === 'wallet'} />
           </span>
           <span className="nv-l">Wallet</span>
         </button>
 
         <button
           className={`nv ${dTab === 'profile' ? 'on' : ''}`}
+          aria-label="Profile"
+          aria-current={dTab === 'profile'}
           onClick={() => {
             setDTab('profile');
             const el = document.getElementById('d-content');
@@ -3654,7 +3689,7 @@ export default function DriverApp() {
           }}
         >
           <span className="nv-i">
-            <Icon name="user" size={23} />
+            <Icon name="user" size={23} filled={dTab === 'profile'} />
           </span>
           <span className="nv-l">Profile</span>
         </button>
