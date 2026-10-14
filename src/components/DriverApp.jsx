@@ -3713,21 +3713,7 @@ export default function DriverApp() {
           }}
         >
           <span className="nv-i">
-            <img
-              src="/App icon.png"
-              alt="Profile"
-              style={{
-                width: '23px',
-                height: '23px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                display: 'block',
-                border: dTab === 'profile' ? '2px solid #FFC70A' : '1.5px solid transparent',
-                opacity: dTab === 'profile' ? 1 : 0.75,
-                transition: 'all 0.2s ease',
-                boxShadow: dTab === 'profile' ? '0 0 8px rgba(255, 199, 10, 0.4)' : 'none'
-              }}
-            />
+            <Icon name="user" size={23} filled={dTab === 'profile'} />
           </span>
           <span className="nv-l">Profile</span>
         </button>
