@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+env:
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://xxmcjgonsxpjrgdxchwl.supabase.co' }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_xsxb_nMEozSSKCReR_DzkA_aXJIp--c' }}
+
 jobs:
   # =============================================================
   # 1. ANDROID BUILDS: Ridingo-User.apk & Ridingo-Driver.apk

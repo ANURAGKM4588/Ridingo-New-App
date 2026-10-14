@@ -367,6 +367,46 @@ export function AppProvider({ children }) {
       } catch (e) {}
     });
 
+    // 4. Instant push sync via Supabase Realtime publication on public.trips table
+    let pgChannel = null;
+    try {
+      if (supabase && typeof supabase.channel === 'function') {
+        pgChannel = supabase
+          .channel('public-trips-db-changes')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'trips' },
+            (payload) => {
+              console.info('[Supabase Realtime] Database change:', payload.eventType, payload.new?.id);
+              if (payload.new) {
+                const tripObj = mapSupabaseRowToTrip(payload.new);
+                if (tripObj) {
+                  setTrips(prev => {
+                    const exists = prev.some(t => t.id === tripObj.id);
+                    if (exists) {
+                      return prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj } : t));
+                    }
+                    return [tripObj, ...prev.filter(t => t.status !== 'requested')];
+                  });
+
+                  if (tripObj.status === 'requested') {
+                    setIncomingTripRequest(tripObj);
+                    try { notifyIncomingRideRequest(tripObj); } catch (e) {}
+                  } else if (['accepted', 'declined', 'completed'].includes(tripObj.status)) {
+                    setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
+                  }
+                }
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.info('[Supabase Realtime] postgres_changes status:', status);
+          });
+      }
+    } catch (err) {
+      console.warn('[Supabase Realtime] Listener error:', err);
+    }
+
     // App state resume listener for background sync (when user switches to Driver App on same device)
     let appStateHandle = null;
     try {
@@ -490,6 +530,9 @@ export function AppProvider({ children }) {
       document.removeEventListener('visibilitychange', onVisChange);
       if (appStateHandle && typeof appStateHandle.remove === 'function') {
         appStateHandle.remove();
+      }
+      if (pgChannel && typeof supabase.removeChannel === 'function') {
+        try { supabase.removeChannel(pgChannel); } catch (e) {}
       }
       unbindReq();
       unbindAcc();
