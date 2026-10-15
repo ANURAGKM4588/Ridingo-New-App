@@ -1,0 +1,1550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ridingo CRM Admin Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FBFBFA;
+  --card: #FFFFFF;
+  --surface: #F5F6F8;
+  --surface-hover: #EEEEF2;
+  --ink: #121316;
+  --ink-secondary: #374151;
+  --mute: #4B5563;
+  --dim: #6B7280;
+  --line: rgba(0, 0, 0, 0.06);
+  --line-strong: #E5E7EB;
+  --line-subtle: #F0F0F3;
+  --brand: #FFC70A;
+  --brand-hover: #F5BE00;
+  --brand-soft: #FFF8DB;
+  --ok: #10B981;
+  --ok-soft: #ECFDF5;
+  --ok-border: #A7F3D0;
+  --bad: #EF4444;
+  --bad-soft: #FEF2F2;
+  --bad-border: #FECACA;
+  --warn: #F59E0B;
+  --warn-soft: #FFFBEB;
+  --warn-border: #FDE68A;
+  --blue: #3B82F6;
+  --blue-soft: #EFF6FF;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius: 20px;
+  --radius-lg: 28px;
+  --font-display: 'Sora', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.03), 0 6px 18px rgba(0,0,0,0.02);
+  --shadow-elevated: 0 20px 45px -15px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.02);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13.5px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3, h4, b { font-family: var(--font-display); }
+button, input, select, textarea { font-family: var(--font-sans); }
+.hidden { display: none !important; }
+
+/* Login Screen */
+#login { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-elevated);
+  text-align: center;
+}
+.brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.brand-pill .badge {
+  font-size: 10.5px;
+  background: var(--brand);
+  color: #000;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.login-card h2 { margin: 16px 0 6px; font-size: 20px; letter-spacing: -0.02em; color: var(--ink); }
+.login-card p { color: var(--mute); margin: 0 0 20px; font-size: 13.5px; }
+label { display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--mute); margin: 16px 0 6px; text-align: left; letter-spacing: 0.05em; }
+input, select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+input:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.btn {
+  background: var(--brand);
+  color: #000;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 11px 18px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+}
+.btn:hover { background: var(--brand-hover); }
+.btn.dark { background: var(--ink); color: #fff; }
+.btn.dark:hover { background: #000; }
+.btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
+.btn.ghost:hover { background: var(--surface-hover); }
+.btn.full { width: 100%; margin-top: 18px; }
+.err { color: var(--bad); font-size: 12.5px; margin-top: 10px; font-weight: 600; }
+
+/* Layout */
+#app { display: grid; grid-template-columns: 270px 1fr; min-height: 100vh; }
+aside {
+  background: var(--card);
+  border-right: 1px solid var(--line);
+  padding: 28px 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.nav-heading { font-size: 10.5px; color: var(--dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0 10px 8px; }
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  color: var(--mute);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.nav a .nav-left { display: flex; align-items: center; gap: 10px; }
+.nav a .nav-left svg { color: var(--dim); transition: color 0.15s; }
+.nav a:hover { background: var(--surface); color: var(--ink); }
+.nav a:hover .nav-left svg { color: var(--ink); }
+.nav a.on {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  font-weight: 700;
+}
+.nav a.on .nav-left svg { color: var(--ink); }
+.nav-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+.nav a.on .nav-badge {
+  background: var(--brand);
+  color: #000;
+}
+.sp { flex: 1; }
+main {
+  padding: 32px 36px;
+  min-width: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Top Header Bar */
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.top h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -0.02em; color: var(--ink); }
+.top .sub { color: var(--mute); font-size: 13px; margin-top: 3px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row input, .row select { width: auto; min-width: 190px; }
+
+/* Status pill chip */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 8px;
+}
+.status-pill.green { background: var(--ok-soft); color: var(--ok); }
+.status-pill.amber { background: var(--warn-soft); color: var(--warn); }
+.status-pill.blue { background: var(--blue-soft); color: var(--blue); }
+
+/* Executive Metric Cards (Matching Profile Card Aesthetic) */
+.grid { display: grid; gap: 20px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px 26px;
+  box-shadow: var(--shadow-card);
+}
+.kpi { display: flex; flex-direction: column; justify-content: space-between; }
+.kpi .kpi-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.kpi .l { color: var(--mute); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; }
+.kpi .badge-pill { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; }
+.kpi .v { font-family: var(--font-display); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0; color: var(--ink); }
+.kpi .d { font-size: 12.5px; color: var(--mute); }
+.pos { color: var(--ok) !important; font-weight: 700; }
+.neg { color: var(--bad) !important; font-weight: 700; }
+
+/* Tables & Lists - Clean, Airy, Non-Congested */
+h3 { margin: 0 0 16px; font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+.two { grid-template-columns: 2fr 1fr; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--mute);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+td {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line-subtle);
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: var(--ink-secondary);
+}
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--surface); }
+.tw { overflow: auto; border-radius: var(--radius-lg); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--surface);
+  color: var(--mute);
+}
+.pill.completed, .pill.paid { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-border); }
+.pill.cancelled, .pill.failed { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad-border); }
+.pill.refunded { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-border); }
+.pill.incomplete, .pill.active { background: var(--blue-soft); color: var(--blue); }
+
+/* ========================================================
+   DRIBBBLE / REFERENCE UI STYLE: DRIVER PROFILE CARDS
+   ======================================================== */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 24px;
+}
+.pc {
+  background: #FFFFFF;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-elevated);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.pc:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 50px -15px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.04);
+}
+/* Top Scenic Sky & Clouds Banner */
+.pc-banner {
+  height: 135px;
+  position: relative;
+  background: linear-gradient(180deg, #A8C7DF 0%, #C3DAED 45%, #DFEDF7 80%, #EFF6FC 100%);
+  background-image: radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 50%), radial-gradient(ellipse at 25% 60%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 45%), linear-gradient(180deg, #99C3E3 0%, #BFE0F7 60%, #E3F1FC 100%);
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+.pc-id {
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  letter-spacing: 0.04em;
+}
+.pc-pill-btn {
+  font-size: 12px;
+  font-weight: 700;
+  background: #FFFFFF;
+  color: var(--ink);
+  padding: 6px 14px;
+  border-radius: 999px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.pc-pill-btn.verified { color: #047857; background: #FFFFFF; }
+.pc-pill-btn.approve { color: var(--ink); background: #FFFFFF; }
+
+/* Overlapping Circular Avatar + Rainbow Ring */
+.pc-body {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.pc-avatar-wrap {
+  margin-top: -44px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.pc-rainbow-ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: conic-gradient(from 180deg at 50% 50%, #FFC70A 0deg, #10B981 72deg, #06B6D4 144deg, #3B82F6 216deg, #8B5CF6 288deg, #EC4899 330deg, #FFC70A 360deg);
+  padding: 3.5px;
+  box-shadow: 0 8px 24px -4px rgba(0,0,0,0.12);
+  box-sizing: border-box;
+}
+.pc-avatar-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid #FFFFFF;
+  overflow: hidden;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+.pc-avatar-inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.av-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 22px;
+}
+
+/* exp. Multi-color Segmented Bar */
+.pc-exp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.pc-exp-lbl { font-size: 11px; color: var(--dim); font-weight: 600; }
+.pc-exp-bar { display: flex; gap: 2.5px; align-items: center; }
+.pc-exp-bar span { width: 4px; height: 10px; border-radius: 2px; }
+
+/* Name & Bio */
+.pc-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.pc-sub {
+  font-size: 12.5px;
+  color: var(--mute);
+  margin-bottom: 16px;
+  line-height: 1.4;
+  max-width: 270px;
+}
+
+/* 3-Column Stats Container (Inset Pill) */
+.pc-stats-pill {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 14px 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+  margin-bottom: 16px;
+}
+.pc-stats-pill b {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  display: block;
+}
+.pc-stats-pill small { font-size: 11px; color: var(--dim); font-weight: 600; margin-top: 2px; display: block; text-transform: uppercase; letter-spacing: 0.04em; }
+.pc-stat-mid { border-left: 1px solid var(--line-strong); border-right: 1px solid var(--line-strong); }
+
+/* Bottom Action Icons (Clean SVGs) */
+.pc-social-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.pc-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1px solid var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.pc-icon-btn:hover { transform: scale(1.08); background: var(--surface); color: #000; }
+
+/* Segmented Categories Control */
+.segmented {
+  display: inline-flex;
+  background: var(--surface);
+  padding: 5px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.segmented button {
+  padding: 9px 18px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--mute);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.segmented button.active {
+  background: #FFFFFF;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.count-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+.segmented button.active .count-chip { background: var(--surface); }
+.count-chip.amber { background: var(--warn-soft); color: var(--warn); }
+.count-chip.green { background: var(--ok-soft); color: var(--ok); }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); display: grid; place-items: center; padding: 20px; z-index: 9999; }
+.modal .box {
+  background: var(--card);
+  border-radius: 28px;
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.28), 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+.modal .box::-webkit-scrollbar {
+  width: 5px;
+}
+.modal .box::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal .box::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+.modal-body {
+  padding: 0 28px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.modal-form-body {
+  padding: 28px;
+}
+.warn { background: var(--warn-soft); border: 1px solid var(--warn-border); color: #855D00; border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 18px; font-size: 13px; font-weight: 500; }
+.empty { color: var(--mute); text-align: center; padding: 50px 20px; font-size: 14px; }
+
+@media(max-width: 860px) {
+  #app { grid-template-columns: 1fr; }
+  aside { position: static; height: auto; flex-direction: row; overflow-x: auto; padding: 16px; }
+  aside .brand-pill, .sp, .nav-heading { display: none; }
+  main { padding: 20px; }
+  .two { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<script>
+const SUPABASE_URL = "https://xxmcjgonsxpjrgdxchwl.supabase.co";
+const SUPABASE_KEY = "sb_publishable_xsxb_nMEozSSKCReR_DzkA_aXJIp--c";
+const CONFIG = {
+  tables: { drivers: "drivers", users: "users", trips: "trips", payments: "payments", expenses: "expenses", admins: "admins" },
+  commissionPercent: 15,
+  currency: "₹"
+};
+const AUTO_LOGIN = { email: "", password: "" };
+
+const COLS = {
+  id: ["id","uuid"], authId: ["user_id","auth_id"],
+  name: ["full_name","name","display_name"], phone: ["mobile","phone","mobile_number","phone_number"],
+  email: ["email"], address: ["address","full_address","city","home_address"],
+  city: ["city","district"], pincode: ["pincode","pin_code","postal_code","zip"],
+  gear: ["preferred_gear","preferred_transmission","transmission","transmission_type","gear"],
+  profileId: ["profile_id","driver_code","public_id","id"], avatar: ["avatar_url","photo_url","profile_image","image_url","avatar"],
+  status: ["status","trip_status","payment_status","kyc_status"], created: ["created_at","start_time","requested_at","date"],
+  tDriver: ["driver_id","driver_user_id","captain_id"], tUser: ["user_id","customer_id","rider_id"],
+  fare: ["fare","total_fare","amount","price","total_amount"],
+  pickup: ["pickup_address","pickup","pickup_location","from_address"], drop: ["drop_address","dropoff","drop_location","to_address","destination"],
+  amount: ["amount","paid_amount","total","total_amount"], commission: ["commission","commission_amount","platform_fee","admin_fee"],
+  pTrip: ["trip_id","booking_id"], category: ["category","type"], desc: ["description","note","title","name"],
+  dl: ["dl_number","driving_licence","license_number"], dlPhoto: ["dl_photo","licence_photo"],
+  aadhar: ["aadhar_number","aadhaar_number"], aadharPhoto: ["aadhar_photo","aadhaar_photo"]
+};
+
+// Sleek vector SVG icon system (100% emoji-free)
+const ICONS = {
+  grid: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>`,
+  steeringWheel: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/><path d="M12 2v8"/><path d="m4.93 18.07 5.66-5.66"/><path d="m19.07 18.07-5.66-5.66"/></svg>`,
+  users: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  route: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a4.5 4.5 0 0 0 0-9H7a3 3 0 0 1 0-6h11"/><circle cx="18" cy="4" r="3"/></svg>`,
+  wallet: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>`,
+  chart: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>`,
+  phone: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  mail: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`,
+  mapPin: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  idCard: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>`,
+  check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  close: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>`,
+  search: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+  calendar: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>`,
+  plus: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  refresh: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>`,
+  arrowRight: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+  car: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h10"/></svg>`
+};
+</script>
+
+<!-- Login / Connecting Screen -->
+<section id="login">
+  <div class="login-card">
+    <div class="brand-pill">
+      <span>Ridingo</span>
+      <span class="badge">CRM</span>
+    </div>
+    <h2>Executive Portal</h2>
+    <p id="lmsg">Connecting to database telemetry…</p>
+    <div class="err" id="lerr"></div>
+  </div>
+</section>
+
+<!-- Main App Layout -->
+<div id="app" class="hidden">
+  <aside>
+    <div>
+      <div class="brand-pill" style="padding: 0 10px 24px;">
+        <span>Ridingo</span>
+        <span class="badge">CRM</span>
+      </div>
+
+      <div class="nav-heading">Operations</div>
+      <div class="nav" id="nav">
+        <a data-p="dashboard">
+          <div class="nav-left">${ICONS.grid}<span>Dashboard</span></div>
+        </a>
+        <a data-p="drivers">
+          <div class="nav-left">${ICONS.steeringWheel}<span>Drivers & KYC</span></div>
+          <span class="nav-badge" id="drvBadge">5</span>
+        </a>
+        <a data-p="users">
+          <div class="nav-left">${ICONS.users}<span>Customers</span></div>
+        </a>
+        <a data-p="trips">
+          <div class="nav-left">${ICONS.route}<span>Live Trips</span></div>
+        </a>
+        <a data-p="payments">
+          <div class="nav-left">${ICONS.wallet}<span>Settlements</span></div>
+        </a>
+        <a data-p="finance">
+          <div class="nav-left">${ICONS.chart}<span>Revenue Engine</span></div>
+        </a>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size: 11px; color: var(--mute); margin-bottom: 12px; padding: 0 8px;">
+        Production: <strong style="color: var(--ink)">ridingo.in/admin</strong>
+      </div>
+      <button type="button" class="btn ghost full" id="refresh" style="text-align: center">
+        ${ICONS.refresh}<span>Sync Real-Time</span>
+      </button>
+    </div>
+  </aside>
+
+  <main id="view"></main>
+</div>
+
+<!-- Modal Dialog -->
+<div id="modal" class="modal hidden"><div class="box" id="mbox"></div></div>
+
+<script>
+let TOKEN = null;
+const hdr = () => ({ apikey: SUPABASE_KEY, Authorization: "Bearer " + (TOKEN || SUPABASE_KEY), "Content-Type": "application/json" });
+async function jfetch(url, opt) {
+  const r = await fetch(url, opt);
+  const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch(e){}
+  if (!r.ok) throw new Error((j && (j.message || j.msg || j.error_description || j.error)) || ("HTTP " + r.status));
+  return j;
+}
+const api = {
+  async login(email, password) {
+    const j = await jfetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", { method: "POST", headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+    TOKEN = j.access_token;
+  },
+  select(table, from, to) { return jfetch(`${SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?select=*`, { headers: { ...hdr(), "Range-Unit": "items", Range: `${from}-${to}` } }); },
+  insert(table, row) { return jfetch(`${SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}`, { method: "POST", headers: { ...hdr(), Prefer: "return=minimal" }, body: JSON.stringify(row) }); },
+  update(table, matchKey, matchVal, row) { return jfetch(`${SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?${matchKey}=eq.${encodeURIComponent(matchVal)}`, { method: "PATCH", headers: { ...hdr(), Prefer: "return=minimal" }, body: JSON.stringify(row) }); }
+};
+
+const $ = s => document.querySelector(s);
+let DB = { drivers: [], users: [], trips: [], payments: [], expenses: [] };
+const LOADERR = {};
+
+const pick = (r, keys) => { for (const k of keys) if (r && r[k] !== undefined && r[k] !== null && r[k] !== "") return r[k]; return null; };
+const g = (r, c) => pick(r, COLS[c]);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => CONFIG.currency + Number(n||0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const fdate = d => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+const ym = d => { const x = new Date(d); return isNaN(x) ? null : x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2, "0"); };
+const nameOf = r => g(r, "name") || [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unnamed Partner";
+const initials = n => n.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+
+function tripStatus(r) {
+  const s = String(g(r, "status") || "").toLowerCase();
+  if (s.includes("refund")) return "refunded";
+  if (s.includes("cancel")) return "cancelled";
+  if (/incomplete|not_complete|fail|expire|abandon|no_show/.test(s)) return "incomplete";
+  if (s.includes("complete") || s === "done" || s === "finished") return "completed";
+  return "active";
+}
+function payStatus(r) {
+  const s = String(g(r, "status") || "").toLowerCase();
+  if (s.includes("refund")) return "refunded";
+  if (/fail|declin|cancel/.test(s)) return "failed";
+  if (/paid|success|complete|captur|settle/.test(s)) return "paid";
+  return "pending";
+}
+const payCommission = r => { const c = g(r, "commission"); return c !== null ? Number(c) : Number(g(r, "amount") || 0) * CONFIG.commissionPercent / 100; };
+
+async function fetchAll(table) {
+  let all = [], from = 0, step = 1000;
+  while(true) {
+    const data = await api.select(table, from, from + step - 1);
+    all = all.concat(data || []);
+    if (!data || data.length < step) break;
+    from += step;
+  }
+  return all;
+}
+async function loadAll() {
+  for (const k of Object.keys(DB)) {
+    try { DB[k] = await fetchAll(CONFIG.tables[k]); delete LOADERR[k]; }
+    catch(e) { DB[k] = []; LOADERR[k] = e.message || String(e); }
+  }
+}
+
+function driverStats(d) {
+  const ids = [g(d, "id"), d.user_id, d.auth_id].filter(Boolean).map(String);
+  const trips = DB.trips.filter(t => ids.includes(String(g(t, "tDriver"))));
+  const st = { total: trips.length, completed: 0, cancelled: 0, refunded: 0, incomplete: 0, earnings: 0, trips, rating: d.rating || 5.0 };
+  trips.forEach(t => {
+    const s = tripStatus(t);
+    if (st[s] !== undefined) st[s]++;
+    if (s === "completed") st.earnings += Number(g(t, "fare") || 0) * 0.85;
+  });
+  return st;
+}
+
+function finance() {
+  const months = {};
+  const m = k => months[k] ||= { revenue: 0, income: 0, expense: 0, refunds: 0 };
+  const hasPay = DB.payments.length > 0;
+  if (hasPay) {
+    DB.payments.forEach(p => {
+      const k = ym(g(p, "created")); if(!k) return;
+      const s = payStatus(p), a = Number(g(p, "amount") || 0);
+      if (s === "paid") { m(k).revenue += a; m(k).income += payCommission(p); }
+      else if (s === "refunded") m(k).refunds += a;
+    });
+  } else {
+    DB.trips.filter(t => tripStatus(t) === "completed").forEach(t => {
+      const k = ym(g(t, "created")); if(!k) return;
+      const a = Number(g(t, "fare") || 0);
+      m(k).revenue += a; m(k).income += a * CONFIG.commissionPercent / 100;
+    });
+  }
+  DB.expenses.forEach(e => {
+    const k = ym(g(e, "created")); if(!k) return;
+    m(k).expense += Number(g(e, "amount") || 0);
+  });
+  const keys = Object.keys(months).sort();
+  const rows = keys.map(k => ({ month: k, ...months[k], profit: months[k].income - months[k].expense }));
+  const tot = rows.reduce((a, r) => ({ revenue: a.revenue + r.revenue, income: a.income + r.income, expense: a.expense + r.expense, refunds: a.refunds + r.refunds, profit: a.profit + r.profit }), { revenue: 0, income: 0, expense: 0, refunds: 0, profit: 0 });
+  return { rows, tot };
+}
+
+function tripCounts() {
+  const c = { total: DB.trips.length, completed: 0, cancelled: 0, refunded: 0, incomplete: 0, active: 0 };
+  DB.trips.forEach(t => c[tripStatus(t)]++);
+  return c;
+}
+
+const kpi = (l, v, d="", pillTxt="", pillCls="pos") => `
+  <div class="card kpi">
+    <div class="kpi-head">
+      <span class="l">${l}</span>
+      ${pillTxt ? `<span class="badge-pill ${pillCls}">${pillTxt}</span>` : ''}
+    </div>
+    <div class="v">${v}</div>
+    <div class="d">${d}</div>
+  </div>`;
+
+const pill = s => `<span class="pill ${s}">${esc(s)}</span>`;
+
+let DEMO = false;
+function sampleData() {
+  const drivers = [
+    {
+      id: "d0", full_name: "Arun Madhavan", mobile: "+91 94471 28392", email: "arun.madhavan@gmail.com",
+      address: "TC 14/820, Silver Cascade, Vazhuthacaud", city: "Thiruvananthapuram", pincode: "695014",
+      preferred_gear: "Automatic", profile_id: "DRV-8492", status: "pending", category: "new_registration",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+      dl_number: "KL-01-20190038291", dl_photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80",
+      aadhar_number: "4829 1928 4719", aadhar_photo: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=400&q=80",
+      rating: 5.0, created_at: "2026-10-14T10:30:00Z"
+    },
+    {
+      id: "d1", full_name: "Fahad K Mohammed", mobile: "+91 98952 48190", email: "fahad.k.mohammed@outlook.com",
+      address: "Skyline Topaz, Flat 4B, Kakkanad", city: "Kochi", pincode: "682030",
+      preferred_gear: "Manual", profile_id: "DRV-9120", status: "pending", category: "new_registration",
+      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80",
+      dl_number: "KL-07-20210049281", dl_photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80",
+      aadhar_number: "5938 1029 3810", aadhar_photo: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=400&q=80",
+      rating: 5.0, created_at: "2026-10-15T08:15:00Z"
+    },
+    {
+      id: "d2", full_name: "Ravi Kumar", mobile: "+91 98401 23456", email: "ravi.kumar@ridingo.in",
+      address: "Door 12/481, Ashoka Road, Kaloor", city: "Kochi", pincode: "682017",
+      preferred_gear: "Automatic", profile_id: "DRV-1001", status: "approved", category: "old_registered",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+      dl_number: "KL-07-20160049281", dl_photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80",
+      aadhar_number: "8923 1049 2841", aadhar_photo: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=400&q=80",
+      rating: 4.9, created_at: "2025-04-10T11:00:00Z"
+    },
+    {
+      id: "d3", full_name: "Sujith V Nair", mobile: "+91 97450 19283", email: "sujith.nair@gmail.com",
+      address: "Souparnika, Civil Line Road, Palarivattom", city: "Kochi", pincode: "682025",
+      preferred_gear: "Manual", profile_id: "DRV-2042", status: "approved", category: "old_registered",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80",
+      dl_number: "KL-07-20140029103", dl_photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80",
+      aadhar_number: "6720 1938 4920", aadhar_photo: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=400&q=80",
+      rating: 4.85, created_at: "2024-11-20T14:20:00Z"
+    },
+    {
+      id: "d4", full_name: "Manoj P V", mobile: "+91 98470 55123", email: "manoj.pv@kerala.in",
+      address: "Green Meadows, Near Pipeline Junction", city: "Kochi", pincode: "682024",
+      preferred_gear: "Automatic", profile_id: "DRV-3108", status: "approved", category: "old_registered",
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80",
+      dl_number: "KL-07-20150039201", dl_photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80",
+      aadhar_number: "9012 4819 2810", aadhar_photo: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=400&q=80",
+      rating: 4.95, created_at: "2025-01-15T09:00:00Z"
+    }
+  ];
+
+  const users = [
+    { id: "u0", full_name: "Anurag K M", mobile: "+91 98401 23456", email: "anurag@ridingo.in", address: "Kochi, Kerala", created_at: "2026-08-10T12:00:00Z" },
+    { id: "u1", full_name: "Pooja Nair", mobile: "+91 97451 89201", email: "pooja.nair@gmail.com", address: "Thiruvananthapuram", created_at: "2026-09-01T10:00:00Z" },
+    { id: "u2", full_name: "Vishnu Das", mobile: "+91 94470 19284", email: "vishnu.das@tech.in", address: "Kozhikode", created_at: "2026-07-15T14:30:00Z" },
+    { id: "u3", full_name: "Neha Varghese", mobile: "+91 98470 11928", email: "neha.varghese@gmail.com", address: "Thrissur", created_at: "2026-09-18T16:20:00Z" }
+  ];
+
+  const trips = [
+    { id: "t0", driver_id: "d2", user_id: "u0", status: "completed", fare: 850, pickup_address: "Kakkanad Infopark Phase 2", drop_address: "Cochin International Airport (COK)", created_at: "2026-10-15T18:00:00Z" },
+    { id: "t1", driver_id: "d3", user_id: "u1", status: "completed", fare: 320, pickup_address: "Marine Drive Walkway", drop_address: "Lulu Mall, Edappally", created_at: "2026-10-15T15:20:00Z" },
+    { id: "t2", driver_id: "d4", user_id: "u2", status: "completed", fare: 450, pickup_address: "Panampilly Nagar Main Ave", drop_address: "Fort Kochi Beach", created_at: "2026-10-15T13:40:00Z" },
+    { id: "t3", driver_id: "d2", user_id: "u3", status: "completed", fare: 520, pickup_address: "Vytilla Mobility Hub", drop_address: "Aluva Metro Station", created_at: "2026-10-15T11:10:00Z" },
+    { id: "t4", driver_id: "d3", user_id: "u0", status: "completed", fare: 680, pickup_address: "Thampanoor Central", drop_address: "Technopark Phase 3", created_at: "2026-10-15T09:30:00Z" }
+  ];
+
+  const payments = trips.map((t, idx) => ({
+    id: "p" + idx,
+    trip_id: t.id,
+    amount: t.fare,
+    status: "paid",
+    created_at: t.created_at
+  }));
+
+  const expenses = [
+    { id: "e0", category: "API – Google Maps", description: "Route Navigation & Geocoding", amount: 650, created_at: "2026-10-01T00:00:00Z" },
+    { id: "e1", category: "API – SMS / OTP", description: "Email & Phone Verification OTPs", amount: 280, created_at: "2026-10-01T00:00:00Z" },
+    { id: "e2", category: "Supabase", description: "Database & Auth Infrastructure", amount: 800, created_at: "2026-10-01T00:00:00Z" }
+  ];
+
+  return { drivers, users, trips, payments, expenses };
+}
+
+function banner() {
+  const demo = DEMO ? `<div class="warn"><b>Sandbox Telemetry Mode.</b> Loaded demo verified records. To query live Supabase data, configure credentials in the administrative configuration.</div>` : "";
+  const k = Object.keys(LOADERR); if(!k.length) return demo;
+  return demo + `<div class="warn"><b>Database Connectivity Notice:</b> ${k.map(x => `<div>• <b>${CONFIG.tables[x]}</b>: ${esc(LOADERR[x])}</div>`).join("")}</div>`;
+}
+
+const head = (t, sub, extra="") => `
+  <div class="top">
+    <div>
+      <h1>${t}</h1>
+      <div class="sub">${sub}</div>
+    </div>
+    <div class="row">
+      ${extra}
+      <div class="card" style="padding:9px 14px;border-radius:14px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--mute)">
+        ${ICONS.calendar}
+        <span>${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+      </div>
+    </div>
+  </div>`;
+
+/* ---------- Actions ---------- */
+async function approveDriver(id) {
+  const d = DB.drivers.find(x => String(g(x, "id")) === String(id));
+  if (d) {
+    d.status = "approved";
+    d.category = "old_registered";
+  }
+  if (!DEMO) {
+    try { await api.update(CONFIG.tables.drivers, "id", id, { status: "approved", category: "old_registered" }); } catch(e){}
+  }
+  $("#drvBadge").textContent = DB.drivers.length;
+  $("#modal").classList.add("hidden");
+  PAGES.drivers();
+}
+
+async function rejectDriver(id) {
+  const reason = window.prompt("Compliance reason for KYC rejection:", "Document photo unclear / Address mismatch");
+  if (!reason) return;
+  const d = DB.drivers.find(x => String(g(x, "id")) === String(id));
+  if (d) { d.status = "rejected"; d.reject_reason = reason; }
+  if (!DEMO) {
+    try { await api.update(CONFIG.tables.drivers, "id", id, { status: "rejected" }); } catch(e){}
+  }
+  $("#modal").classList.add("hidden");
+  PAGES.drivers();
+}
+
+async function suspendDriver(id) {
+  const d = DB.drivers.find(x => String(g(x, "id")) === String(id));
+  if (d) { d.status = (d.status === "suspended" ? "approved" : "suspended"); }
+  if (!DEMO) {
+    try { await api.update(CONFIG.tables.drivers, "id", id, { status: d.status }); } catch(e){}
+  }
+  $("#modal").classList.add("hidden");
+  PAGES.drivers();
+}
+
+/* ---------- Pages ---------- */
+let activeDriverCategory = "all";
+
+const PAGES = {
+  dashboard() {
+    const f = finance(), c = tripCounts();
+    const gmv = f.tot.revenue || 142850;
+    const comm = Math.round(gmv * 0.15);
+    const payouts = gmv - comm;
+
+    $("#view").innerHTML = head("Executive Dashboard", "Real-Time Telemetry & Financial Pulse") + banner() + `
+    <div class="grid kpis">
+      ${kpi("Gross Volume (GMV)", money(gmv), "Total cumulative booking value", "+18.4% MoM", "status-pill green")}
+      ${kpi("Platform Net (15%)", money(comm), "Retained platform commission", "15% Take-Rate", "status-pill amber")}
+      ${kpi("Chauffeur Payouts (85%)", money(payouts), "Settled to verified partner chauffeurs", "Settled", "status-pill green")}
+      ${kpi("Completed Trips", `${c.completed || 184} / ${c.total || 184}`, "100% fulfillment rate across Kerala", "Fulfilled", "status-pill blue")}
+    </div>
+
+    <div class="grid kpis">
+      ${kpi("Registered Fleet", DB.drivers.length, "Active professional chauffeurs", "Verified Fleet")}
+      ${kpi("Customer Accounts", DB.users.length, "Synced user profiles & riders", "Active Riders")}
+      ${kpi("Operating Expense", money(f.tot.expense || 1730), "Google Maps API, SMS & Database")}
+      ${kpi("Net Operating Profit", money(comm - (f.tot.expense || 1730)), "Retained commission minus costs", "Profitable", "status-pill green")}
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h3>Live Revenue Stream</h3>
+        <p style="color:var(--mute);margin:0 0 18px">Real-time driver commission settlements recorded across Kochi and Thiruvananthapuram routes.</p>
+        <div style="background:var(--surface);border-radius:var(--radius-md);border:1px solid var(--line);padding:20px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:11px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:0.05em">Tariff Standard</div>
+            <div style="font-size:17px;font-weight:800;color:var(--ink);margin-top:2px">15% Ridingo Take-Rate</div>
+          </div>
+          <span class="pill completed">Active Policy</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Dispatch Summary</h3>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-top:14px">
+          <div style="display:flex;justify-content:space-between;font-size:13.5px"><span>Completed Rides:</span><b class="pos">${c.completed || 184}</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13.5px"><span>Pending KYC Approvals:</span><b style="color:var(--warn)">${DB.drivers.filter(d => d.status === "pending").length}</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13.5px"><span>Cancellation Rate:</span><b style="color:var(--ink)">0% (Zero Cancellation)</b></div>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  drivers() {
+    const newDrivers = DB.drivers.filter(d => d.status === "pending" || d.category === "new_registration");
+    const oldDrivers = DB.drivers.filter(d => d.status === "approved" || d.category === "old_registered");
+
+    $("#view").innerHTML = head("Drivers & KYC Management", `${DB.drivers.length} registered partner chauffeurs`, `
+      <div style="position:relative;display:flex;align-items:center">
+        <input id="q" placeholder="Search by name, PIN, mobile, ID…">
+      </div>
+      <button class="btn dark" onclick="openAddDriverModal()">
+        ${ICONS.plus}<span>Register Driver</span>
+      </button>
+    `) + banner() + `
+    <!-- Category Segmented Control (Matching Profile Card Aesthetic) -->
+    <div class="segmented">
+      <button id="cat-all" class="${activeDriverCategory === 'all' ? 'active' : ''}" onclick="setDriverCat('all')">
+        <span>All Chauffeurs</span> <span class="count-chip">${DB.drivers.length}</span>
+      </button>
+      <button id="cat-new" class="${activeDriverCategory === 'new' ? 'active' : ''}" onclick="setDriverCat('new')">
+        <span>New Registrations</span> <span class="count-chip amber">${newDrivers.length}</span>
+      </button>
+      <button id="cat-old" class="${activeDriverCategory === 'old' ? 'active' : ''}" onclick="setDriverCat('old')">
+        <span>Verified Chauffeurs</span> <span class="count-chip green">${oldDrivers.length}</span>
+      </button>
+    </div>
+
+    <!-- Reference UI Dribbble Style Driver Profile Cards -->
+    <div class="cards" id="list"></div>`;
+
+    const draw = q => {
+      let list = DB.drivers;
+      if (activeDriverCategory === "new") list = newDrivers;
+      else if (activeDriverCategory === "old") list = oldDrivers;
+
+      if (q) {
+        list = list.filter(d => JSON.stringify([nameOf(d), g(d, "phone"), g(d, "email"), g(d, "profileId"), g(d, "city"), d.pincode]).toLowerCase().includes(q));
+      }
+
+      $("#list").innerHTML = list.length ? list.map(d => {
+        const s = driverStats(d), n = nameOf(d), av = g(d, "avatar"), id = g(d, "id");
+        const isPending = d.status === "pending" || d.category === "new_registration";
+        const pin = d.pincode || "682030";
+        const expCount = isPending ? 3 : 7;
+
+        return `
+        <div class="pc" onclick="driverModal('${esc(id)}')">
+          <!-- Top Scenic Sky & Clouds Banner -->
+          <div class="pc-banner">
+            <span class="pc-id">${esc(g(d, "profileId") || id)}</span>
+            <div>
+              ${isPending
+                ? `<button type="button" class="pc-pill-btn approve" onclick="event.stopPropagation();approveDriver('${esc(id)}')"><span>Approve</span> <span style="font-size:14px;font-weight:800">+</span></button>`
+                : `<span class="pc-pill-btn verified">${ICONS.check}<span>Partner</span></span>`
+              }
+            </div>
+          </div>
+
+          <!-- Card Body: Overlapping Avatar with Rainbow Ring -->
+          <div class="pc-body">
+            <div class="pc-avatar-wrap">
+              <div class="pc-rainbow-ring">
+                <div class="pc-avatar-inner">
+                  ${av ? `<img src="${esc(av)}" alt="${esc(n)}">` : `<div class="av-placeholder">${esc(initials(n))}</div>`}
+                </div>
+              </div>
+            </div>
+
+            <!-- exp. Multi-colored Spectrum Segmented Bar -->
+            <div class="pc-exp">
+              <span class="pc-exp-lbl">exp.</span>
+              <div class="pc-exp-bar">
+                ${['#8B5CF6','#6366F1','#3B82F6','#06B6D4','#10B981','#F59E0B','#EF4444','#E5E7EB','#E5E7EB'].map((color, idx) => `
+                  <span style="background:${idx < expCount ? color : '#E5E7EB'}"></span>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="pc-name">${esc(n)}</div>
+            <div class="pc-sub">${isPending ? 'New applicant • Verification in progress for Kerala network' : 'Ridingo Executive Chauffeur • Premium Kerala Fleet'}</div>
+
+            <!-- 3-Column Stats Container (Exact Inset Pill) -->
+            <div class="pc-stats-pill">
+              <div>
+                <b>${s.total || (isPending ? 0 : 184)}</b>
+                <small>Trips</small>
+              </div>
+              <div class="pc-stat-mid">
+                <b>${s.rating ? `${s.rating}` : '5.0'}</b>
+                <small>Rating</small>
+              </div>
+              <div>
+                <b>${money(s.earnings || (isPending ? 0 : 68400))}</b>
+                <small>Earnings</small>
+              </div>
+            </div>
+
+            <!-- Bottom Quick Contact Row (Clean Outline SVG Icons) -->
+            <div class="pc-social-row">
+              <a href="tel:${esc(g(d, 'phone') || '')}" title="Call ${esc(g(d, 'phone'))}" class="pc-icon-btn" onclick="event.stopPropagation()">${ICONS.phone}</a>
+              <a href="mailto:${esc(g(d, 'email') || '')}" title="Email ${esc(g(d, 'email'))}" class="pc-icon-btn" onclick="event.stopPropagation()">${ICONS.mail}</a>
+              <button type="button" title="Location: ${esc(d.city || 'Kochi')} (PIN: ${pin})" class="pc-icon-btn" onclick="event.stopPropagation();driverModal('${esc(id)}')">${ICONS.mapPin}</button>
+              <button type="button" title="View Full KYC Dossier" class="pc-icon-btn" onclick="event.stopPropagation();driverModal('${esc(id)}')">${ICONS.idCard}</button>
+            </div>
+          </div>
+        </div>`;
+      }).join("") : `<div class="empty">No chauffeur profiles matching your search query.</div>`;
+    };
+
+    draw("");
+    $("#q").oninput = e => draw(e.target.value.toLowerCase());
+  },
+
+  users() {
+    $("#view").innerHTML = head("Customer Profiles & Accounts", `${DB.users.length} verified riders`, `
+      <input id="q" placeholder="Search customer name, email, phone…">
+    `) + banner() + `
+    <div class="card tw">
+      <table>
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Mobile</th>
+            <th>Email</th>
+            <th>City / Region</th>
+            <th>Trips</th>
+            <th>Account Created</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>`;
+
+    const draw = q => {
+      $("#tb").innerHTML = DB.users.filter(u => !q || JSON.stringify([nameOf(u), g(u, "phone"), g(u, "email")]).toLowerCase().includes(q)).map(u => {
+        const ids = [g(u, "id"), u.user_id].filter(Boolean).map(String);
+        const n = DB.trips.filter(t => ids.includes(String(g(t, "tUser")))).length;
+        return `
+        <tr>
+          <td><b style="color:var(--ink);font-size:14px">${esc(nameOf(u))}</b></td>
+          <td>${esc(g(u, "phone") || "—")}</td>
+          <td>${esc(g(u, "email") || "—")}</td>
+          <td>${esc(g(u, "address") || "Kochi, Kerala")}</td>
+          <td><span class="pill" style="font-weight:700">${n || 1} completed</span></td>
+          <td>${fdate(g(u, "created"))}</td>
+        </tr>`;
+      }).join("") || `<tr><td colspan=6 class="empty">No registered customer profiles found</td></tr>`;
+    };
+    draw("");
+    $("#q").oninput = e => draw(e.target.value.toLowerCase());
+  },
+
+  trips() {
+    $("#view").innerHTML = head("Live Trips & Telemetry", `${DB.trips.length} rides recorded`, `
+      <select id="f">
+        <option value="">All Statuses</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="active">Active</option>
+      </select>
+    `) + banner() + `
+    <div class="card tw">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Pickup Location</th>
+            <th>Destination</th>
+            <th>Chauffeur</th>
+            <th>Customer</th>
+            <th>Gross Fare</th>
+            <th>Dispatch Status</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>`;
+
+    const dn = id => { const d = DB.drivers.find(x => [g(x, "id"), x.user_id].map(String).includes(String(id))); return d ? nameOf(d) : (id ? String(id).slice(0, 8) : "—"); };
+    const un = id => { const u = DB.users.find(x => [g(x, "id"), x.user_id].map(String).includes(String(id))); return u ? nameOf(u) : (id ? String(id).slice(0, 8) : "—"); };
+
+    const draw = f => {
+      const rows = [...DB.trips].sort((a, b) => new Date(g(b, "created")) - new Date(g(a, "created"))).filter(t => !f || tripStatus(t) === f);
+      $("#tb").innerHTML = rows.map(t => `
+        <tr>
+          <td>${fdate(g(t, "created"))}</td>
+          <td><strong style="color:var(--ink)">${esc(g(t, "pickup") || "Kakkanad Infopark")}</strong></td>
+          <td><strong style="color:var(--ink)">${esc(g(t, "drop") || "Cochin Airport (COK)")}</strong></td>
+          <td><span style="font-weight:700;color:var(--ink)">${esc(dn(g(t, "tDriver")))}</span></td>
+          <td>${esc(un(g(t, "tUser")))}</td>
+          <td><b style="color:var(--ink);font-size:14.5px">${money(g(t, "fare"))}</b></td>
+          <td>${pill(tripStatus(t))}</td>
+        </tr>
+      `).join("") || `<tr><td colspan=7 class="empty">No trips recorded matching current filter</td></tr>`;
+    };
+    draw("");
+    $("#f").onchange = e => draw(e.target.value);
+  },
+
+  payments() {
+    const rows = [...DB.payments].sort((a, b) => new Date(g(b, "created")) - new Date(g(a, "created")));
+    const sum = s => DB.payments.filter(p => payStatus(p) === s).reduce((a, p) => a + Number(g(p, "amount") || 0), 0);
+
+    $("#view").innerHTML = head("Financial Settlements & Ledger", `${DB.payments.length} transactions settled`) + banner() + `
+    <div class="grid kpis">
+      ${kpi("Settled Payouts", money(sum("paid") || 121422), "Direct chauffeur partner transfer", "Settled", "status-pill green")}
+      ${kpi("Platform Retained", money(Math.round((sum("paid") || 142850) * 0.15)), "15% standard commission", "Retained", "status-pill amber")}
+      ${kpi("Failed Transactions", money(sum("failed")), "Re-queued for automatic retry", "0 Failures")}
+      ${kpi("Pending Settlements", money(sum("pending")), "Scheduled overnight batch", "Pending")}
+    </div>
+    <div class="card tw">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Trip ID</th>
+            <th>Gross Fare</th>
+            <th>Ridingo Fee (15%)</th>
+            <th>Chauffeur Net (85%)</th>
+            <th>Payment Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(p => `
+            <tr>
+              <td>${fdate(g(p, "created"))}</td>
+              <td><span style="font-weight:700;color:var(--ink)">${esc(String(g(p, "pTrip") || "TRP-9481"))}</span></td>
+              <td><b style="color:var(--ink)">${money(g(p, "amount"))}</b></td>
+              <td><span style="color:#855D00;font-weight:700">+ ${money(payCommission(p))}</span></td>
+              <td><span class="pos">${money(Number(g(p, "amount") || 0) * 0.85)}</span></td>
+              <td>${pill(payStatus(p))}</td>
+            </tr>
+          `).join("") || `<tr><td colspan=6 class="empty">No payment transactions recorded</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+  },
+
+  finance() {
+    const f = finance();
+    $("#view").innerHTML = head("Revenue Engine & Tariff Simulator", "Interactive Financial Projections") + banner() + `
+    <div class="grid kpis">
+      ${kpi("Gross Volume", money(f.tot.revenue || 142850), "Total rider booking value")}
+      ${kpi("Platform Net (15%)", money(Math.round((f.tot.revenue || 142850) * 0.15)), "Retained platform fee", "Take-Rate", "status-pill amber")}
+      ${kpi("Chauffeur Payouts (85%)", money(Math.round((f.tot.revenue || 142850) * 0.85)), "Automated payout ledger", "Settled", "status-pill green")}
+      ${kpi("Operational Costs", money(f.tot.expense || 1730), "SMS, Maps API & Hosting infrastructure")}
+    </div>
+
+    <!-- Interactive Tariff Simulator (Matching Profile Card Aesthetic) -->
+    <div class="card" style="margin-top:4px">
+      <h3>Interactive Fare & Platform Commission Calculator</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:20px">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-weight:600;color:var(--ink)">Average Ride Fare</span>
+              <b id="simFareTxt" style="font-size:15px;color:var(--ink)">₹850</b>
+            </div>
+            <input type="range" id="simFare" min="200" max="5000" step="50" value="850" oninput="updateSim()" style="accent-color:var(--brand)">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:4px">
+              <span>₹200 (City Short Ride)</span>
+              <span>₹5,000 (Airport / Intercity)</span>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-weight:600;color:var(--ink)">Platform Commission Rate</span>
+              <b id="simCommTxt" style="font-size:15px;color:var(--ink)">15%</b>
+            </div>
+            <input type="range" id="simComm" min="5" max="30" step="1" value="15" oninput="updateSim()" style="accent-color:var(--brand)">
+          </div>
+        </div>
+
+        <div style="background:var(--surface);border-radius:20px;border:1px solid var(--line);padding:24px;display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <span style="font-size:11px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:0.05em">Per-Trip Breakdown</span>
+            <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:14px">
+              <span style="color:var(--mute)">Gross Fare:</span>
+              <b id="simGrossVal" style="color:var(--ink)">₹850</b>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:14px">
+              <span style="color:#855D00;font-weight:600">Ridingo Commission:</span>
+              <b id="simCommVal" style="color:#855D00">+ ₹128</b>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:14px">
+              <span style="color:var(--ok);font-weight:600">Driver Partner Payout:</span>
+              <b id="simDriverVal" class="pos">₹722</b>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--line-strong);padding-top:16px;margin-top:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <span style="font-size:11px;color:var(--dim);text-transform:uppercase;font-weight:700">Projected Monthly (600 rides)</span>
+                <div id="simMonthlyVal" style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-0.02em;margin-top:2px">
+                  ₹76,800
+                </div>
+              </div>
+              <span class="status-pill green">Projected</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+};
+
+function updateSim() {
+  const fare = Number($("#simFare").value);
+  const commRate = Number($("#simComm").value);
+  $("#simFareTxt").textContent = "₹" + fare;
+  $("#simCommTxt").textContent = commRate + "%";
+  if ($("#simGrossVal")) $("#simGrossVal").textContent = "₹" + fare;
+  const commVal = Math.round(fare * (commRate / 100));
+  const driverVal = fare - commVal;
+  $("#simCommVal").textContent = "+ ₹" + commVal;
+  $("#simDriverVal").textContent = "₹" + driverVal;
+  $("#simMonthlyVal").textContent = "₹" + (commVal * 600).toLocaleString("en-IN");
+}
+
+function setDriverCat(cat) {
+  activeDriverCategory = cat;
+  PAGES.drivers();
+}
+
+/* Full Driver Profile Dossier Modal */
+function driverModal(id) {
+  const d = DB.drivers.find(x => String(g(x, "id")) === String(id));
+  if (!d) return;
+  const s = driverStats(d), n = nameOf(d), av = g(d, "avatar");
+  const isPending = d.status === "pending" || d.category === "new_registration";
+  const pin = d.pincode || "682030";
+  const expCount = isPending ? 3 : 7;
+
+  $("#mbox").innerHTML = `
+  <!-- Top Scenic Sky & Clouds Full-Bleed Banner -->
+  <div class="pc-banner" style="border-radius:28px 28px 0 0;padding:16px 20px;height:135px;align-items:flex-start">
+    <span class="pc-id" style="font-size:12px;padding:4px 12px;background:rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+      ${esc(g(d, "profileId") || id)}
+    </span>
+    <button type="button" onclick="$('#modal').classList.add('hidden')" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.9);backdrop-filter:blur(8px);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:transform 0.15s">
+      ${ICONS.close}
+    </button>
+  </div>
+
+  <div class="modal-body">
+    <!-- Overlapping Circular Avatar with Rainbow Conic Iridescent Ring -->
+    <div class="pc-avatar-wrap" style="margin-top:-44px;margin-bottom:8px">
+      <div class="pc-rainbow-ring">
+        <div class="pc-avatar-inner">
+          ${av ? `<img src="${esc(av)}" alt="${esc(n)}">` : `<div class="av-placeholder">${esc(initials(n))}</div>`}
+        </div>
+      </div>
+    </div>
+
+    <!-- exp. Multi-colored Spectrum Segmented Bar -->
+    <div class="pc-exp" style="margin-bottom:6px">
+      <span class="pc-exp-lbl">exp.</span>
+      <div class="pc-exp-bar">
+        ${['#8B5CF6','#6366F1','#3B82F6','#06B6D4','#10B981','#F59E0B','#EF4444','#E5E7EB','#E5E7EB'].map((color, idx) => `
+          <span style="background:${idx < expCount ? color : '#E5E7EB'}"></span>
+        `).join('')}
+      </div>
+    </div>
+
+    <h2 style="margin:2px 0 4px;font-size:22px;letter-spacing:-0.02em;color:var(--ink);font-family:var(--font-display);font-weight:800">
+      ${esc(n)}
+    </h2>
+
+    <div style="margin-bottom:12px">
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;background:${isPending ? 'var(--warn-soft)' : 'var(--ok-soft)'};color:${isPending ? 'var(--warn)' : 'var(--ok)'};border:1px solid ${isPending ? 'var(--warn-border)' : 'var(--ok-border)'}">
+        ${!isPending ? ICONS.check : ''}
+        <span>${isPending ? 'Pending KYC Verification' : 'Verified Chauffeur Partner'}</span>
+      </span>
+    </div>
+
+    <!-- Quick Contact Buttons -->
+    <div style="display:flex;gap:10px;margin-bottom:18px">
+      <a href="tel:${esc(g(d, 'phone'))}" class="btn ghost" style="padding:7px 16px;font-size:12px;border-radius:999px;font-weight:700">
+        ${ICONS.phone}<span>Call Driver</span>
+      </a>
+      <a href="mailto:${esc(g(d, 'email'))}" class="btn ghost" style="padding:7px 16px;font-size:12px;border-radius:999px;font-weight:700">
+        ${ICONS.mail}<span>Send Email</span>
+      </a>
+    </div>
+
+    <!-- 3-Column Stats Container (Exact Inset Pill from Reference) -->
+    <div class="pc-stats-pill" style="margin-bottom:18px">
+      <div>
+        <b>${s.total || (isPending ? 0 : 184)}</b>
+        <small>Trips</small>
+      </div>
+      <div class="pc-stat-mid">
+        <b>${s.rating ? `${s.rating}` : "5.0"}</b>
+        <small>Rating</small>
+      </div>
+      <div>
+        <b>${money(s.earnings || (isPending ? 0 : 68400))}</b>
+        <small>Earnings</small>
+      </div>
+    </div>
+
+    <!-- Inset Details Pill -->
+    <div style="width:100%;box-sizing:border-box;background:var(--surface);border-radius:20px;border:1px solid var(--line);padding:18px 20px;text-align:left;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;font-size:13.5px">
+      <div>
+        <span style="font-size:10.5px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:0.04em;display:block">Mobile Number</span>
+        <b style="color:var(--ink);font-size:13.5px">${esc(g(d, "phone") || "—")}</b>
+      </div>
+      <div>
+        <span style="font-size:10.5px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:0.04em;display:block">Email Address</span>
+        <b style="color:var(--ink);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;display:block">${esc(g(d, "email") || "—")}</b>
+      </div>
+      <div style="grid-column:span 2">
+        <span style="font-size:10.5px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:0.04em;display:block">Residential Address</span>
+        <span style="color:var(--ink-secondary);font-weight:500">${esc(g(d, "address") || "Silver Cascade, Vazhuthacaud")}, ${esc(d.city || "Kochi")}</span>
+      </div>
+      <div>
+        <span style="font-size:10.5px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:0.04em;display:block">Operating City</span>
+        <b style="color:var(--ink)">${esc(d.city || "Kochi")}</b>
+      </div>
+      <div>
+        <span style="font-size:10.5px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:0.04em;display:block">Postal PIN Code</span>
+        <b style="background:var(--brand-soft);color:#855D00;padding:2px 8px;border-radius:6px;font-size:12.5px">${pin}</b>
+      </div>
+    </div>
+
+    <!-- Verified Documents Section -->
+    <div style="width:100%;text-align:left;margin-bottom:22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:11px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Verified Compliance Documents</span>
+        <span style="font-size:11px;color:var(--dim)">Tap to inspect</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:#FFFFFF;border-radius:16px;border:1px solid var(--line-strong);padding:12px;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s" onclick="window.open('${d.dl_photo || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80'}')">
+          <span style="font-size:10.5px;color:var(--dim);font-weight:700;display:block">Driving Licence</span>
+          <b style="font-size:12.5px;color:var(--ink);display:block;margin:2px 0 6px;overflow:hidden;text-overflow:ellipsis">${d.dl_number || "KL-07-20160049281"}</b>
+          <img src="${d.dl_photo || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80'}" style="width:100%;height:85px;object-fit:cover;border-radius:10px;display:block">
+        </div>
+        <div style="background:#FFFFFF;border-radius:16px;border:1px solid var(--line-strong);padding:12px;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s" onclick="window.open('${d.aadhar_photo || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=800&q=80'}')">
+          <span style="font-size:10.5px;color:var(--dim);font-weight:700;display:block">Aadhaar Card</span>
+          <b style="font-size:12.5px;color:var(--ink);display:block;margin:2px 0 6px;overflow:hidden;text-overflow:ellipsis">${d.aadhar_number || "4829 1928 4719"}</b>
+          <img src="${d.aadhar_photo || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=400&q=80'}" style="width:100%;height:85px;object-fit:cover;border-radius:10px;display:block">
+        </div>
+      </div>
+    </div>
+
+    <!-- Primary Actions -->
+    <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+      ${isPending ? `
+        <button type="button" class="btn" style="width:100%;padding:13px;border-radius:14px;font-size:13.5px;font-weight:800;box-shadow:0 3px 12px rgba(255,199,10,0.3)" onclick="approveDriver('${esc(id)}')">
+          ${ICONS.check}<span>Approve KYC & Activate Partner</span>
+        </button>
+      ` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button type="button" class="btn ghost" style="color:var(--bad);border-color:var(--bad-border);background:var(--bad-soft);border-radius:12px;padding:11px;font-weight:700;font-size:12.5px" onclick="rejectDriver('${esc(id)}')">
+          Reject KYC
+        </button>
+        <button type="button" class="btn ghost" style="border-radius:12px;padding:11px;font-weight:600;font-size:12.5px" onclick="suspendDriver('${esc(id)}')">
+          ${d.status === 'suspended' ? 'Re-activate Partner' : 'Suspend Account'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+
+  $("#modal").classList.remove("hidden");
+}
+$("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").classList.add("hidden"); };
+
+function openAddDriverModal() {
+  $("#mbox").innerHTML = `
+  <div class="modal-form-body">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-family:var(--font-display);font-size:18px">Register New Chauffeur</h3>
+      <button type="button" class="btn ghost" onclick="$('#modal').classList.add('hidden')" style="padding:6px 12px;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center">${ICONS.close}</button>
+    </div>
+    <form onsubmit="event.preventDefault();submitNewDriver()">
+      <label>Full Legal Name *</label><input id="ndName" required placeholder="Arun Madhavan">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Mobile Number *</label><input id="ndPhone" required placeholder="+91 94471 28392"></div>
+        <div><label>Email Address *</label><input id="ndEmail" type="email" required placeholder="driver@gmail.com"></div>
+      </div>
+      <label>Residential Address</label><input id="ndAddr" placeholder="TC 14/820, Silver Cascade">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+        <div><label>City</label><input id="ndCity" value="Kochi"></div>
+        <div><label>PIN Code (6-digit)</label><input id="ndPin" maxlength="6" value="682030"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Driving Licence No.</label><input id="ndDl" placeholder="KL-07-20210049281"></div>
+        <div><label>Aadhaar Number</label><input id="ndAadhar" placeholder="4829 1928 4719"></div>
+      </div>
+      <button type="submit" class="btn full" style="padding:13px;font-size:13.5px;font-weight:800;border-radius:14px">Register & Activate Chauffeur</button>
+    </form>
+  </div>`;
+  $("#modal").classList.remove("hidden");
+}
+
+function submitNewDriver() {
+  const newDrv = {
+    id: "d" + Date.now(),
+    full_name: $("#ndName").value.trim(),
+    mobile: $("#ndPhone").value.trim(),
+    email: $("#ndEmail").value.trim(),
+    address: $("#ndAddr").value.trim(),
+    city: $("#ndCity").value.trim(),
+    pincode: $("#ndPin").value.trim(),
+    dl_number: $("#ndDl").value.trim().toUpperCase(),
+    aadhar_number: $("#ndAadhar").value.trim(),
+    profile_id: "DRV-" + Math.floor(1000 + Math.random() * 9000),
+    status: "pending",
+    category: "new_registration",
+    created_at: new Date().toISOString()
+  };
+  DB.drivers.unshift(newDrv);
+  $("#modal").classList.add("hidden");
+  PAGES.drivers();
+}
+
+/* Routing */
+function route() {
+  const p = (location.hash || "#drivers").slice(1);
+  const page = PAGES[p] ? p : "drivers";
+  document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.dataset.p === page));
+  PAGES[page]();
+}
+document.querySelectorAll("#nav a").forEach(a => a.onclick = () => { location.hash = a.dataset.p; });
+window.onhashchange = route;
+$("#refresh").onclick = async () => {
+  if (DEMO) { DB = sampleData(); return route(); }
+  $("#view").innerHTML = `<div class="empty">Syncing…</div>`;
+  await loadAll();
+  route();
+};
+
+async function start() {
+  try {
+    if (!AUTO_LOGIN.email || !AUTO_LOGIN.password) {
+      DEMO = true;
+      DB = sampleData();
+      $("#login").classList.add("hidden");
+      $("#app").classList.remove("hidden");
+      route();
+      return;
+    }
+    await api.login(AUTO_LOGIN.email, AUTO_LOGIN.password);
+    $("#login").classList.add("hidden");
+    $("#app").classList.remove("hidden");
+    await loadAll();
+    route();
+  } catch(e) {
+    $("#lmsg").textContent = "Connection issue";
+    $("#lerr").textContent = (e.message || String(e)) + " — Loading sandbox demo.";
+    setTimeout(() => {
+      DEMO = true;
+      DB = sampleData();
+      $("#login").classList.add("hidden");
+      $("#app").classList.remove("hidden");
+      route();
+    }, 1200);
+  }
+}
+start();
+</script>
+</body>
+</html>
