@@ -46,7 +46,6 @@ jobs:
 
       # --- Build User App Android ---
       - name: Sync & Build Ridingo-User.apk
-        continue-on-error: true
         run: |
           cd packages/user
           npm install --legacy-peer-deps
@@ -55,11 +54,11 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
           mkdir -p "${{ github.workspace }}/build-outputs"
-          cp app/build/outputs/apk/debug/app-debug.apk "${{ github.workspace }}/build-outputs/Ridingo-User.apk"
+          find app/build/outputs/apk -name "*.apk" -exec cp -v {} "${{ github.workspace }}/build-outputs/Ridingo-User.apk" \;
+          ls -lh "${{ github.workspace }}/build-outputs"
 
       # --- Build Driver App Android ---
       - name: Sync & Build Ridingo-Driver.apk
-        continue-on-error: true
         run: |
           cd packages/driver
           npm install --legacy-peer-deps
@@ -68,10 +67,10 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
           mkdir -p "${{ github.workspace }}/build-outputs"
-          cp app/build/outputs/apk/debug/app-debug.apk "${{ github.workspace }}/build-outputs/Ridingo-Driver.apk"
+          find app/build/outputs/apk -name "*.apk" -exec cp -v {} "${{ github.workspace }}/build-outputs/Ridingo-Driver.apk" \;
+          ls -lh "${{ github.workspace }}/build-outputs"
 
       - name: Upload Android APKs
-        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: Ridingo-Android-Packages
