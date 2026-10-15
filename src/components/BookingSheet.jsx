@@ -135,6 +135,7 @@ export default function BookingSheet() {
   const [dropDetails, setDropDetails] = useState(null);
   const pickupInputRef = useRef(null);
   const dropInputRef = useRef(null);
+  const searchDebounceRef = useRef(null);
   const [tripTelemetry, setTripTelemetry] = useState({
     distanceKm: null,
     distanceText: '--',
@@ -193,10 +194,12 @@ export default function BookingSheet() {
 
   // Unified Place Selection Handler: Extracts full address details and populates fields automatically
   const handleSelectPickupPlace = async (item) => {
-    const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
-    setPickup(chosen);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     setActiveSuggestField(null);
     setPickupSuggestions([]);
+
+    const chosen = item.full || (item.title + (item.sub ? `, ${item.sub}` : ''));
+    setPickup(chosen);
 
     if (item.place_id && !item.isMock) {
       try {
@@ -245,10 +248,12 @@ export default function BookingSheet() {
   };
 
   const handleSelectDropPlace = async (item) => {
-    const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
-    setDrop(chosen);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     setActiveSuggestField(null);
     setDropSuggestions([]);
+
+    const chosen = item.full || (item.title + (item.sub ? `, ${item.sub}` : ''));
+    setDrop(chosen);
 
     if (item.place_id && !item.isMock) {
       try {
@@ -300,13 +305,18 @@ export default function BookingSheet() {
     setPickup(val);
     setPickupCoords(null); // Clear selection until picked from dropdown list
     setPickupDetails(null);
-    if (val.trim()) {
-      setActiveSuggestField('pickup');
-      searchGooglePlaces(
-        val,
-        (results) => setPickupSuggestions(results || []),
-        { userCoords: dropCoords || pickupCoords }
-      );
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    const clean = (val || '').trim();
+    if (clean.length >= 2) {
+      searchDebounceRef.current = setTimeout(() => {
+        setActiveSuggestField('pickup');
+        searchGooglePlaces(
+          clean,
+          (results) => setPickupSuggestions(results || []),
+          { userCoords: dropCoords || pickupCoords }
+        );
+      }, 150);
     } else {
       setPickupSuggestions([]);
       setActiveSuggestField(null);
@@ -317,13 +327,18 @@ export default function BookingSheet() {
     setDrop(val);
     setDropCoords(null); // Clear selection until picked from dropdown list
     setDropDetails(null);
-    if (val.trim()) {
-      setActiveSuggestField('drop');
-      searchGooglePlaces(
-        val,
-        (results) => setDropSuggestions(results || []),
-        { userCoords: pickupCoords || dropCoords }
-      );
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    const clean = (val || '').trim();
+    if (clean.length >= 2) {
+      searchDebounceRef.current = setTimeout(() => {
+        setActiveSuggestField('drop');
+        searchGooglePlaces(
+          clean,
+          (results) => setDropSuggestions(results || []),
+          { userCoords: pickupCoords || dropCoords }
+        );
+      }, 150);
     } else {
       setDropSuggestions([]);
       setActiveSuggestField(null);
@@ -800,7 +815,6 @@ export default function BookingSheet() {
                 placeholder="Where should the driver meet you?"
                 value={pickup}
                 onChange={e => handlePickupChange(e.target.value)}
-                onInput={e => handlePickupChange(e.target.value)}
                 autoComplete="off"
               />
               <button
@@ -816,57 +830,49 @@ export default function BookingSheet() {
               </button>
 
               {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'pickup' && Boolean(pickup?.trim()) && (
+              {activeSuggestField === 'pickup' && Boolean(pickup?.trim()?.length >= 2) && pickupSuggestions.length > 0 && (
                 <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
-                  {pickupSuggestions.length > 0 ? (
-                    <>
-                      {pickupSuggestions.slice(0, 10).map((item, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          className="loc-suggest-item"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handleSelectPickupPlace(item)}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="#70757a"
-                            style={{ flexShrink: 0, marginTop: '2px' }}
-                            aria-hidden="true"
-                          >
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                          </svg>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {highlightMatchGoogleStock(item.title, pickup)}
-                            </div>
-                            {item.sub && (
-                              <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                                {item.sub}
-                              </div>
-                            )}
+                  {pickupSuggestions.slice(0, 10).map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="loc-suggest-item"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleSelectPickupPlace(item)}
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="#70757a"
+                        style={{ flexShrink: 0, marginTop: '2px' }}
+                        aria-hidden="true"
+                      >
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {highlightMatchGoogleStock(item.title, pickup)}
+                        </div>
+                        {item.sub && (
+                          <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                            {item.sub}
                           </div>
-                        </button>
-                      ))}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
-                        <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
-                        <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
-                          <span style={{ color: '#4285F4' }}>G</span>
-                          <span style={{ color: '#EA4335' }}>o</span>
-                          <span style={{ color: '#FBBC05' }}>o</span>
-                          <span style={{ color: '#4285F4' }}>g</span>
-                          <span style={{ color: '#34A853' }}>l</span>
-                          <span style={{ color: '#EA4335' }}>e</span>
-                        </span>
+                        )}
                       </div>
-                    </>
-                  ) : (
-                    <div style={{ padding: '14px 16px', fontSize: '13px', color: '#70757a', textAlign: 'center' }}>
-                      Searching places on Google Maps...
-                    </div>
-                  )}
+                    </button>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
+                    <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
+                    <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
+                      <span style={{ color: '#4285F4' }}>G</span>
+                      <span style={{ color: '#EA4335' }}>o</span>
+                      <span style={{ color: '#FBBC05' }}>o</span>
+                      <span style={{ color: '#4285F4' }}>g</span>
+                      <span style={{ color: '#34A853' }}>l</span>
+                      <span style={{ color: '#EA4335' }}>e</span>
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -910,7 +916,6 @@ export default function BookingSheet() {
                 placeholder="Add if you know it"
                 value={drop}
                 onChange={e => handleDropChange(e.target.value)}
-                onInput={e => handleDropChange(e.target.value)}
                 autoComplete="off"
               />
               <button
@@ -926,103 +931,126 @@ export default function BookingSheet() {
               </button>
 
               {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'drop' && Boolean(drop?.trim()) && (
+              {activeSuggestField === 'drop' && Boolean(drop?.trim()?.length >= 2) && dropSuggestions.length > 0 && (
                 <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
-                  {dropSuggestions.length > 0 ? (
-                    <>
-                      {dropSuggestions.slice(0, 10).map((item, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          className="loc-suggest-item"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handleSelectDropPlace(item)}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="#70757a"
-                            style={{ flexShrink: 0, marginTop: '2px' }}
-                            aria-hidden="true"
-                          >
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                          </svg>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {highlightMatchGoogleStock(item.title, drop)}
-                            </div>
-                            {item.sub && (
-                              <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                                {item.sub}
-                              </div>
-                            )}
+                  {dropSuggestions.slice(0, 10).map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="loc-suggest-item"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleSelectDropPlace(item)}
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="#70757a"
+                        style={{ flexShrink: 0, marginTop: '2px' }}
+                        aria-hidden="true"
+                      >
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {highlightMatchGoogleStock(item.title, drop)}
+                        </div>
+                        {item.sub && (
+                          <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                            {item.sub}
                           </div>
-                        </button>
-                      ))}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
-                        <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
-                        <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
-                          <span style={{ color: '#4285F4' }}>G</span>
-                          <span style={{ color: '#EA4335' }}>o</span>
-                          <span style={{ color: '#FBBC05' }}>o</span>
-                          <span style={{ color: '#4285F4' }}>g</span>
-                          <span style={{ color: '#34A853' }}>l</span>
-                          <span style={{ color: '#EA4335' }}>e</span>
-                        </span>
+                        )}
                       </div>
-                    </>
-                  ) : (
-                    <div style={{ padding: '14px 16px', fontSize: '13px', color: '#70757a', textAlign: 'center' }}>
-                      Searching places on Google Maps...
-                    </div>
-                  )}
+                    </button>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
+                    <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
+                    <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
+                      <span style={{ color: '#4285F4' }}>G</span>
+                      <span style={{ color: '#EA4335' }}>o</span>
+                      <span style={{ color: '#FBBC05' }}>o</span>
+                      <span style={{ color: '#4285F4' }}>g</span>
+                      <span style={{ color: '#34A853' }}>l</span>
+                      <span style={{ color: '#EA4335' }}>e</span>
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
 
 
-            {/* Real Google Maps Total Distance & Estimated Travel Time (ETA) */}
+            {/* Total Distance & ETA Minimal Stat Bar */}
             <div
               style={{
-                display: 'flex',
+                display: 'grid',
+                gridTemplateColumns: '1fr auto 1fr',
                 alignItems: 'center',
-                justifyContent: 'space-between',
                 background: 'var(--field)',
-                borderRadius: '16px',
-                padding: '10px 14px',
+                borderRadius: '12px',
+                padding: '10px 18px',
                 marginTop: '12px',
                 marginBottom: '10px',
-                border: '1px solid var(--line)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                border: '1px solid var(--line)'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>📍</span>
-                <div>
-                  <span style={{ fontSize: '10px', fontWeight: 750, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
-                    Total Distance
-                  </span>
-                  <b style={{ fontSize: '14px', fontWeight: 800, color: tripTelemetry.isCalculated ? 'var(--ink)' : 'var(--muted)' }}>
-                    {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
-                  </b>
-                </div>
+              <div>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 650,
+                    color: 'var(--muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    display: 'block',
+                    marginBottom: '2px'
+                  }}
+                >
+                  Total Distance
+                </span>
+                <span
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: tripTelemetry.isCalculated && tripTelemetry.distanceText ? 'var(--ink)' : 'var(--muted)',
+                    letterSpacing: '-0.02em',
+                    display: 'block'
+                  }}
+                >
+                  {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
+                </span>
               </div>
 
-              <div style={{ width: '1px', height: '28px', background: 'var(--line)' }} />
+              <div style={{ width: '1px', height: '26px', background: 'var(--line)', margin: '0 8px' }} />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>⏱️</span>
-                <div>
-                  <span style={{ fontSize: '10px', fontWeight: 750, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
-                    Estimated Time (ETA)
-                  </span>
-                  <b style={{ fontSize: '14px', fontWeight: 800, color: tripTelemetry.isCalculated ? '#16A34A' : 'var(--muted)' }}>
-                    {tripTelemetry.isCalculated && tripTelemetry.durationMins
-                      ? `~${formatDurationMeasurement(tripTelemetry.durationMins)}`
-                      : (tripTelemetry.durationText && tripTelemetry.durationText !== '--' ? `~${tripTelemetry.durationText}` : '--')}
-                  </b>
-                </div>
+              <div style={{ textAlign: 'right' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 650,
+                    color: 'var(--muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    display: 'block',
+                    marginBottom: '2px'
+                  }}
+                >
+                  ETA
+                </span>
+                <span
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: tripTelemetry.isCalculated ? 'var(--ink)' : 'var(--muted)',
+                    letterSpacing: '-0.02em',
+                    display: 'block'
+                  }}
+                >
+                  {tripTelemetry.isCalculated && tripTelemetry.durationMins
+                    ? formatDurationMeasurement(tripTelemetry.durationMins)
+                    : (tripTelemetry.durationText && tripTelemetry.durationText !== '--'
+                        ? tripTelemetry.durationText.replace(/^~\s*/, '')
+                        : '--')}
+                </span>
               </div>
             </div>
 

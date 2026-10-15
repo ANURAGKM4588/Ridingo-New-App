@@ -1056,27 +1056,21 @@ export function rankAndFilterPlaces(items, rawQuery) {
 /**
  * Unified Places Search & Autocomplete
  * Configured with official Google Places API (New):
- * 1. Queries live Google Places API (New) autocomplete endpoint with user's active API key.
- * 2. Prioritizes local and relevant Places results via circular locationBias (50km) within India.
+ * 1. Requires at least 2 characters to trigger search.
+ * 2. Queries live Google Places API (New) autocomplete endpoint.
  * 3. Exact full name match is placed at the top (#1) of suggestions.
  * 4. Only related places matching entered keyword are listed below.
- * 5. Gracefully falls back to local database + Nominatim if network is interrupted.
+ * 5. Returns a single stable, static result set without automatic refreshing or mutating.
+ * 6. Gracefully falls back to Nominatim/local only if live API returns 0 results.
  */
 export async function searchGooglePlaces(query, callback, options = {}) {
-  if (!query || !query.trim()) {
+  if (!query || !query.trim() || query.trim().length < 2) {
     callback([]);
     return;
   }
 
   const clean = query.trim();
   const lower = clean.toLowerCase();
-
-  // Instant local database matches (0ms synchronous response for immediate feedback)
-  const rawLocal = getFilteredMockPlaces(lower);
-  const localMatches = rankAndFilterPlaces(rawLocal, clean);
-  if (localMatches && localMatches.length > 0) {
-    callback(localMatches.slice(0, 10));
-  }
 
   // 1. Official Live Google Places API (New) Autocomplete
   if (GOOGLE_MAPS_API_KEY && !GOOGLE_MAPS_API_KEY.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
@@ -1133,36 +1127,25 @@ export async function searchGooglePlaces(query, callback, options = {}) {
               };
             });
 
-          // Merge local matches with live Google Places predictions
-          const merged = [...googleResults];
-          localMatches.forEach(lm => {
-            if (!merged.some(m => m.title.toLowerCase() === lm.title.toLowerCase())) {
-              merged.push(lm);
-            }
-          });
-
-          // Filter and rank so exact match is at top, and only keyword-related places appear below
-          const ranked = rankAndFilterPlaces(merged, clean);
+          // Filter and rank strictly from official Google Places predictions
+          const ranked = rankAndFilterPlaces(googleResults, clean);
           callback(ranked.slice(0, 20));
           return;
         }
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        console.warn('[GooglePlaces] Live Places (New) query notice:', err);
+        console.warn('[GooglePlaces] Live Places query notice:', err);
       }
     }
   }
 
-  // 2. OpenStreetMap / Nominatim fallback
+  // 2. Fallback only if Google Places API is unavailable or returns 0 results
   fetchNominatimPlaces(clean, (nomResults) => {
-    const combined = [...localMatches];
-    if (nomResults && nomResults.length > 0) {
-      nomResults.forEach(nr => {
-        if (!combined.some(c => c.title.toLowerCase() === nr.title.toLowerCase())) {
-          combined.push(nr);
-        }
-      });
+    let combined = nomResults && nomResults.length > 0 ? [...nomResults] : [];
+    if (combined.length === 0) {
+      const rawLocal = getFilteredMockPlaces(lower);
+      combined = rankAndFilterPlaces(rawLocal, clean);
     }
     const ranked = rankAndFilterPlaces(combined, clean);
     callback(ranked.slice(0, 15));
