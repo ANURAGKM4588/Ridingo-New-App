@@ -45,11 +45,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script>
+      // Gracefully handle Google Maps API key auth/billing failures without Google's default alert dialog
+      window.gm_authFailure = function() {
+        console.warn('[GoogleMaps] Google Maps API key notice: Places API or billing is not yet activated on Google Cloud Console. Seamlessly falling back to high-speed local places & Nominatim routing.');
+      };
+    </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM&libraries=places,geometry" async defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://mercury-uat.phonepe.com/web/bundle/checkout.js"></script>
-    <script type="module" crossorigin src="./assets/index-DnCaQuLk.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-luPhTT-y.css">
+    <script type="module" crossorigin src="./assets/index-SnDgj51d.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BDiyf5Mf.css">
   
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">

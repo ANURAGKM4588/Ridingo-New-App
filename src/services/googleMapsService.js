@@ -700,6 +700,18 @@ async function fetchNominatimPlaces(query, callback) {
 }
 
 let currentSessionToken = null;
+let googlePlacesDisabledDueToAuth = false;
+
+if (typeof window !== 'undefined') {
+  const existingAuthHandler = window.gm_authFailure;
+  window.gm_authFailure = function() {
+    googlePlacesDisabledDueToAuth = true;
+    console.warn('[GoogleMaps] API key authentication failure or unactivated Places API. Gracefully switching to high-speed local places database.');
+    if (typeof existingAuthHandler === 'function') {
+      existingAuthHandler();
+    }
+  };
+}
 
 /**
  * Creates or retrieves a Google Places AutocompleteSessionToken.
@@ -915,7 +927,7 @@ export async function searchGooglePlaces(query, callback, options = {}) {
   }
 
   // Google Places Autocomplete API with local relevance prioritization
-  if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
+  if (!googlePlacesDisabledDueToAuth && typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
     try {
       const service = new window.google.maps.places.AutocompleteService();
       const sessionToken = getOrCreatePlacesSessionToken();
@@ -937,6 +949,10 @@ export async function searchGooglePlaces(query, callback, options = {}) {
       };
 
       service.getPlacePredictions(request, (predictions, status) => {
+        if (status === 'REQUEST_DENIED' || status === 'UNKNOWN_ERROR') {
+          googlePlacesDisabledDueToAuth = true;
+        }
+
         if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
           const googleResults = predictions.map(p => ({
             id: p.place_id,

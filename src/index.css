@@ -6366,17 +6366,16 @@ body[data-theme="dark"] .onboarding-continue-btn {
 
 /* ==========================================================================
    Google Places Autocomplete Widget Styling (.pac-container)
+   Hiding legacy Google container to prevent 'This page can't load Google Maps correctly'
+   error overlay from blocking our unified real-time dropdown.
    ========================================================================== */
 .pac-container {
-  z-index: 999999 !important;
-  background-color: var(--card, #ffffff) !important;
-  border-radius: 14px !important;
-  border: 1px solid var(--line, #e2e8f0) !important;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22) !important;
-  font-family: inherit !important;
-  margin-top: 4px !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
   overflow: hidden !important;
-  padding: 6px 0 !important;
 }
 
 .pac-item {
