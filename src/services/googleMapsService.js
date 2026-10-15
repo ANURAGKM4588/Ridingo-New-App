@@ -660,7 +660,8 @@ async function fetchNominatimPlaces(query, callback) {
     }
     nominatimAbortController = new AbortController();
 
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=6&addressdetails=1`;
+    // Prioritize South India / Kerala bounds with fallback across India
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&viewbox=74.5,12.9,77.8,8.1&bounded=0&limit=10&addressdetails=1`;
     const res = await fetch(url, {
       signal: nominatimAbortController.signal,
       headers: {
@@ -698,12 +699,74 @@ async function fetchNominatimPlaces(query, callback) {
   callback([]);
 }
 
+let currentSessionToken = null;
+
+/**
+ * Creates or retrieves a Google Places AutocompleteSessionToken.
+ * Groups query requests and place detail retrieval into a single billable session.
+ */
+export function getOrCreatePlacesSessionToken() {
+  if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteSessionToken) {
+    if (!currentSessionToken) {
+      currentSessionToken = new window.google.maps.places.AutocompleteSessionToken();
+    }
+    return currentSessionToken;
+  }
+  return null;
+}
+
+export function resetPlacesSessionToken() {
+  currentSessionToken = null;
+}
+
+/**
+ * Fetches high-precision coordinates and formatted address for a Google Place ID.
+ */
+export async function fetchPlaceDetails(placeId) {
+  if (!placeId) return null;
+  if (typeof window !== 'undefined' && window.google?.maps?.places?.PlacesService) {
+    try {
+      const dummyElem = document.createElement('div');
+      const service = new window.google.maps.places.PlacesService(dummyElem);
+      const token = currentSessionToken;
+      resetPlacesSessionToken();
+
+      return await new Promise((resolve) => {
+        service.getDetails(
+          {
+            placeId,
+            fields: ['geometry.location', 'name', 'formatted_address'],
+            sessionToken: token
+          },
+          (place, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+              resolve({
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+                name: place.name,
+                formatted_address: place.formatted_address
+              });
+            } else {
+              resolve(null);
+            }
+          }
+        );
+      });
+    } catch (e) {
+      console.warn('[GooglePlaces] fetchPlaceDetails error:', e);
+    }
+  }
+  return null;
+}
+
 /**
  * Unified Places Search & Autocomplete
- * If Live API key is configured and mock mode is off, uses official Google Places Autocomplete.
- * Falls back dynamically to live OpenStreetMap Nominatim and built-in database for 100% search coverage across India.
+ * Configured with official Google Places Autocomplete API:
+ * 1. Prioritizes local and relevant Places results via locationBias and origin.
+ * 2. Updates in real-time as the user types with instant local matching (0ms) and live API sync.
+ * 3. Returns all matching places for complete selection.
  */
-export async function searchGooglePlaces(query, callback) {
+export async function searchGooglePlaces(query, callback, options = {}) {
   if (!query || !query.trim()) {
     callback([]);
     return;
@@ -712,60 +775,73 @@ export async function searchGooglePlaces(query, callback) {
   const clean = query.trim();
   const lower = clean.toLowerCase();
 
-  // Instant local database matches (0ms response)
+  // Instant local database matches (0ms synchronous response for immediate feedback)
   const localMatches = getFilteredMockPlaces(lower);
   if (localMatches && localMatches.length > 0) {
-    callback(localMatches.slice(0, 6));
+    callback(localMatches.slice(0, 10));
   }
 
-  // Try live Google Places API if SDK is loaded
+  // Google Places Autocomplete API with local relevance prioritization
   if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
     try {
       const service = new window.google.maps.places.AutocompleteService();
-      service.getPlacePredictions(
-        {
-          input: clean,
-          componentRestrictions: { country: 'in' }
-        },
-        (predictions, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
-            const results = predictions.map(p => ({
-              id: p.place_id,
-              place_id: p.place_id,
-              title: p.structured_formatting?.main_text || p.description.split(',')[0],
-              sub: p.structured_formatting?.secondary_text || p.description,
-              full: p.description,
-              description: p.description,
-              isMock: false
-            }));
+      const sessionToken = getOrCreatePlacesSessionToken();
 
-            // Merge with local matches
-            const merged = [...localMatches];
-            results.forEach(r => {
-              if (!merged.some(m => m.title.toLowerCase() === r.title.toLowerCase())) {
-                merged.push(r);
-              }
-            });
-            callback(merged.slice(0, 8));
-            return;
-          }
+      // Location bias: prioritize local area (user location or Kerala/South India hub)
+      const centerCoords = options.userCoords || { lat: 10.1518, lng: 76.3930 };
+      const centerLatLng = new window.google.maps.LatLng(Number(centerCoords.lat), Number(centerCoords.lng));
 
-          // Fallback to live Nominatim search when Google Places has no results or restricts billing
-          fetchNominatimPlaces(clean, (nomResults) => {
-            if (nomResults && nomResults.length > 0) {
-              const combined = [...localMatches];
-              nomResults.forEach(nr => {
-                if (!combined.some(c => c.title.toLowerCase() === nr.title.toLowerCase())) {
-                  combined.push(nr);
-                }
-              });
-              callback(combined.slice(0, 8));
-            } else {
-              callback(localMatches.slice(0, 8));
+      const request = {
+        input: clean,
+        componentRestrictions: { country: 'in' },
+        // Circular location bias to strongly prioritize local results
+        locationBias: new window.google.maps.Circle({
+          center: centerLatLng,
+          radius: 80000 // 80 km radius local priority
+        }),
+        origin: centerLatLng,
+        sessionToken: sessionToken || undefined
+      };
+
+      service.getPlacePredictions(request, (predictions, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
+          const googleResults = predictions.map(p => ({
+            id: p.place_id,
+            place_id: p.place_id,
+            title: p.structured_formatting?.main_text || p.description.split(',')[0],
+            sub: p.structured_formatting?.secondary_text || p.description,
+            full: p.description,
+            description: p.description,
+            matched_substrings: p.matched_substrings,
+            isMock: false
+          }));
+
+          // Merge local matches with Google Places results
+          const merged = [...localMatches];
+          googleResults.forEach(r => {
+            if (!merged.some(m => m.title.toLowerCase() === r.title.toLowerCase())) {
+              merged.push(r);
             }
           });
+
+          // Display all matching places
+          callback(merged.slice(0, 12));
+          return;
         }
-      );
+
+        // Fallback to live Nominatim search when Google Places has no results or restricts billing
+        fetchNominatimPlaces(clean, (nomResults) => {
+          const combined = [...localMatches];
+          if (nomResults && nomResults.length > 0) {
+            nomResults.forEach(nr => {
+              if (!combined.some(c => c.title.toLowerCase() === nr.title.toLowerCase())) {
+                combined.push(nr);
+              }
+            });
+          }
+          callback(combined.slice(0, 12));
+        });
+      });
       return;
     } catch (e) {
       console.warn('[GoogleMaps] Places Autocomplete error, falling back:', e);
@@ -774,17 +850,15 @@ export async function searchGooglePlaces(query, callback) {
 
   // Live OpenStreetMap Nominatim query with local matches
   fetchNominatimPlaces(clean, (nomResults) => {
+    const combined = [...localMatches];
     if (nomResults && nomResults.length > 0) {
-      const combined = [...localMatches];
       nomResults.forEach(lm => {
         if (!combined.some(c => c.title.toLowerCase() === lm.title.toLowerCase())) {
           combined.push(lm);
         }
       });
-      callback(combined.slice(0, 8));
-    } else {
-      callback(localMatches.slice(0, 8));
     }
+    callback(combined.slice(0, 12));
   });
 }
 

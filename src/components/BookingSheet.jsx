@@ -4,8 +4,23 @@ import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
-import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress } from '../services/googleMapsService';
+import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
+
+const highlightMatch = (text, query) => {
+  if (!text || !query) return text;
+  const q = query.trim();
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.substring(0, idx)}
+      <span style={{ color: '#1A73E8', fontWeight: 850, textDecoration: 'underline' }}>{text.substring(idx, idx + q.length)}</span>
+      {text.substring(idx + q.length)}
+    </>
+  );
+};
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours', min: 2, max: 12, def: 3, rate: 250 },
@@ -171,9 +186,11 @@ export default function BookingSheet() {
     setPickupCoords(null); // Clear selection until picked from dropdown list
     if (val.trim()) {
       setActiveSuggestField('pickup');
-      searchGooglePlaces(val, (results) => {
-        setPickupSuggestions(results || []);
-      });
+      searchGooglePlaces(
+        val,
+        (results) => setPickupSuggestions(results || []),
+        { userCoords: dropCoords || pickupCoords }
+      );
     } else {
       setPickupSuggestions([]);
       setActiveSuggestField(null);
@@ -185,9 +202,11 @@ export default function BookingSheet() {
     setDropCoords(null); // Clear selection until picked from dropdown list
     if (val.trim()) {
       setActiveSuggestField('drop');
-      searchGooglePlaces(val, (results) => {
-        setDropSuggestions(results || []);
-      });
+      searchGooglePlaces(
+        val,
+        (results) => setDropSuggestions(results || []),
+        { userCoords: pickupCoords || dropCoords }
+      );
     } else {
       setDropSuggestions([]);
       setActiveSuggestField(null);
@@ -665,7 +684,7 @@ export default function BookingSheet() {
                     <span>Tap a location to pinpoint on Google Maps:</span>
                   </div>
                   {pickupSuggestions.length > 0 ? (
-                    pickupSuggestions.slice(0, 8).map((item, idx) => (
+                    pickupSuggestions.slice(0, 12).map((item, idx) => (
                       <button
                         key={idx}
                         type="button"
@@ -674,7 +693,19 @@ export default function BookingSheet() {
                         onClick={() => {
                           const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
                           setPickup(chosen);
-                          if (item.lat && item.lng) {
+                          if (item.place_id && !item.isMock) {
+                            fetchPlaceDetails(item.place_id).then(details => {
+                              if (details?.lat && details?.lng) {
+                                setPickupCoords({ lat: Number(details.lat), lng: Number(details.lng), name: details.name || item.title });
+                              } else if (item.lat && item.lng) {
+                                setPickupCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
+                              } else {
+                                geocodeAddress(chosen).then(coords => {
+                                  if (coords) setPickupCoords({ ...coords, name: item.title });
+                                });
+                              }
+                            });
+                          } else if (item.lat && item.lng) {
                             setPickupCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
                           } else {
                             geocodeAddress(chosen).then(coords => {
@@ -704,7 +735,7 @@ export default function BookingSheet() {
                         </span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {item.title}
+                            {highlightMatch(item.title, pickup)}
                           </b>
                           {item.sub && (
                             <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
@@ -794,7 +825,7 @@ export default function BookingSheet() {
                     <span>Tap a location to pinpoint on Google Maps:</span>
                   </div>
                   {dropSuggestions.length > 0 ? (
-                    dropSuggestions.slice(0, 8).map((item, idx) => (
+                    dropSuggestions.slice(0, 12).map((item, idx) => (
                       <button
                         key={idx}
                         type="button"
@@ -803,7 +834,19 @@ export default function BookingSheet() {
                         onClick={() => {
                           const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
                           setDrop(chosen);
-                          if (item.lat && item.lng) {
+                          if (item.place_id && !item.isMock) {
+                            fetchPlaceDetails(item.place_id).then(details => {
+                              if (details?.lat && details?.lng) {
+                                setDropCoords({ lat: Number(details.lat), lng: Number(details.lng), name: details.name || item.title });
+                              } else if (item.lat && item.lng) {
+                                setDropCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
+                              } else {
+                                geocodeAddress(chosen).then(coords => {
+                                  if (coords) setDropCoords({ ...coords, name: item.title });
+                                });
+                              }
+                            });
+                          } else if (item.lat && item.lng) {
                             setDropCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
                           } else {
                             geocodeAddress(chosen).then(coords => {
@@ -833,7 +876,7 @@ export default function BookingSheet() {
                         </span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {item.title}
+                            {highlightMatch(item.title, drop)}
                           </b>
                           {item.sub && (
                             <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
