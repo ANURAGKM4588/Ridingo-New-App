@@ -558,44 +558,52 @@ export default function HomeTab() {
           </div>
 
           {/* Action Button: Track Live Request Status */}
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               type="button"
               onClick={() => setLiveTrackingOpen(true)}
               style={{
                 flex: 1,
+                minWidth: 0,
                 height: '44px',
                 borderRadius: '12px',
                 background: 'var(--solid)',
                 color: 'var(--on-solid)',
                 border: 'none',
-                fontSize: '13.5px',
+                fontSize: '13px',
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)'
+                gap: '6px',
+                padding: '0 10px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden'
               }}
             >
-              <span>📍</span>
-              <span>Track Live Request Status</span>
+              <Icon name="navigation" size={14} />
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Track Live Request
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => handleCancelRequest(requestedTrip.id)}
               style={{
+                flexShrink: 0,
                 padding: '0 14px',
                 height: '44px',
                 borderRadius: '12px',
                 background: 'var(--field)',
                 border: '1px solid var(--line)',
                 color: '#EF4444',
-                fontSize: '12px',
+                fontSize: '12.5px',
                 fontWeight: 700,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
               Cancel
@@ -680,11 +688,17 @@ export default function HomeTab() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)'
+              gap: '6px',
+              padding: '0 12px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden'
             }}
           >
-            <span>Track Chauffeur Live ➔</span>
+            <Icon name="navigation" size={14} />
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Track Chauffeur Live ➔
+            </span>
           </button>
         </div>
       )}

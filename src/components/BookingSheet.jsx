@@ -95,8 +95,10 @@ export default function BookingSheet() {
   const [pickup, setPickup] = useState('');
   const [drop, setDrop] = useState('');
   const [selectedDate, setSelectedDate] = useState(getTodayISO);
-  const [selectedTime, setSelectedTime] = useState(getDefaultTime);
-  const [trans, setTrans] = useState('Automatic');
+  const [trans, setTrans] = useState('Manual');
+  const [airportType, setAirportType] = useState('pickup'); // 'pickup' | 'drop'
+  const [flightNo, setFlightNo] = useState('');
+  const [driverEarlyBuffer, setDriverEarlyBuffer] = useState('30m'); // '15m' | '30m' | '45m' | 'exact'
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmedTrip, setConfirmedTrip] = useState(null);
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
@@ -299,7 +301,16 @@ export default function BookingSheet() {
           const pId = paymentRes?.phonepe_payment_id || paymentRes?.phonepe_transaction_id || paymentRes?.razorpay_payment_id || ('pay_ppe_' + Date.now().toString(36));
           const methodLabel = paymentRes?.method || 'PhonePe';
           setBookingOpen(false);
-          bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr, trans, pickupCoords, dropCoords });
+          bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, {
+            date: dateStr,
+            time: timeStr,
+            trans,
+            pickupCoords,
+            dropCoords,
+            flightNo: cat === 'airport' ? flightNo : null,
+            airportType: cat === 'airport' ? airportType : null,
+            driverEarlyBuffer: cat === 'airport' ? driverEarlyBuffer : null
+          });
           addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
         onDismiss: () => {
@@ -411,6 +422,91 @@ export default function BookingSheet() {
                 </button>
               ))}
             </div>
+
+            {/* Airport Transfer Mode, Flight Number & Early Arrival */}
+            {cat === 'airport' && (
+              <div
+                style={{
+                  background: 'var(--field)',
+                  borderRadius: '16px',
+                  padding: '14px',
+                  border: '1px solid var(--line)',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
+              >
+                <div>
+                  <div className="lab" style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Airport Transfer Direction
+                  </div>
+                  <div className="seg" style={{ marginTop: '0' }}>
+                    <button
+                      type="button"
+                      className={airportType === 'pickup' ? 'on' : ''}
+                      onClick={() => {
+                        setAirportType('pickup');
+                        if (!pickup || !pickup.toLowerCase().includes('airport')) {
+                          setPickup('Cochin International Airport (COK), Arrival Gate');
+                        }
+                      }}
+                    >
+                      Airport Pickup (Arrival)
+                    </button>
+                    <button
+                      type="button"
+                      className={airportType === 'drop' ? 'on' : ''}
+                      onClick={() => {
+                        setAirportType('drop');
+                        setDrop('Cochin International Airport (COK), Departure Gate');
+                      }}
+                    >
+                      Airport Drop (Departure)
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="lab" style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Flight Number {airportType === 'pickup' ? '(for live flight arrival tracking)' : '(optional)'}
+                  </label>
+                  <input
+                    className="inp"
+                    placeholder="e.g. AI-504, 6E-201, IX-412"
+                    value={flightNo}
+                    onChange={e => setFlightNo(e.target.value.toUpperCase())}
+                    style={{ textTransform: 'uppercase', letterSpacing: '0.04em', background: 'var(--card)' }}
+                  />
+                </div>
+
+                {airportType === 'pickup' && (
+                  <div>
+                    <label className="lab" style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Driver Arrival at Airport (Avoid waiting after flight landing)
+                    </label>
+                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+                      {[
+                        { id: '30m', label: '30m early (Recommended)' },
+                        { id: '45m', label: '45m early' },
+                        { id: '15m', label: '15m early' },
+                        { id: 'exact', label: 'At landing' }
+                      ].map(buf => (
+                        <button
+                          key={buf.id}
+                          type="button"
+                          className={`chip ${driverEarlyBuffer === buf.id ? 'on' : ''}`}
+                          style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0, whiteSpace: 'nowrap' }}
+                          onClick={() => setDriverEarlyBuffer(buf.id)}
+                        >
+                          {buf.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Pickup Location with 1-tap Current Location */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', marginBottom: '4px' }}>
@@ -678,8 +774,19 @@ export default function BookingSheet() {
               </span>
             </div>
 
-            {/* Quick Date Chips */}
-            <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {/* Quick Date & Time Presets Inline */}
+            <div
+              className="chips"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                WebkitOverflowScrolling: 'touch',
+                paddingBottom: '2px'
+              }}
+            >
               <button
                 type="button"
                 className={`chip ${isToday ? 'on' : ''}`}
@@ -696,19 +803,35 @@ export default function BookingSheet() {
               </button>
               <button
                 type="button"
-                className={`chip ${isCustomDate ? 'on' : ''}`}
-                onClick={() => {
-                  const el = document.getElementById('bk-date-input');
-                  if (el) {
-                    if (typeof el.showPicker === 'function') {
-                      try { el.showPicker(); } catch (e) { el.focus(); }
-                    } else {
-                      el.focus();
-                    }
-                  }
-                }}
+                className="chip"
+                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                onClick={() => addMinutesToTime(10)}
               >
-                {isCustomDate ? dateStr : 'Choose date...'}
+                Now
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                onClick={() => addMinutesToTime(30)}
+              >
+                +30m
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                onClick={() => addMinutesToTime(60)}
+              >
+                +1h
+              </button>
+              <button
+                type="button"
+                className="chip"
+                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                onClick={() => addMinutesToTime(120)}
+              >
+                +2h
               </button>
             </div>
 
@@ -822,69 +945,6 @@ export default function BookingSheet() {
                   aria-label="Select Pickup Time"
                 />
               </div>
-            </div>
-
-            {/* Quick Time Presets */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                marginTop: '8px',
-                overflowX: 'auto',
-                scrollbarWidth: 'none',
-                WebkitOverflowScrolling: 'touch',
-                paddingBottom: '2px'
-              }}
-            >
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0, fontWeight: 600 }}
-                onClick={() => addMinutesToTime(10)}
-              >
-                ⚡ Now
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
-                onClick={() => addMinutesToTime(30)}
-              >
-                +30m
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
-                onClick={() => addMinutesToTime(60)}
-              >
-                +1 hour
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
-                onClick={() => setSelectedTime('09:00')}
-              >
-                9:00 AM
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
-                onClick={() => setSelectedTime('18:00')}
-              >
-                6:00 PM
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0 }}
-                onClick={() => setSelectedTime('21:00')}
-              >
-                9:00 PM
-              </button>
             </div>
 
             {/* Vehicle Gearbox Segment */}
@@ -1052,47 +1112,8 @@ export default function BookingSheet() {
                 </span>
               </div>
 
-              {/* Right Side: Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-                <button
-                  type="button"
-                  className="btn"
-                  id="bk-instant-btn"
-                  onClick={() => {
-                    const cleanPickup = pickup?.trim();
-                    if (!cleanPickup) {
-                      if (addToast) addToast('Please enter pickup location or choose on map', 'alert');
-                      return;
-                    }
-                    const pickupLoc = cleanPickup;
-                    const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Airport Terminal' : 'As directed by passenger');
-                    const pId = 'pay_instant_' + Date.now().toString(36);
-                    setBookingOpen(false);
-                    bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, { date: dateStr, time: timeStr, trans, pickupCoords, dropCoords });
-                    addToast(`Chauffeur requested! Dispatched to nearby drivers.`, 'check');
-                  }}
-                  title="Instant dispatch without payment gateway"
-                  style={{
-                    height: '48px',
-                    borderRadius: '14px',
-                    padding: '0 12px',
-                    fontWeight: 750,
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    background: 'var(--card)',
-                    color: 'var(--ink)',
-                    border: '1.5px solid var(--line)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <span style={{ color: '#EAB308', fontSize: '14px' }}>⚡</span>
-                  <span>Instant Request</span>
-                </button>
-
+              {/* Right Side: Action Button */}
+              <div style={{ marginLeft: 'auto' }}>
                 <button
                   type="button"
                   className="btn primary"
@@ -1100,7 +1121,7 @@ export default function BookingSheet() {
                   style={{
                     height: '48px',
                     borderRadius: '14px',
-                    padding: '0 16px',
+                    padding: '0 22px',
                     fontWeight: 800,
                     fontSize: '14.5px',
                     cursor: 'pointer',

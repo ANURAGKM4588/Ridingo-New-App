@@ -125,7 +125,7 @@ function MainApp() {
                     </div>
                   </div>
 
-                  <BottomNav />
+                  {!onboardingOpen && <BottomNav />}
 
                   <BookingSheet />
                   <NotificationsSheet />

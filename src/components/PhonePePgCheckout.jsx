@@ -803,7 +803,7 @@ export default function PhonePePgCheckout() {
                   }}
                 >
                   <span>Pay with Ridingo Wallet</span>
-                  <span>Pay ₹{amount} ➔</span>
+                  <span style={{ fontSize: '15px' }}>➔</span>
                 </button>
               ) : (
                 <div
@@ -825,38 +825,6 @@ export default function PhonePePgCheckout() {
                   </span>
                 </div>
               )}
-
-              {/* Instant Demo Access Payment Button for 1-click test */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleCompleteSuccess({
-                    method: 'PhonePe Instant Demo',
-                    paymentMode: 'DEMO',
-                    gateway: 'PhonePe PG Demo'
-                  });
-                }}
-                disabled={pgStatus === 'processing'}
-                style={{
-                  width: '100%',
-                  marginTop: '10px',
-                  padding: '11px 14px',
-                  borderRadius: '12px',
-                  background: isDark ? '#1F1F24' : '#F1F5F9',
-                  color: isDark ? '#FFFFFF' : '#0F172A',
-                  border: `1.5px dashed ${theme.cardBorder}`,
-                  fontSize: '13px',
-                  fontWeight: 750,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                <span style={{ color: '#EAB308', fontSize: '15px' }}>⚡</span>
-                <span>Instant Demo Pay & Dispatch Driver</span>
-              </button>
             </div>
           </div>
 
@@ -999,17 +967,21 @@ export default function PhonePePgCheckout() {
                   </div>
                   <div
                     style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
                       background: theme.btnCancelBg,
                       border: `1px solid ${theme.btnCancelBorder}`,
                       color: theme.textPrimary,
-                      padding: '6px 12px',
-                      borderRadius: '999px',
-                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
                       fontWeight: 800,
                       flexShrink: 0
                     }}
                   >
-                    Pay ₹{amount} ➔
+                    ➔
                   </div>
                 </button>
 
@@ -1070,17 +1042,21 @@ export default function PhonePePgCheckout() {
                   </div>
                   <div
                     style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
                       background: theme.btnCancelBg,
                       border: `1px solid ${theme.btnCancelBorder}`,
                       color: theme.textPrimary,
-                      padding: '6px 12px',
-                      borderRadius: '999px',
-                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
                       fontWeight: 800,
                       flexShrink: 0
                     }}
                   >
-                    Pay ₹{amount} ➔
+                    ➔
                   </div>
                 </button>
 
@@ -1147,17 +1123,21 @@ export default function PhonePePgCheckout() {
                   </div>
                   <div
                     style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
                       background: theme.btnCancelBg,
                       border: `1px solid ${theme.btnCancelBorder}`,
                       color: theme.textPrimary,
-                      padding: '6px 12px',
-                      borderRadius: '999px',
-                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
                       fontWeight: 800,
                       flexShrink: 0
                     }}
                   >
-                    Pay ₹{amount} ➔
+                    ➔
                   </div>
                 </button>
 
@@ -1224,169 +1204,23 @@ export default function PhonePePgCheckout() {
                   </div>
                   <div
                     style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
                       background: theme.btnCancelBg,
                       border: `1px solid ${theme.btnCancelBorder}`,
                       color: theme.textPrimary,
-                      padding: '6px 12px',
-                      borderRadius: '999px',
-                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
                       fontWeight: 800,
                       flexShrink: 0
                     }}
                   >
-                    Pay ₹{amount} ➔
+                    ➔
                   </div>
                 </button>
-
-                {/* 5. Other UPI Apps (Device installed apps chooser) */}
-                <div
-                  style={{
-                    borderRadius: '16px',
-                    background: theme.cardBg,
-                    border: `1px solid ${theme.cardBorder}`,
-                    overflow: 'hidden',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowOtherApps(prev => !prev);
-                      // Trigger native UPI intent so device shows installed apps chooser
-                      triggerUpiDeepLink({
-                        appId: 'generic',
-                        amount,
-                        orderId: txnId,
-                        note: `Ridingo Trip - ${txnId}`
-                      });
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '13px 16px',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '11px',
-                          background: isDark ? '#1C1C1F' : '#FFFFFF',
-                          color: theme.textPrimary,
-                          border: `1px solid ${theme.cardBorder}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '19px',
-                          flexShrink: 0
-                        }}
-                      >
-                        📱
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <b style={{ fontSize: '14.5px', color: theme.textPrimary, letterSpacing: '-0.01em' }}>
-                            Other UPI Apps
-                          </b>
-                          <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: theme.btnCancelBg, color: theme.textPrimary }}>
-                            Device
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '11.5px', color: theme.textMuted }}>
-                          Paytm, BHIM, Navi & all device UPI apps
-                        </span>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        background: theme.btnCancelBg,
-                        border: `1px solid ${theme.btnCancelBorder}`,
-                        color: theme.textPrimary,
-                        padding: '6px 12px',
-                        borderRadius: '999px',
-                        fontSize: '12px',
-                        fontWeight: 800,
-                        flexShrink: 0
-                      }}
-                    >
-                      {showOtherApps ? 'Hide ▲' : 'Open Apps ➔'}
-                    </div>
-                  </button>
-
-                  {/* Expanded Device Apps Grid */}
-                  {showOtherApps && (
-                    <div
-                      style={{
-                        padding: '12px 14px 16px',
-                        borderTop: `1px solid ${theme.cardBorder}`,
-                        background: theme.formBg
-                      }}
-                    >
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                        Quick Select Installed App on Device:
-                      </span>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                        {[
-                          { id: 'paytm', name: 'Paytm' },
-                          { id: 'bhim', name: 'BHIM' },
-                          { id: 'navi', name: 'Navi' },
-                          { id: 'amazonpay', name: 'Amazon Pay' },
-                          { id: 'whatsapp', name: 'WhatsApp' },
-                          { id: 'generic', name: 'Device Apps' }
-                        ].map(app => (
-                          <button
-                            key={app.id}
-                            type="button"
-                            onClick={() => handlePayViaUpiApp(app.id, app.name)}
-                            style={{
-                              padding: '10px 6px',
-                              borderRadius: '10px',
-                              background: theme.cardBg,
-                              border: `1px solid ${theme.cardBorder}`,
-                              color: theme.textPrimary,
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              textAlign: 'center'
-                            }}
-                          >
-                            {app.name}
-                          </button>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handlePayViaUpiApp('generic', 'Installed UPI App')}
-                        style={{
-                          width: '100%',
-                          padding: '11px',
-                          borderRadius: '10px',
-                          background: theme.submitBtnBg,
-                          color: theme.submitBtnColor,
-                          border: 'none',
-                          fontSize: '12.5px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          textAlign: 'center',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        Launch Native UPI App Chooser on Device ➔
-                      </button>
-                    </div>
-                  )}
-                </div>
 
                 {/* 6. UPI ID (VPA) Manual Input */}
                 <form
@@ -1439,7 +1273,7 @@ export default function PhonePePgCheckout() {
                         justifyContent: 'center'
                       }}
                     >
-                      Pay ₹{amount}
+                      Pay ➔
                     </button>
                   </div>
 

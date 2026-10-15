@@ -1433,15 +1433,34 @@ export default function DriverApp() {
     if (tripTrans.includes('imt') && driverTransmissions.imt === false) return false;
     return true;
   });
-  const upcomingTrips = trips.filter(t => [
-    'accepted',
-    'pickup_arrived',
-    'ready_to_start',
-    'inprogress',
-    'ending_otp',
-    'invoice_pending',
-    'scheduled'
-  ].includes(t.status));
+  const upcomingTrips = trips.filter(t => {
+    if (![
+      'accepted',
+      'pickup_arrived',
+      'ready_to_start',
+      'inprogress',
+      'ending_otp',
+      'invoice_pending',
+      'scheduled'
+    ].includes(t.status)) {
+      return false;
+    }
+
+    // Driver isolation: only show trip in upcoming trips if accepted by THIS logged-in driver
+    const currentDriverId = String(driverPartner?.id || driverPartner?.phone || 'ravi_1');
+    const currentDriverName = (driverPartner?.name || 'Ravi Kumar').toLowerCase().trim();
+
+    const tripDriverId = t.driver_id ? String(t.driver_id) : (t.driver?.id ? String(t.driver.id) : null);
+    const tripDriverName = (typeof t.driver === 'string' ? t.driver : (t.driver?.name || '')).toLowerCase().trim();
+
+    if (tripDriverId) {
+      return tripDriverId === currentDriverId || tripDriverName === currentDriverName;
+    }
+    if (tripDriverName) {
+      return tripDriverName === currentDriverName || currentDriverName.includes(tripDriverName) || tripDriverName.includes(currentDriverName);
+    }
+    return true;
+  });
 
   // Accept trip handler
   const handleAccept = (tripId) => {
@@ -2147,7 +2166,7 @@ export default function DriverApp() {
                               style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
                               onClick={() => handleArriveAtPickup(t)}
                             >
-                              Enter Pickup OTP 🔑
+                              Enter Pickup OTP
                             </button>
                           </div>
                         )}
@@ -2167,7 +2186,7 @@ export default function DriverApp() {
                             }}
                             onClick={() => handleStartTripAction(t.id)}
                           >
-                            ▶ Start Trip & Share Live GPS
+                            Start Trip & Share Live GPS
                           </button>
                         )}
 
@@ -2187,7 +2206,7 @@ export default function DriverApp() {
                               style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
                               onClick={() => handleEndTripClick(t)}
                             >
-                              🏁 End Trip & Verify OTP
+                              End Trip & Verify OTP
                             </button>
                           </div>
                         )}
@@ -2199,7 +2218,7 @@ export default function DriverApp() {
                             style={{ marginTop: '12px', width: '100%', background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
                             onClick={() => handleEndTripClick(t)}
                           >
-                            Enter Customer Drop OTP 🔑
+                            Enter Customer Drop OTP
                           </button>
                         )}
 
@@ -2221,7 +2240,7 @@ export default function DriverApp() {
                               setShowInvoiceModal(true);
                             }}
                           >
-                            💳 Collect Payment via PhonePe QR
+                            Collect Payment via PhonePe QR
                           </button>
                         )}
                       </div>
@@ -3744,7 +3763,89 @@ export default function DriverApp() {
       {(() => {
         const activeTripReq = incomingTripRequest || (requestedTrips && requestedTrips.length > 0 ? requestedTrips[0] : null);
         if (!activeTripReq) return null;
-        if (minimizedRequestTripId === activeTripReq.id) return null;
+
+        // Miniature Version of the Request Popup (Banner Style) when minimized
+        if (minimizedRequestTripId === activeTripReq.id) {
+          const fare = Number(activeTripReq.fare) || 600;
+          const driverEarn = Math.round(fare * 0.85);
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+                left: '12px',
+                right: '12px',
+                maxWidth: '420px',
+                margin: '0 auto',
+                zIndex: 10006,
+                background: 'var(--card)',
+                borderRadius: '18px',
+                padding: '12px 14px',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.3)',
+                border: '1.5px solid var(--yellow, #FFC70A)',
+                animation: 'slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', boxShadow: '0 0 0 3px rgba(22, 163, 74, 0.25)', animation: 'pulse 1.2s infinite' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#16A34A', letterSpacing: '0.04em' }}>
+                    NEW RIDE REQUEST
+                  </span>
+                </div>
+                <span style={{ fontSize: '15px', fontWeight: 850, color: '#16A34A' }}>
+                  ₹{driverEarn} <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>(Fare ₹{fare})</span>
+                </span>
+              </div>
+
+              <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '10px' }}>
+                {activeTripReq.pickup} ➔ {activeTripReq.drop_loc || 'City Route'}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setMinimizedRequestTripId(null)}
+                  style={{
+                    flex: 1,
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: 'var(--field)',
+                    border: '1px solid var(--line)',
+                    color: 'var(--ink)',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Expand
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAccept(activeTripReq.id)}
+                  style={{
+                    flex: 1.5,
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: '#16A34A',
+                    border: '1px solid #16A34A',
+                    color: '#FFFFFF',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>Accept Ride</span>
+                  <span>✓</span>
+                </button>
+              </div>
+            </div>
+          );
+        }
 
         return (
           <IncomingRideModal

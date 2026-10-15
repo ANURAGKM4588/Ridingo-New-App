@@ -913,7 +913,10 @@ export function AppProvider({ children }) {
       cashback: cb,
       cashbackStatus: 'pending',
       pickupCoords: schedule?.pickupCoords || null,
-      dropCoords: schedule?.dropCoords || null
+      dropCoords: schedule?.dropCoords || null,
+      flightNo: schedule?.flightNo || null,
+      airportType: schedule?.airportType || null,
+      driverEarlyBuffer: schedule?.driverEarlyBuffer || null
     };
 
     // Record 30% advance payment in user transactions
@@ -1000,12 +1003,19 @@ export function AppProvider({ children }) {
 
   const acceptTrip = (tripId) => {
     const driver = driverPartner || DEFAULT_DRIVER;
+    const driverId = String(driver.id || driver.phone || 'ravi_1');
     let targetOtp = '4821';
     setTrips(prev =>
       prev.map(t => {
         if (t.id === tripId) {
           targetOtp = t.startOtp || targetOtp;
-          return { ...t, status: 'accepted', driver: driver.name };
+          return {
+            ...t,
+            status: 'accepted',
+            driver: driver.name,
+            driver_id: driverId,
+            driverObj: driver
+          };
         }
         return t;
       })
@@ -1022,7 +1032,10 @@ export function AppProvider({ children }) {
 
     // Broadcast across realtime bus & update Supabase
     realtime.acceptRide(tripId, driver);
-    updateTripStatusInSupabase(tripId, 'accepted', { driver: driver.name });
+    updateTripStatusInSupabase(tripId, 'accepted', {
+      driver: driver.name,
+      driver_id: driverId
+    });
   };
 
   const arrivedAtPickup = (tripId) => {
