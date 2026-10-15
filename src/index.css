@@ -4430,13 +4430,14 @@ button.btn-primary:active,
 .ob-screen {
   position: absolute;
   inset: 0;
-  z-index: 100;
+  z-index: 5000 !important;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border-radius: 48px;
   overflow: hidden;
   animation: fade .35s ease;
+  isolation: isolate;
 }
 
 /* Auth Segmented Switcher (Sign In vs Create Account) */

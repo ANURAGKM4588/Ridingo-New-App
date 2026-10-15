@@ -471,7 +471,7 @@ export default function DriverOnboardingModal() {
       id="d-ob-screen"
       className="ob-screen"
       style={{
-        position: 'absolute', inset: 0, zIndex: 100, background: 'var(--surface)',
+        position: 'absolute', inset: 0, zIndex: 5000, background: 'var(--surface)', isolation: 'isolate',
         display: 'flex', flexDirection: 'column', borderRadius: '48px',
         paddingTop: isKeyboardVisible && step === 'otp'
           ? 'max(14px, env(safe-area-inset-top, 0px))'

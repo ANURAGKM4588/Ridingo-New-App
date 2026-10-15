@@ -63,7 +63,8 @@ export default function HomeTab() {
     setLiveTrackingOpen,
     unotes,
     setUTab,
-    addToast
+    addToast,
+    onboardingOpen
   } = useApp();
 
   const unreadCount = (unotes || []).filter(n => !n.read).length;
@@ -706,7 +707,7 @@ export default function HomeTab() {
       
 
       {/* Live In-Progress Trip Card */}
-      {inProg && (
+      {inProg && !onboardingOpen && (
         <div className="live-hero-card" style={{ marginTop: '14px' }}>
           <div className="live-hero-header">
             <div className="live-indicator-pill">

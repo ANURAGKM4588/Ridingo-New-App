@@ -572,8 +572,9 @@ export default function OnboardingModal() {
       style={{
         position: 'absolute',
         inset: 0,
-        zIndex: 100,
+        zIndex: 5000,
         background: 'var(--surface)',
+        isolation: 'isolate',
         display: 'flex',
         flexDirection: 'column',
         borderRadius: '48px',

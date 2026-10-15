@@ -116,7 +116,7 @@ function MainApp() {
                   buttonText="Return to Home"
                   onReset={handleUserPhoneRecovery}
                 >
-                  <div className="content" id="u-content">
+                  <div className="content" id="u-content" style={{ display: onboardingOpen ? 'none' : 'block' }}>
                     <div key={uTab} className="apple-page-enter">
                       {uTab === 'home' && <HomeTab />}
                       {uTab === 'trips' && <TripsTab />}
