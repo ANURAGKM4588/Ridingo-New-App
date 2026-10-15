@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
-import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails } from '../services/googleMapsService';
+import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 
 const highlightMatch = (text, query) => {
@@ -125,6 +125,10 @@ export default function BookingSheet() {
   const [activeSuggestField, setActiveSuggestField] = useState(null); // 'pickup' | 'drop' | null
   const [pickupCoords, setPickupCoords] = useState(null);
   const [dropCoords, setDropCoords] = useState(null);
+  const [pickupDetails, setPickupDetails] = useState(null);
+  const [dropDetails, setDropDetails] = useState(null);
+  const pickupInputRef = useRef(null);
+  const dropInputRef = useRef(null);
   const [tripTelemetry, setTripTelemetry] = useState({
     distanceKm: null,
     distanceText: '--',
@@ -181,9 +185,184 @@ export default function BookingSheet() {
     };
   }, [pickup, drop, pickupCoords, dropCoords]);
 
+  // Unified Place Selection Handler: Extracts full address details and populates fields automatically
+  const handleSelectPickupPlace = async (item) => {
+    const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
+    setPickup(chosen);
+    setActiveSuggestField(null);
+    setPickupSuggestions([]);
+
+    if (item.place_id && !item.isMock) {
+      try {
+        const details = await fetchPlaceDetails(item.place_id);
+        if (details?.lat && details?.lng) {
+          const coords = {
+            lat: Number(details.lat),
+            lng: Number(details.lng),
+            name: details.name || item.title,
+            formatted: details.formatted_address || chosen,
+            city: details.city || '',
+            state: details.state || '',
+            postalCode: details.postalCode || ''
+          };
+          setPickupCoords(coords);
+          setPickupDetails(details);
+          addToast(`Pickup confirmed: ${details.name || details.city || item.title}`, 'pin');
+          return;
+        }
+      } catch (err) {
+        console.warn('Place details error:', err);
+      }
+    }
+
+    if (item.lat && item.lng) {
+      const coords = {
+        lat: Number(item.lat),
+        lng: Number(item.lng),
+        name: item.title,
+        formatted: chosen,
+        city: item.sub?.split(',')?.[0]?.trim() || '',
+        state: 'Kerala'
+      };
+      setPickupCoords(coords);
+      setPickupDetails(coords);
+      addToast(`Pickup confirmed: ${item.title}`, 'pin');
+    } else {
+      const coords = await geocodeAddress(chosen);
+      if (coords) {
+        const cObj = { ...coords, name: item.title, formatted: chosen };
+        setPickupCoords(cObj);
+        setPickupDetails(cObj);
+        addToast(`Pickup confirmed: ${item.title}`, 'pin');
+      }
+    }
+  };
+
+  const handleSelectDropPlace = async (item) => {
+    const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
+    setDrop(chosen);
+    setActiveSuggestField(null);
+    setDropSuggestions([]);
+
+    if (item.place_id && !item.isMock) {
+      try {
+        const details = await fetchPlaceDetails(item.place_id);
+        if (details?.lat && details?.lng) {
+          const coords = {
+            lat: Number(details.lat),
+            lng: Number(details.lng),
+            name: details.name || item.title,
+            formatted: details.formatted_address || chosen,
+            city: details.city || '',
+            state: details.state || '',
+            postalCode: details.postalCode || ''
+          };
+          setDropCoords(coords);
+          setDropDetails(details);
+          addToast(`Destination confirmed: ${details.name || details.city || item.title}`, 'pin');
+          return;
+        }
+      } catch (err) {
+        console.warn('Place details error:', err);
+      }
+    }
+
+    if (item.lat && item.lng) {
+      const coords = {
+        lat: Number(item.lat),
+        lng: Number(item.lng),
+        name: item.title,
+        formatted: chosen,
+        city: item.sub?.split(',')?.[0]?.trim() || '',
+        state: 'Kerala'
+      };
+      setDropCoords(coords);
+      setDropDetails(coords);
+      addToast(`Destination confirmed: ${item.title}`, 'pin');
+    } else {
+      const coords = await geocodeAddress(chosen);
+      if (coords) {
+        const cObj = { ...coords, name: item.title, formatted: chosen };
+        setDropCoords(cObj);
+        setDropDetails(cObj);
+        addToast(`Destination confirmed: ${item.title}`, 'pin');
+      }
+    }
+  };
+
+  // Google Places Autocomplete API Listener Hookup
+  // Attaches native Autocomplete to pickup and drop search input elements.
+  // When a user selects a place from Google suggestions, triggers extraction of full address components,
+  // coordinates, formatted address, and auto-populates all booking fields.
+  useEffect(() => {
+    if (!bookingOpen) return;
+
+    let pickupAuto = null;
+    let dropAuto = null;
+
+    const timer = setTimeout(() => {
+      if (pickupInputRef.current) {
+        pickupAuto = initGooglePlacesAutocomplete(
+          pickupInputRef.current,
+          (place) => {
+            const formatted = place.formatted_address || place.name;
+            setPickup(formatted);
+            const coords = {
+              lat: place.lat,
+              lng: place.lng,
+              name: place.name || formatted.split(',')[0],
+              formatted: formatted,
+              city: place.city || '',
+              state: place.state || '',
+              postalCode: place.postalCode || ''
+            };
+            setPickupCoords(coords);
+            setPickupDetails(place);
+            setActiveSuggestField(null);
+            setPickupSuggestions([]);
+            addToast(`Pickup confirmed: ${place.name || place.city || formatted.split(',')[0]}`, 'pin');
+          },
+          { userCoords: dropCoords || null }
+        );
+      }
+
+      if (dropInputRef.current) {
+        dropAuto = initGooglePlacesAutocomplete(
+          dropInputRef.current,
+          (place) => {
+            const formatted = place.formatted_address || place.name;
+            setDrop(formatted);
+            const coords = {
+              lat: place.lat,
+              lng: place.lng,
+              name: place.name || formatted.split(',')[0],
+              formatted: formatted,
+              city: place.city || '',
+              state: place.state || '',
+              postalCode: place.postalCode || ''
+            };
+            setDropCoords(coords);
+            setDropDetails(place);
+            setActiveSuggestField(null);
+            setDropSuggestions([]);
+            addToast(`Destination confirmed: ${place.name || place.city || formatted.split(',')[0]}`, 'pin');
+          },
+          { userCoords: pickupCoords || null }
+        );
+      }
+    }, 150);
+
+    return () => {
+      clearTimeout(timer);
+      if (pickupAuto?.destroy) pickupAuto.destroy();
+      if (dropAuto?.destroy) dropAuto.destroy();
+    };
+  }, [bookingOpen]);
+
   const handlePickupChange = (val) => {
     setPickup(val);
     setPickupCoords(null); // Clear selection until picked from dropdown list
+    setPickupDetails(null);
     if (val.trim()) {
       setActiveSuggestField('pickup');
       searchGooglePlaces(
@@ -200,6 +379,7 @@ export default function BookingSheet() {
   const handleDropChange = (val) => {
     setDrop(val);
     setDropCoords(null); // Clear selection until picked from dropdown list
+    setDropDetails(null);
     if (val.trim()) {
       setActiveSuggestField('drop');
       searchGooglePlaces(
@@ -275,7 +455,16 @@ export default function BookingSheet() {
       if (loc && loc.address) {
         setPickup(loc.address);
         if (loc.lat && loc.lng) {
-          setPickupCoords({ lat: Number(loc.lat), lng: Number(loc.lng), name: loc.address.split(',')[0].trim() });
+          const cObj = {
+            lat: Number(loc.lat),
+            lng: Number(loc.lng),
+            name: loc.address.split(',')[0].trim(),
+            formatted: loc.address,
+            city: loc.city || loc.address.split(',')[0].trim(),
+            state: 'Kerala'
+          };
+          setPickupCoords(cObj);
+          setPickupDetails(cObj);
         }
         const short = loc.address.split(',')[0].trim();
         addToast(`Pickup set to device location: ${short}`, 'check');
@@ -329,13 +518,33 @@ export default function BookingSheet() {
     if (mapPickerTarget === 'pickup') {
       setPickup(addr);
       geocodeAddress(addr).then(coords => {
-        if (coords) setPickupCoords({ ...coords, name: addr.split(',')[0].trim() });
+        if (coords) {
+          const cObj = {
+            ...coords,
+            name: addr.split(',')[0].trim(),
+            formatted: addr,
+            city: addr.split(',')[0].trim(),
+            state: 'Kerala'
+          };
+          setPickupCoords(cObj);
+          setPickupDetails(cObj);
+        }
       });
       addToast(`Pickup set: ${addr.split(',')[0]}`, 'check');
     } else {
       setDrop(addr);
       geocodeAddress(addr).then(coords => {
-        if (coords) setDropCoords({ ...coords, name: addr.split(',')[0].trim() });
+        if (coords) {
+          const cObj = {
+            ...coords,
+            name: addr.split(',')[0].trim(),
+            formatted: addr,
+            city: addr.split(',')[0].trim(),
+            state: 'Kerala'
+          };
+          setDropCoords(cObj);
+          setDropDetails(cObj);
+        }
       });
       addToast(`Destination set: ${addr.split(',')[0]}`, 'check');
     }
@@ -411,6 +620,8 @@ export default function BookingSheet() {
             trans,
             pickupCoords,
             dropCoords,
+            pickupDetails,
+            dropDetails,
             flightNo: cat === 'airport' ? flightNo : null,
             airportType: cat === 'airport' ? airportType : null,
             driverEarlyBuffer: cat === 'airport' ? driverEarlyBuffer : null,
@@ -651,6 +862,7 @@ export default function BookingSheet() {
             </div>
             <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'pickup' ? 9999 : 2 }}>
               <input
+                ref={pickupInputRef}
                 className="inp"
                 id="bk-pickup"
                 placeholder="Where should the driver meet you?"
@@ -690,30 +902,7 @@ export default function BookingSheet() {
                         type="button"
                         className="loc-suggest-item"
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
-                          setPickup(chosen);
-                          if (item.place_id && !item.isMock) {
-                            fetchPlaceDetails(item.place_id).then(details => {
-                              if (details?.lat && details?.lng) {
-                                setPickupCoords({ lat: Number(details.lat), lng: Number(details.lng), name: details.name || item.title });
-                              } else if (item.lat && item.lng) {
-                                setPickupCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
-                              } else {
-                                geocodeAddress(chosen).then(coords => {
-                                  if (coords) setPickupCoords({ ...coords, name: item.title });
-                                });
-                              }
-                            });
-                          } else if (item.lat && item.lng) {
-                            setPickupCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
-                          } else {
-                            geocodeAddress(chosen).then(coords => {
-                              if (coords) setPickupCoords({ ...coords, name: item.title });
-                            });
-                          }
-                          setActiveSuggestField(null);
-                        }}
+                        onClick={() => handleSelectPickupPlace(item)}
                       >
                         <span
                           style={{
@@ -754,6 +943,35 @@ export default function BookingSheet() {
               )}
             </div>
 
+            {/* Extracted Address Info Badge for Pickup */}
+            {pickupCoords && (
+              <div
+                style={{
+                  marginTop: '6px',
+                  padding: '7px 11px',
+                  background: 'rgba(22, 163, 74, 0.08)',
+                  border: '1px solid rgba(22, 163, 74, 0.25)',
+                  borderRadius: '10px',
+                  fontSize: '11.5px',
+                  color: '#15803D',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  animation: 'fadeIn 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
+                  <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#22C55E', color: '#FFFFFF', display: 'grid', placeItems: 'center', fontSize: '9px', fontWeight: 800, flexShrink: 0 }}>✓</span>
+                  <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {pickupDetails?.city || pickupCoords.name || 'Location confirmed'}
+                  </span>
+                  {pickupDetails?.state && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• {pickupDetails.state}</span>}
+                  {pickupDetails?.postalCode && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• Pin: {pickupDetails.postalCode}</span>}
+                </div>
+                <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 750, flexShrink: 0, marginLeft: '6px', background: 'rgba(34, 197, 94, 0.15)', padding: '2px 6px', borderRadius: '6px' }}>GPS Fixed</span>
+              </div>
+            )}
+
             {/* Destination (optional) */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -792,6 +1010,7 @@ export default function BookingSheet() {
             </div>
             <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'drop' ? 9999 : 1 }}>
               <input
+                ref={dropInputRef}
                 className="inp"
                 id="bk-drop"
                 placeholder="Add if you know it"
@@ -831,30 +1050,7 @@ export default function BookingSheet() {
                         type="button"
                         className="loc-suggest-item"
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
-                          setDrop(chosen);
-                          if (item.place_id && !item.isMock) {
-                            fetchPlaceDetails(item.place_id).then(details => {
-                              if (details?.lat && details?.lng) {
-                                setDropCoords({ lat: Number(details.lat), lng: Number(details.lng), name: details.name || item.title });
-                              } else if (item.lat && item.lng) {
-                                setDropCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
-                              } else {
-                                geocodeAddress(chosen).then(coords => {
-                                  if (coords) setDropCoords({ ...coords, name: item.title });
-                                });
-                              }
-                            });
-                          } else if (item.lat && item.lng) {
-                            setDropCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
-                          } else {
-                            geocodeAddress(chosen).then(coords => {
-                              if (coords) setDropCoords({ ...coords, name: item.title });
-                            });
-                          }
-                          setActiveSuggestField(null);
-                        }}
+                        onClick={() => handleSelectDropPlace(item)}
                       >
                         <span
                           style={{
@@ -894,6 +1090,35 @@ export default function BookingSheet() {
                 </div>
               )}
             </div>
+
+            {/* Extracted Address Info Badge for Destination */}
+            {dropCoords && (
+              <div
+                style={{
+                  marginTop: '6px',
+                  padding: '7px 11px',
+                  background: 'rgba(22, 163, 74, 0.08)',
+                  border: '1px solid rgba(22, 163, 74, 0.25)',
+                  borderRadius: '10px',
+                  fontSize: '11.5px',
+                  color: '#15803D',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  animation: 'fadeIn 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
+                  <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#22C55E', color: '#FFFFFF', display: 'grid', placeItems: 'center', fontSize: '9px', fontWeight: 800, flexShrink: 0 }}>✓</span>
+                  <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {dropDetails?.city || dropCoords.name || 'Location confirmed'}
+                  </span>
+                  {dropDetails?.state && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• {dropDetails.state}</span>}
+                  {dropDetails?.postalCode && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• Pin: {dropDetails.postalCode}</span>}
+                </div>
+                <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 750, flexShrink: 0, marginLeft: '6px', background: 'rgba(34, 197, 94, 0.15)', padding: '2px 6px', borderRadius: '6px' }}>GPS Fixed</span>
+              </div>
+            )}
 
             {/* Real Google Maps Total Distance & Estimated Travel Time (ETA) */}
             <div

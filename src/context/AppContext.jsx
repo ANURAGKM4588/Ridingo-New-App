@@ -914,6 +914,8 @@ export function AppProvider({ children }) {
       cashbackStatus: 'pending',
       pickupCoords: schedule?.pickupCoords || null,
       dropCoords: schedule?.dropCoords || null,
+      pickupDetails: schedule?.pickupDetails || null,
+      dropDetails: schedule?.dropDetails || null,
       flightNo: schedule?.flightNo || null,
       airportType: schedule?.airportType || null,
       driverEarlyBuffer: schedule?.driverEarlyBuffer || null,

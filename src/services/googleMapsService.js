@@ -720,7 +720,53 @@ export function resetPlacesSessionToken() {
 }
 
 /**
- * Fetches high-precision coordinates and formatted address for a Google Place ID.
+ * Extracts comprehensive structured address components (city, state, postal code, country, locality)
+ * from Google Places API or Geocoding API address_components array.
+ */
+export function parseAddressComponents(components = []) {
+  let locality = '';
+  let sublocality = '';
+  let city = '';
+  let state = '';
+  let postalCode = '';
+  let country = '';
+
+  if (Array.isArray(components)) {
+    for (const c of components) {
+      const types = c.types || [];
+      if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
+        sublocality = c.long_name || c.short_name || '';
+      }
+      if (types.includes('locality')) {
+        locality = c.long_name || c.short_name || '';
+      } else if (types.includes('administrative_area_level_2') && !city) {
+        city = c.long_name || c.short_name || '';
+      }
+      if (types.includes('administrative_area_level_1')) {
+        state = c.long_name || c.short_name || '';
+      }
+      if (types.includes('postal_code')) {
+        postalCode = c.long_name || c.short_name || '';
+      }
+      if (types.includes('country')) {
+        country = c.long_name || c.short_name || '';
+      }
+    }
+  }
+
+  const primaryCity = locality || sublocality || city || '';
+  return {
+    city: primaryCity,
+    locality,
+    sublocality,
+    state,
+    postalCode,
+    country
+  };
+}
+
+/**
+ * Fetches high-precision coordinates, complete structured address, and details for a Google Place ID.
  */
 export async function fetchPlaceDetails(placeId) {
   if (!placeId) return null;
@@ -735,16 +781,21 @@ export async function fetchPlaceDetails(placeId) {
         service.getDetails(
           {
             placeId,
-            fields: ['geometry.location', 'name', 'formatted_address'],
+            fields: ['geometry.location', 'name', 'formatted_address', 'address_components', 'vicinity'],
             sessionToken: token
           },
           (place, status) => {
             if (status === window.google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+              const parsed = parseAddressComponents(place.address_components);
               resolve({
+                place_id: placeId,
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng(),
-                name: place.name,
-                formatted_address: place.formatted_address
+                name: place.name || '',
+                formatted_address: place.formatted_address || '',
+                vicinity: place.vicinity || '',
+                address_components: place.address_components || [],
+                ...parsed
               });
             } else {
               resolve(null);
@@ -757,6 +808,88 @@ export async function fetchPlaceDetails(placeId) {
     }
   }
   return null;
+}
+
+/**
+ * Attaches the official Google Places Autocomplete functionality to any HTML input element.
+ * 1. Prioritizes local relevant places within India (with optional user coordinate bias).
+ * 2. On location selection ('place_changed' event), extracts complete address attributes
+ *    (formatted_address, coordinates, city, locality, postal code, state).
+ * 3. Returns an object with the autocomplete instance and a destroy() cleanup method.
+ */
+export function initGooglePlacesAutocomplete(inputElement, onPlaceSelected, options = {}) {
+  if (!inputElement || typeof window === 'undefined') return null;
+
+  const setup = () => {
+    if (!window.google?.maps?.places?.Autocomplete) return null;
+
+    try {
+      const userCoords = options.userCoords || { lat: 10.1518, lng: 76.3930 };
+      const defaultBounds = new window.google.maps.Circle({
+        center: new window.google.maps.LatLng(Number(userCoords.lat), Number(userCoords.lng)),
+        radius: 80000 // 80 km local priority bias
+      });
+
+      const autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
+        componentRestrictions: { country: 'in' },
+        fields: ['address_components', 'geometry.location', 'formatted_address', 'name', 'place_id', 'vicinity'],
+        bounds: defaultBounds.getBounds(),
+        strictBounds: false
+      });
+
+      const listener = autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place || !place.geometry || !place.geometry.location) {
+          return;
+        }
+
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        const formatted = place.formatted_address || place.name || inputElement.value;
+        const parsed = parseAddressComponents(place.address_components);
+
+        const fullDetails = {
+          place_id: place.place_id,
+          name: place.name || formatted.split(',')[0].trim(),
+          formatted_address: formatted,
+          lat,
+          lng,
+          address_components: place.address_components || [],
+          vicinity: place.vicinity || '',
+          ...parsed
+        };
+
+        if (typeof onPlaceSelected === 'function') {
+          onPlaceSelected(fullDetails);
+        }
+      });
+
+      return {
+        autocomplete,
+        destroy: () => {
+          if (window.google?.maps?.event?.removeListener && listener) {
+            window.google.maps.event.removeListener(listener);
+          }
+          if (window.google?.maps?.event?.clearInstanceListeners) {
+            window.google.maps.event.clearInstanceListeners(autocomplete);
+          }
+        }
+      };
+    } catch (err) {
+      console.warn('[GooglePlaces] Failed to initialize Autocomplete:', err);
+      return null;
+    }
+  };
+
+  if (window.google?.maps?.places?.Autocomplete) {
+    return setup();
+  } else {
+    // If Google Maps SDK is still loading, wait and mount
+    loadGoogleMapsSdk().then(() => {
+      setup();
+    });
+    return null;
+  }
 }
 
 /**
