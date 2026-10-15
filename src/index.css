@@ -5938,30 +5938,30 @@ body[data-theme="dark"] .onboarding-continue-btn {
 }
 
 /* ==========================================================================
-   Location Typing Bar Minimal Dropdown Menu Style
+   Google Maps Stock Places Autocomplete Dropdown Menu Style
    ========================================================================== */
 .location-suggest-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 6px;
+  margin-top: 4px;
   background: var(--card, #FFFFFF);
-  border-radius: 14px;
-  border: 1.5px solid var(--line);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08);
   z-index: 9999 !important;
   overflow: hidden;
-  max-height: 290px;
+  max-height: 310px;
   overflow-y: auto;
   scrollbar-width: thin;
-  animation: dropSlideDown 0.18s ease-out;
+  animation: dropSlideDown 0.12s ease-out;
 }
 
 @keyframes dropSlideDown {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-3px);
   }
   to {
     opacity: 1;
@@ -5971,13 +5971,13 @@ body[data-theme="dark"] .onboarding-continue-btn {
 
 .loc-suggest-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
   width: 100%;
   padding: 10px 14px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   text-align: left;
   cursor: pointer;
   transition: background 0.12s ease;
@@ -5988,8 +5988,9 @@ body[data-theme="dark"] .onboarding-continue-btn {
 }
 
 .loc-suggest-item:hover,
+.loc-suggest-item:focus,
 .loc-suggest-item:active {
-  background: var(--field);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .leaflet-control-zoom {

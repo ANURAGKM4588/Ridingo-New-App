@@ -1281,6 +1281,26 @@ export function openInGoogleMaps({ origin, destination, travelMode = 'driving' }
 }
 
 /**
+ * Formats duration measurement like real-time Google Maps / navigation apps:
+ * - Up to 59 minutes: "X mins" (or "1 min")
+ * - 60 minutes: "1 hr"
+ * - 60+ minutes: "1 hr 15 mins", "2 hrs 10 mins", etc.
+ */
+export function formatDurationMeasurement(totalMinutes) {
+  if (!totalMinutes || isNaN(totalMinutes) || totalMinutes <= 0) return '1 min';
+  const mins = Math.round(Number(totalMinutes));
+  if (mins < 60) {
+    return `${mins} min${mins === 1 ? '' : 's'}`;
+  }
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  if (remainingMins === 0) {
+    return `${hours} hr${hours === 1 ? '' : 's'}`;
+  }
+  return `${hours} hr${hours === 1 ? '' : 's'} ${remainingMins} min${remainingMins === 1 ? '' : 's'}`;
+}
+
+/**
  * Calculates Mock Turn-by-Turn Route Telemetry & Waypoints
  * Generates realistic polylines, duration, distance, and turns for testing.
  */
@@ -1323,7 +1343,7 @@ export function calculateMockRoute(originCoord, destCoord) {
     distanceKm,
     durationMins,
     distanceText: `${distanceKm} km`,
-    durationText: `${durationMins} mins`,
+    durationText: formatDurationMeasurement(durationMins),
     waypoints,
     steps: [
       { instruction: 'Head north towards main corridor', distance: '400 m' },
@@ -1474,7 +1494,7 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
           const distanceKm = Number((distMeters / 1000).toFixed(1));
           const durationMins = Math.max(1, Math.round(durSecs / 60));
           const distanceText = leg.distance?.text || `${distanceKm} km`;
-          const durationText = leg.duration?.text || `${durationMins} mins`;
+          const durationText = formatDurationMeasurement(durationMins);
 
           // Calculate arrival time ETA
           const arrival = new Date(Date.now() + durSecs * 1000);

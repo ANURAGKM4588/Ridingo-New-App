@@ -4,20 +4,26 @@ import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
-import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete } from '../services/googleMapsService';
+import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 
-const highlightMatch = (text, query) => {
-  if (!text || !query) return text;
-  const q = query.trim();
-  if (!q) return text;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return text;
+const highlightMatchGoogleStock = (text, query) => {
+  if (!text) return '';
+  if (!query) return <span style={{ fontWeight: 400, color: 'inherit' }}>{text}</span>;
+  const q = query.trim().toLowerCase();
+  if (!q) return <span style={{ fontWeight: 400, color: 'inherit' }}>{text}</span>;
+
+  const lower = text.toLowerCase();
+  const idx = lower.indexOf(q);
+  if (idx === -1) {
+    return <span style={{ fontWeight: 400, color: 'inherit' }}>{text}</span>;
+  }
+
   return (
     <>
-      {text.substring(0, idx)}
-      <span style={{ color: '#1A73E8', fontWeight: 850, textDecoration: 'underline' }}>{text.substring(idx, idx + q.length)}</span>
-      {text.substring(idx + q.length)}
+      {idx > 0 && <span style={{ fontWeight: 400, color: 'inherit' }}>{text.substring(0, idx)}</span>}
+      <span style={{ fontWeight: 700, color: 'var(--ink, #202124)' }}>{text.substring(idx, idx + q.length)}</span>
+      <span style={{ fontWeight: 400, color: 'inherit' }}>{text.substring(idx + q.length)}</span>
     </>
   );
 };
@@ -816,54 +822,55 @@ export default function BookingSheet() {
                 <Icon name="pin" size={16} />
               </button>
 
-              {/* Location Suggestions Dropdown Menu */}
+              {/* Google Maps Stock Location Suggestions Dropdown */}
               {activeSuggestField === 'pickup' && (
                 <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
-                  <div style={{ padding: '7px 12px', fontSize: '11px', color: 'var(--muted)', fontWeight: 700, borderBottom: '1px solid var(--line)', background: 'var(--field)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>📍</span>
-                    <span>Tap a location to pinpoint on Google Maps:</span>
-                  </div>
                   {pickupSuggestions.length > 0 ? (
-                    pickupSuggestions.slice(0, 12).map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        className="loc-suggest-item"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => handleSelectPickupPlace(item)}
-                      >
-                        <span
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: 'var(--field)',
-                            color: '#1A73E8',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}
+                    <>
+                      {pickupSuggestions.slice(0, 10).map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className="loc-suggest-item"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSelectPickupPlace(item)}
                         >
-                          <svg width="15" height="15" viewBox="0 0 24 34" fill="currentColor">
-                            <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
-                            <circle cx="12" cy="11.5" r="4.2" fill="var(--card, #FFFFFF)" />
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="#70757a"
+                            style={{ flexShrink: 0, marginTop: '2px' }}
+                            aria-hidden="true"
+                          >
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                           </svg>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {highlightMatchGoogleStock(item.title, pickup)}
+                            </div>
+                            {item.sub && (
+                              <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                                {item.sub}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
+                        <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
+                        <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
+                          <span style={{ color: '#4285F4' }}>G</span>
+                          <span style={{ color: '#EA4335' }}>o</span>
+                          <span style={{ color: '#FBBC05' }}>o</span>
+                          <span style={{ color: '#4285F4' }}>g</span>
+                          <span style={{ color: '#34A853' }}>l</span>
+                          <span style={{ color: '#EA4335' }}>e</span>
                         </span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {highlightMatch(item.title, pickup)}
-                          </b>
-                          {item.sub && (
-                            <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
-                              {item.sub}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    ))
+                      </div>
+                    </>
                   ) : (
-                    <div style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--muted)', textAlign: 'center' }}>
+                    <div style={{ padding: '14px 16px', fontSize: '13px', color: '#70757a', textAlign: 'center' }}>
                       Searching places on Google Maps...
                     </div>
                   )}
@@ -932,54 +939,55 @@ export default function BookingSheet() {
                 <Icon name="pin" size={16} />
               </button>
 
-              {/* Location Suggestions Dropdown Menu */}
+              {/* Google Maps Stock Location Suggestions Dropdown */}
               {activeSuggestField === 'drop' && (
                 <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
-                  <div style={{ padding: '7px 12px', fontSize: '11px', color: 'var(--muted)', fontWeight: 700, borderBottom: '1px solid var(--line)', background: 'var(--field)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>📍</span>
-                    <span>Tap a location to pinpoint on Google Maps:</span>
-                  </div>
                   {dropSuggestions.length > 0 ? (
-                    dropSuggestions.slice(0, 12).map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        className="loc-suggest-item"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => handleSelectDropPlace(item)}
-                      >
-                        <span
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: 'var(--field)',
-                            color: '#EF4444',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}
+                    <>
+                      {dropSuggestions.slice(0, 10).map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className="loc-suggest-item"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSelectDropPlace(item)}
                         >
-                          <svg width="15" height="15" viewBox="0 0 24 34" fill="currentColor">
-                            <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
-                            <circle cx="12" cy="11.5" r="4.2" fill="var(--card, #FFFFFF)" />
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="#70757a"
+                            style={{ flexShrink: 0, marginTop: '2px' }}
+                            aria-hidden="true"
+                          >
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                           </svg>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {highlightMatchGoogleStock(item.title, drop)}
+                            </div>
+                            {item.sub && (
+                              <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                                {item.sub}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
+                        <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
+                        <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
+                          <span style={{ color: '#4285F4' }}>G</span>
+                          <span style={{ color: '#EA4335' }}>o</span>
+                          <span style={{ color: '#FBBC05' }}>o</span>
+                          <span style={{ color: '#4285F4' }}>g</span>
+                          <span style={{ color: '#34A853' }}>l</span>
+                          <span style={{ color: '#EA4335' }}>e</span>
                         </span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {highlightMatch(item.title, drop)}
-                          </b>
-                          {item.sub && (
-                            <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
-                              {item.sub}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    ))
+                      </div>
+                    </>
                   ) : (
-                    <div style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--muted)', textAlign: 'center' }}>
+                    <div style={{ padding: '14px 16px', fontSize: '13px', color: '#70757a', textAlign: 'center' }}>
                       Searching places on Google Maps...
                     </div>
                   )}
@@ -1024,7 +1032,9 @@ export default function BookingSheet() {
                     Estimated Time (ETA)
                   </span>
                   <b style={{ fontSize: '14px', fontWeight: 800, color: tripTelemetry.isCalculated ? '#16A34A' : 'var(--muted)' }}>
-                    {tripTelemetry.isCalculated && tripTelemetry.durationText ? `~${tripTelemetry.durationText}` : '--'}
+                    {tripTelemetry.isCalculated && tripTelemetry.durationMins
+                      ? `~${formatDurationMeasurement(tripTelemetry.durationMins)}`
+                      : (tripTelemetry.durationText && tripTelemetry.durationText !== '--' ? `~${tripTelemetry.durationText}` : '--')}
                   </b>
                 </div>
               </div>
