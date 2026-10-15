@@ -120,13 +120,14 @@ export default function BookingSheet() {
   });
 
   // Dynamically calculate Google Maps real trip distance and estimated time (ETA)
-  // ONLY calculates when BOTH pickup and destination are provided; otherwise shows '--'
+  // ONLY calculates when BOTH pickup and destination are selected with coordinates (from list, GPS, or map).
+  // If user only types arbitrary text (e.g. 'kallachi') without picking from suggestions, it will NOT calculate (shows '--').
   useEffect(() => {
     let isCancelled = false;
     const pText = pickup?.trim();
     const dText = drop?.trim();
 
-    if (!pText || !dText) {
+    if (!pText || !dText || !pickupCoords || !dropCoords) {
       setTripTelemetry({
         distanceKm: null,
         distanceText: '--',
@@ -158,7 +159,7 @@ export default function BookingSheet() {
     };
 
     const isFast = Boolean(pickupCoords && dropCoords);
-    const timer = setTimeout(calculateRoute, isFast ? 50 : 280);
+    const timer = setTimeout(calculateRoute, isFast ? 50 : 250);
     return () => {
       isCancelled = true;
       clearTimeout(timer);
@@ -167,6 +168,7 @@ export default function BookingSheet() {
 
   const handlePickupChange = (val) => {
     setPickup(val);
+    setPickupCoords(null); // Clear selection until picked from dropdown list
     if (val.trim()) {
       setActiveSuggestField('pickup');
       searchGooglePlaces(val, (results) => {
@@ -175,12 +177,12 @@ export default function BookingSheet() {
     } else {
       setPickupSuggestions([]);
       setActiveSuggestField(null);
-      setPickupCoords(null);
     }
   };
 
   const handleDropChange = (val) => {
     setDrop(val);
+    setDropCoords(null); // Clear selection until picked from dropdown list
     if (val.trim()) {
       setActiveSuggestField('drop');
       searchGooglePlaces(val, (results) => {
@@ -189,7 +191,6 @@ export default function BookingSheet() {
     } else {
       setDropSuggestions([]);
       setActiveSuggestField(null);
-      setDropCoords(null);
     }
   };
 
@@ -349,6 +350,16 @@ export default function BookingSheet() {
       const cleanPickup = pickup?.trim();
       if (!cleanPickup) {
         if (addToast) addToast('Please enter pickup location or choose on map', 'alert');
+        return;
+      }
+      if (!pickupCoords) {
+        if (addToast) addToast('Please tap & select your pickup from the suggestions or choose on map', 'alert');
+        setActiveSuggestField('pickup');
+        return;
+      }
+      if (drop && drop.trim() && !dropCoords) {
+        if (addToast) addToast('Please tap & select your destination from the suggestions or choose on map', 'alert');
+        setActiveSuggestField('drop');
         return;
       }
       const pickupLoc = cleanPickup;
@@ -589,9 +600,16 @@ export default function BookingSheet() {
 
             {/* Pickup Location with 1-tap Current Location */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', marginBottom: '4px' }}>
-              <label className="lab" htmlFor="bk-pickup" style={{ margin: 0 }}>
-                Pickup location
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label className="lab" htmlFor="bk-pickup" style={{ margin: 0 }}>
+                  Pickup location
+                </label>
+                {pickupCoords && (
+                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 750, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    ✓ Selected
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleUseCurrentLocation}
@@ -612,18 +630,18 @@ export default function BookingSheet() {
                 <span>{isDetectingCurrent ? 'Locating...' : 'Use current location'}</span>
               </button>
             </div>
-            <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'pickup' ? 100 : 2 }}>
+            <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'pickup' ? 9999 : 2 }}>
               <input
                 className="inp"
                 id="bk-pickup"
                 placeholder="Where should the driver meet you?"
                 value={pickup}
                 onChange={e => handlePickupChange(e.target.value)}
+                onInput={e => handlePickupChange(e.target.value)}
+                onKeyUp={e => handlePickupChange(e.target.value)}
                 onFocus={() => {
-                  if (pickup.trim()) {
-                    setActiveSuggestField('pickup');
-                    searchGooglePlaces(pickup, (results) => setPickupSuggestions(results || []));
-                  }
+                  setActiveSuggestField('pickup');
+                  searchGooglePlaces(pickup || 'kochi', (results) => setPickupSuggestions(results || []));
                 }}
                 autoComplete="off"
               />
@@ -640,74 +658,83 @@ export default function BookingSheet() {
               </button>
 
               {/* Location Suggestions Dropdown Menu */}
-              {activeSuggestField === 'pickup' && (pickupSuggestions.length > 0 || pickup.trim().length >= 2) && (
-                <div className="location-suggest-dropdown">
-                  {pickupSuggestions.slice(0, 6).map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className="loc-suggest-item"
-                      onClick={() => {
-                        const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
-                        setPickup(chosen);
-                        if (item.lat && item.lng) {
-                          setPickupCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
-                        } else {
-                          geocodeAddress(chosen).then(coords => {
-                            if (coords) setPickupCoords({ ...coords, name: item.title });
-                          });
-                        }
-                        setActiveSuggestField(null);
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          background: 'var(--field)',
-                          color: '#1A73E8',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
+              {activeSuggestField === 'pickup' && (
+                <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
+                  <div style={{ padding: '7px 12px', fontSize: '11px', color: 'var(--muted)', fontWeight: 700, borderBottom: '1px solid var(--line)', background: 'var(--field)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📍</span>
+                    <span>Tap a location to pinpoint on Google Maps:</span>
+                  </div>
+                  {pickupSuggestions.length > 0 ? (
+                    pickupSuggestions.slice(0, 8).map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        className="loc-suggest-item"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
+                          setPickup(chosen);
+                          if (item.lat && item.lng) {
+                            setPickupCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
+                          } else {
+                            geocodeAddress(chosen).then(coords => {
+                              if (coords) setPickupCoords({ ...coords, name: item.title });
+                            });
+                          }
+                          setActiveSuggestField(null);
                         }}
                       >
-                        <svg width="15" height="15" viewBox="0 0 24 34" fill="currentColor">
-                          <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
-                          <circle cx="12" cy="11.5" r="4.2" fill="var(--card, #FFFFFF)" />
-                        </svg>
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.title}
-                        </b>
-                        {item.sub && (
-                          <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
-                            {item.sub}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="loc-suggest-item"
-                    style={{ background: 'var(--field)', borderTop: '1px solid var(--line)', padding: '8px 14px', fontSize: '11.5px', color: 'var(--ink)', fontWeight: 600 }}
-                    onClick={() => setActiveSuggestField(null)}
-                  >
-                    <span>✓</span>
-                    <span>Use &quot;{pickup}&quot; as pickup location</span>
-                  </button>
+                        <span
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            background: 'var(--field)',
+                            color: '#1A73E8',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 34" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
+                            <circle cx="12" cy="11.5" r="4.2" fill="var(--card, #FFFFFF)" />
+                          </svg>
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.title}
+                          </b>
+                          {item.sub && (
+                            <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                              {item.sub}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--muted)', textAlign: 'center' }}>
+                      Searching places on Google Maps...
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Destination (optional) */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '4px' }}>
-              <label className="lab" htmlFor="bk-drop" style={{ margin: 0 }}>
-                Destination (optional)
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label className="lab" htmlFor="bk-drop" style={{ margin: 0 }}>
+                  Destination (optional)
+                </label>
+                {dropCoords && (
+                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 750, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    ✓ Selected
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -732,18 +759,18 @@ export default function BookingSheet() {
                 <span>Choose on map</span>
               </button>
             </div>
-            <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'drop' ? 100 : 1 }}>
+            <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'drop' ? 9999 : 1 }}>
               <input
                 className="inp"
                 id="bk-drop"
                 placeholder="Add if you know it"
                 value={drop}
                 onChange={e => handleDropChange(e.target.value)}
+                onInput={e => handleDropChange(e.target.value)}
+                onKeyUp={e => handleDropChange(e.target.value)}
                 onFocus={() => {
-                  if (drop.trim()) {
-                    setActiveSuggestField('drop');
-                    searchGooglePlaces(drop, (results) => setDropSuggestions(results || []));
-                  }
+                  setActiveSuggestField('drop');
+                  searchGooglePlaces(drop || 'kallachi', (results) => setDropSuggestions(results || []));
                 }}
                 autoComplete="off"
               />
@@ -760,65 +787,67 @@ export default function BookingSheet() {
               </button>
 
               {/* Location Suggestions Dropdown Menu */}
-              {activeSuggestField === 'drop' && (dropSuggestions.length > 0 || drop.trim().length >= 2) && (
-                <div className="location-suggest-dropdown">
-                  {dropSuggestions.slice(0, 6).map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className="loc-suggest-item"
-                      onClick={() => {
-                        const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
-                        setDrop(chosen);
-                        if (item.lat && item.lng) {
-                          setDropCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
-                        } else {
-                          geocodeAddress(chosen).then(coords => {
-                            if (coords) setDropCoords({ ...coords, name: item.title });
-                          });
-                        }
-                        setActiveSuggestField(null);
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          background: 'var(--field)',
-                          color: '#EF4444',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
+              {activeSuggestField === 'drop' && (
+                <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
+                  <div style={{ padding: '7px 12px', fontSize: '11px', color: 'var(--muted)', fontWeight: 700, borderBottom: '1px solid var(--line)', background: 'var(--field)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📍</span>
+                    <span>Tap a location to pinpoint on Google Maps:</span>
+                  </div>
+                  {dropSuggestions.length > 0 ? (
+                    dropSuggestions.slice(0, 8).map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        className="loc-suggest-item"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          const chosen = item.full || item.title + (item.sub ? `, ${item.sub}` : '');
+                          setDrop(chosen);
+                          if (item.lat && item.lng) {
+                            setDropCoords({ lat: Number(item.lat), lng: Number(item.lng), name: item.title });
+                          } else {
+                            geocodeAddress(chosen).then(coords => {
+                              if (coords) setDropCoords({ ...coords, name: item.title });
+                            });
+                          }
+                          setActiveSuggestField(null);
                         }}
                       >
-                        <svg width="15" height="15" viewBox="0 0 24 34" fill="currentColor">
-                          <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
-                          <circle cx="12" cy="11.5" r="4.2" fill="var(--card, #FFFFFF)" />
-                        </svg>
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.title}
-                        </b>
-                        {item.sub && (
-                          <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
-                            {item.sub}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="loc-suggest-item"
-                    style={{ background: 'var(--field)', borderTop: '1px solid var(--line)', padding: '8px 14px', fontSize: '11.5px', color: 'var(--ink)', fontWeight: 600 }}
-                    onClick={() => setActiveSuggestField(null)}
-                  >
-                    <span>✓</span>
-                    <span>Use &quot;{drop}&quot; as destination</span>
-                  </button>
+                        <span
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            background: 'var(--field)',
+                            color: '#EF4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 34" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" />
+                            <circle cx="12" cy="11.5" r="4.2" fill="var(--card, #FFFFFF)" />
+                          </svg>
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.title}
+                          </b>
+                          {item.sub && (
+                            <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                              {item.sub}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--muted)', textAlign: 'center' }}>
+                      Searching places on Google Maps...
+                    </div>
+                  )}
                 </div>
               )}
             </div>

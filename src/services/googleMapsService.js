@@ -11,7 +11,7 @@
  */
 
 // API Key from environment (.env)
-export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
+export const GOOGLE_MAPS_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_MAPS_API_KEY) || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
 
 // Mock Mode Configuration
 // Set to true by default if no API key is configured or VITE_USE_MOCK_MAPS === 'true'
@@ -26,7 +26,7 @@ export function isMockMode() {
     if (stored !== null) return stored === 'true';
   }
   // If explicitly forced via env var
-  if (import.meta.env.VITE_USE_MOCK_MAPS === 'true') {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_USE_MOCK_MAPS === 'true') {
     return true;
   }
   // If no Google Maps API key provided, automatically run in mock mode
@@ -238,6 +238,168 @@ export const MOCK_PLACES_DATABASE = [
     lng: 76.2421,
     type: 'tourist',
     rating: 4.7
+  },
+
+  // Kozhikode (Calicut) & Malabar
+  {
+    place_id: 'mock_place_clt_railway',
+    title: 'Kozhikode Railway Station (CLT)',
+    sub: 'Palayam, Kozhikode, Kerala 673001',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'clt', 'railway', 'palayam'],
+    lat: 11.2464,
+    lng: 75.7820,
+    type: 'transit',
+    rating: 4.6
+  },
+  {
+    place_id: 'mock_place_ccj_airport',
+    title: 'Calicut International Airport (CCJ / Kozhikode Airport)',
+    sub: 'Airport Rd, Karipur, Kozhikode, Kerala 673647',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'airport', 'karipur', 'ccj'],
+    lat: 11.1396,
+    lng: 75.9557,
+    type: 'airport',
+    rating: 4.7
+  },
+  {
+    place_id: 'mock_place_clt_beach',
+    title: 'Kozhikode Beach & South Beach',
+    sub: 'Beach Rd, Vellayil, Kozhikode, Kerala 673032',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'beach'],
+    lat: 11.2588,
+    lng: 75.7687,
+    type: 'tourist',
+    rating: 4.7
+  },
+  {
+    place_id: 'mock_place_hilite_mall',
+    title: 'HiLITE Mall Kozhikode',
+    sub: 'NH 66 Bypass, Poovangal, Kozhikode, Kerala 673014',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'hilite', 'mall'],
+    lat: 11.2528,
+    lng: 75.8239,
+    type: 'mall',
+    rating: 4.6
+  },
+  {
+    place_id: 'mock_place_focus_mall',
+    title: 'Focus Mall & Rajaji Road',
+    sub: 'Arayidathupalam, Kozhikode, Kerala 673004',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'focus', 'mall', 'rajaji'],
+    lat: 11.2592,
+    lng: 75.7884,
+    type: 'mall',
+    rating: 4.4
+  },
+  {
+    place_id: 'mock_place_mananchira',
+    title: 'Mananchira Square & Town Hall',
+    sub: 'Mananchira, Kozhikode, Kerala 673001',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'mananchira'],
+    lat: 11.2541,
+    lng: 75.7811,
+    type: 'hub',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_clt_medcollege',
+    title: 'Govt Medical College Hospital Kozhikode',
+    sub: 'Medical College PO, Kozhikode, Kerala 673008',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'medical college'],
+    lat: 11.2725,
+    lng: 75.8361,
+    type: 'hospital',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_mavoor_rd',
+    title: 'Mavoor Road Bus Terminal & KSRTC',
+    sub: 'Mavoor Rd, Kozhikode, Kerala 673004',
+    aliases: ['kozhi', 'kozhikode', 'calicut', 'mavoor', 'ksrtc'],
+    lat: 11.2580,
+    lng: 75.7890,
+    type: 'transit',
+    rating: 4.3
+  },
+  {
+    place_id: 'mock_place_kallachi_town',
+    title: 'Kallachi Town Junction',
+    sub: 'Nadapuram - Thalassery Rd, Kallachi, Kozhikode, Kerala 673506',
+    aliases: ['kallachi', 'kalla', 'nadapuram', 'kozhikode'],
+    lat: 11.6833,
+    lng: 75.6667,
+    type: 'hub',
+    rating: 4.4
+  },
+  {
+    place_id: 'mock_place_nadapuram',
+    title: 'Nadapuram Bus Stand & Market',
+    sub: 'Nadapuram, Kozhikode, Kerala 673504',
+    aliases: ['nadapuram', 'nadap', 'kallachi', 'kozhikode'],
+    lat: 11.6961,
+    lng: 75.6543,
+    type: 'hub',
+    rating: 4.3
+  },
+  {
+    place_id: 'mock_place_vadakara',
+    title: 'Vadakara Old Bus Stand & Railway Station',
+    sub: 'Vadakara, Kozhikode District, Kerala 673101',
+    aliases: ['vadakara', 'badagara', 'vada', 'kozhikode'],
+    lat: 11.6033,
+    lng: 75.5902,
+    type: 'transit',
+    rating: 4.4
+  },
+  {
+    place_id: 'mock_place_kannur_airport',
+    title: 'Kannur International Airport (CNN)',
+    sub: 'Mattannur, Kannur, Kerala 670702',
+    aliases: ['kannur', 'cnn', 'airport', 'mattannur'],
+    lat: 11.9177,
+    lng: 75.5481,
+    type: 'airport',
+    rating: 4.6
+  },
+  {
+    place_id: 'mock_place_kannur_railway',
+    title: 'Kannur Railway Station & Town',
+    sub: 'Station Rd, Kannur, Kerala 670001',
+    aliases: ['kannur', 'can', 'railway'],
+    lat: 11.8745,
+    lng: 75.3704,
+    type: 'transit',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_thrissur_round',
+    title: 'Thrissur Round & Swaraj Round',
+    sub: 'Swaraj Round North, Thrissur, Kerala 680001',
+    aliases: ['thrissur', 'trichur', 'swaraj', 'round'],
+    lat: 10.5276,
+    lng: 76.2144,
+    type: 'hub',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_tvm_station',
+    title: 'Trivandrum Central Railway Station',
+    sub: 'Thampanoor, Thiruvananthapuram, Kerala 695001',
+    aliases: ['trivandrum', 'thiruvananthapuram', 'thampanoor', 'tvm'],
+    lat: 8.4875,
+    lng: 76.9530,
+    type: 'transit',
+    rating: 4.6
+  },
+  {
+    place_id: 'mock_place_trv_airport',
+    title: 'Thiruvananthapuram International Airport (TRV)',
+    sub: 'Chacka, Thiruvananthapuram, Kerala 695008',
+    aliases: ['trivandrum', 'thiruvananthapuram', 'trv', 'airport'],
+    lat: 8.4821,
+    lng: 76.9200,
+    type: 'airport',
+    rating: 4.6
   },
 
   // Bengaluru
@@ -550,8 +712,11 @@ export async function searchGooglePlaces(query, callback) {
   const clean = query.trim();
   const lower = clean.toLowerCase();
 
-  // Instant local database matches
+  // Instant local database matches (0ms response)
   const localMatches = getFilteredMockPlaces(lower);
+  if (localMatches && localMatches.length > 0) {
+    callback(localMatches.slice(0, 6));
+  }
 
   // Try live Google Places API if SDK is loaded
   if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
@@ -573,16 +738,30 @@ export async function searchGooglePlaces(query, callback) {
               description: p.description,
               isMock: false
             }));
-            callback(results);
+
+            // Merge with local matches
+            const merged = [...localMatches];
+            results.forEach(r => {
+              if (!merged.some(m => m.title.toLowerCase() === r.title.toLowerCase())) {
+                merged.push(r);
+              }
+            });
+            callback(merged.slice(0, 8));
             return;
           }
 
           // Fallback to live Nominatim search when Google Places has no results or restricts billing
           fetchNominatimPlaces(clean, (nomResults) => {
             if (nomResults && nomResults.length > 0) {
-              callback(nomResults);
+              const combined = [...localMatches];
+              nomResults.forEach(nr => {
+                if (!combined.some(c => c.title.toLowerCase() === nr.title.toLowerCase())) {
+                  combined.push(nr);
+                }
+              });
+              callback(combined.slice(0, 8));
             } else {
-              callback(localMatches);
+              callback(localMatches.slice(0, 8));
             }
           });
         }
@@ -596,24 +775,30 @@ export async function searchGooglePlaces(query, callback) {
   // Live OpenStreetMap Nominatim query with local matches
   fetchNominatimPlaces(clean, (nomResults) => {
     if (nomResults && nomResults.length > 0) {
-      const combined = [...nomResults];
-      localMatches.forEach(lm => {
+      const combined = [...localMatches];
+      nomResults.forEach(lm => {
         if (!combined.some(c => c.title.toLowerCase() === lm.title.toLowerCase())) {
           combined.push(lm);
         }
       });
-      callback(combined.slice(0, 6));
+      callback(combined.slice(0, 8));
     } else {
-      callback(localMatches);
+      callback(localMatches.slice(0, 8));
     }
   });
 }
 
 function getFilteredMockPlaces(cleanQuery) {
-  const matches = MOCK_PLACES_DATABASE.filter(p =>
-    p.title.toLowerCase().includes(cleanQuery) ||
-    p.sub.toLowerCase().includes(cleanQuery)
-  );
+  if (!cleanQuery) return [];
+  const q = cleanQuery.toLowerCase();
+  const matches = MOCK_PLACES_DATABASE.filter(p => {
+    const title = (p.title || '').toLowerCase();
+    const sub = (p.sub || '').toLowerCase();
+    const titleMatch = title.includes(q);
+    const subMatch = sub.includes(q);
+    const aliasMatch = p.aliases && p.aliases.some(a => a.toLowerCase().includes(q) || q.includes(a.toLowerCase()));
+    return titleMatch || subMatch || aliasMatch;
+  });
 
   return matches.map(p => ({
     id: p.place_id,
