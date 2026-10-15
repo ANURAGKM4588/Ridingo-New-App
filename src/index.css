@@ -60,9 +60,10 @@
   --good: #1E7D37;
   --good-soft: #DDF4E4;
   --warn: #8F5800;
-  --warn-soft: #FFEFC8;
   --bad: #D70015;
   --bad-soft: #FFE5E7;
+  --bg: #FFFFFF;
+  --on-yellow-soft: #855D00;
   color-scheme: light;
   color: var(--ink);
 }
@@ -188,6 +189,8 @@ img {
   --warn-soft: #3A2F08;
   --bad: #FF6961;
   --bad-soft: #3D1A1C;
+  --bg: #000000;
+  --on-yellow-soft: #FFD60A;
   color-scheme: dark;
   color: var(--ink);
 }
@@ -1912,7 +1915,7 @@ button.btn-primary:active,
 
 .search-item:active .search-item-ic {
   background: var(--yellow-soft);
-  color: var(--on-yellow);
+  color: var(--on-yellow-soft, var(--yellow));
 }
 
 .search-item-meta {

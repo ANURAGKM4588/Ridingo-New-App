@@ -311,9 +311,9 @@ function SwipeableNotifItem({
               ? 'var(--yellow-soft)'
               : 'var(--field)',
             color: isGift
-              ? '#2E7D32'
+              ? 'var(--good)'
               : isCar
-              ? 'var(--on-yellow)'
+              ? 'var(--on-yellow-soft, var(--yellow))'
               : 'var(--ink)',
             display: 'grid',
             placeItems: 'center',

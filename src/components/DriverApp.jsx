@@ -952,7 +952,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#0F172A', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
+            <span style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'var(--solid, #0F172A)', color: 'var(--on-solid, #FFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
               {trip.rider?.name?.slice(0, 2).toUpperCase() || 'AM'}
             </span>
             <span>{trip.rider?.name || 'Customer'} · ★ 4.9</span>
@@ -979,9 +979,9 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             style={{
               height: '48px',
               borderRadius: '14px',
-              border: '1.5px solid #000000',
-              background: '#FFFFFF',
-              color: '#000000',
+              border: '1.5px solid var(--line, #E2E8F0)',
+              background: 'var(--field, #F1F5F9)',
+              color: 'var(--ink, #000000)',
               fontWeight: 700,
               fontSize: '14px',
               cursor: 'pointer',
@@ -1000,13 +1000,13 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             style={{
               height: '48px',
               borderRadius: '14px',
-              border: '1.5px solid #000000',
-              background: '#000000',
+              border: '1.5px solid #16A34A',
+              background: '#16A34A',
               color: '#FFFFFF',
               fontWeight: 800,
               fontSize: '15px',
               cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+              boxShadow: '0 4px 16px rgba(22, 163, 74, 0.35)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

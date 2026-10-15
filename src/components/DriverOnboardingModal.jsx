@@ -963,9 +963,9 @@ export default function DriverOnboardingModal() {
               style={{
                 height: '46px',
                 borderRadius: '14px',
-                background: '#FFFFFF',
-                color: '#000000',
-                border: '1.5px solid #000000',
+                background: 'var(--card, #FFFFFF)',
+                color: 'var(--ink, #000000)',
+                border: '1.5px solid var(--line, #000000)',
                 fontSize: '14px',
                 fontWeight: 700,
                 cursor: 'pointer',

@@ -121,7 +121,7 @@ export default function LiveTrackingSheet() {
                     fontSize: '11px',
                     fontWeight: 700,
                     background: 'rgba(34, 197, 94, 0.15)',
-                    color: '#15803D'
+                    color: 'var(--good)'
                   }}
                 >
                   <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
@@ -139,7 +139,7 @@ export default function LiveTrackingSheet() {
                     fontSize: '11px',
                     fontWeight: 700,
                     background: 'rgba(250, 204, 21, 0.2)',
-                    color: '#B45309'
+                    color: 'var(--warn)'
                   }}
                 >
                   <span className="live-pulse-dot" style={{ background: '#F59E0B' }} />
@@ -359,7 +359,7 @@ export default function LiveTrackingSheet() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <b style={{ fontSize: '15px', color: 'var(--ink)' }}>{trip.driver || 'Ravi Kumar'}</b>
-                      <span style={{ background: 'rgba(255, 199, 10, 0.2)', color: 'var(--on-yellow)', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px' }}>
+                      <span style={{ background: 'rgba(255, 199, 10, 0.2)', color: 'var(--on-yellow-soft, var(--yellow))', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px' }}>
                         ★ 4.9
                       </span>
                     </div>

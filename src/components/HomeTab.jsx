@@ -271,7 +271,7 @@ export default function HomeTab() {
                     type="button"
                     onClick={() => handlePickTrip(t)}
                   >
-                    <span className="search-item-ic" style={{ background: 'var(--yellow-soft)', color: 'var(--on-yellow)' }}>
+                    <span className="search-item-ic" style={{ background: 'var(--yellow-soft)', color: 'var(--on-yellow-soft, var(--yellow))' }}>
                       <Icon name="route" size={16} />
                     </span>
                     <div className="search-item-meta">
@@ -566,8 +566,8 @@ export default function HomeTab() {
                 flex: 1,
                 height: '44px',
                 borderRadius: '12px',
-                background: 'var(--ink)',
-                color: 'var(--bg, #FFFFFF)',
+                background: 'var(--solid)',
+                color: 'var(--on-solid)',
                 border: 'none',
                 fontSize: '13.5px',
                 fontWeight: 800,
@@ -651,7 +651,7 @@ export default function HomeTab() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700 }}>OTP:</span>
-              <span style={{ background: 'var(--ink)', color: 'var(--bg, #FFFFFF)', padding: '2px 8px', borderRadius: '6px', fontSize: '13px', fontWeight: 800, letterSpacing: '1px' }}>
+              <span style={{ background: 'var(--solid)', color: 'var(--on-solid)', padding: '2px 8px', borderRadius: '6px', fontSize: '13px', fontWeight: 800, letterSpacing: '1px' }}>
                 {isAccepted.startOtp || '4821'}
               </span>
             </div>
@@ -671,8 +671,8 @@ export default function HomeTab() {
               width: '100%',
               height: '44px',
               borderRadius: '12px',
-              background: 'var(--ink)',
-              color: 'var(--bg, #FFFFFF)',
+              background: 'var(--solid)',
+              color: 'var(--on-solid)',
               border: 'none',
               fontSize: '13.5px',
               fontWeight: 800,

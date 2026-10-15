@@ -249,8 +249,9 @@ export default function TripsTab() {
                     {/* Minimal Trip OTP Section (Only title and digits, no extra text) */}
                     <div
                       style={{
-                        background: '#000000',
-                        color: '#FFFFFF',
+                        background: 'var(--field)',
+                        color: 'var(--ink)',
+                        border: '1px solid var(--line)',
                         borderRadius: '13px',
                         padding: '12px 16px',
                         display: 'flex',
@@ -259,7 +260,7 @@ export default function TripsTab() {
                         marginBottom: '8px'
                       }}
                     >
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
                         {['inprogress', 'ending_otp'].includes(t.status) ? 'Trip End OTP' : 'Trip OTP'}
                       </span>
                       <span
@@ -267,7 +268,7 @@ export default function TripsTab() {
                           fontSize: '22px',
                           fontWeight: 800,
                           letterSpacing: '5px',
-                          color: '#FFFFFF',
+                          color: 'var(--ink)',
                           fontFamily: 'var(--font-mono, monospace)',
                           lineHeight: 1
                         }}
@@ -361,9 +362,9 @@ export default function TripsTab() {
                           width: '100%',
                           height: '42px',
                           borderRadius: '12px',
-                          background: '#000000',
-                          color: '#FFFFFF',
-                          border: '1.5px solid #000000',
+                          background: 'var(--solid)',
+                          color: 'var(--on-solid)',
+                          border: '1.5px solid var(--solid)',
                           fontWeight: 750,
                           fontSize: '13.5px',
                           display: 'flex',
@@ -398,9 +399,9 @@ export default function TripsTab() {
                           borderRadius: '12px',
                           fontWeight: 750,
                           fontSize: '13.5px',
-                          background: '#000000',
-                          color: '#FFFFFF',
-                          border: '1.5px solid #000000',
+                          background: 'var(--solid)',
+                          color: 'var(--on-solid)',
+                          border: '1.5px solid var(--solid)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',

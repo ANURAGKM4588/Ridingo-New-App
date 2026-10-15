@@ -88,26 +88,26 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
         style={{
           width: '100%',
           maxWidth: '430px',
-          background: '#FFFFFF',
+          background: 'var(--sheet, #FFFFFF)',
           borderTopLeftRadius: '24px',
           borderTopRightRadius: '24px',
           maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 -10px 40px rgba(0,0,0,0.25)',
+          boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
           animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
         {/* Grab bar */}
-        <div style={{ width: '36px', height: '4px', background: '#E2E8F0', borderRadius: '999px', margin: '10px auto 4px' }} />
+        <div style={{ width: '36px', height: '4px', background: 'var(--line-strong, #E2E8F0)', borderRadius: '999px', margin: '10px auto 4px' }} />
 
         {/* Header */}
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--line, #F1F5F9)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#16A34A', letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--good, #16A34A)', letterSpacing: '0.06em' }}>
               STEP 2 OF 2 · MANDATORY
             </span>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '2px 0 0' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink, #0F172A)', margin: '2px 0 0' }}>
               Car Condition Check
             </h2>
           </div>
@@ -118,13 +118,13 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
               width: '32px',
               height: '32px',
               borderRadius: '50%',
-              background: '#F1F5F9',
+              background: 'var(--field, #F1F5F9)',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#64748B'
+              color: 'var(--muted, #64748B)'
             }}
           >
             <Icon name="x" size={16} />
@@ -134,7 +134,7 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
         {/* Scrollable Body */}
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Subtitle instructions */}
-          <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '14px', border: '1px solid #E2E8F0', fontSize: '12.5px', color: '#475569', lineHeight: 1.45 }}>
+          <div style={{ background: 'var(--card, #F8FAFC)', padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--line, #E2E8F0)', fontSize: '12.5px', color: 'var(--muted, #475569)', lineHeight: 1.45 }}>
             📸 <b>Snap 4 car angles</b> before starting trip to record pre-existing scratches and protect both car owner and chauffeur.
           </div>
 
@@ -149,8 +149,8 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
                   key={ang.id}
                   style={{
                     borderRadius: '16px',
-                    border: photo ? '1.5px solid #16A34A' : '1.5px dashed #CBD5E1',
-                    background: photo ? '#F0FDF4' : '#F8FAFC',
+                    border: photo ? '1.5px solid var(--good, #16A34A)' : '1.5px dashed var(--line-strong, #CBD5E1)',
+                    background: photo ? 'rgba(34, 197, 94, 0.12)' : 'var(--field, #F8FAFC)',
                     overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
@@ -162,7 +162,7 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
                   <div
                     style={{
                       height: '110px',
-                      background: '#E2E8F0',
+                      background: 'var(--chip, #E2E8F0)',
                       position: 'relative',
                       display: 'flex',
                       alignItems: 'center',
@@ -179,10 +179,10 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
                       />
                     ) : (
                       <div style={{ textAlign: 'center', padding: '8px' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
-                          <Icon name="camera" size={18} color="#0F172A" />
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--card, #FFFFFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
+                          <Icon name="camera" size={18} color="var(--ink, #0F172A)" />
                         </div>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #475569)' }}>
                           {isBusy ? 'Capturing...' : 'Tap to Snap'}
                         </span>
                       </div>
@@ -194,7 +194,7 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
                           position: 'absolute',
                           top: '6px',
                           right: '6px',
-                          background: '#16A34A',
+                          background: 'var(--good, #16A34A)',
                           color: '#FFFFFF',
                           fontSize: '10px',
                           fontWeight: 800,
@@ -224,10 +224,10 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
 
                   {/* Label & Description */}
                   <div style={{ padding: '8px 10px' }}>
-                    <b style={{ fontSize: '12.5px', color: '#0F172A', display: 'block' }}>
+                    <b style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', display: 'block' }}>
                       {ang.label}
                     </b>
-                    <span style={{ fontSize: '10.5px', color: '#64748B', display: 'block', marginTop: '1px' }}>
+                    <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', display: 'block', marginTop: '1px' }}>
                       {ang.desc}
                     </span>
                   </div>
@@ -238,7 +238,7 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
 
           {/* Quick Scratch / Dent Checklist */}
           <div>
-            <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted, #475569)', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
               Common Pre-existing Scratches (Tap if any)
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -260,9 +260,9 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
                       borderRadius: '999px',
                       fontSize: '11.5px',
                       fontWeight: 600,
-                      border: on ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
-                      background: on ? '#0F172A' : '#FFFFFF',
-                      color: on ? '#FFFFFF' : '#475569',
+                      border: on ? '1.5px solid var(--solid)' : '1px solid var(--line, #E2E8F0)',
+                      background: on ? 'var(--solid)' : 'var(--card, #FFFFFF)',
+                      color: on ? 'var(--on-solid)' : 'var(--muted, #475569)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
@@ -276,7 +276,7 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
 
           {/* Inspection Notes */}
           <div>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '6px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--muted, #475569)', display: 'block', marginBottom: '6px' }}>
               Additional Inspection Notes (Optional)
             </span>
             <textarea
@@ -288,9 +288,10 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
                 width: '100%',
                 padding: '10px 12px',
                 borderRadius: '12px',
-                border: '1px solid #E2E8F0',
+                border: '1px solid var(--line, #E2E8F0)',
+                background: 'var(--card, #FFFFFF)',
                 fontSize: '12.5px',
-                color: '#0F172A',
+                color: 'var(--ink, #0F172A)',
                 outline: 'none',
                 resize: 'none',
                 boxSizing: 'border-box',
@@ -301,7 +302,7 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
         </div>
 
         {/* Footer Action */}
-        <div style={{ padding: '16px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))', borderTop: '1px solid #F1F5F9', background: '#FFFFFF' }}>
+        <div style={{ padding: '16px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))', borderTop: '1px solid var(--line, #F1F5F9)', background: 'var(--sheet, #FFFFFF)' }}>
           <button
             type="button"
             disabled={!allCaptured}
@@ -310,11 +311,11 @@ export default function VehicleConditionModal({ trip, onComplete, onCancel }) {
               width: '100%',
               padding: '14px',
               borderRadius: '14px',
-              background: allCaptured ? '#000000' : '#A1A1AA',
-              color: '#FFFFFF',
+              background: allCaptured ? 'var(--solid, #000000)' : 'var(--chip, #A1A1AA)',
+              color: allCaptured ? 'var(--on-solid, #FFFFFF)' : 'var(--muted, #FFFFFF)',
               fontSize: '15px',
               fontWeight: 800,
-              border: allCaptured ? '1.5px solid #000000' : 'none',
+              border: allCaptured ? '1.5px solid var(--solid, #000000)' : 'none',
               cursor: allCaptured ? 'pointer' : 'not-allowed',
               boxShadow: allCaptured ? '0 4px 14px rgba(0, 0, 0, 0.25)' : 'none',
               transition: 'all 0.2s ease',

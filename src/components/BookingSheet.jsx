@@ -629,9 +629,9 @@ export default function BookingSheet() {
                     disabled={qty <= (currentCat.min || 1)}
                     aria-label="Less"
                     style={{
-                      background: '#FFFFFF',
-                      color: '#000000',
-                      border: 'none',
+                      background: 'var(--field)',
+                      color: 'var(--ink)',
+                      border: '1px solid var(--line)',
                       borderRadius: '10px',
                       cursor: qty <= (currentCat.min || 1) ? 'not-allowed' : 'pointer',
                       boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
@@ -651,9 +651,9 @@ export default function BookingSheet() {
                     disabled={qty >= (currentCat.max || 12)}
                     aria-label="More"
                     style={{
-                      background: '#FFFFFF',
-                      color: '#000000',
-                      border: 'none',
+                      background: 'var(--field)',
+                      color: 'var(--ink)',
+                      border: '1px solid var(--line)',
                       borderRadius: '10px',
                       cursor: qty >= (currentCat.max || 12) ? 'not-allowed' : 'pointer',
                       boxShadow: '0 2px 6px rgba(0,0,0,0.18)',

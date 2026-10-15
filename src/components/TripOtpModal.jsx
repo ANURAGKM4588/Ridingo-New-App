@@ -74,7 +74,8 @@ export default function TripOtpModal({
     >
       <div
         style={{
-          background: '#FFFFFF',
+          background: 'var(--card, #FFFFFF)',
+          border: '1px solid var(--line, #E2E8F0)',
           borderRadius: '24px',
           padding: '24px',
           maxWidth: '360px',
@@ -84,14 +85,14 @@ export default function TripOtpModal({
           animation: 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
-        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#F1F5F9', color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-          <Icon name="shield" size={24} color="#0F172A" />
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--field, #F1F5F9)', color: 'var(--ink, #0F172A)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+          <Icon name="shield" size={24} color="var(--ink, #0F172A)" />
         </div>
 
-        <b style={{ fontSize: '18px', color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+        <b style={{ fontSize: '18px', color: 'var(--ink, #0F172A)', display: 'block', marginBottom: '6px' }}>
           {title}
         </b>
-        <p style={{ fontSize: '12.5px', color: '#64748B', lineHeight: 1.45, margin: '0 0 20px' }}>
+        <p style={{ fontSize: '12.5px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: '0 0 20px' }}>
           {subtitle}
         </p>
 
@@ -114,9 +115,9 @@ export default function TripOtpModal({
                 fontSize: '24px',
                 fontWeight: 800,
                 borderRadius: '14px',
-                border: error ? '2px solid #EF4444' : digit ? '2px solid #0F172A' : '1.5px solid #E2E8F0',
-                background: error ? '#FEF2F2' : '#F8FAFC',
-                color: '#0F172A',
+                border: error ? '2px solid var(--bad, #EF4444)' : digit ? '2px solid var(--ink, #0F172A)' : '1.5px solid var(--line, #E2E8F0)',
+                background: error ? 'var(--bad-soft, #FEF2F2)' : 'var(--field, #F8FAFC)',
+                color: 'var(--ink, #0F172A)',
                 outline: 'none',
                 boxSizing: 'border-box',
                 transition: 'all 0.15s ease'
@@ -126,7 +127,7 @@ export default function TripOtpModal({
         </div>
 
         {error && (
-          <span style={{ fontSize: '12px', color: '#EF4444', fontWeight: 600, display: 'block', marginBottom: '14px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--bad, #EF4444)', fontWeight: 600, display: 'block', marginBottom: '14px' }}>
             Incorrect OTP. Please ask customer to recheck code.
           </span>
         )}
@@ -142,7 +143,7 @@ export default function TripOtpModal({
           style={{
             background: 'none',
             border: 'none',
-            color: '#2563EB',
+            color: 'var(--brand, #2563EB)',
             fontSize: '11.5px',
             fontWeight: 700,
             cursor: 'pointer',
@@ -160,9 +161,9 @@ export default function TripOtpModal({
               flex: 1,
               padding: '12px',
               borderRadius: '12px',
-              background: '#FFFFFF',
-              border: '1.5px solid #000000',
-              color: '#000000',
+              background: 'var(--field, #FFFFFF)',
+              border: '1.5px solid var(--line, #E2E8F0)',
+              color: 'var(--ink, #000000)',
               fontSize: '13px',
               fontWeight: 700,
               cursor: 'pointer'
@@ -178,9 +179,9 @@ export default function TripOtpModal({
               flex: 1,
               padding: '12px',
               borderRadius: '12px',
-              background: '#000000',
-              border: '1.5px solid #000000',
-              color: '#FFFFFF',
+              background: 'var(--solid, #000000)',
+              border: '1.5px solid var(--solid, #000000)',
+              color: 'var(--on-solid, #FFFFFF)',
               fontSize: '13px',
               fontWeight: 700,
               cursor: 'pointer',
