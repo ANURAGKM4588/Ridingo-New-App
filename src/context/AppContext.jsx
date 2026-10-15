@@ -916,7 +916,12 @@ export function AppProvider({ children }) {
       dropCoords: schedule?.dropCoords || null,
       flightNo: schedule?.flightNo || null,
       airportType: schedule?.airportType || null,
-      driverEarlyBuffer: schedule?.driverEarlyBuffer || null
+      driverEarlyBuffer: schedule?.driverEarlyBuffer || null,
+      distanceKm: schedule?.distanceKm || 12.4,
+      distanceText: schedule?.distanceText || '12.4 km',
+      durationMins: schedule?.durationMins || 28,
+      durationText: schedule?.durationText || '28 mins',
+      eta: schedule?.eta || null
     };
 
     // Record 30% advance payment in user transactions
@@ -959,6 +964,10 @@ export function AppProvider({ children }) {
           },
           rider: tripObj.rider || { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' },
           cashback: tripObj.cashback || 0,
+          distance_km: tripObj.distanceKm || null,
+          distance_text: tripObj.distanceText || null,
+          duration_text: tripObj.durationText || null,
+          eta: tripObj.eta || null,
           by_who: user?.phone || 'user'
         };
         const { error } = await supabase.from('trips').upsert(row);

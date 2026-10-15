@@ -4,7 +4,7 @@ import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
-import { searchGooglePlaces } from '../services/googleMapsService';
+import { searchGooglePlaces, calculateTripRouteAndETA } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 
 const CATS = {
@@ -110,6 +110,41 @@ export default function BookingSheet() {
   const [activeSuggestField, setActiveSuggestField] = useState(null); // 'pickup' | 'drop' | null
   const [pickupCoords, setPickupCoords] = useState(null);
   const [dropCoords, setDropCoords] = useState(null);
+  const [tripTelemetry, setTripTelemetry] = useState({
+    distanceKm: 12.4,
+    distanceText: '12.4 km',
+    durationMins: 28,
+    durationText: '28 mins',
+    etaText: '30 mins away'
+  });
+
+  // Dynamically calculate Google Maps real trip distance and estimated time (ETA)
+  useEffect(() => {
+    let isCancelled = false;
+    const calculateRoute = async () => {
+      const pText = pickup?.trim() || 'Kochi City';
+      const dText = drop?.trim() || (cat === 'airport' ? 'Cochin International Airport' : 'Kochi City Center');
+      try {
+        const res = await calculateTripRouteAndETA({
+          origin: pText,
+          destination: dText,
+          originCoords: pickupCoords,
+          destCoords: dropCoords
+        });
+        if (!isCancelled && res) {
+          setTripTelemetry(res);
+        }
+      } catch (e) {
+        console.warn('Route telemetry error:', e);
+      }
+    };
+
+    const timer = setTimeout(calculateRoute, 350);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pickup, drop, pickupCoords, dropCoords, cat]);
 
   const handlePickupChange = (val) => {
     setPickup(val);
@@ -310,7 +345,12 @@ export default function BookingSheet() {
             dropCoords,
             flightNo: cat === 'airport' ? flightNo : null,
             airportType: cat === 'airport' ? airportType : null,
-            driverEarlyBuffer: cat === 'airport' ? driverEarlyBuffer : null
+            driverEarlyBuffer: cat === 'airport' ? driverEarlyBuffer : null,
+            distanceKm: tripTelemetry.distanceKm,
+            distanceText: tripTelemetry.distanceText,
+            durationMins: tripTelemetry.durationMins,
+            durationText: tripTelemetry.durationText,
+            eta: tripTelemetry.etaText
           });
           addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
@@ -711,6 +751,48 @@ export default function BookingSheet() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Real Google Maps Total Distance & Estimated Travel Time (ETA) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--field)',
+                borderRadius: '16px',
+                padding: '10px 14px',
+                marginTop: '12px',
+                marginBottom: '10px',
+                border: '1px solid var(--line)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>📍</span>
+                <div>
+                  <span style={{ fontSize: '10px', fontWeight: 750, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
+                    Total Distance
+                  </span>
+                  <b style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink)' }}>
+                    {tripTelemetry.distanceText}
+                  </b>
+                </div>
+              </div>
+
+              <div style={{ width: '1px', height: '28px', background: 'var(--line)' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>⏱️</span>
+                <div>
+                  <span style={{ fontSize: '10px', fontWeight: 750, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
+                    Estimated Time (ETA)
+                  </span>
+                  <b style={{ fontSize: '14px', fontWeight: 800, color: '#16A34A' }}>
+                    ~{tripTelemetry.durationText}
+                  </b>
+                </div>
+              </div>
             </div>
 
             {/* Hours Stepper (Only for hourly/daily/event) */}

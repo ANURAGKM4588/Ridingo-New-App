@@ -1063,9 +1063,21 @@ export default function DriverApp() {
   const [showEndOtpModal, setShowEndOtpModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
+  const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
 
   useEffect(() => {
-    // Request device-level OS notification permission & register APNs push on driver app initialization
+    // 1. Proactively request initial device GPS location permission on launch
+    try {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          () => console.info('[DriverApp] Location permission active'),
+          (err) => console.log('[DriverApp] Location permission query:', err.message),
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      }
+    } catch (e) {}
+
+    // 2. Request device-level OS notification permission & register APNs push on driver app initialization
     requestDriverNotificationPermission();
     registerDriverAPNsPush((trip) => {
       if (trip) {
@@ -1083,11 +1095,14 @@ export default function DriverApp() {
   }, []);
 
   useEffect(() => {
-    if (incomingTripRequest?.id && incomingTripRequest.id !== minimizedRequestTripId) {
-      setMinimizedRequestTripId(null);
+    if (incomingTripRequest?.id) {
       // Native Device Push Alert: Bypasses in-app UI into the OS notification center
+      // Includes options to Accept or View More
       if (driverPartner?.nativeNotifs !== false) {
-        notifyIncomingRideRequest(incomingTripRequest);
+        notifyIncomingRideRequest(incomingTripRequest, {
+          onAccept: (tripId) => handleAccept(tripId),
+          onViewMore: (trip) => setSelectedRequestDetails(trip)
+        });
       }
     }
   }, [incomingTripRequest?.id]);
@@ -1465,16 +1480,28 @@ export default function DriverApp() {
   // Accept trip handler
   const handleAccept = (tripId) => {
     triggerTactileHaptic('success');
+    if (selectedRequestDetails?.id === tripId) {
+      setSelectedRequestDetails(null);
+    }
     if (acceptTrip) {
       acceptTrip(tripId);
     }
   };
 
-  // Decline trip handler
+  // Decline trip handler: Retains requests in list until driver explicitly declines
   const handleDecline = (tripId) => {
+    triggerTactileHaptic('tick');
+    setTrips(prev => prev.filter(t => t.id !== tripId));
+    if (incomingTripRequest?.id === tripId) {
+      setIncomingTripRequest(null);
+    }
+    if (selectedRequestDetails?.id === tripId) {
+      setSelectedRequestDetails(null);
+    }
     if (declineTrip) {
       declineTrip(tripId);
     }
+    addToast('Trip request declined and removed from list', 'info');
   };
 
   // 1. Direction to Pickup Location (Redirects to Google Maps / Apple Maps)
@@ -1991,27 +2018,54 @@ export default function DriverApp() {
                         </div>
                       </div>
 
+                      {/* Real Google Maps Total Distance & ETA */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderRadius: '12px',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--line)',
+                          marginBottom: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '13px' }}>📍</span>
+                          <span style={{ fontSize: '12px', fontWeight: 750, color: 'var(--ink)' }}>
+                            Distance: <b>{t.distanceText || '12.4 km'}</b>
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '13px' }}>⏱️</span>
+                          <span style={{ fontSize: '12px', fontWeight: 750, color: '#16A34A' }}>
+                            Est. Time: <b>~{t.durationText || '28 mins'}</b>
+                          </span>
+                        </div>
+                      </div>
+
                       {/* Rider & Transmission info */}
                       <div style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 600, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>👤 {t.rider?.name || 'Customer'} (★ 4.9)</span>
                         <span>·</span>
-                        <span>⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission</span>
+                        <span>⚙️ {t.trans || t.car?.trans || 'Manual'} Transmission</span>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div style={{ display: 'flex', gap: '10px' }}>
+                      {/* Action Buttons: Decline, View More, Accept */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         <button
                           type="button"
                           className="btn"
                           style={{
                             flex: 1,
-                            height: '44px',
+                            height: '42px',
                             borderRadius: '12px',
                             background: '#FFFFFF',
-                            color: '#000000',
-                            border: '1.5px solid #000000',
+                            color: '#DC2626',
+                            border: '1.5px solid #DC2626',
                             fontWeight: 700,
-                            fontSize: '13.5px',
+                            fontSize: '12.5px',
                             cursor: 'pointer'
                           }}
                           onClick={() => handleDecline(t.id)}
@@ -2021,27 +2075,46 @@ export default function DriverApp() {
 
                         <button
                           type="button"
+                          className="btn"
+                          style={{
+                            flex: 1.1,
+                            height: '42px',
+                            borderRadius: '12px',
+                            background: 'var(--field)',
+                            color: 'var(--ink)',
+                            border: '1.5px solid var(--line)',
+                            fontWeight: 750,
+                            fontSize: '12.5px',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setSelectedRequestDetails(t)}
+                        >
+                          View More
+                        </button>
+
+                        <button
+                          type="button"
                           className="btn primary"
                           style={{
-                            flex: 1.8,
-                            height: '44px',
+                            flex: 1.5,
+                            height: '42px',
                             borderRadius: '12px',
                             background: '#000000',
                             color: '#FFFFFF',
                             border: '1.5px solid #000000',
                             fontWeight: 800,
-                            fontSize: '14px',
+                            fontSize: '13px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '6px',
+                            gap: '4px',
                             boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
                           }}
                           onClick={() => handleAccept(t.id)}
                         >
                           <span>Accept Ride</span>
-                          <span style={{ color: '#FFFFFF', fontSize: '15px' }}>✓</span>
+                          <span style={{ color: '#FFFFFF', fontSize: '14px' }}>✓</span>
                         </button>
                       </div>
                     </article>
@@ -3759,106 +3832,173 @@ export default function DriverApp() {
         </button>
       </nav>
 
-      {/* Real-Time Incoming Ride Request Pop-Up Modal */}
-      {(() => {
-        const activeTripReq = incomingTripRequest || (requestedTrips && requestedTrips.length > 0 ? requestedTrips[0] : null);
-        if (!activeTripReq) return null;
+      {/* "View More" Full Details Modal for any trip request in the Trip Requests list */}
+      {selectedRequestDetails && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10005,
+            background: 'rgba(0, 0, 0, 0.65)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            padding: 0
+          }}
+          onClick={() => setSelectedRequestDetails(null)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              background: 'var(--card)',
+              borderTopLeftRadius: '28px',
+              borderTopRightRadius: '28px',
+              padding: '20px 20px 34px',
+              boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
+              borderTop: '2px solid var(--yellow)',
+              animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: '40px', height: '4px', borderRadius: '999px', background: 'var(--line)', margin: '0 auto 16px' }} />
 
-        // Miniature Version of the Request Popup (Banner Style) when minimized
-        if (minimizedRequestTripId === activeTripReq.id) {
-          const fare = Number(activeTripReq.fare) || 600;
-          const driverEarn = Math.round(fare * 0.85);
-          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em', display: 'block' }}>
+                  Trip Details
+                </span>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, margin: '2px 0 0', color: 'var(--ink)' }}>
+                  Total: ₹{Number(selectedRequestDetails.fare) || 600}{' '}
+                  <span style={{ fontSize: '13.5px', color: '#16A34A', fontWeight: 750 }}>
+                    (Earn ₹{Math.round((Number(selectedRequestDetails.fare) || 600) * 0.85)})
+                  </span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRequestDetails(null)}
+                style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--ink)', fontSize: '14px' }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Google Maps Distance & ETA Pill */}
             <div
               style={{
-                position: 'fixed',
-                top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-                left: '12px',
-                right: '12px',
-                maxWidth: '420px',
-                margin: '0 auto',
-                zIndex: 10006,
-                background: 'var(--card)',
-                borderRadius: '18px',
-                padding: '12px 14px',
-                boxShadow: '0 12px 32px rgba(0,0,0,0.3)',
-                border: '1.5px solid var(--yellow, #FFC70A)',
-                animation: 'slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '14px',
+                background: 'var(--field)',
+                marginBottom: '16px',
+                border: '1px solid var(--line)'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', boxShadow: '0 0 0 3px rgba(22, 163, 74, 0.25)', animation: 'pulse 1.2s infinite' }} />
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#16A34A', letterSpacing: '0.04em' }}>
-                    NEW RIDE REQUEST
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '15px' }}>📍</span>
+                <div>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
+                    Total Distance
                   </span>
+                  <b style={{ fontSize: '13px', color: 'var(--ink)', display: 'block' }}>
+                    {selectedRequestDetails.distanceText || '12.4 km'}
+                  </b>
                 </div>
-                <span style={{ fontSize: '15px', fontWeight: 850, color: '#16A34A' }}>
-                  ₹{driverEarn} <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>(Fare ₹{fare})</span>
-                </span>
               </div>
-
-              <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '10px' }}>
-                {activeTripReq.pickup} ➔ {activeTripReq.drop_loc || 'City Route'}
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setMinimizedRequestTripId(null)}
-                  style={{
-                    flex: 1,
-                    height: '38px',
-                    borderRadius: '10px',
-                    background: 'var(--field)',
-                    border: '1px solid var(--line)',
-                    color: 'var(--ink)',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Expand
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAccept(activeTripReq.id)}
-                  style={{
-                    flex: 1.5,
-                    height: '38px',
-                    borderRadius: '10px',
-                    background: '#16A34A',
-                    border: '1px solid #16A34A',
-                    color: '#FFFFFF',
-                    fontSize: '13px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <span>Accept Ride</span>
-                  <span>✓</span>
-                </button>
+              <div style={{ width: '1px', height: '26px', background: 'var(--line)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '15px' }}>⏱️</span>
+                <div>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
+                    Estimated Time (ETA)
+                  </span>
+                  <b style={{ fontSize: '13px', color: '#16A34A', display: 'block' }}>
+                    ~{selectedRequestDetails.durationText || '28 mins'}
+                  </b>
+                </div>
               </div>
             </div>
-          );
-        }
 
-        return (
-          <IncomingRideModal
-            trip={activeTripReq}
-            onAccept={handleAccept}
-            onDecline={handleDecline}
-            onMinimize={() => {
-              setMinimizedRequestTripId(activeTripReq.id);
-              addToast('Request moved to Trip Requests on Dashboard', 'info');
-            }}
-          />
-        );
-      })()}
+            {/* Pickup & Destination */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px', borderRadius: '16px', background: 'var(--field)', marginBottom: '16px', border: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#16A34A', marginTop: '4px', flexShrink: 0 }} />
+                <div>
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
+                    Pickup Location
+                  </span>
+                  <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)' }}>
+                    {selectedRequestDetails.pickup || 'Pickup location'}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#EF4444', marginTop: '4px', flexShrink: 0 }} />
+                <div>
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
+                    Destination
+                  </span>
+                  <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)' }}>
+                    {selectedRequestDetails.drop_loc || 'City Destination'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Info: Transmission & Advance */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ padding: '10px 12px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: '10.5px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>
+                  Transmission
+                </span>
+                <b style={{ fontSize: '13px', color: 'var(--ink)' }}>
+                  {selectedRequestDetails.trans || selectedRequestDetails.car?.trans || 'Manual'}
+                </b>
+              </div>
+              <div style={{ padding: '10px 12px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: '10.5px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>
+                  Advance Paid
+                </span>
+                <b style={{ fontSize: '13px', color: '#16A34A' }}>
+                  ₹{selectedRequestDetails.advance || Math.round((Number(selectedRequestDetails.fare) || 600) * 0.3)} (PhonePe)
+                </b>
+              </div>
+            </div>
+
+            {/* Action Buttons: Decline and Accept */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn"
+                style={{ flex: 1, height: '46px', borderRadius: '14px', background: 'transparent', border: '1.5px solid #DC2626', color: '#DC2626', fontWeight: 700, cursor: 'pointer' }}
+                onClick={() => {
+                  handleDecline(selectedRequestDetails.id);
+                  setSelectedRequestDetails(null);
+                }}
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                style={{ flex: 1.8, height: '46px', borderRadius: '14px', background: '#000000', color: '#FFFFFF', border: 'none', fontWeight: 800, fontSize: '14.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                onClick={() => {
+                  handleAccept(selectedRequestDetails.id);
+                  setSelectedRequestDetails(null);
+                }}
+              >
+                <span>Accept Trip</span>
+                <span>✓</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4-Digit Pickup OTP Verification Modal */}
       {showStartOtpModal && (

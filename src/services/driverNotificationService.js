@@ -89,12 +89,12 @@ async function ensureNativeChannel() {
               actions: [
                 {
                   id: 'accept',
-                  title: 'Accept Ride',
+                  title: 'Accept',
                   foreground: true
                 },
                 {
                   id: 'view',
-                  title: 'View Details',
+                  title: 'View More',
                   foreground: true
                 }
               ]
@@ -348,26 +348,20 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
  * Standardized corporate notification copy without emojis for clean OS presentation.
  */
 
-// 1. Incoming Ride Request Alert (Miniature Popup Card in Notification)
-export function notifyIncomingRideRequest(trip) {
+// 1. Incoming Ride Request Alert (Device Native System Notification)
+export function notifyIncomingRideRequest(trip, callbacks = {}) {
   const pickup = trip?.pickup || trip?.from || 'Customer Pickup';
   const drop = trip?.drop_loc || trip?.drop || trip?.to || 'City Route';
   const fare = Number(trip?.fare) || 600;
   const advance = Number(trip?.advance) || Math.round(fare * 0.3);
-  const catKey = (trip?.cat || trip?.category || 'hourly').toLowerCase();
-  const catNames = {
-    hourly: 'Hourly Chauffeur',
-    daily: 'Full Day Chauffeur',
-    airport: 'Airport Transfer',
-    outstation: 'Outstation Drive',
-    event: 'Event Chauffeur'
-  };
-  const categoryName = catNames[catKey] || 'Chauffeur Ride';
-  const qty = Number(trip?.qty) || (catKey === 'hourly' ? 2 : 1);
-  const duration = `${qty} ${catKey === 'hourly' || catKey === 'event' ? (qty > 1 ? 'Hours' : 'Hour') : (qty > 1 ? 'Days' : 'Day')}`;
+  const distance = trip?.distanceText || '12.4 km';
+  const duration = trip?.durationText || '28 mins';
 
-  const title = `NEW TRIP: ₹${fare} · ${categoryName}`;
-  const body = `📍 Pickup: ${pickup}\n🏁 Drop: ${drop}\n⏱️ Duration: ${duration}\n💰 Total: ₹${fare} (₹${advance} Paid via PhonePe)`;
+  const title = `New Trip Request: ₹${fare}`;
+  const body = `Total Amount: ₹${fare} (₹${advance} Advance Paid)\nPickup: ${pickup}\nDestination: ${drop}\nRoute: ${distance} · ETA: ${duration}`;
+
+  // Auditory chime for incoming dispatch
+  playNativeAlertChime('alert');
 
   return sendDriverNativeNotification(
     title,
@@ -384,8 +378,15 @@ export function notifyIncomingRideRequest(trip) {
         advance,
         pickup,
         drop,
-        duration,
-        category: categoryName
+        distance,
+        duration
+      },
+      onAction: (action) => {
+        if (action === 'accept' && callbacks.onAccept) {
+          callbacks.onAccept(trip?.id);
+        } else if (callbacks.onViewMore) {
+          callbacks.onViewMore(trip);
+        }
       }
     }
   );

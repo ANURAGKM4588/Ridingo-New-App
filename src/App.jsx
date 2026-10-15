@@ -94,6 +94,27 @@ function MainApp() {
   };
 
   React.useEffect(() => {
+    // Proactively request initial permissions for Device Location & Notifications on initial app launch
+    try {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          () => console.info('[UserApp] Location permission active'),
+          (err) => console.log('[UserApp] Location query:', err.message),
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      }
+    } catch (e) {}
+
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(p => {
+          console.info('[UserApp] Notification permission:', p);
+        });
+      }
+    } catch (e) {}
+  }, []);
+
+  React.useEffect(() => {
     const el = document.getElementById('u-content');
     if (el) {
       el.scrollTop = 0;
