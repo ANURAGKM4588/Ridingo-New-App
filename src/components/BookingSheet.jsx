@@ -108,8 +108,15 @@ export default function BookingSheet() {
     userBalance,
     setUtx,
     bookRide,
-    addToast
+    addToast,
+    trips,
+    setActiveTrackingTripId,
+    setLiveTrackingOpen
   } = useApp();
+
+  const activeOngoingTrip = (trips || []).find(t =>
+    ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
+  );
 
   const [cat, setCat] = useState('hourly');
   const [qty, setQty] = useState(3);
@@ -527,6 +534,13 @@ export default function BookingSheet() {
 
   const handleSubmit = () => {
     try {
+      if (activeOngoingTrip) {
+        if (addToast) addToast('You already have an active ride in progress. Complete your ongoing trip before booking another one.', 'warn');
+        setBookingOpen(false);
+        if (setActiveTrackingTripId) setActiveTrackingTripId(activeOngoingTrip.id);
+        if (setLiveTrackingOpen) setLiveTrackingOpen(true);
+        return;
+      }
       const cleanPickup = pickup?.trim();
       if (!cleanPickup) {
         if (addToast) addToast('Please enter pickup location or choose on map', 'alert');
@@ -608,7 +622,62 @@ export default function BookingSheet() {
       <div className="scrim" onClick={handleClose} />
 
       <div className="sheet" role="dialog" aria-modal="true">
-        {isSuccess && confirmedTrip ? (
+        {activeOngoingTrip ? (
+          /* ---------- Blocked View: Active Trip in Progress ---------- */
+          <div className="sheet-scroll-body" style={{ padding: '24px 20px 36px', textAlign: 'center' }}>
+            <div className="grab" />
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.12)', color: '#DC2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: '14px auto 16px' }}>
+              <Icon name="alert-triangle" size={30} />
+            </div>
+            <h3 style={{ fontSize: '19px', fontWeight: 800, color: 'var(--ink)', marginBottom: '8px' }}>Active Trip in Progress</h3>
+            <p style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: 1.5, margin: '0 auto 20px', maxWidth: '320px' }}>
+              Only one trip booking is permitted at a time. Please complete your current ride before booking a new chauffeur.
+            </p>
+
+            <div style={{ background: 'var(--field)', borderRadius: '16px', padding: '14px 16px', textAlign: 'left', marginBottom: '22px', border: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em' }}>
+                  Current Ride
+                </span>
+                <span style={{ fontSize: '11.5px', fontWeight: 750, color: '#16A34A', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A' }} />
+                  {activeOngoingTrip.status.replace('_', ' ').toUpperCase()}
+                </span>
+              </div>
+              <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                📍 {activeOngoingTrip.pickup || 'Pickup'}
+              </div>
+              {activeOngoingTrip.drop_loc && (
+                <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  🏁 {activeOngoingTrip.drop_loc}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn"
+                style={{ flex: 1, height: '46px', borderRadius: '14px', border: '1.5px solid var(--line)', background: 'var(--field)', fontWeight: 700 }}
+                onClick={handleClose}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                style={{ flex: 1.6, height: '46px', borderRadius: '14px', background: '#000000', color: '#FFFFFF', fontWeight: 750 }}
+                onClick={() => {
+                  handleClose();
+                  if (setActiveTrackingTripId) setActiveTrackingTripId(activeOngoingTrip.id);
+                  if (setLiveTrackingOpen) setLiveTrackingOpen(true);
+                }}
+              >
+                View Live Trip
+              </button>
+            </div>
+          </div>
+        ) : isSuccess && confirmedTrip ? (
           /* ---------- Request Sent Confirmation View ---------- */
           <div className="sheet-scroll-body" style={{ padding: '20px 20px 36px' }}>
             <div className="grab" />

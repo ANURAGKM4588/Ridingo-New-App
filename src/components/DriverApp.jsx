@@ -1039,6 +1039,7 @@ export default function DriverApp() {
     completeTrip,
     logoutDriver,
     incomingTripRequest,
+    setIncomingTripRequest,
     acceptTrip,
     declineTrip,
     arrivedAtPickup,
@@ -1107,22 +1108,42 @@ export default function DriverApp() {
     }
   }, [incomingTripRequest?.id]);
 
-  // Real-time synchronization check: ensure pending trip request is captured immediately
+  // Real-time synchronization check: ensure pending trip requests are captured immediately
   useEffect(() => {
-    const syncActiveTrip = () => {
-      const active = realtime.getActiveTripRequest();
-      if (active && (!incomingTripRequest || incomingTripRequest.id !== active.id)) {
-        if (minimizedRequestTripId !== active.id) {
-          setIncomingTripRequest(active);
-          setTrips(prev => {
-            const exists = prev.some(t => t.id === active.id);
-            return exists ? prev : [active, ...prev.filter(t => t.status !== 'requested')];
+    const syncActiveTrips = () => {
+      const activeRequests = typeof realtime.getActiveTripRequests === 'function'
+        ? realtime.getActiveTripRequests()
+        : [realtime.getActiveTripRequest()].filter(Boolean);
+
+      if (Array.isArray(activeRequests) && activeRequests.length > 0) {
+        setTrips(prev => {
+          const mapById = new Map();
+          (prev || []).forEach(t => mapById.set(t.id, t));
+          let changed = false;
+          activeRequests.forEach(req => {
+            if (!mapById.has(req.id)) {
+              mapById.set(req.id, req);
+              changed = true;
+            } else {
+              const existing = mapById.get(req.id);
+              if (existing.status === 'requested' && req.status === 'requested') {
+                mapById.set(req.id, { ...existing, ...req });
+              }
+            }
           });
+          return changed ? Array.from(mapById.values()) : prev;
+        });
+
+        const latest = activeRequests[0];
+        if (latest && (!incomingTripRequest || incomingTripRequest.id !== latest.id)) {
+          if (minimizedRequestTripId !== latest.id) {
+            setIncomingTripRequest(latest);
+          }
         }
       }
     };
-    syncActiveTrip();
-    const interval = setInterval(syncActiveTrip, 1500);
+    syncActiveTrips();
+    const interval = setInterval(syncActiveTrips, 1500);
     return () => clearInterval(interval);
   }, [incomingTripRequest?.id, minimizedRequestTripId]);
 
@@ -1435,19 +1456,45 @@ export default function DriverApp() {
     imt: true
   };
 
-  const requestedTrips = trips.filter(t => {
-    if (t.status !== 'requested') return false;
-    const cat = t.cat || 'hourly';
-    // Exclude trip requests if driver explicitly toggled off this service
-    if (driverServices[cat] === false) return false;
+  const getTripTimestamp = (t) => {
+    if (t.when_ts) return Number(t.when_ts);
+    if (t.createdAt) {
+      const parsed = new Date(t.createdAt).getTime();
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    const match = String(t.id || '').match(/\d{10,13}/);
+    if (match) return Number(match[0]);
+    return 0;
+  };
 
-    // Filter by gear transmission capability
-    const tripTrans = (t.trans || t.car?.trans || 'Automatic').toLowerCase();
-    if (tripTrans.includes('man') && driverTransmissions.manual === false) return false;
-    if (tripTrans.includes('auto') && driverTransmissions.automatic === false) return false;
-    if (tripTrans.includes('imt') && driverTransmissions.imt === false) return false;
-    return true;
-  });
+  const formatRequestTime = (ts) => {
+    if (!ts) return 'Just now';
+    const timeNum = typeof ts === 'number' ? ts : (new Date(ts).getTime() || 0);
+    if (!timeNum) return 'Just now';
+    const diffSec = Math.max(0, Math.floor((Date.now() - timeNum) / 1000));
+    if (diffSec < 45) return 'Just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return new Date(timeNum).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const requestedTrips = (trips || [])
+    .filter(t => {
+      if (t.status !== 'requested') return false;
+      const cat = t.cat || 'hourly';
+      // Exclude trip requests if driver explicitly toggled off this service
+      if (driverServices[cat] === false) return false;
+
+      // Filter by gear transmission capability
+      const tripTrans = (t.trans || t.car?.trans || 'Automatic').toLowerCase();
+      if (tripTrans.includes('man') && driverTransmissions.manual === false) return false;
+      if (tripTrans.includes('auto') && driverTransmissions.automatic === false) return false;
+      if (tripTrans.includes('imt') && driverTransmissions.imt === false) return false;
+      return true;
+    })
+    .sort((a, b) => getTripTimestamp(b) - getTripTimestamp(a));
   const upcomingTrips = trips.filter(t => {
     if (![
       'accepted',
@@ -1927,6 +1974,9 @@ export default function DriverApp() {
                           />
                           <span style={{ fontSize: '11.5px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#16A34A' }}>
                             LIVE REQUEST
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)', background: 'var(--field)', padding: '2px 8px', borderRadius: '6px' }}>
+                            {formatRequestTime(t.when_ts || t.createdAt)}
                           </span>
                         </div>
 

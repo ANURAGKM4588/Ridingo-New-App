@@ -320,12 +320,12 @@ export function AppProvider({ children }) {
           return Array.from(mapById.values());
         });
 
-        // Check for latest active 'requested' trip created within 15 minutes
-        const activeReq = mapped.find(t => t.status === 'requested' && Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000);
-        if (activeReq) {
+        // Check for active 'requested' trips created within 15 minutes
+        const activeReqs = mapped.filter(t => t.status === 'requested' && Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000);
+        if (activeReqs.length > 0) {
           setIncomingTripRequest(prev => {
-            if (!prev || prev.id !== activeReq.id) {
-              return activeReq;
+            if (!prev || !activeReqs.some(r => r.id === prev.id)) {
+              return activeReqs[0];
             }
             return prev;
           });
@@ -357,7 +357,10 @@ export function AppProvider({ children }) {
     const unbindReq = realtime.on('TRIP_REQUESTED', (newTrip) => {
       setTrips(prev => {
         const exists = prev.some(t => t.id === newTrip.id);
-        return exists ? prev : [newTrip, ...prev.filter(t => t.status !== 'requested')];
+        if (exists) {
+          return prev.map(t => (t.id === newTrip.id ? { ...t, ...newTrip } : t));
+        }
+        return [newTrip, ...prev]; // Preserve all existing requests!
       });
       setIncomingTripRequest(newTrip);
       setDriverOnline(true);
@@ -388,7 +391,7 @@ export function AppProvider({ children }) {
                     if (exists) {
                       return prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj } : t));
                     }
-                    return [tripObj, ...prev.filter(t => t.status !== 'requested')];
+                    return [tripObj, ...prev]; // Preserve all existing requests!
                   });
 
                   if (tripObj.status === 'requested') {
@@ -441,7 +444,7 @@ export function AppProvider({ children }) {
           return t;
         })
       );
-      setIncomingTripRequest(null);
+      setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
       addNotification(
         'Chauffeur Assigned',
         `${driverName} is on the way to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
@@ -515,7 +518,7 @@ export function AppProvider({ children }) {
     });
 
     const unbindDec = realtime.on('TRIP_DECLINED', ({ tripId }) => {
-      setIncomingTripRequest(null);
+      setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
     });
 
     const unbindComp = realtime.on('TRIP_COMPLETED', ({ tripId }) => {
@@ -870,6 +873,18 @@ export function AppProvider({ children }) {
   };
 
   const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, phonepePaymentId, schedule) => {
+    // Strictly restrict: Only allow one active trip at a time!
+    const activeTrip = (trips || []).find(t =>
+      ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
+    );
+    if (activeTrip) {
+      addToast('You already have an active ride in progress. Complete your ongoing trip before booking another one.', 'warn');
+      setBookingOpen(false);
+      setLiveTrackingOpen(true);
+      setActiveTrackingTripId(activeTrip.id);
+      return null;
+    }
+
     const tripId = 'TRP-' + Math.floor(1000 + Math.random() * 9000);
     const pId = String(phonepePaymentId || ('pay_ppe_' + Date.now().toString(36)));
     const safeFare = Number(fare) || 600;
@@ -984,8 +999,11 @@ export function AppProvider({ children }) {
     };
 
     setUtx(prev => [newTx, ...(Array.isArray(prev) ? prev : [])]);
-    // Purge any old 'requested' trips so only the active new booking is routed
-    setTrips(prev => [newTrip, ...(Array.isArray(prev) ? prev.filter(t => t.status !== 'requested') : [])]);
+    // Retain all existing requests and prepend new booking
+    setTrips(prev => {
+      const arr = Array.isArray(prev) ? prev : [];
+      return [newTrip, ...arr.filter(t => t.id !== newTrip.id)];
+    });
     setIncomingTripRequest(newTrip);
     setActiveTrackingTripId(newTrip.id);
 
@@ -1032,7 +1050,7 @@ export function AppProvider({ children }) {
         return t;
       })
     );
-    setIncomingTripRequest(null);
+    setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
 
     // Notify User App in real time
     addNotification(
@@ -1175,7 +1193,7 @@ export function AppProvider({ children }) {
   };
 
   const declineTrip = (tripId) => {
-    setIncomingTripRequest(null);
+    setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
     setTrips(prev => prev.filter(t => t.id !== tripId));
     setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
     realtime.declineRide(tripId);

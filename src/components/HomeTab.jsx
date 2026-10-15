@@ -126,7 +126,20 @@ export default function HomeTab() {
   const rawFirst = user?.firstName || (user?.name ? user.name.trim().split(' ')[0] : 'there');
   const first = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : 'there';
 
+  const userActiveTrip = requestedTrip || isAccepted || inProg;
+
+  const ensureNoActiveTripOrWarn = () => {
+    if (userActiveTrip) {
+      if (addToast) addToast('You already have an active ride in progress. Please complete your ongoing trip before booking a new one.', 'warn');
+      if (setActiveTrackingTripId) setActiveTrackingTripId(userActiveTrip.id);
+      setLiveTrackingOpen(true);
+      return false;
+    }
+    return true;
+  };
+
   const openBooking = (cat) => {
+    if (!ensureNoActiveTripOrWarn()) return;
     setBookingCategory(cat);
     setBookingOpen(true);
   };
@@ -148,6 +161,10 @@ export default function HomeTab() {
   };
 
   const handlePickPlace = (placeTitle) => {
+    if (!ensureNoActiveTripOrWarn()) {
+      setSearchOpen(false);
+      return;
+    }
     const isAirport = placeTitle.toLowerCase().includes('airport');
     setBookingCategory(isAirport ? 'airport' : 'hourly');
     setBookingDestination(placeTitle);
@@ -156,6 +173,10 @@ export default function HomeTab() {
   };
 
   const handlePickTrip = (t) => {
+    if (!ensureNoActiveTripOrWarn()) {
+      setSearchOpen(false);
+      return;
+    }
     setBookingCategory(t.cat || 'hourly');
     setBookingDestination(t.drop_loc);
     setBookingOpen(true);
@@ -172,12 +193,20 @@ export default function HomeTab() {
   };
 
   const handlePickService = (srv) => {
+    if (!ensureNoActiveTripOrWarn()) {
+      setSearchOpen(false);
+      return;
+    }
     setBookingCategory(srv.cat);
     setBookingOpen(true);
     setSearchOpen(false);
   };
 
   const handleMapPick = (addr) => {
+    if (!ensureNoActiveTripOrWarn()) {
+      setMapModalOpen(false);
+      return;
+    }
     setBookingCategory('hourly');
     setBookingDestination(addr);
     setBookingOpen(true);

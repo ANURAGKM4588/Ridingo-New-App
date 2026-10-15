@@ -9,6 +9,7 @@
 import { supabase } from '../lib/supabase';
 
 const ACTIVE_TRIP_KEY = 'ridingo_active_trip_request';
+const ACTIVE_TRIP_REQUESTS_KEY = 'ridingo_active_trip_requests_v1';
 const SHARED_TRIPS_KEY = 'ridingo_shared_trips';
 const REALTIME_EVENT_KEY = 'ridingo_realtime_event';
 
@@ -180,17 +181,38 @@ class RealtimeHub {
   _persistActiveTrip(trip) {
     if (typeof localStorage === 'undefined' || !trip) return;
     try {
-      const record = {
-        trip,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + 15 * 60 * 1000 // 15 minutes validity
-      };
-      localStorage.setItem(ACTIVE_TRIP_KEY, JSON.stringify(record));
+      const now = Date.now();
+      const expiresAt = now + 15 * 60 * 1000; // 15 minutes validity
 
-      // Also append to shared trips cache
+      // 1. Single active trip backwards compatibility
+      const singleRecord = {
+        trip,
+        timestamp: now,
+        expiresAt
+      };
+      localStorage.setItem(ACTIVE_TRIP_KEY, JSON.stringify(singleRecord));
+
+      // 2. Persistent list of multiple active requests
+      const rawReqs = localStorage.getItem(ACTIVE_TRIP_REQUESTS_KEY);
+      let reqList = [];
+      if (rawReqs) {
+        try {
+          reqList = JSON.parse(rawReqs);
+        } catch (e) {
+          reqList = [];
+        }
+      }
+      // Keep unexpired unaccepted requests and merge/prepend current trip
+      reqList = Array.isArray(reqList)
+        ? reqList.filter(r => r?.trip?.id && r.trip.id !== trip.id && (r.expiresAt ? now < r.expiresAt : true))
+        : [];
+      reqList.unshift({ trip, timestamp: now, expiresAt });
+      localStorage.setItem(ACTIVE_TRIP_REQUESTS_KEY, JSON.stringify(reqList.slice(0, 50)));
+
+      // 3. Shared trips cache - retain all requests without purging other pending requests!
       const raw = localStorage.getItem(SHARED_TRIPS_KEY);
       let list = raw ? JSON.parse(raw) : [];
-      list = [trip, ...list.filter(t => t.id !== trip.id && t.status !== 'requested')].slice(0, 20);
+      list = [trip, ...list.filter(t => t.id !== trip.id)].slice(0, 30);
       localStorage.setItem(SHARED_TRIPS_KEY, JSON.stringify(list));
     } catch (e) {}
   }
@@ -198,19 +220,76 @@ class RealtimeHub {
   _clearActiveTrip(tripId) {
     if (typeof localStorage === 'undefined') return;
     try {
+      // 1. Clear or update active requests list
+      let remainingActive = [];
+      const rawReqs = localStorage.getItem(ACTIVE_TRIP_REQUESTS_KEY);
+      if (rawReqs) {
+        try {
+          const reqList = JSON.parse(rawReqs);
+          if (Array.isArray(reqList)) {
+            remainingActive = tripId ? reqList.filter(r => r?.trip?.id !== tripId) : [];
+            localStorage.setItem(ACTIVE_TRIP_REQUESTS_KEY, JSON.stringify(remainingActive));
+          }
+        } catch (e) {}
+      }
+
+      // 2. Clear or advance single ACTIVE_TRIP_KEY
       const raw = localStorage.getItem(ACTIVE_TRIP_KEY);
       if (raw) {
         const record = JSON.parse(raw);
         if (!tripId || record?.trip?.id === tripId) {
-          localStorage.removeItem(ACTIVE_TRIP_KEY);
+          // If other active requests remain, point to the latest one
+          const nextLatest = remainingActive.find(r => r?.trip?.status === 'requested');
+          if (nextLatest) {
+            localStorage.setItem(ACTIVE_TRIP_KEY, JSON.stringify(nextLatest));
+          } else {
+            localStorage.removeItem(ACTIVE_TRIP_KEY);
+          }
+        }
+      }
+
+      // 3. Update status in shared trips cache
+      if (tripId) {
+        const rawShared = localStorage.getItem(SHARED_TRIPS_KEY);
+        if (rawShared) {
+          try {
+            let list = JSON.parse(rawShared);
+            if (Array.isArray(list)) {
+              list = list.map(t => (t.id === tripId ? { ...t, status: 'accepted' } : t));
+              localStorage.setItem(SHARED_TRIPS_KEY, JSON.stringify(list));
+            }
+          } catch (e) {}
         }
       }
     } catch (e) {}
   }
 
+  getActiveTripRequests() {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      const now = Date.now();
+      const raw = localStorage.getItem(ACTIVE_TRIP_REQUESTS_KEY);
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const valid = list
+            .filter(r => r?.trip && (!r.expiresAt || now < r.expiresAt) && r.trip.status === 'requested')
+            .map(r => r.trip);
+          if (valid.length > 0) return valid;
+        }
+      }
+      const single = this.getActiveTripRequest();
+      return single ? [single] : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   getActiveTripRequest() {
     if (typeof localStorage === 'undefined') return null;
     try {
+      const requests = this.getActiveTripRequests();
+      if (requests.length > 0) return requests[0];
       const raw = localStorage.getItem(ACTIVE_TRIP_KEY);
       if (!raw) return null;
       const record = JSON.parse(raw);

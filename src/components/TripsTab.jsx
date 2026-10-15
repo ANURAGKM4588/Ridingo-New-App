@@ -155,6 +155,15 @@ export default function TripsTab() {
             className="btn primary"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '999px', fontSize: '13.5px', fontWeight: 750, margin: '0 auto' }}
             onClick={() => {
+              const activeTrip = (trips || []).find(t =>
+                ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
+              );
+              if (activeTrip) {
+                if (addToast) addToast('You already have an active ride in progress. Complete your ongoing trip before booking another one.', 'warn');
+                if (setActiveTrackingTripId) setActiveTrackingTripId(activeTrip.id);
+                setLiveTrackingOpen(true);
+                return;
+              }
               setBookingCategory('hourly');
               setBookingOpen(true);
             }}
