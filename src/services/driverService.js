@@ -298,6 +298,39 @@ export async function registerDriverProfile(driverData) {
     }
   }
 
+  // Dispatch email notification alert to team.ridingo@gmail.com
+  try {
+    const alertRecord = {
+      recipient: 'team.ridingo@gmail.com',
+      subject: `New Driver KYC Registration Request: ${newDriver.name} (${newDriver.city})`,
+      driverId: newDriver.id,
+      name: newDriver.name,
+      phone: newDriver.phone,
+      email: newDriver.email,
+      city: newDriver.city,
+      pincode: newDriver.pincode,
+      dlNumber: newDriver.dlNumber,
+      aadharNumber: newDriver.aadharNumber,
+      status: 'pending',
+      timestamp: newDriver.registeredAt
+    };
+    const notifs = JSON.parse(localStorage.getItem('ridingo_admin_notifications') || '[]');
+    notifs.unshift(alertRecord);
+    localStorage.setItem('ridingo_admin_notifications', JSON.stringify(notifs.slice(0, 50)));
+
+    if (supabase && typeof supabase.from === 'function') {
+      supabase.from('notifications').insert({
+        user_id: 'team.ridingo@gmail.com',
+        type: 'driver_registration_alert',
+        title: alertRecord.subject,
+        message: `New chauffeur partner application from ${newDriver.name} (${newDriver.phone}, ${newDriver.city}). Review pending KYC document proofs.`,
+        created_at: newDriver.registeredAt
+      }).then(() => {}).catch(() => {});
+    }
+  } catch (alertErr) {
+    console.warn('Admin notification notice:', alertErr);
+  }
+
   return newDriver;
 }
 

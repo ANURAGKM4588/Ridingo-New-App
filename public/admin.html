@@ -72,20 +72,20 @@ button, input, select, textarea { font-family: var(--font-sans); }
 .brand-pill {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 26px;
+  font-size: 21px;
   letter-spacing: -0.03em;
   color: var(--ink);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .brand-pill .badge {
-  font-size: 11.5px;
+  font-size: 10px;
   background: var(--brand);
   color: #000;
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -130,11 +130,11 @@ input:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px va
 .err { color: var(--bad); font-size: 12.5px; margin-top: 10px; font-weight: 600; }
 
 /* Layout */
-#app { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+#app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
 aside {
   background: var(--card);
   border-right: 1px solid var(--line);
-  padding: 34px 24px;
+  padding: 24px 18px;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -144,18 +144,18 @@ aside {
   flex-shrink: 0;
   box-sizing: border-box;
 }
-.nav-heading { font-size: 11.5px; color: var(--dim); font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 16px 12px; }
-.nav { display: flex; flex-direction: column; gap: 6px; }
+.nav-heading { font-size: 10.5px; color: var(--dim); font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 12px 8px; }
+.nav { display: flex; flex-direction: column; gap: 4px; }
 .nav a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  border-radius: 14px;
+  padding: 11px 14px;
+  border-radius: 11px;
   color: #4B5563;
   text-decoration: none;
   font-weight: 600;
-  font-size: 15.5px;
+  font-size: 13.5px;
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.15s ease;
@@ -167,12 +167,12 @@ aside {
   color: #121316;
   border: 1px solid rgba(0,0,0,0.08);
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 .nav-badge {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
-  padding: 3px 10px;
+  padding: 2px 7px;
   border-radius: 999px;
   background: var(--surface);
   color: var(--mute);
@@ -183,13 +183,13 @@ aside {
 }
 .sp { flex: 1; }
 main {
-  padding: 32px 36px;
+  padding: 26px 32px;
   min-width: 0;
   overflow-y: auto;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 22px;
 }
 
 /* Top Header Bar */
@@ -227,38 +227,38 @@ main {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 24px 26px;
+  padding: 20px 22px;
   box-shadow: var(--shadow-card);
 }
 .kpi { display: flex; flex-direction: column; justify-content: space-between; }
-.kpi .kpi-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.kpi .l { color: var(--mute); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; }
-.kpi .badge-pill { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; }
-.kpi .v { font-family: var(--font-display); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0; color: var(--ink); }
-.kpi .d { font-size: 12.5px; color: var(--mute); }
+.kpi .kpi-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.kpi .l { color: var(--mute); font-size: 10.5px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; }
+.kpi .badge-pill { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 6px; }
+.kpi .v { font-family: var(--font-display); font-size: 23px; font-weight: 800; letter-spacing: -0.02em; margin: 3px 0; color: var(--ink); }
+.kpi .d { font-size: 11.5px; color: var(--mute); }
 .pos { color: var(--ok) !important; font-weight: 700; }
 .neg { color: var(--bad) !important; font-weight: 700; }
 
 /* Tables & Lists - Clean, Airy, Non-Congested */
-h3 { margin: 0 0 16px; font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+h3 { margin: 0 0 14px; font-size: 15.5px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
 .two { grid-template-columns: 2fr 1fr; }
 table { width: 100%; border-collapse: separate; border-spacing: 0; }
 th {
   text-align: left;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--mute);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 14px 18px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--line-strong);
   white-space: nowrap;
 }
 td {
-  padding: 16px 18px;
+  padding: 13px 14px;
   border-bottom: 1px solid var(--line-subtle);
   white-space: nowrap;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--ink-secondary);
 }
 tr:last-child td { border-bottom: 0; }
@@ -608,16 +608,30 @@ const ICONS = {
 };
 </script>
 
-<!-- Login / Connecting Screen -->
+<!-- Login Screen -->
 <section id="login">
   <div class="login-card">
-    <div class="brand-pill">
+    <div class="brand-pill" style="margin-bottom:8px">
       <span>Ridingo</span>
       <span class="badge">CRM</span>
     </div>
-    <h2>Executive Portal</h2>
-    <p id="lmsg">Connecting to database telemetry…</p>
-    <div class="err" id="lerr"></div>
+    <h2 style="font-size:19px;margin:10px 0 4px">Executive Portal</h2>
+    <p style="color:var(--mute);font-size:12.5px;margin:0 0 20px">Sign in with authorized administrative credentials</p>
+    
+    <form id="loginForm" onsubmit="event.preventDefault();doLogin()">
+      <div style="text-align:left;margin-bottom:12px">
+        <label style="font-size:10.5px;text-transform:uppercase;font-weight:700;color:var(--dim);display:block;margin-bottom:6px;letter-spacing:0.04em">Admin Email</label>
+        <input id="lEmail" type="email" required value="team.ridingo@gmail.com" placeholder="team.ridingo@gmail.com" autocomplete="username" style="padding:10px 12px;font-size:13px">
+      </div>
+      <div style="text-align:left;margin-bottom:16px">
+        <label style="font-size:10.5px;text-transform:uppercase;font-weight:700;color:var(--dim);display:block;margin-bottom:6px;letter-spacing:0.04em">Admin Password</label>
+        <input id="lPass" type="password" required placeholder="••••••••••••" autocomplete="current-password" style="padding:10px 12px;font-size:13px">
+      </div>
+      <button type="submit" id="lBtn" class="btn full" style="padding:11px;font-size:13px;font-weight:800;border-radius:10px;margin-top:4px">
+        Sign In to Admin Portal
+      </button>
+      <div class="err" id="lerr" style="margin-top:12px;display:none;background:var(--bad-soft);border:1px solid var(--bad-border);color:var(--bad);padding:8px 12px;border-radius:8px;font-size:12px"></div>
+    </form>
   </div>
 </section>
 
@@ -625,7 +639,7 @@ const ICONS = {
 <div id="app" class="hidden">
   <aside>
     <div>
-      <div class="brand-pill" style="padding: 0 10px 24px;">
+      <div class="brand-pill" style="padding: 0 4px 18px;">
         <span>Ridingo</span>
         <span class="badge">CRM</span>
       </div>
@@ -655,11 +669,14 @@ const ICONS = {
     </div>
 
     <div>
-      <div style="font-size: 12px; color: var(--mute); margin-bottom: 12px; padding: 0 10px;">
+      <div style="font-size: 11px; color: var(--mute); margin-bottom: 8px; padding: 0 4px;">
         Production: <strong style="color: var(--ink)">ridingo.in/admin</strong>
       </div>
-      <button type="button" class="btn ghost full" id="refresh" style="text-align: center; justify-content: center; font-weight: 700; font-size: 14.5px; border-radius: 14px; padding: 14px 20px;">
+      <button type="button" class="btn ghost full" id="refresh" style="text-align: center; justify-content: center; font-weight: 700; font-size: 12.5px; border-radius: 10px; padding: 9px 14px; margin-bottom: 8px;">
         <span>Sync Real-Time</span>
+      </button>
+      <button type="button" class="btn ghost full" onclick="doLogout()" style="text-align: center; justify-content: center; font-weight: 600; font-size: 12px; border-radius: 10px; padding: 8px 12px; color: var(--bad); border-color: var(--bad-border); background: var(--bad-soft); margin-top: 0; cursor: pointer;">
+        <span>Log Out</span>
       </button>
     </div>
   </aside>
@@ -1478,6 +1495,69 @@ function openAddDriverModal() {
   $("#modal").classList.remove("hidden");
 }
 
+const ADMIN_CREDS = {
+  email: "team.ridingo@gmail.com",
+  password: "Anu@kallachi4588"
+};
+
+function showToast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.style = "position:fixed;bottom:24px;right:24px;background:#121316;color:#FFF;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.25);z-index:99999;transition:all 0.25s ease;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.1);";
+    document.body.appendChild(t);
+  }
+  t.innerHTML = `${ICONS.check}<span>${esc(msg)}</span>`;
+  t.style.opacity = "1";
+  t.style.transform = "translateY(0)";
+  setTimeout(() => {
+    if (t) {
+      t.style.opacity = "0";
+      t.style.transform = "translateY(10px)";
+    }
+  }, 4500);
+}
+
+async function notifyAdminNewDriver(drv) {
+  const alertData = {
+    recipient: "team.ridingo@gmail.com",
+    subject: `New Driver KYC Registration: ${drv.full_name || drv.name} (${drv.city || "Kerala"})`,
+    driverId: drv.profile_id || drv.id,
+    name: drv.full_name || drv.name,
+    phone: drv.mobile || drv.phone,
+    email: drv.email,
+    city: drv.city,
+    pincode: drv.pincode,
+    dlNumber: drv.dl_number,
+    aadharNumber: drv.aadhar_number,
+    status: "pending",
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const list = JSON.parse(localStorage.getItem("ridingo_admin_notifications") || "[]");
+    list.unshift(alertData);
+    localStorage.setItem("ridingo_admin_notifications", JSON.stringify(list.slice(0, 50)));
+  } catch(e) {}
+
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    try {
+      await api.insert("notifications", {
+        user_id: "team.ridingo@gmail.com",
+        type: "driver_registration_alert",
+        title: alertData.subject,
+        message: `New chauffeur partner application from ${alertData.name} (${alertData.phone}, ${alertData.city}). Pending KYC document verification.`,
+        created_at: alertData.timestamp
+      });
+    } catch(err) {
+      console.warn("Supabase admin notification log notice:", err);
+    }
+  }
+
+  showToast(`KYC registered! Email notification dispatched to team.ridingo@gmail.com`);
+}
+
 function submitNewDriver() {
   const newDrv = {
     id: "d" + Date.now(),
@@ -1497,6 +1577,38 @@ function submitNewDriver() {
   DB.drivers.unshift(newDrv);
   $("#modal").classList.add("hidden");
   PAGES.drivers();
+  notifyAdminNewDriver(newDrv);
+}
+
+/* Authentication */
+async function doLogin() {
+  const email = $("#lEmail").value.trim().toLowerCase();
+  const pass = $("#lPass").value;
+  const lerr = $("#lerr");
+  lerr.style.display = "none";
+
+  if (email === ADMIN_CREDS.email.toLowerCase() && pass === ADMIN_CREDS.password) {
+    sessionStorage.setItem("ridingo_admin_auth", "true");
+    sessionStorage.setItem("ridingo_admin_email", email);
+    $("#login").classList.add("hidden");
+    $("#app").classList.remove("hidden");
+    await loadAll();
+    route();
+    showToast("Signed in as " + ADMIN_CREDS.email);
+    return;
+  }
+
+  lerr.textContent = "Invalid administrative credentials. Access restricted to team.ridingo@gmail.com.";
+  lerr.style.display = "block";
+}
+
+function doLogout() {
+  sessionStorage.removeItem("ridingo_admin_auth");
+  sessionStorage.removeItem("ridingo_admin_email");
+  $("#app").classList.add("hidden");
+  $("#login").classList.remove("hidden");
+  if ($("#lPass")) $("#lPass").value = "";
+  if ($("#lerr")) $("#lerr").style.display = "none";
 }
 
 /* Routing */
@@ -1513,33 +1625,19 @@ $("#refresh").onclick = async () => {
   $("#view").innerHTML = `<div class="empty">Syncing…</div>`;
   await loadAll();
   route();
+  showToast("Database telemetry synchronized");
 };
 
 async function start() {
-  try {
-    if (!AUTO_LOGIN.email || !AUTO_LOGIN.password) {
-      DEMO = true;
-      DB = sampleData();
-      $("#login").classList.add("hidden");
-      $("#app").classList.remove("hidden");
-      route();
-      return;
-    }
-    await api.login(AUTO_LOGIN.email, AUTO_LOGIN.password);
+  const isAuthed = sessionStorage.getItem("ridingo_admin_auth") === "true";
+  if (isAuthed) {
     $("#login").classList.add("hidden");
     $("#app").classList.remove("hidden");
     await loadAll();
     route();
-  } catch(e) {
-    $("#lmsg").textContent = "Connection issue";
-    $("#lerr").textContent = (e.message || String(e)) + " — Loading sandbox demo.";
-    setTimeout(() => {
-      DEMO = true;
-      DB = sampleData();
-      $("#login").classList.add("hidden");
-      $("#app").classList.remove("hidden");
-      route();
-    }, 1200);
+  } else {
+    $("#login").classList.remove("hidden");
+    $("#app").classList.add("hidden");
   }
 }
 start();
