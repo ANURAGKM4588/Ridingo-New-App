@@ -801,13 +801,6 @@ export default function BookingSheet() {
                 value={pickup}
                 onChange={e => handlePickupChange(e.target.value)}
                 onInput={e => handlePickupChange(e.target.value)}
-                onKeyUp={e => handlePickupChange(e.target.value)}
-                onFocus={() => {
-                  setActiveSuggestField('pickup');
-                  if (pickup && pickup.trim()) {
-                    searchGooglePlaces(pickup, (results) => setPickupSuggestions(results || []));
-                  }
-                }}
                 autoComplete="off"
               />
               <button
@@ -823,7 +816,7 @@ export default function BookingSheet() {
               </button>
 
               {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'pickup' && (
+              {activeSuggestField === 'pickup' && Boolean(pickup?.trim()) && (
                 <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
                   {pickupSuggestions.length > 0 ? (
                     <>
@@ -918,13 +911,6 @@ export default function BookingSheet() {
                 value={drop}
                 onChange={e => handleDropChange(e.target.value)}
                 onInput={e => handleDropChange(e.target.value)}
-                onKeyUp={e => handleDropChange(e.target.value)}
-                onFocus={() => {
-                  setActiveSuggestField('drop');
-                  if (drop && drop.trim()) {
-                    searchGooglePlaces(drop, (results) => setDropSuggestions(results || []));
-                  }
-                }}
                 autoComplete="off"
               />
               <button
@@ -940,7 +926,7 @@ export default function BookingSheet() {
               </button>
 
               {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'drop' && (
+              {activeSuggestField === 'drop' && Boolean(drop?.trim()) && (
                 <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
                   {dropSuggestions.length > 0 ? (
                     <>
