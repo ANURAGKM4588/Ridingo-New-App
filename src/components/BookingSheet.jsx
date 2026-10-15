@@ -110,11 +110,13 @@ export default function BookingSheet() {
     bookRide,
     addToast,
     trips,
+    isUserTrip,
     setActiveTrackingTripId,
     setLiveTrackingOpen
   } = useApp();
 
   const activeOngoingTrip = (trips || []).find(t =>
+    isUserTrip(t, user) &&
     ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
   );
 

@@ -64,6 +64,7 @@ export default function HomeTab() {
     unotes,
     setUTab,
     addToast,
+    isUserTrip,
     onboardingOpen
   } = useApp();
 
@@ -97,21 +98,21 @@ export default function HomeTab() {
 
   const requestedTrip = (trips || []).find(t => {
     if (t.status !== 'requested') return false;
-    if (user?.phone && t.rider?.phone && t.rider.phone !== user.phone) return false;
+    if (!isUserTrip(t, user)) return false;
     const age = Date.now() - (Number(t.when_ts) || 0);
     return age >= 0 && age < 15 * 60 * 1000;
   });
 
   const isAccepted = (trips || []).find(t => {
     if (!['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) return false;
-    if (user?.phone && t.rider?.phone && t.rider.phone !== user.phone) return false;
+    if (!isUserTrip(t, user)) return false;
     const age = Date.now() - (Number(t.when_ts) || 0);
     return age >= 0 && age < 12 * 60 * 60 * 1000;
   });
 
   const inProg = (trips || []).find(t => {
     if (!['inprogress', 'ending_otp'].includes(t.status)) return false;
-    if (user?.phone && t.rider?.phone && t.rider.phone !== user.phone) return false;
+    if (!isUserTrip(t, user)) return false;
     const age = Date.now() - (Number(t.when_ts) || 0);
     return age >= 0 && age < 24 * 60 * 60 * 1000;
   });

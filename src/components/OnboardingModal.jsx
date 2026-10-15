@@ -5,6 +5,7 @@ import Icon from './Icon';
 import { sendOtp, verifyOtp, formatIndianPhone } from '../services/authOtpService';
 import { performNativeGoogleSignIn } from '../services/nativeGoogleAuth';
 import { supabase } from '../lib/supabase';
+import { checkUserExists, registerUserProfile, getUserProfileByLogin, generateRidingoUserId } from '../services/userService';
 
 export default function OnboardingModal() {
   const { onboardingOpen, setOnboardingOpen, user, loginDemo, loginWithDetails, addToast, openLegal } = useApp();
@@ -184,7 +185,7 @@ export default function OnboardingModal() {
     handleSendOtp(otpMethod);
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (!agreedTerms) {
       setTermsWarning(true);
@@ -209,6 +210,25 @@ export default function OnboardingModal() {
       addToast('Please enter a valid email address', 'warn');
       return;
     }
+
+    // Check if user already exists in database or local registry
+    setSendingOtp(true);
+    setOtpError(null);
+    try {
+      const check = await checkUserExists({ phone: cleanPhone, email: email.trim() });
+      if (check.exists) {
+        setSendingOtp(false);
+        const warnMsg = 'You are already registered with this mobile number/email. Please log in.';
+        addToast(warnMsg, 'warn');
+        setOtpError(warnMsg);
+        setActiveTab('signin');
+        return;
+      }
+    } catch (checkErr) {
+      console.warn('Check user exists error:', checkErr);
+    }
+    setSendingOtp(false);
+
     setOtpMethod('phone');
     handleSendOtp('phone');
   };
@@ -295,8 +315,45 @@ export default function OnboardingModal() {
       });
       setVerifyingOtp(false);
       setOtpStatus('success');
-      setVerifiedUserObj(res.user);
 
+      let resolvedUser = res.user;
+
+      if (activeTab === 'register') {
+        const regRes = await registerUserProfile({
+          firstName,
+          lastName,
+          phone,
+          email,
+          emergencyPhone
+        });
+        if (regRes.alreadyRegistered) {
+          addToast(regRes.message, 'warn');
+          setActiveTab('signin');
+          setStep('form');
+          return;
+        }
+        if (regRes.user) {
+          resolvedUser = { ...(resolvedUser || {}), ...regRes.user };
+        }
+      } else {
+        // Sign-in mode: retrieve user profile or create fresh unique ID
+        const userProfile = await getUserProfileByLogin({
+          identifier: currentId,
+          supabaseUser: res.user
+        });
+        if (userProfile) {
+          resolvedUser = { ...(resolvedUser || {}), ...userProfile };
+          if (userProfile.name) {
+            const parts = userProfile.name.split(' ');
+            if (!firstName) setFirstName(parts[0] || '');
+            if (!lastName) setLastName(parts.slice(1).join(' ') || '');
+          }
+          if (userProfile.email && !email) setEmail(userProfile.email);
+          if (userProfile.phone && !phone) setPhone(userProfile.phone);
+        }
+      }
+
+      setVerifiedUserObj(resolvedUser);
       addToast('Verification successful!', 'check');
 
       // Smooth delay to showcase the green glow feedback before transitioning
@@ -352,8 +409,11 @@ export default function OnboardingModal() {
     const fullName = `${finalFirst} ${finalLast}`.trim();
     const finalPhone = (otpMethod === 'phone' ? phone : (regMobile || phone)).trim();
     const finalEmergency = emergencyPhone.trim();
+    const uniqueUserId = verifiedUserObj?.id || verifiedUserObj?.userId || generateRidingoUserId();
 
     loginWithDetails({
+      id: uniqueUserId,
+      userId: uniqueUserId,
       firstName: finalFirst,
       lastName: finalLast,
       name: fullName,
@@ -405,7 +465,7 @@ export default function OnboardingModal() {
     setShowGooglePicker(true);
   };
 
-  const handleSelectGoogleAccount = (acc) => {
+  const handleSelectGoogleAccount = async (acc) => {
     const rawName = acc.name || 'Anurag K M';
     const parts = rawName.trim().split(' ');
     const fName = parts[0] || 'Anurag';
@@ -414,8 +474,24 @@ export default function OnboardingModal() {
     setFirstName(fName);
     setLastName(lName);
     setEmail(acc.email);
+
+    let resolvedId = `RDU-${Math.floor(10000 + Math.random() * 90000)}`;
+    try {
+      const profile = await getUserProfileByLogin({
+        identifier: acc.email,
+        name: rawName,
+        emailFallback: acc.email
+      });
+      if (profile?.id || profile?.userId) {
+        resolvedId = profile.id || profile.userId;
+      }
+    } catch (e) {
+      console.warn('Google profile lookup notice:', e);
+    }
+
     setVerifiedUserObj({
-      id: `goog_${Date.now()}`,
+      id: resolvedId,
+      userId: resolvedId,
       email: acc.email,
       name: rawName,
       avatar: acc.avatar || null,

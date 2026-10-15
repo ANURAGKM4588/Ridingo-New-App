@@ -223,11 +223,18 @@ export default function ProfileTab() {
 
             {/* User Meta */}
             <div style={{ minWidth: 0, flex: 1 }}>
-              <b style={{ fontSize: '17px', fontWeight: 700, color: 'var(--ink)', display: 'block', lineHeight: 1.25 }}>
-                {user?.name || 'Arjun Menon'}
-              </b>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <b style={{ fontSize: '17px', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.25 }}>
+                  {user?.name || 'Arjun Menon'}
+                </b>
+                {(user?.id || user?.userId) && (
+                  <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#16A34A', background: 'rgba(22, 163, 74, 0.12)', padding: '2px 8px', borderRadius: '999px', letterSpacing: '0.04em' }}>
+                    {user.userId || user.id}
+                  </span>
+                )}
+              </div>
               <span style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '3px', display: 'block', wordBreak: 'break-all' }}>
-                {user?.phone || '+91 98401 23456'} · {user?.email || 'arjun.menon@example.com'}
+                {user?.phone ? user.phone : ''}{user?.phone && user?.email ? ' · ' : ''}{user?.email ? user.email : ''}
               </span>
             </div>
           </div>

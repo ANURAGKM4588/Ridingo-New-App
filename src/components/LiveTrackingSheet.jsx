@@ -14,14 +14,15 @@ export default function LiveTrackingSheet() {
     addToast,
     activeTrackingTripId,
     setActiveTrackingTripId,
+    isUserTrip,
     declineTrip
   } = useApp();
 
-  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId) : null) ||
-                     trips.find(t => t.status === 'requested') ||
-                     trips.find(t => t.status === 'inprogress') ||
-                     trips.find(t => t.status === 'accepted') ||
-                     trips[0];
+  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && isUserTrip(t, user)) : null) ||
+                     trips.find(t => isUserTrip(t, user) && ['inprogress', 'ending_otp'].includes(t.status)) ||
+                     trips.find(t => isUserTrip(t, user) && ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) ||
+                     trips.find(t => isUserTrip(t, user) && t.status === 'requested') ||
+                     trips.find(t => isUserTrip(t, user));
 
   const trip = activeTrip || {
     id: 'TRP-1092',

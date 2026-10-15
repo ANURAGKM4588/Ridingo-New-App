@@ -17,6 +17,7 @@ export default function TripsTab() {
     setTrips,
     setUtx,
     user,
+    isUserTrip,
     addToast,
     setBookingOpen,
     setBookingCategory,
@@ -68,7 +69,7 @@ export default function TripsTab() {
 
   const F = { all: 'All', up: 'Upcoming', done: 'Completed', cancel: 'Cancelled' };
 
-  let list = trips;
+  let list = (trips || []).filter(t => isUserTrip(t, user));
   if (filter === 'up') {
     list = list.filter(t => ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'scheduled', 'inprogress'].includes(t.status));
   }
@@ -156,6 +157,7 @@ export default function TripsTab() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '999px', fontSize: '13.5px', fontWeight: 750, margin: '0 auto' }}
             onClick={() => {
               const activeTrip = (trips || []).find(t =>
+                isUserTrip(t, user) &&
                 ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
               );
               if (activeTrip) {

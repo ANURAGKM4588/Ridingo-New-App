@@ -6,10 +6,13 @@ import { getDeviceLocation } from '../lib/deviceLocation';
 import { processPhonePeCashbackTransfer } from '../utils/phonepe';
 import { realtime } from '../utils/realtime';
 import { notifyIncomingRideRequest } from '../services/driverNotificationService';
+import { isUserTrip, generateRidingoUserId } from '../services/userService';
 
 const AppContext = createContext(null);
 
 export const DEFAULT_USER = {
+  id: 'RDU-10001',
+  userId: 'RDU-10001',
   name: 'Arjun Menon',
   phone: '+91 98401 23456',
   email: 'arjun.menon@example.com',
@@ -757,22 +760,25 @@ export function AppProvider({ children }) {
 
   const loginWithDetails = (userData = {}) => {
     const isGoogle = userData.provider === 'google' || !!userData.idToken;
-    const computedName = userData.name || (userData.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : DEFAULT_USER.name);
+    const computedName = userData.name || (userData.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : 'Ridingo Member');
+    const ridingoId = userData.userId || userData.id || generateRidingoUserId();
     const updated = {
       ...DEFAULT_USER,
       ...userData,
+      id: ridingoId,
+      userId: ridingoId,
       name: computedName,
       firstName: userData.firstName || computedName.split(' ')[0],
       lastName: userData.lastName || (computedName.split(' ').slice(1).join(' ') || ''),
-      email: userData.email || (isGoogle ? '' : DEFAULT_USER.email),
-      avatar: userData.avatar || (isGoogle ? userData.avatar : DEFAULT_USER.avatar),
+      email: userData.email !== undefined ? userData.email : (isGoogle ? '' : ''),
+      avatar: userData.avatar || DEFAULT_USER.avatar,
       phone: userData.phone
         ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`)
-        : (isGoogle ? '' : DEFAULT_USER.phone),
+        : (userData.authMethod === 'phone' ? '' : ''),
       emergencyPhone: userData.emergencyPhone || '',
       isAuthenticated: true,
       isDemo: false,
-      authProvider: userData.provider || (isGoogle ? 'google' : 'phone')
+      authProvider: userData.provider || (isGoogle ? 'google' : (userData.authMethod || 'phone'))
     };
     setUser(updated);
     try {
@@ -873,8 +879,9 @@ export function AppProvider({ children }) {
   };
 
   const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, phonepePaymentId, schedule) => {
-    // Strictly restrict: Only allow one active trip at a time!
+    // Strictly restrict: Only allow one active trip at a time FOR THE LOGGED-IN USER!
     const activeTrip = (trips || []).find(t =>
+      isUserTrip(t, user) &&
       ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
     );
     if (activeTrip) {
@@ -924,7 +931,13 @@ export function AppProvider({ children }) {
       paymentGateway: 'PhonePe',
       paymentId: pId,
       driver: null,
-      rider: { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' },
+      rider: {
+        id: user?.id || user?.userId || 'RDU-GUEST',
+        userId: user?.id || user?.userId || 'RDU-GUEST',
+        name: user?.name || 'Customer',
+        phone: user?.phone || '+91 98401 23456',
+        email: user?.email || ''
+      },
       cashback: cb,
       cashbackStatus: 'pending',
       pickupCoords: schedule?.pickupCoords || null,
@@ -1266,6 +1279,7 @@ export function AppProvider({ children }) {
         clearAllNotifs,
         addNotification,
         bookRide,
+        isUserTrip,
         acceptTrip,
         declineTrip,
         arrivedAtPickup,
