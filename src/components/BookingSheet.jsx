@@ -95,6 +95,7 @@ export default function BookingSheet() {
   const [pickup, setPickup] = useState('');
   const [drop, setDrop] = useState('');
   const [selectedDate, setSelectedDate] = useState(getTodayISO);
+  const [selectedTime, setSelectedTime] = useState(getDefaultTime);
   const [trans, setTrans] = useState('Manual');
   const [airportType, setAirportType] = useState('pickup'); // 'pickup' | 'drop'
   const [flightNo, setFlightNo] = useState('');
