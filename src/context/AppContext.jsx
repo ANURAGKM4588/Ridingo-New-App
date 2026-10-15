@@ -244,8 +244,8 @@ export function AppProvider({ children }) {
   const openLegal = (tab = 'terms') => setLegalModal({ open: true, tab });
   const closeLegal = () => setLegalModal(prev => ({ ...prev, open: false }));
 
-  // Trips, Wallet & Notifications (Clean start: no stale historical trip flash on home screen)
   const [trips, setTrips] = useState([]);
+  const [activeTrackingTripId, setActiveTrackingTripId] = useState(null);
   const [utx, setUtx] = useState(INITIAL_UTX);
   const [unotes, setUnotes] = useState(INITIAL_UNOTES);
   const [driverOnline, setDriverOnline] = useState(true);
@@ -985,6 +985,7 @@ export function AppProvider({ children }) {
     // Purge any old 'requested' trips so only the active new booking is routed
     setTrips(prev => [newTrip, ...(Array.isArray(prev) ? prev.filter(t => t.status !== 'requested') : [])]);
     setIncomingTripRequest(newTrip);
+    setActiveTrackingTripId(newTrip.id);
 
     // 1. Broadcast over WebSocket channel
     realtime.requestRide(newTrip);
@@ -1174,6 +1175,7 @@ export function AppProvider({ children }) {
   const declineTrip = (tripId) => {
     setIncomingTripRequest(null);
     setTrips(prev => prev.filter(t => t.id !== tripId));
+    setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
     realtime.declineRide(tripId);
     updateTripStatusInSupabase(tripId, 'declined');
     addToast('Trip request dismissed', 'info');
@@ -1266,6 +1268,8 @@ export function AppProvider({ children }) {
         addToast,
         liveTrackingOpen,
         setLiveTrackingOpen,
+        activeTrackingTripId,
+        setActiveTrackingTripId,
         onboardingOpen,
         setOnboardingOpen,
         driverOnboardingOpen,

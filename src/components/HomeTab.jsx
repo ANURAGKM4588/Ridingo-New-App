@@ -61,6 +61,7 @@ export default function HomeTab() {
     setNotifsOpen,
     liveTrackingOpen,
     setLiveTrackingOpen,
+    setActiveTrackingTripId,
     unotes,
     setUTab,
     addToast,
@@ -562,7 +563,10 @@ export default function HomeTab() {
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               type="button"
-              onClick={() => setLiveTrackingOpen(true)}
+              onClick={() => {
+                if (setActiveTrackingTripId) setActiveTrackingTripId(requestedTrip.id);
+                setLiveTrackingOpen(true);
+              }}
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -675,7 +679,10 @@ export default function HomeTab() {
 
           <button
             type="button"
-            onClick={() => setLiveTrackingOpen(true)}
+            onClick={() => {
+              if (setActiveTrackingTripId) setActiveTrackingTripId(isAccepted.id);
+              setLiveTrackingOpen(true);
+            }}
             style={{
               width: '100%',
               height: '44px',
@@ -723,7 +730,10 @@ export default function HomeTab() {
             isModal={false}
             progress={0.42}
             speed={38}
-            onOpenModal={() => setLiveTrackingOpen(true)}
+            onOpenModal={() => {
+              if (setActiveTrackingTripId) setActiveTrackingTripId(inProg.id);
+              setLiveTrackingOpen(true);
+            }}
           />
 
           <div className="live-hud-row">
@@ -751,7 +761,13 @@ export default function HomeTab() {
               <b>{inProg.driver || 'Ravi Kumar'} <span style={{ fontWeight: 400, color: 'var(--muted)' }}>★ 4.8</span></b>
               <span>Driving your {user?.car?.model || inProg.car?.model} ({user?.car?.plate || inProg.car?.plate})</span>
             </div>
-            <button className="btn sm primary" onClick={() => setLiveTrackingOpen(true)}>
+            <button
+              className="btn sm primary"
+              onClick={() => {
+                if (setActiveTrackingTripId) setActiveTrackingTripId(inProg.id);
+                setLiveTrackingOpen(true);
+              }}
+            >
               Track
             </button>
           </div>

@@ -5,11 +5,22 @@ import GraphicLiveMap, { getRouteTelemetry } from './GraphicLiveMap';
 import { openInGoogleMaps } from '../services/googleMapsService';
 
 export default function LiveTrackingSheet() {
-  const { liveTrackingOpen, setLiveTrackingOpen, trips, setTrips, user, addToast } = useApp();
+  const {
+    liveTrackingOpen,
+    setLiveTrackingOpen,
+    trips,
+    setTrips,
+    user,
+    addToast,
+    activeTrackingTripId,
+    setActiveTrackingTripId,
+    declineTrip
+  } = useApp();
 
-  const activeTrip = trips.find(t => t.status === 'inprogress') ||
-                     trips.find(t => t.status === 'accepted') ||
+  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId) : null) ||
                      trips.find(t => t.status === 'requested') ||
+                     trips.find(t => t.status === 'inprogress') ||
+                     trips.find(t => t.status === 'accepted') ||
                      trips[0];
 
   const trip = activeTrip || {
@@ -247,6 +258,13 @@ export default function LiveTrackingSheet() {
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
                     <span style={{ fontSize: '13px', color: 'var(--ink)' }}><b>Drop:</b> {trip?.drop_loc || 'City Route'}</span>
                   </div>
+                  {trip?.distanceText && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '12px', color: 'var(--muted)' }}>
+                      <span style={{ fontWeight: 600 }}>🗺️ Route: {trip.distanceText}</span>
+                      <span>·</span>
+                      <span style={{ fontWeight: 600 }}>⏱️ ETA: ~{trip.durationText || '25 mins'}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line)' }}>
@@ -258,7 +276,12 @@ export default function LiveTrackingSheet() {
               <button
                 type="button"
                 onClick={() => {
-                  setTrips(prev => prev.filter(t => t.id !== trip.id));
+                  if (declineTrip) {
+                    declineTrip(trip.id);
+                  } else {
+                    setTrips(prev => prev.filter(t => t.id !== trip.id));
+                  }
+                  if (setActiveTrackingTripId) setActiveTrackingTripId(null);
                   setLiveTrackingOpen(false);
                   addToast('Trip request cancelled', 'info');
                 }}

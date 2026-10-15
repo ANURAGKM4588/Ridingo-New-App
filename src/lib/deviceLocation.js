@@ -10,6 +10,26 @@ let isLocatingPromise = null;
  * Returns a clean, human-readable address based on real device coordinates
  */
 export async function reverseGeocode(lat, lng) {
+  // 1. Official Google Maps Geocoder
+  try {
+    if (typeof window !== 'undefined' && window.google?.maps?.Geocoder) {
+      const geocoder = new window.google.maps.Geocoder();
+      const googleResult = await new Promise((resolve) => {
+        geocoder.geocode({ location: { lat: Number(lat), lng: Number(lng) } }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+            resolve(results[0].formatted_address);
+          } else {
+            resolve(null);
+          }
+        });
+      });
+      if (googleResult) {
+        return googleResult;
+      }
+    }
+  } catch (e) {}
+
+  // 2. OpenStreetMap Nominatim fallback
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
     const res = await fetch(url, {

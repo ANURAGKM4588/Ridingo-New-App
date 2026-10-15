@@ -20,7 +20,8 @@ export default function TripsTab() {
     addToast,
     setBookingOpen,
     setBookingCategory,
-    setLiveTrackingOpen
+    setLiveTrackingOpen,
+    setActiveTrackingTripId
   } = useApp();
 
   const [filter, setFilter] = useState('all');
@@ -375,6 +376,7 @@ export default function TripsTab() {
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (setActiveTrackingTripId) setActiveTrackingTripId(t.id);
                           setLiveTrackingOpen(true);
                         }}
                       >

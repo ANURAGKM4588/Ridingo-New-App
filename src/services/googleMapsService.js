@@ -11,7 +11,7 @@
  */
 
 // API Key from environment (.env)
-export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
 
 // Mock Mode Configuration
 // Set to true by default if no API key is configured or VITE_USE_MOCK_MAPS === 'true'
@@ -588,6 +588,88 @@ export function calculateMockRoute(originCoord, destCoord) {
 }
 
 /**
+ * Geocodes an address string to precise GPS coordinates
+ * Uses Google Maps Geocoder when available, with intelligent fallback to Indian geography database
+ */
+export async function geocodeAddress(addressText) {
+  if (!addressText || typeof addressText !== 'string') return null;
+  const clean = addressText.trim();
+  if (!clean) return null;
+
+  // 1. Google Maps Geocoder if SDK loaded
+  if (typeof window !== 'undefined' && window.google?.maps?.Geocoder) {
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+      const res = await new Promise((resolve) => {
+        geocoder.geocode({ address: clean, componentRestrictions: { country: 'in' } }, (results, status) => {
+          if (status === 'OK' && results?.[0]?.geometry?.location) {
+            resolve({
+              lat: results[0].geometry.location.lat(),
+              lng: results[0].geometry.location.lng()
+            });
+          } else {
+            resolve(null);
+          }
+        });
+      });
+      if (res) return res;
+    } catch (e) {}
+  }
+
+  // 2. Mock places database matching
+  const q = clean.toLowerCase();
+  const matched = MOCK_PLACES_DATABASE.find(p =>
+    p.title.toLowerCase().includes(q) ||
+    q.includes(p.title.toLowerCase()) ||
+    p.sub.toLowerCase().includes(q)
+  );
+  if (matched) {
+    return { lat: matched.lat, lng: matched.lng };
+  }
+
+  // 3. Known Kerala & Indian Major Locations Database
+  const KNOWN_COORDS = {
+    'edappally': { lat: 10.0245, lng: 76.3075 },
+    'cochin': { lat: 10.1518, lng: 76.3929 },
+    'airport': { lat: 10.1518, lng: 76.3929 },
+    'cok': { lat: 10.1518, lng: 76.3929 },
+    'nedumbassery': { lat: 10.1518, lng: 76.3929 },
+    'lulu': { lat: 10.0285, lng: 76.3120 },
+    'mg road': { lat: 9.9723, lng: 76.2831 },
+    'ernakulam': { lat: 9.9816, lng: 76.2999 },
+    'marine drive': { lat: 9.9780, lng: 76.2755 },
+    'fort kochi': { lat: 9.9658, lng: 76.2421 },
+    'kakkanad': { lat: 10.0159, lng: 76.3419 },
+    'infopark': { lat: 10.0094, lng: 76.3608 },
+    'aluva': { lat: 10.1076, lng: 76.3516 },
+    'kaloor': { lat: 9.9937, lng: 76.2982 },
+    'vytilla': { lat: 9.9656, lng: 76.3196 },
+    'palarivattom': { lat: 10.0069, lng: 76.3094 },
+    'tripunithura': { lat: 9.9489, lng: 76.3477 },
+    'calicut': { lat: 11.2588, lng: 75.7804 },
+    'kozhikode': { lat: 11.2588, lng: 75.7804 },
+    'kallachi': { lat: 11.6833, lng: 75.6667 },
+    'nadapuram': { lat: 11.6961, lng: 75.6543 },
+    'bangalore': { lat: 12.9716, lng: 77.5946 },
+    'bengaluru': { lat: 12.9716, lng: 77.5946 },
+    'residency road': { lat: 12.9719, lng: 77.6015 },
+    'd\'souza': { lat: 12.9719, lng: 77.6015 },
+    'trivandrum': { lat: 8.5241, lng: 76.9366 },
+    'thiruvananthapuram': { lat: 8.5241, lng: 76.9366 },
+    'thrissur': { lat: 10.5276, lng: 76.2144 },
+    'kottayam': { lat: 9.5916, lng: 76.5222 }
+  };
+
+  for (const [key, coords] of Object.entries(KNOWN_COORDS)) {
+    if (q.includes(key)) {
+      return coords;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Real Google Maps Route & Distance/ETA Calculator
  * Integrates directly with official Google Maps DirectionsService and DistanceMatrixService.
  * When Live Google Maps SDK is loaded, queries real live traffic and routes.
@@ -646,7 +728,8 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
             durationMins,
             durationText,
             etaText,
-            source: 'google_directions_live'
+            source: 'google_directions_live',
+            overview_polyline: response.routes[0].overview_polyline
           };
         }
       }
@@ -656,7 +739,17 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
   }
 
   // 2. High-precision coordinate / road telemetry calculation
-  const route = calculateMockRoute(originCoords, destCoords);
+  // Resolve coordinates from place strings if coordinates are not provided
+  let oCoords = originCoords;
+  if (!oCoords?.lat && origin) {
+    oCoords = await geocodeAddress(origin);
+  }
+  let dCoords = destCoords;
+  if (!dCoords?.lat && destination) {
+    dCoords = await geocodeAddress(destination);
+  }
+
+  const route = calculateMockRoute(oCoords, dCoords);
   const now = Date.now();
   const arrival = new Date(now + route.durationMins * 60 * 1000);
   const etaText = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -667,6 +760,8 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
     durationMins: route.durationMins,
     durationText: route.durationText,
     etaText,
-    source: 'google_telemetry'
+    source: 'google_telemetry',
+    originCoords: oCoords,
+    destCoords: dCoords
   };
 }
