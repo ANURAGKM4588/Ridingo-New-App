@@ -144,15 +144,15 @@ aside {
   flex-shrink: 0;
   box-sizing: border-box;
 }
-.nav-heading { font-size: 10.5px; color: var(--dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0 10px 8px; }
+.nav-heading { font-size: 10.5px; color: var(--dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 14px 10px; }
 .nav { display: flex; flex-direction: column; gap: 4px; }
 .nav a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 11px 14px;
-  border-radius: var(--radius-md);
-  color: var(--mute);
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: #4B5563;
   text-decoration: none;
   font-weight: 600;
   font-size: 13.5px;
@@ -160,28 +160,26 @@ aside {
   border: 1px solid transparent;
   transition: all 0.15s ease;
 }
-.nav a .nav-left { display: flex; align-items: center; gap: 10px; }
-.nav a .nav-left svg { color: var(--dim); transition: color 0.15s; }
+.nav a .nav-label { font-weight: inherit; color: inherit; }
 .nav a:hover { background: var(--surface); color: var(--ink); }
-.nav a:hover .nav-left svg { color: var(--ink); }
 .nav a.on {
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
+  background: #FFFFFF;
+  color: #121316;
+  border: 1px solid rgba(0,0,0,0.08);
   font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
-.nav a.on .nav-left svg { color: var(--ink); }
 .nav-badge {
   font-size: 11px;
   font-weight: 800;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--surface-hover);
-  color: var(--ink);
+  background: var(--surface);
+  color: var(--mute);
 }
 .nav a.on .nav-badge {
   background: var(--brand);
-  color: #000;
+  color: #121316;
 }
 .sp { flex: 1; }
 main {
@@ -635,23 +633,23 @@ const ICONS = {
       <div class="nav-heading">Operations</div>
       <div class="nav" id="nav">
         <a data-p="dashboard">
-          <div class="nav-left">${ICONS.grid}<span>Dashboard</span></div>
+          <span class="nav-label">Dashboard</span>
         </a>
         <a data-p="drivers">
-          <div class="nav-left">${ICONS.steeringWheel}<span>Drivers & KYC</span></div>
+          <span class="nav-label">Drivers & KYC</span>
           <span class="nav-badge" id="drvBadge">5</span>
         </a>
         <a data-p="users">
-          <div class="nav-left">${ICONS.users}<span>Customers</span></div>
+          <span class="nav-label">Customers</span>
         </a>
         <a data-p="trips">
-          <div class="nav-left">${ICONS.route}<span>Live Trips</span></div>
+          <span class="nav-label">Live Trips</span>
         </a>
         <a data-p="payments">
-          <div class="nav-left">${ICONS.wallet}<span>Settlements</span></div>
+          <span class="nav-label">Settlements</span>
         </a>
         <a data-p="finance">
-          <div class="nav-left">${ICONS.chart}<span>Revenue Engine</span></div>
+          <span class="nav-label">Revenue Engine</span>
         </a>
       </div>
     </div>
@@ -660,8 +658,8 @@ const ICONS = {
       <div style="font-size: 11px; color: var(--mute); margin-bottom: 12px; padding: 0 8px;">
         Production: <strong style="color: var(--ink)">ridingo.in/admin</strong>
       </div>
-      <button type="button" class="btn ghost full" id="refresh" style="text-align: center">
-        ${ICONS.refresh}<span>Sync Real-Time</span>
+      <button type="button" class="btn ghost full" id="refresh" style="text-align: center; justify-content: center; font-weight: 700; border-radius: 12px; padding: 12px 16px;">
+        <span>Sync Real-Time</span>
       </button>
     </div>
   </aside>
