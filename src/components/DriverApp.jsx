@@ -1947,29 +1947,6 @@ export default function DriverApp() {
                             <Icon name={c.icon} size={12} />
                             <span>{c.name.toUpperCase()} · {t.qty || 1} {c.unit || 'hr'}</span>
                           </span>
-
-                          <button
-                            type="button"
-                            onClick={() => setMinimizedRequestTripId(null)}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              background: 'var(--field)',
-                              border: '1px solid var(--line)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              padding: 0
-                            }}
-                            title="Expand to Full View"
-                            aria-label="Expand Request"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                            </svg>
-                          </button>
                         </div>
                       </div>
 
@@ -2052,20 +2029,20 @@ export default function DriverApp() {
                         <span>⚙️ {t.trans || t.car?.trans || 'Manual'} Transmission</span>
                       </div>
 
-                      {/* Action Buttons: Decline, View More, Accept */}
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      {/* Action Buttons: Decline and Accept Ride */}
+                      <div style={{ display: 'flex', gap: '10px' }}>
                         <button
                           type="button"
                           className="btn"
                           style={{
                             flex: 1,
-                            height: '42px',
+                            height: '44px',
                             borderRadius: '12px',
                             background: '#FFFFFF',
                             color: '#DC2626',
                             border: '1.5px solid #DC2626',
                             fontWeight: 700,
-                            fontSize: '12.5px',
+                            fontSize: '13.5px',
                             cursor: 'pointer'
                           }}
                           onClick={() => handleDecline(t.id)}
@@ -2075,46 +2052,27 @@ export default function DriverApp() {
 
                         <button
                           type="button"
-                          className="btn"
-                          style={{
-                            flex: 1.1,
-                            height: '42px',
-                            borderRadius: '12px',
-                            background: 'var(--field)',
-                            color: 'var(--ink)',
-                            border: '1.5px solid var(--line)',
-                            fontWeight: 750,
-                            fontSize: '12.5px',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => setSelectedRequestDetails(t)}
-                        >
-                          View More
-                        </button>
-
-                        <button
-                          type="button"
                           className="btn primary"
                           style={{
-                            flex: 1.5,
-                            height: '42px',
+                            flex: 1.8,
+                            height: '44px',
                             borderRadius: '12px',
                             background: '#000000',
                             color: '#FFFFFF',
                             border: '1.5px solid #000000',
                             fontWeight: 800,
-                            fontSize: '13px',
+                            fontSize: '14px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '4px',
+                            gap: '6px',
                             boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
                           }}
                           onClick={() => handleAccept(t.id)}
                         >
                           <span>Accept Ride</span>
-                          <span style={{ color: '#FFFFFF', fontSize: '14px' }}>✓</span>
+                          <span style={{ color: '#FFFFFF', fontSize: '15px' }}>✓</span>
                         </button>
                       </div>
                     </article>
