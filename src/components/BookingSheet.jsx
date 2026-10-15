@@ -145,6 +145,7 @@ export default function BookingSheet() {
   const pickupInputRef = useRef(null);
   const dropInputRef = useRef(null);
   const searchDebounceRef = useRef(null);
+  const searchSeqRef = useRef(0);
   const [tripTelemetry, setTripTelemetry] = useState({
     distanceKm: null,
     distanceText: '--',
@@ -318,14 +319,19 @@ export default function BookingSheet() {
 
     const clean = (val || '').trim();
     if (clean.length >= 2) {
+      setActiveSuggestField('pickup');
+      const currentSeq = ++searchSeqRef.current;
       searchDebounceRef.current = setTimeout(() => {
-        setActiveSuggestField('pickup');
         searchGooglePlaces(
           clean,
-          (results) => setPickupSuggestions(results || []),
+          (results) => {
+            if (currentSeq === searchSeqRef.current) {
+              setPickupSuggestions(results || []);
+            }
+          },
           { userCoords: dropCoords || pickupCoords }
         );
-      }, 150);
+      }, 100);
     } else {
       setPickupSuggestions([]);
       setActiveSuggestField(null);
@@ -340,14 +346,19 @@ export default function BookingSheet() {
 
     const clean = (val || '').trim();
     if (clean.length >= 2) {
+      setActiveSuggestField('drop');
+      const currentSeq = ++searchSeqRef.current;
       searchDebounceRef.current = setTimeout(() => {
-        setActiveSuggestField('drop');
         searchGooglePlaces(
           clean,
-          (results) => setDropSuggestions(results || []),
+          (results) => {
+            if (currentSeq === searchSeqRef.current) {
+              setDropSuggestions(results || []);
+            }
+          },
           { userCoords: pickupCoords || dropCoords }
         );
-      }, 150);
+      }, 100);
     } else {
       setDropSuggestions([]);
       setActiveSuggestField(null);

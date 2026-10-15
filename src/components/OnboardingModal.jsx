@@ -119,6 +119,21 @@ export default function OnboardingModal() {
     return () => clearTimeout(timer);
   }, [step, resendCountdown]);
 
+  // Reset to Sign-In page whenever onboarding is opened (e.g. on logout)
+  useEffect(() => {
+    if (onboardingOpen) {
+      setActiveTab('signin');
+      setStep('form');
+      setOtp(['', '', '', '', '', '']);
+      setOtpStatus('idle');
+      setOtpError(null);
+      setVerifiedUserObj(null);
+      try {
+        localStorage.setItem('ridingo_has_onboarded', 'true');
+      } catch (e) {}
+    }
+  }, [onboardingOpen]);
+
   if (!onboardingOpen) return null;
 
   const getTargetIdentifier = (method, tab) => {
@@ -454,9 +469,13 @@ export default function OnboardingModal() {
         }
       } catch (err) {
         console.warn('Native Google Auth result:', err);
-        if (err.message && !err.message.includes('cancel')) {
-          addToast(err.message || 'Google sign-in was cancelled.', 'warn');
+        const isCancelled = err?.isCancelled || err?.message?.toLowerCase()?.includes('cancel') || err?.code === '12501' || err?.code === 12501;
+        if (isCancelled) {
+          addToast('Google sign-in was cancelled.', 'warn');
+          return;
         }
+        // Fall back to in-app Google Account Picker so user is never blocked on Android
+        setShowGooglePicker(true);
         return;
       }
     }

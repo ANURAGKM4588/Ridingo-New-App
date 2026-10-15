@@ -1038,6 +1038,7 @@ export default function DriverApp() {
     addToast,
     completeTrip,
     logoutDriver,
+    setView,
     incomingTripRequest,
     setIncomingTripRequest,
     acceptTrip,
@@ -1111,6 +1112,12 @@ export default function DriverApp() {
   // Real-time synchronization check: ensure pending trip requests are captured immediately
   useEffect(() => {
     const syncActiveTrips = () => {
+      // 1. Proactively poll Supabase database so requests arrive reliably even across different devices/networks
+      if (typeof syncTripsFromSupabase === 'function') {
+        syncTripsFromSupabase();
+      }
+
+      // 2. Sync from local active requests cache
       const activeRequests = typeof realtime.getActiveTripRequests === 'function'
         ? realtime.getActiveTripRequests()
         : [realtime.getActiveTripRequest()].filter(Boolean);
@@ -1143,9 +1150,9 @@ export default function DriverApp() {
       }
     };
     syncActiveTrips();
-    const interval = setInterval(syncActiveTrips, 1500);
+    const interval = setInterval(syncActiveTrips, 2000);
     return () => clearInterval(interval);
-  }, [incomingTripRequest?.id, minimizedRequestTripId]);
+  }, [incomingTripRequest?.id, minimizedRequestTripId, syncTripsFromSupabase]);
 
   const hasBankAccount = Boolean(driverPartner?.bankAccount && driverPartner?.bankName);
 
@@ -2978,6 +2985,30 @@ export default function DriverApp() {
                 center
                 style={{ opacity: 0.8, marginBottom: '8px' }}
               />
+              <button
+                type="button"
+                onClick={() => setView('admin')}
+                style={{
+                  width: '100%',
+                  height: '46px',
+                  borderRadius: '16px',
+                  background: 'var(--card)',
+                  border: '1.5px solid var(--line)',
+                  color: 'var(--ink)',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}
+              >
+                <span>🛠️</span>
+                <span>Admin CRM Portal (ridingo.in/admin)</span>
+              </button>
+
               <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>
                 Ridingo Driver Partner · v2.4.2
               </p>

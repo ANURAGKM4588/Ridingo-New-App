@@ -19,6 +19,8 @@ class RealtimeHub {
     this.clientId = 'client_' + Math.random().toString(36).slice(2) + '_' + Date.now();
     this.channel = null;
     this.sbChannel = null;
+    this.isSbSubscribed = false;
+    this.pendingSbMessages = [];
 
     if (typeof window !== 'undefined') {
       // 1. Browser BroadcastChannel
@@ -67,6 +69,7 @@ class RealtimeHub {
         if (this.sbChannel) {
           try { supabase.removeChannel(this.sbChannel); } catch (e) {}
         }
+        this.isSbSubscribed = false;
         this.sbChannel = supabase.channel('ridingo_dispatch_bus', {
           config: {
             broadcast: { self: false, ack: true },
@@ -81,6 +84,16 @@ class RealtimeHub {
           })
           .subscribe((status) => {
             console.info('[Realtime] Supabase subscription status:', status);
+            if (status === 'SUBSCRIBED') {
+              this.isSbSubscribed = true;
+              // Flush any buffered messages that were emitted before WebSocket connected
+              while (this.pendingSbMessages.length > 0) {
+                const msg = this.pendingSbMessages.shift();
+                this.sbChannel.send(msg).catch(() => {});
+              }
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+              this.isSbSubscribed = false;
+            }
           });
       }
     } catch (err) {
@@ -112,8 +125,8 @@ class RealtimeHub {
     // Automatically manage persistent active trip storage
     if (type === 'TRIP_REQUESTED' && payload) {
       this._persistActiveTrip(payload);
-    } else if (['TRIP_ACCEPTED', 'TRIP_DECLINED', 'TRIP_COMPLETED'].includes(type)) {
-      this._clearActiveTrip(payload?.tripId);
+    } else if (['TRIP_ACCEPTED', 'TRIP_DECLINED', 'TRIP_CANCELLED', 'TRIP_COMPLETED'].includes(type)) {
+      this._clearActiveTrip(payload?.tripId || payload?.id);
     }
 
     const set = this.listeners.get(type);
@@ -162,18 +175,25 @@ class RealtimeHub {
 
     // 4. Broadcast via Supabase Cloud Realtime Channel
     if (this.sbChannel && typeof this.sbChannel.send === 'function') {
-      try {
-        this.sbChannel.send({
-          type: 'broadcast',
-          event: 'dispatch',
-          payload: {
-            type,
-            data: payload,
-            senderId: this.clientId,
-            timestamp: Date.now()
-          }
-        }).catch(() => {});
-      } catch (e) {}
+      const msg = {
+        type: 'broadcast',
+        event: 'dispatch',
+        payload: {
+          type,
+          data: payload,
+          senderId: this.clientId,
+          timestamp: Date.now()
+        }
+      };
+
+      if (this.isSbSubscribed) {
+        this.sbChannel.send(msg).catch(() => {
+          this.pendingSbMessages.push(msg);
+        });
+      } else {
+        // Channel is still establishing connection - buffer message so it is guaranteed to send on SUBSCRIBED
+        this.pendingSbMessages.push(msg);
+      }
     }
   }
 
@@ -322,6 +342,10 @@ class RealtimeHub {
 
   declineRide(tripId) {
     this.emit('TRIP_DECLINED', { tripId, timestamp: Date.now() });
+  }
+
+  cancelRide(tripId) {
+    this.emit('TRIP_CANCELLED', { tripId, timestamp: Date.now() });
   }
 
   arrivedAtPickup(tripId) {

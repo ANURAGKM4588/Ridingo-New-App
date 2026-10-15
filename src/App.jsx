@@ -12,6 +12,7 @@ import OnboardingModal from './components/OnboardingModal';
 import LegalModal from './components/LegalModal';
 import PhonePePgCheckout from './components/PhonePePgCheckout';
 import DriverApp from './components/DriverApp';
+import AdminPanel from './components/admin/AdminPanel';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -177,6 +178,15 @@ function MainApp() {
                 <DriverApp />
               </ErrorBoundary>
             </div>
+          </section>
+        )}
+
+        {/* CRM Admin Panel Full View */}
+        {view === 'admin' && (
+          <section style={{ width: '100%', minHeight: '100vh', display: 'flex', background: '#0A0B0E' }}>
+            <ErrorBoundary fallbackMessage="Admin panel encountered a display issue.">
+              <AdminPanel />
+            </ErrorBoundary>
           </section>
         )}
       </div>

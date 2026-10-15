@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
 export default function ProfileTab() {
-  const { user, updateUserProfile, userTheme, setUserTheme, logout, addToast, openLegal } = useApp();
+  const { user, updateUserProfile, userTheme, setUserTheme, logout, addToast, openLegal, setView } = useApp();
 
   // Active Minimal Modal:
   // null | 'editProfile' | 'sos' | 'temp' | 'lang' | 'concierge' | 'notif_alerts' | 'notif_whatsapp' | 'notif_promo' | 'app_biometric' | 'app_haptic'
@@ -519,6 +519,31 @@ export default function ProfileTab() {
 
       {/* 8. Footer: App Version & Sign Out Button */}
       <div className="stagger-6" style={{ textAlign: 'center', padding: '16px 0 12px', width: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+          <button
+            type="button"
+            onClick={() => setView('admin')}
+            style={{
+              width: '100%',
+              height: '46px',
+              borderRadius: '16px',
+              background: 'var(--card)',
+              border: '1.5px solid var(--line)',
+              color: 'var(--ink)',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <span>🛠️</span>
+            <span>Admin CRM Portal (ridingo.in/admin)</span>
+          </button>
+        </div>
+
         <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>
           Ridingo for Car Owners · v2.4.2
         </p>

@@ -151,13 +151,25 @@ export function AppProvider({ children }) {
     }
   });
 
-  // App navigation state (User App or Driver App)
+  // App navigation state (User App, Driver App, or CRM Admin Panel)
   const determineView = () => {
     if (typeof window !== 'undefined') {
       const search = window.location.search.toLowerCase();
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
       const port = window.location.port;
+
+      if (
+        search.includes('app=admin') ||
+        search.includes('view=admin') ||
+        path.includes('/admin') ||
+        path.includes('/admin.in') ||
+        path.includes('ridingo/admin') ||
+        hash.includes('admin') ||
+        window.location.hostname.startsWith('admin.')
+      ) {
+        return 'admin';
+      }
 
       if (
         window.RIDINGO_TARGET === 'driver' ||
@@ -326,16 +338,11 @@ export function AppProvider({ children }) {
         // Check for active 'requested' trips created within 15 minutes
         const activeReqs = mapped.filter(t => t.status === 'requested' && Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000);
         if (activeReqs.length > 0) {
-          setIncomingTripRequest(prev => {
-            if (!prev || !activeReqs.some(r => r.id === prev.id)) {
-              return activeReqs[0];
-            }
-            return prev;
-          });
+          setIncomingTripRequest(activeReqs[0]);
         } else {
-          // If the pending request was accepted or declined in Supabase, clear it
+          // If no active requests or previous request is no longer requested, clear it
           setIncomingTripRequest(prev => {
-            if (prev && mapped.some(t => t.id === prev.id && t.status !== 'requested')) {
+            if (prev && (!activeReqs.some(r => r.id === prev.id) || mapped.some(t => t.id === prev.id && t.status !== 'requested'))) {
               return null;
             }
             return prev;
@@ -402,7 +409,7 @@ export function AppProvider({ children }) {
                     if (typeof window !== 'undefined' && (window.RIDINGO_TARGET === 'driver' || view === 'driver')) {
                       try { notifyIncomingRideRequest(tripObj); } catch (e) {}
                     }
-                  } else if (['accepted', 'declined', 'completed'].includes(tripObj.status)) {
+                  } else if (['accepted', 'declined', 'cancelled', 'completed'].includes(tripObj.status)) {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                   }
                 }
@@ -524,6 +531,12 @@ export function AppProvider({ children }) {
       setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
     });
 
+    const unbindCancel = realtime.on('TRIP_CANCELLED', ({ tripId }) => {
+      setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
+      setTrips(prev => prev.filter(t => t.id !== tripId));
+      setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
+    });
+
     const unbindComp = realtime.on('TRIP_COMPLETED', ({ tripId }) => {
       setTrips(prev =>
         prev.map(t => (t.id === tripId ? { ...t, status: 'completed' } : t))
@@ -552,6 +565,7 @@ export function AppProvider({ children }) {
       unbindStart();
       unbindEndReq();
       unbindDec();
+      unbindCancel();
       unbindComp();
     };
   }, []);
@@ -855,6 +869,7 @@ export function AppProvider({ children }) {
     setUser(null);
     try {
       localStorage.removeItem('ridingo_user_session');
+      localStorage.setItem('ridingo_has_onboarded', 'true');
     } catch (e) {}
     setUTab('home');
     scrollUserToTop();
@@ -1209,9 +1224,10 @@ export function AppProvider({ children }) {
     setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
     setTrips(prev => prev.filter(t => t.id !== tripId));
     setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
+    realtime.cancelRide(tripId);
     realtime.declineRide(tripId);
-    updateTripStatusInSupabase(tripId, 'declined');
-    addToast('Trip request dismissed', 'info');
+    updateTripStatusInSupabase(tripId, 'cancelled');
+    addToast('Trip request cancelled', 'info');
   };
 
   const completeTrip = (tripId) => {
