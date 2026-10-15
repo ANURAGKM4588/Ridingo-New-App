@@ -5,7 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5173 --host",
+    "dev:user": "vite --port 5173 --host",
+    "dev:driver": "vite --port 5174 --host",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",

@@ -149,29 +149,54 @@ export function AppProvider({ children }) {
   });
 
   // App navigation state (User App or Driver App)
-  const [view, setView] = useState(() => {
+  const determineView = () => {
     if (typeof window !== 'undefined') {
       const search = window.location.search.toLowerCase();
       const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      const port = window.location.port;
+
       if (
         window.RIDINGO_TARGET === 'driver' ||
+        port === '5174' ||
         search.includes('app=driver') ||
+        search.includes('view=driver') ||
         path.includes('/driver') ||
+        hash.includes('driver') ||
         (typeof document !== 'undefined' && document.body?.classList?.contains('standalone-driver'))
       ) {
         return 'driver';
       }
       if (
         window.RIDINGO_TARGET === 'user' ||
+        port === '5173' ||
         search.includes('app=user') ||
+        search.includes('view=user') ||
         path.includes('/user') ||
+        hash.includes('user') ||
         (typeof document !== 'undefined' && document.body?.classList?.contains('standalone-user'))
       ) {
         return 'user';
       }
     }
     return 'user';
-  });
+  };
+
+  const [view, setView] = useState(determineView);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleUrlChange = () => {
+      const detected = determineView();
+      setView(detected);
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
