@@ -847,8 +847,19 @@ export async function geocodeAddress(addressText) {
     }
   }
 
+  // 4. Live OpenStreetMap Geocoder fallback
+  try {
+    const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean + ', India')}&limit=1`;
+    const resp = await fetch(nomUrl, { headers: { 'Accept-Language': 'en' } });
+    const data = await resp.json();
+    if (data && data[0]?.lat && data[0]?.lon) {
+      return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
+    }
+  } catch (err) {}
+
   return null;
 }
+
 
 /**
  * Real Google Maps Route & Distance/ETA Calculator

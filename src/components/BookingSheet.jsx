@@ -111,19 +111,34 @@ export default function BookingSheet() {
   const [pickupCoords, setPickupCoords] = useState(null);
   const [dropCoords, setDropCoords] = useState(null);
   const [tripTelemetry, setTripTelemetry] = useState({
-    distanceKm: 12.4,
-    distanceText: '12.4 km',
-    durationMins: 28,
-    durationText: '28 mins',
-    etaText: '30 mins away'
+    distanceKm: null,
+    distanceText: '--',
+    durationMins: null,
+    durationText: '--',
+    etaText: '--',
+    isCalculated: false
   });
 
   // Dynamically calculate Google Maps real trip distance and estimated time (ETA)
+  // ONLY calculates when BOTH pickup and destination are provided; otherwise shows '--'
   useEffect(() => {
     let isCancelled = false;
+    const pText = pickup?.trim();
+    const dText = drop?.trim();
+
+    if (!pText || !dText) {
+      setTripTelemetry({
+        distanceKm: null,
+        distanceText: '--',
+        durationMins: null,
+        durationText: '--',
+        etaText: '--',
+        isCalculated: false
+      });
+      return;
+    }
+
     const calculateRoute = async () => {
-      const pText = pickup?.trim() || 'Kochi City';
-      const dText = drop?.trim() || (cat === 'airport' ? 'Cochin International Airport' : 'Kochi City Center');
       try {
         const res = await calculateTripRouteAndETA({
           origin: pText,
@@ -132,19 +147,23 @@ export default function BookingSheet() {
           destCoords: dropCoords
         });
         if (!isCancelled && res) {
-          setTripTelemetry(res);
+          setTripTelemetry({
+            ...res,
+            isCalculated: true
+          });
         }
       } catch (e) {
         console.warn('Route telemetry error:', e);
       }
     };
 
-    const timer = setTimeout(calculateRoute, 350);
+    const isFast = Boolean(pickupCoords && dropCoords);
+    const timer = setTimeout(calculateRoute, isFast ? 50 : 280);
     return () => {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [pickup, drop, pickupCoords, dropCoords, cat]);
+  }, [pickup, drop, pickupCoords, dropCoords]);
 
   const handlePickupChange = (val) => {
     setPickup(val);
@@ -208,8 +227,18 @@ export default function BookingSheet() {
       // Clean inputs (no preset locations)
       if (!bookingDestination) {
         setDrop('');
+        setDropCoords(null);
       }
       setPickup('');
+      setPickupCoords(null);
+      setTripTelemetry({
+        distanceKm: null,
+        distanceText: '--',
+        durationMins: null,
+        durationText: '--',
+        etaText: '--',
+        isCalculated: false
+      });
       setSelectedDate(prev => {
         const today = getTodayISO();
         return prev < today ? today : prev;
@@ -225,6 +254,9 @@ export default function BookingSheet() {
       const loc = await getDeviceLocation(true);
       if (loc && loc.address) {
         setPickup(loc.address);
+        if (loc.lat && loc.lng) {
+          setPickupCoords({ lat: Number(loc.lat), lng: Number(loc.lng), name: loc.address.split(',')[0].trim() });
+        }
         const short = loc.address.split(',')[0].trim();
         addToast(`Pickup set to device location: ${short}`, 'check');
       } else {
@@ -276,9 +308,15 @@ export default function BookingSheet() {
   const handleMapSelect = (addr) => {
     if (mapPickerTarget === 'pickup') {
       setPickup(addr);
+      geocodeAddress(addr).then(coords => {
+        if (coords) setPickupCoords({ ...coords, name: addr.split(',')[0].trim() });
+      });
       addToast(`Pickup set: ${addr.split(',')[0]}`, 'check');
     } else {
       setDrop(addr);
+      geocodeAddress(addr).then(coords => {
+        if (coords) setDropCoords({ ...coords, name: addr.split(',')[0].trim() });
+      });
       addToast(`Destination set: ${addr.split(',')[0]}`, 'check');
     }
     setMapPickerOpen(false);
@@ -346,11 +384,11 @@ export default function BookingSheet() {
             flightNo: cat === 'airport' ? flightNo : null,
             airportType: cat === 'airport' ? airportType : null,
             driverEarlyBuffer: cat === 'airport' ? driverEarlyBuffer : null,
-            distanceKm: tripTelemetry.distanceKm,
-            distanceText: tripTelemetry.distanceText,
-            durationMins: tripTelemetry.durationMins,
-            durationText: tripTelemetry.durationText,
-            eta: tripTelemetry.etaText
+            distanceKm: tripTelemetry.isCalculated ? tripTelemetry.distanceKm : null,
+            distanceText: tripTelemetry.isCalculated ? tripTelemetry.distanceText : null,
+            durationMins: tripTelemetry.isCalculated ? tripTelemetry.durationMins : null,
+            durationText: tripTelemetry.isCalculated ? tripTelemetry.durationText : null,
+            eta: tripTelemetry.isCalculated ? tripTelemetry.etaText : null
           });
           addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
@@ -806,8 +844,8 @@ export default function BookingSheet() {
                   <span style={{ fontSize: '10px', fontWeight: 750, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
                     Total Distance
                   </span>
-                  <b style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink)' }}>
-                    {tripTelemetry.distanceText}
+                  <b style={{ fontSize: '14px', fontWeight: 800, color: tripTelemetry.isCalculated ? 'var(--ink)' : 'var(--muted)' }}>
+                    {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
                   </b>
                 </div>
               </div>
@@ -820,8 +858,8 @@ export default function BookingSheet() {
                   <span style={{ fontSize: '10px', fontWeight: 750, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
                     Estimated Time (ETA)
                   </span>
-                  <b style={{ fontSize: '14px', fontWeight: 800, color: '#16A34A' }}>
-                    ~{tripTelemetry.durationText}
+                  <b style={{ fontSize: '14px', fontWeight: 800, color: tripTelemetry.isCalculated ? '#16A34A' : 'var(--muted)' }}>
+                    {tripTelemetry.isCalculated && tripTelemetry.durationText ? `~${tripTelemetry.durationText}` : '--'}
                   </b>
                 </div>
               </div>
