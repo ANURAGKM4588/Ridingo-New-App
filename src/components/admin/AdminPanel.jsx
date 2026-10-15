@@ -302,13 +302,13 @@ export default function AdminPanel() {
          ======================================================== */}
       <aside
         style={{
-          width: '270px',
+          width: '320px',
           background: T.card,
           borderRight: `1px solid ${T.border}`,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '28px 20px',
+          padding: '34px 24px',
           flexShrink: 0,
           boxSizing: 'border-box'
         }}
@@ -316,16 +316,16 @@ export default function AdminPanel() {
         <div>
           {/* Logo & Portal Badge */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', padding: '0 6px' }}>
-            <BrandLogo height={32} width={130} />
+            <BrandLogo height={36} width={140} />
             <span
               style={{
                 fontFamily: T.fontDisplay,
-                fontSize: '10.5px',
+                fontSize: '11.5px',
                 fontWeight: 800,
                 background: T.taxi,
                 color: '#000000',
-                padding: '3px 8px',
-                borderRadius: '6px',
+                padding: '4px 10px',
+                borderRadius: '8px',
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase'
               }}
@@ -345,10 +345,10 @@ export default function AdminPanel() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '10.5px', color: T.inkMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <span style={{ fontSize: '11px', color: T.inkMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 App Switcher
               </span>
-              <span style={{ fontSize: '11px', color: T.green, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ fontSize: '11.5px', color: T.green, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: T.green, display: 'inline-block' }} />
                 Online
               </span>
@@ -405,12 +405,12 @@ export default function AdminPanel() {
 
           {/* Navigation Links */}
           <div style={{ marginBottom: '8px', padding: '0 8px' }}>
-            <span style={{ fontSize: '10.5px', color: T.inkDim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: '11.5px', color: T.inkDim, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Operations
             </span>
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {[
               { id: 'drivers', label: 'Drivers & KYC', badge: newCount > 0 ? `${newCount} New` : null },
               { id: 'telemetry', label: 'Trip Revenue Engine' },
@@ -430,12 +430,12 @@ export default function AdminPanel() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 16px',
+                    padding: '14px 20px',
                     borderRadius: '14px',
                     border: active ? `1px solid ${T.borderStrong}` : '1px solid transparent',
                     background: active ? T.surface : 'transparent',
                     color: active ? T.ink : T.inkMuted,
-                    fontSize: '13.5px',
+                    fontSize: '15.5px',
                     fontWeight: active ? 700 : 500,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease'
@@ -445,9 +445,9 @@ export default function AdminPanel() {
                   {item.badge && (
                     <span
                       style={{
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 700,
-                        padding: '2px 8px',
+                        padding: '3px 10px',
                         borderRadius: '999px',
                         background: active ? T.taxi : T.surfaceHover,
                         color: active ? '#000000' : T.ink
