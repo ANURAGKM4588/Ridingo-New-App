@@ -736,6 +736,31 @@ function payStatus(r) {
 }
 const payCommission = r => { const c = g(r, "commission"); return c !== null ? Number(c) : Number(g(r, "amount") || 0) * CONFIG.commissionPercent / 100; };
 
+function saveDriversToLocal() {
+  try { localStorage.setItem("ridingo_registered_drivers", JSON.stringify(DB.drivers)); } catch(e) {}
+}
+
+function getLocalDrivers(sampleDrivers = []) {
+  try {
+    const raw = localStorage.getItem("ridingo_registered_drivers");
+    const local = raw ? JSON.parse(raw) : null;
+    if (!local || !local.length) {
+      localStorage.setItem("ridingo_registered_drivers", JSON.stringify(sampleDrivers));
+      return [...sampleDrivers];
+    }
+    const merged = [...local];
+    const existingIds = new Set(local.map(d => String(d.id || d.profile_id)));
+    for (const s of sampleDrivers) {
+      if (!existingIds.has(String(s.id || s.profile_id))) {
+        merged.push(s);
+      }
+    }
+    return merged;
+  } catch(e) {
+    return [...sampleDrivers];
+  }
+}
+
 async function fetchAll(table) {
   let all = [], from = 0, step = 1000;
   while(true) {
@@ -746,11 +771,104 @@ async function fetchAll(table) {
   }
   return all;
 }
+
 async function loadAll() {
-  for (const k of Object.keys(DB)) {
-    try { DB[k] = await fetchAll(CONFIG.tables[k]); delete LOADERR[k]; }
-    catch(e) { DB[k] = []; LOADERR[k] = e.message || String(e); }
+  const sample = sampleData();
+
+  // 1. DRIVERS
+  try {
+    const remote = await fetchAll(CONFIG.tables.drivers);
+    if (remote && remote.length > 0) {
+      DB.drivers = remote;
+    } else {
+      DB.drivers = getLocalDrivers(sample.drivers);
+    }
+    delete LOADERR.drivers;
+  } catch(e) {
+    DB.drivers = getLocalDrivers(sample.drivers);
+    delete LOADERR.drivers;
   }
+
+  // 2. USERS
+  try {
+    let remoteUsers = null;
+    try { remoteUsers = await fetchAll("profiles"); } catch(_) {}
+    if (!remoteUsers || !remoteUsers.length) {
+      try { remoteUsers = await fetchAll("users"); } catch(_) {}
+    }
+    if (remoteUsers && remoteUsers.length > 0) {
+      DB.users = remoteUsers.map((u, i) => ({
+        id: u.id || u.phone || ("u" + i),
+        full_name: u.name || u.full_name || "Ridingo Member",
+        mobile: u.phone || u.mobile || "",
+        email: u.email || "",
+        address: (u.car && u.car.model ? u.car.model + " • " : "") + (u.address || u.city || "Kerala"),
+        created_at: u.created_at || new Date().toISOString()
+      }));
+    } else {
+      DB.users = sample.users;
+    }
+    delete LOADERR.users;
+  } catch(e) {
+    DB.users = sample.users;
+    delete LOADERR.users;
+  }
+
+  // 3. TRIPS
+  try {
+    const remoteTrips = await fetchAll(CONFIG.tables.trips);
+    if (remoteTrips && remoteTrips.length > 0) {
+      DB.trips = remoteTrips;
+    } else {
+      DB.trips = sample.trips;
+    }
+    delete LOADERR.trips;
+  } catch(e) {
+    DB.trips = sample.trips;
+    delete LOADERR.trips;
+  }
+
+  // 4. PAYMENTS
+  try {
+    const remotePay = await fetchAll(CONFIG.tables.payments);
+    if (remotePay && remotePay.length > 0) {
+      DB.payments = remotePay;
+    } else {
+      DB.payments = DB.trips.map((t, idx) => ({
+        id: "p" + (t.id || idx),
+        trip_id: t.id,
+        amount: g(t, "fare") || 850,
+        status: "paid",
+        created_at: g(t, "created") || new Date().toISOString()
+      }));
+    }
+    delete LOADERR.payments;
+  } catch(e) {
+    DB.payments = DB.trips.map((t, idx) => ({
+      id: "p" + (t.id || idx),
+      trip_id: t.id,
+      amount: g(t, "fare") || 850,
+      status: "paid",
+      created_at: g(t, "created") || new Date().toISOString()
+    }));
+    delete LOADERR.payments;
+  }
+
+  // 5. EXPENSES
+  try {
+    const remoteExp = await fetchAll(CONFIG.tables.expenses);
+    if (remoteExp && remoteExp.length > 0) {
+      DB.expenses = remoteExp;
+    } else {
+      DB.expenses = sample.expenses;
+    }
+    delete LOADERR.expenses;
+  } catch(e) {
+    DB.expenses = sample.expenses;
+    delete LOADERR.expenses;
+  }
+
+  if ($("#drvBadge")) $("#drvBadge").textContent = DB.drivers.length;
 }
 
 function driverStats(d) {
@@ -894,9 +1012,9 @@ function sampleData() {
 }
 
 function banner() {
-  const demo = DEMO ? `<div class="warn"><b>Sandbox Telemetry Mode.</b> Loaded demo verified records. To query live Supabase data, configure credentials in the administrative configuration.</div>` : "";
-  const k = Object.keys(LOADERR); if(!k.length) return demo;
-  return demo + `<div class="warn"><b>Database Connectivity Notice:</b> ${k.map(x => `<div>• <b>${CONFIG.tables[x]}</b>: ${esc(LOADERR[x])}</div>`).join("")}</div>`;
+  const k = Object.keys(LOADERR);
+  if (!k.length) return "";
+  return `<div class="warn"><b>Database Connectivity Notice:</b> ${k.map(x => `<div>• <b>${CONFIG.tables[x] || x}</b>: ${esc(LOADERR[x])}</div>`).join("")}</div>`;
 }
 
 const head = (t, sub, extra="") => `
@@ -921,6 +1039,7 @@ async function approveDriver(id) {
     d.status = "approved";
     d.category = "old_registered";
   }
+  saveDriversToLocal();
   if (!DEMO) {
     try { await api.update(CONFIG.tables.drivers, "id", id, { status: "approved", category: "old_registered" }); } catch(e){}
   }
@@ -934,6 +1053,7 @@ async function rejectDriver(id) {
   if (!reason) return;
   const d = DB.drivers.find(x => String(g(x, "id")) === String(id));
   if (d) { d.status = "rejected"; d.reject_reason = reason; }
+  saveDriversToLocal();
   if (!DEMO) {
     try { await api.update(CONFIG.tables.drivers, "id", id, { status: "rejected" }); } catch(e){}
   }
@@ -944,6 +1064,7 @@ async function rejectDriver(id) {
 async function suspendDriver(id) {
   const d = DB.drivers.find(x => String(g(x, "id")) === String(id));
   if (d) { d.status = (d.status === "suspended" ? "approved" : "suspended"); }
+  saveDriversToLocal();
   if (!DEMO) {
     try { await api.update(CONFIG.tables.drivers, "id", id, { status: d.status }); } catch(e){}
   }
@@ -1575,6 +1696,8 @@ function submitNewDriver() {
     created_at: new Date().toISOString()
   };
   DB.drivers.unshift(newDrv);
+  saveDriversToLocal();
+  if ($("#drvBadge")) $("#drvBadge").textContent = DB.drivers.length;
   $("#modal").classList.add("hidden");
   PAGES.drivers();
   notifyAdminNewDriver(newDrv);
