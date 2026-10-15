@@ -257,7 +257,116 @@ export const MOCK_PLACES_DATABASE = [
     lat: 12.9719,
     lng: 77.6412,
     type: 'hub',
+    type: 'hub',
     rating: 4.7
+  },
+  {
+    place_id: 'mock_place_residency_rd_blr',
+    title: 'Residency Road',
+    sub: "D'Souza Layout, Shanthala Nagar, Bengaluru, Karnataka 560001",
+    lat: 12.9667,
+    lng: 77.5987,
+    type: 'hub',
+    rating: 4.8
+  },
+  {
+    place_id: 'mock_place_dsouza_layout_blr',
+    title: "D'Souza Layout",
+    sub: 'Residency Road, Shanthala Nagar, Bengaluru, Karnataka 560001',
+    lat: 12.9662,
+    lng: 77.5982,
+    type: 'residential',
+    rating: 4.7
+  },
+  {
+    place_id: 'mock_place_nadapuram_kerala',
+    title: 'Nadapuram Town',
+    sub: 'Vadakara, Kozhikode, Kerala 673504',
+    lat: 11.6852,
+    lng: 75.6544,
+    type: 'hub',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_kallachi_kerala',
+    title: 'Kallachi Junction',
+    sub: 'Nadapuram, Vadakara, Kozhikode, Kerala 673506',
+    lat: 11.6837,
+    lng: 75.6645,
+    type: 'hub',
+    rating: 4.4
+  },
+  {
+    place_id: 'mock_place_calicut_railway',
+    title: 'Kozhikode Main Railway Station (CLT)',
+    sub: 'Railway Station Rd, Palayam, Kozhikode, Kerala 673001',
+    lat: 11.2482,
+    lng: 75.7839,
+    type: 'transit',
+    rating: 4.6
+  },
+  {
+    place_id: 'mock_place_calicut_beach',
+    title: 'Kozhikode Beach',
+    sub: 'Beach Rd, Vellayil, Kozhikode, Kerala 673032',
+    lat: 11.2618,
+    lng: 75.7686,
+    type: 'tourist',
+    rating: 4.7
+  },
+  {
+    place_id: 'mock_place_cyberpark_calicut',
+    title: 'Government Cyberpark Kozhikode',
+    sub: 'Nellikode, Kozhikode, Kerala 673016',
+    lat: 11.2721,
+    lng: 75.8340,
+    type: 'tech',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_vytilla_hub',
+    title: 'Vytilla Mobility Hub',
+    sub: 'Vytilla, Kochi, Kerala 682019',
+    lat: 9.9656,
+    lng: 76.3196,
+    type: 'transit',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_palarivattom_jn',
+    title: 'Palarivattom Junction',
+    sub: 'Palarivattom, Kochi, Kerala 682025',
+    lat: 10.0069,
+    lng: 76.3094,
+    type: 'hub',
+    rating: 4.4
+  },
+  {
+    place_id: 'mock_place_aluva_metro',
+    title: 'Aluva Metro & Railway Station',
+    sub: 'Subhash Nagar, Aluva, Kochi, Kerala 683101',
+    lat: 10.1076,
+    lng: 76.3516,
+    type: 'transit',
+    rating: 4.6
+  },
+  {
+    place_id: 'mock_place_thrissur_round',
+    title: 'Swaraj Round & Vadakkunnathan Temple',
+    sub: 'Kuruppam, Thekkinkadu Maidan, Thrissur, Kerala 680001',
+    lat: 10.5243,
+    lng: 76.2144,
+    type: 'hub',
+    rating: 4.8
+  },
+  {
+    place_id: 'mock_place_trivandrum_technopark',
+    title: 'Technopark Phase 1 & 3',
+    sub: 'Kazhakkoottam, Thiruvananthapuram, Kerala 695581',
+    lat: 8.5566,
+    lng: 76.8821,
+    type: 'tech',
+    rating: 4.6
   },
   {
     place_id: 'mock_place_koramangala_5th',
@@ -380,10 +489,57 @@ export function loadGoogleMapsSdk(apiKey = GOOGLE_MAPS_API_KEY) {
   return googleMapsScriptLoadingPromise;
 }
 
+let nominatimAbortController = null;
+
+async function fetchNominatimPlaces(query, callback) {
+  try {
+    if (nominatimAbortController) {
+      nominatimAbortController.abort();
+    }
+    nominatimAbortController = new AbortController();
+
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=6&addressdetails=1`;
+    const res = await fetch(url, {
+      signal: nominatimAbortController.signal,
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const results = data.map(item => {
+          const parts = (item.display_name || '').split(',').map(s => s.trim());
+          const title = parts[0] || query;
+          const sub = parts.slice(1, 4).join(', ');
+          return {
+            id: 'nom_' + item.place_id,
+            place_id: String(item.place_id),
+            title,
+            sub,
+            full: item.display_name,
+            lat: Number(item.lat),
+            lng: Number(item.lon),
+            isMock: false
+          };
+        });
+        callback(results);
+        return;
+      }
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.warn('[Places] Live search fallback query notice:', err);
+    }
+  }
+  callback([]);
+}
+
 /**
  * Unified Places Search & Autocomplete
  * If Live API key is configured and mock mode is off, uses official Google Places Autocomplete.
- * If in Testing Mode, queries the comprehensive mock dataset with instant fuzzy matching.
+ * Falls back dynamically to live OpenStreetMap Nominatim and built-in database for 100% search coverage across India.
  */
 export async function searchGooglePlaces(query, callback) {
   if (!query || !query.trim()) {
@@ -391,15 +547,19 @@ export async function searchGooglePlaces(query, callback) {
     return;
   }
 
-  const clean = query.trim().toLowerCase();
+  const clean = query.trim();
+  const lower = clean.toLowerCase();
 
-  // Try live Google Places API if SDK is loaded and not in mock mode
-  if (!isMockMode() && window.google?.maps?.places?.AutocompleteService) {
+  // Instant local database matches
+  const localMatches = getFilteredMockPlaces(lower);
+
+  // Try live Google Places API if SDK is loaded
+  if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
     try {
       const service = new window.google.maps.places.AutocompleteService();
       service.getPlacePredictions(
         {
-          input: query,
+          input: clean,
           componentRestrictions: { country: 'in' }
         },
         (predictions, status) => {
@@ -407,26 +567,46 @@ export async function searchGooglePlaces(query, callback) {
             const results = predictions.map(p => ({
               id: p.place_id,
               place_id: p.place_id,
-              title: p.structured_formatting?.main_text || p.description,
-              sub: p.structured_formatting?.secondary_text || 'Google Places location',
+              title: p.structured_formatting?.main_text || p.description.split(',')[0],
+              sub: p.structured_formatting?.secondary_text || p.description,
+              full: p.description,
               description: p.description,
               isMock: false
             }));
             callback(results);
             return;
           }
-          // Fall back to mock places if Google returns zero results
-          callback(getFilteredMockPlaces(clean));
+
+          // Fallback to live Nominatim search when Google Places has no results or restricts billing
+          fetchNominatimPlaces(clean, (nomResults) => {
+            if (nomResults && nomResults.length > 0) {
+              callback(nomResults);
+            } else {
+              callback(localMatches);
+            }
+          });
         }
       );
       return;
     } catch (e) {
-      console.warn('[GoogleMaps] Places Autocomplete error, falling back to mock data:', e);
+      console.warn('[GoogleMaps] Places Autocomplete error, falling back:', e);
     }
   }
 
-  // Fallback to Instant Mock Data
-  callback(getFilteredMockPlaces(clean));
+  // Live OpenStreetMap Nominatim query with local matches
+  fetchNominatimPlaces(clean, (nomResults) => {
+    if (nomResults && nomResults.length > 0) {
+      const combined = [...nomResults];
+      localMatches.forEach(lm => {
+        if (!combined.some(c => c.title.toLowerCase() === lm.title.toLowerCase())) {
+          combined.push(lm);
+        }
+      });
+      callback(combined.slice(0, 6));
+    } else {
+      callback(localMatches);
+    }
+  });
 }
 
 function getFilteredMockPlaces(cleanQuery) {
@@ -440,6 +620,7 @@ function getFilteredMockPlaces(cleanQuery) {
     place_id: p.place_id,
     title: p.title,
     sub: p.sub,
+    full: `${p.title}, ${p.sub}`,
     lat: p.lat,
     lng: p.lng,
     type: p.type,

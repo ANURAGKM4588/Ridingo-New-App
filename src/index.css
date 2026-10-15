@@ -5939,14 +5939,15 @@ body[data-theme="dark"] .onboarding-continue-btn {
   left: 0;
   right: 0;
   margin-top: 6px;
-  background: var(--card);
+  background: var(--card, #FFFFFF);
   border-radius: 14px;
   border: 1.5px solid var(--line);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-  z-index: 99;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  z-index: 1000 !important;
   overflow: hidden;
-  max-height: 220px;
+  max-height: 250px;
   overflow-y: auto;
+  scrollbar-width: thin;
   animation: dropSlideDown 0.18s ease-out;
 }
 
@@ -5979,7 +5980,8 @@ body[data-theme="dark"] .onboarding-continue-btn {
   border-bottom: none;
 }
 
-.loc-suggest-item:hover {
+.loc-suggest-item:hover,
+.loc-suggest-item:active {
   background: var(--field);
 }
 
