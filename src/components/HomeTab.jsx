@@ -5,7 +5,6 @@ import Icon from './Icon';
 import BrandLogo from './BrandLogo';
 import MapPickerModal from './MapPickerModal';
 import GraphicLiveMap from './GraphicLiveMap';
-import { searchPlaces } from '../lib/locationService';
 import { getDeviceLocation } from '../lib/deviceLocation';
 import { getRecommendations, APP_SETTINGS } from '../lib/searchEngine';
 import realtime from '../utils/realtime';
@@ -72,7 +71,6 @@ export default function HomeTab() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const searchWrapRef = useRef(null);
 
@@ -138,11 +136,7 @@ export default function HomeTab() {
     setSearchQuery(val);
     if (val.trim()) {
       setSearchOpen(true);
-      searchPlaces(val, (matches) => {
-        setSearchResults(matches);
-      });
     } else {
-      setSearchResults([]);
       setSearchOpen(false);
     }
   };
@@ -150,7 +144,6 @@ export default function HomeTab() {
   const handleClearSearch = (e) => {
     e.stopPropagation();
     setSearchQuery('');
-    setSearchResults([]);
     setSearchOpen(false);
   };
 
@@ -192,7 +185,7 @@ export default function HomeTab() {
   };
 
   const recs = getRecommendations(searchQuery, { trips });
-  const hasAnyRecs = recs.trips.length > 0 || recs.settings.length > 0 || recs.services.length > 0 || recs.landmarks.length > 0;
+  const hasTripOrSettingRecs = recs.trips.length > 0 || recs.settings.length > 0;
 
   return (
     <div>
@@ -237,7 +230,7 @@ export default function HomeTab() {
               type="text"
               className="search-inp"
               id="u-dest-search"
-              placeholder="Where you go today?"
+              placeholder="Search recent trips, settings..."
               autoComplete="off"
               spellCheck="false"
               value={searchQuery}
@@ -322,131 +315,15 @@ export default function HomeTab() {
               </>
             )}
 
-            {/* 3. Driver Services Section */}
-            {recs.services.length > 0 && (
-              <>
-                <div className="search-drop-h">Driver Services</div>
-                {recs.services.map(s => (
-                  <button
-                    key={s.id}
-                    className="search-item"
-                    type="button"
-                    onClick={() => handlePickService(s)}
-                  >
-                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
-                      <Icon name={s.icon} size={16} />
-                    </span>
-                    <div className="search-item-meta">
-                      <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block' }}>
-                        {s.title}
-                      </b>
-                      <span className="search-item-sub">{s.sub}</span>
-                    </div>
-                    <span className="search-item-badge">Book</span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* 4. Locations & Landmarks Section */}
-            {recs.landmarks.length > 0 && (
-              <>
-                <div className="search-drop-h">Locations & Places</div>
-                {recs.landmarks.map((p, idx) => (
-                  <button
-                    key={`${p.title}-${idx}`}
-                    className="search-item"
-                    type="button"
-                    onClick={() => handlePickPlace(p.title)}
-                  >
-                    <span className="search-item-ic" style={{ background: 'var(--field)', color: 'var(--ink)' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/>
-                      </svg>
-                    </span>
-                    <div className="search-item-meta">
-                      <div className="search-item-route">
-                        <span className="loc-to" style={{ fontWeight: 700 }}>
-                          {p.title}
-                        </span>
-                      </div>
-                      <span className="search-item-sub">{p.sub}</span>
-                    </div>
-                    <span className="search-item-badge">Go</span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* Quick GPS Device Current Location Option */}
-            <button
-              className="search-item"
-              type="button"
-              onClick={async () => {
-                setSearchOpen(false);
-                if (addToast) addToast('Acquiring real device GPS...', 'crosshair');
-                try {
-                  const loc = await getDeviceLocation(true);
-                  if (loc?.address) {
-                    setBookingCategory('hourly');
-                    setBookingDestination(loc.address);
-                    setBookingOpen(true);
-                    if (addToast) addToast(`Set to device location: ${loc.address.split(',')[0]}`, 'check');
-                  }
-                } catch (e) {
-                  setMapModalOpen(true);
-                }
-              }}
-              style={{ borderTop: '1px solid var(--line)', marginTop: '4px' }}
-            >
-              <span className="search-item-ic" style={{ background: 'var(--yellow)', color: '#15140F' }}>
-                <Icon name="crosshair" size={16} />
-              </span>
-              <div className="search-item-meta">
-                <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Use current device location</b>
-                <span className="search-item-sub">Pick from real device GPS position</span>
-              </div>
-              <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
-                GPS
-              </span>
-            </button>
-
-            {/* Choose on Map option */}
-            <button
-              className="search-item"
-              type="button"
-              onClick={() => {
-                setSearchOpen(false);
-                setMapModalOpen(true);
-              }}
-            >
-              <span className="search-item-ic">
-                <Icon name="pin" size={16} />
-              </span>
-              <div className="search-item-meta">
-                <b style={{ fontSize: '13px', color: 'var(--ink)' }}>Choose destination on map</b>
-                <span className="search-item-sub">Drag pin to any exact street</span>
-              </div>
-              <span className="search-item-badge" style={{ background: 'var(--yellow)', color: 'var(--on-yellow)' }}>
-                Map
-              </span>
-            </button>
-
-            {/* Fallback if no matching results */}
-            {!hasAnyRecs && (
-              <div className="search-empty">
-                <span className="search-empty-ic">
-                  <Icon name="pin" size={20} />
+            {/* Fallback if no matching trips or settings */}
+            {!hasTripOrSettingRecs && (
+              <div className="search-empty" style={{ padding: '20px 14px', textAlign: 'center' }}>
+                <span className="search-empty-ic" style={{ display: 'inline-flex', marginBottom: '6px', color: 'var(--muted)' }}>
+                  <Icon name="search" size={20} />
                 </span>
-                <p>Search for "{searchQuery}"</p>
-                <button
-                  className="btn primary sm"
-                  style={{ marginTop: '8px' }}
-                  type="button"
-                  onClick={() => handlePickPlace(searchQuery)}
-                >
-                  Book driver to {searchQuery}
-                </button>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
+                  No trips or settings matching "{searchQuery}"
+                </p>
               </div>
             )}
           </div>

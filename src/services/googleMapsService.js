@@ -778,10 +778,89 @@ export function parseAddressComponents(components = []) {
 }
 
 /**
+ * Extracts structured address components from Google Places API (New) format.
+ */
+export function parseAddressComponentsNew(components = []) {
+  let locality = '';
+  let sublocality = '';
+  let city = '';
+  let state = '';
+  let postalCode = '';
+  let country = '';
+
+  if (Array.isArray(components)) {
+    for (const c of components) {
+      const types = c.types || [];
+      const text = c.longText || c.shortText || '';
+      if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
+        sublocality = text;
+      }
+      if (types.includes('locality')) {
+        locality = text;
+      } else if ((types.includes('administrative_area_level_2') || types.includes('administrative_area_level_3')) && !city) {
+        city = text;
+      }
+      if (types.includes('administrative_area_level_1')) {
+        state = text;
+      }
+      if (types.includes('postal_code')) {
+        postalCode = text;
+      }
+      if (types.includes('country')) {
+        country = text;
+      }
+    }
+  }
+
+  const primaryCity = locality || sublocality || city || '';
+  return {
+    city: primaryCity,
+    locality,
+    sublocality,
+    state,
+    postalCode,
+    country
+  };
+}
+
+/**
  * Fetches high-precision coordinates, complete structured address, and details for a Google Place ID.
+ * Supports both Google Places API (New) and legacy PlacesService fallback.
  */
 export async function fetchPlaceDetails(placeId) {
   if (!placeId) return null;
+  const cleanId = String(placeId).replace(/^places\//, '');
+
+  // 1. Live Google Places API (New) details endpoint
+  if (GOOGLE_MAPS_API_KEY && !GOOGLE_MAPS_API_KEY.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
+    try {
+      const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(cleanId)}?fields=id,displayName,formattedAddress,location,addressComponents`, {
+        headers: {
+          'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+          'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,addressComponents'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.location?.latitude && data?.location?.longitude) {
+          const parsed = parseAddressComponentsNew(data.addressComponents);
+          return {
+            place_id: cleanId,
+            lat: Number(data.location.latitude),
+            lng: Number(data.location.longitude),
+            name: data.displayName?.text || data.formattedAddress?.split(',')?.[0]?.trim() || '',
+            formatted_address: data.formattedAddress || '',
+            address_components: data.addressComponents || [],
+            ...parsed
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[GooglePlaces] Live fetchPlaceDetails (New) error:', err);
+    }
+  }
+
+  // 2. Legacy JS SDK PlacesService fallback
   if (typeof window !== 'undefined' && window.google?.maps?.places?.PlacesService) {
     try {
       const dummyElem = document.createElement('div');
@@ -792,7 +871,7 @@ export async function fetchPlaceDetails(placeId) {
       return await new Promise((resolve) => {
         service.getDetails(
           {
-            placeId,
+            placeId: cleanId,
             fields: ['geometry.location', 'name', 'formatted_address', 'address_components', 'vicinity'],
             sessionToken: token
           },
@@ -800,7 +879,7 @@ export async function fetchPlaceDetails(placeId) {
             if (status === window.google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
               const parsed = parseAddressComponents(place.address_components);
               resolve({
-                place_id: placeId,
+                place_id: cleanId,
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng(),
                 name: place.name || '',
@@ -904,12 +983,84 @@ export function initGooglePlacesAutocomplete(inputElement, onPlaceSelected, opti
   }
 }
 
+let placesApiAbortController = null;
+
+/**
+ * Prioritizes place results:
+ * 1. Exact full name match at the VERY TOP (#1).
+ * 2. Prefix match (starts with the query).
+ * 3. Related keyword matches only at the bottom (all unrelated places filtered out).
+ */
+export function rankAndFilterPlaces(items, rawQuery) {
+  if (!Array.isArray(items) || items.length === 0 || !rawQuery) return [];
+  const q = rawQuery.trim().toLowerCase();
+  if (!q) return items;
+
+  const qTokens = q.split(/[\s,]+/).filter(Boolean);
+
+  // 1. Strict Keyword Filter: Keep ONLY items that relate to the entered keyword
+  const filtered = items.filter(item => {
+    const title = (item.title || '').toLowerCase();
+    const sub = (item.sub || '').toLowerCase();
+    const full = (item.full || '').toLowerCase();
+    const combined = `${title} ${sub} ${full}`;
+
+    if (combined.includes(q)) return true;
+    return qTokens.length > 0 && qTokens.every(tok => combined.includes(tok));
+  });
+
+  // 2. Ranking Algorithm:
+  return filtered.sort((a, b) => {
+    const aTitle = (a.title || '').toLowerCase().trim();
+    const bTitle = (b.title || '').toLowerCase().trim();
+    const aFull = (a.full || '').toLowerCase().trim();
+    const bFull = (b.full || '').toLowerCase().trim();
+
+    const getRank = (title, full) => {
+      // 1. Exact match with user's full typed place name (e.g. title === "kallachi")
+      if (title === q) return 1;
+      // 2. Exact match with full address
+      if (full === q) return 2;
+      // 3. Title starts with exact query word (e.g. "kallachi," or "kallachi ")
+      if (title.startsWith(q + ',') || title.startsWith(q + ' ')) return 3;
+      // 4. Full starts with exact query word
+      if (full.startsWith(q + ',') || full.startsWith(q + ' ')) return 4;
+      // 5. Title starts with query
+      if (title.startsWith(q)) return 5;
+      // 6. Full starts with query
+      if (full.startsWith(q)) return 6;
+      // 7. Title contains query anywhere
+      if (title.includes(q)) return 7;
+      // 8. Secondary text or full address contains query
+      if (full.includes(q)) return 8;
+      return 10;
+    };
+
+    const rankA = getRank(aTitle, aFull);
+    const rankB = getRank(bTitle, bFull);
+
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    // Secondary sort: Shorter title / primary place name first (e.g. "Kallachi" before "Kallachi Court Road")
+    if (aTitle.length !== bTitle.length) {
+      return aTitle.length - bTitle.length;
+    }
+
+    // Tertiary sort: Shorter full address first (e.g. "Kallachi, Keralam, India" before "Kallachi, Nadapuram, Keralam, India")
+    return aFull.length - bFull.length;
+  });
+}
+
 /**
  * Unified Places Search & Autocomplete
- * Configured with official Google Places Autocomplete API:
- * 1. Prioritizes local and relevant Places results via locationBias and origin.
- * 2. Updates in real-time as the user types with instant local matching (0ms) and live API sync.
- * 3. Returns all matching places for complete selection.
+ * Configured with official Google Places API (New):
+ * 1. Queries live Google Places API (New) autocomplete endpoint with user's active API key.
+ * 2. Prioritizes local and relevant Places results via circular locationBias (50km) within India.
+ * 3. Exact full name match is placed at the top (#1) of suggestions.
+ * 4. Only related places matching entered keyword are listed below.
+ * 5. Gracefully falls back to local database + Nominatim if network is interrupted.
  */
 export async function searchGooglePlaces(query, callback, options = {}) {
   if (!query || !query.trim()) {
@@ -921,93 +1072,100 @@ export async function searchGooglePlaces(query, callback, options = {}) {
   const lower = clean.toLowerCase();
 
   // Instant local database matches (0ms synchronous response for immediate feedback)
-  const localMatches = getFilteredMockPlaces(lower);
+  const rawLocal = getFilteredMockPlaces(lower);
+  const localMatches = rankAndFilterPlaces(rawLocal, clean);
   if (localMatches && localMatches.length > 0) {
     callback(localMatches.slice(0, 10));
   }
 
-  // Google Places Autocomplete API with local relevance prioritization
-  if (!googlePlacesDisabledDueToAuth && typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
+  // 1. Official Live Google Places API (New) Autocomplete
+  if (GOOGLE_MAPS_API_KEY && !GOOGLE_MAPS_API_KEY.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
     try {
-      const service = new window.google.maps.places.AutocompleteService();
-      const sessionToken = getOrCreatePlacesSessionToken();
+      if (placesApiAbortController) {
+        placesApiAbortController.abort();
+      }
+      placesApiAbortController = new AbortController();
 
-      // Location bias: prioritize local area (user location or Kerala/South India hub)
-      const centerCoords = options.userCoords || { lat: 10.1518, lng: 76.3930 };
-      const centerLatLng = new window.google.maps.LatLng(Number(centerCoords.lat), Number(centerCoords.lng));
-
-      const request = {
+      const payload = {
         input: clean,
-        componentRestrictions: { country: 'in' },
-        // Circular location bias to strongly prioritize local results
-        locationBias: new window.google.maps.Circle({
-          center: centerLatLng,
-          radius: 80000 // 80 km radius local priority
-        }),
-        origin: centerLatLng,
-        sessionToken: sessionToken || undefined
+        includedRegionCodes: ['in']
       };
 
-      service.getPlacePredictions(request, (predictions, status) => {
-        if (status === 'REQUEST_DENIED' || status === 'UNKNOWN_ERROR') {
-          googlePlacesDisabledDueToAuth = true;
-        }
+      if (options.userCoords && options.userCoords.lat && options.userCoords.lng) {
+        payload.locationBias = {
+          circle: {
+            center: {
+              latitude: Number(options.userCoords.lat),
+              longitude: Number(options.userCoords.lng)
+            },
+            radius: 50000.0 // Google Places API (New) max allowed radius is 50,000 meters
+          }
+        };
+      }
 
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
-          const googleResults = predictions.map(p => ({
-            id: p.place_id,
-            place_id: p.place_id,
-            title: p.structured_formatting?.main_text || p.description.split(',')[0],
-            sub: p.structured_formatting?.secondary_text || p.description,
-            full: p.description,
-            description: p.description,
-            matched_substrings: p.matched_substrings,
-            isMock: false
-          }));
+      const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+        method: 'POST',
+        signal: placesApiAbortController.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY
+        },
+        body: JSON.stringify(payload)
+      });
 
-          // Merge local matches with Google Places results
-          const merged = [...localMatches];
-          googleResults.forEach(r => {
-            if (!merged.some(m => m.title.toLowerCase() === r.title.toLowerCase())) {
-              merged.push(r);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+          const googleResults = data.suggestions
+            .filter(s => s.placePrediction)
+            .map(s => {
+              const p = s.placePrediction;
+              const placeId = p.placeId || (p.place ? p.place.replace(/^places\//, '') : '');
+              const mainText = p.structuredFormat?.mainText?.text || p.text?.text?.split(',')?.[0] || clean;
+              const secondaryText = p.structuredFormat?.secondaryText?.text || p.text?.text || '';
+              return {
+                id: placeId,
+                place_id: placeId,
+                title: mainText,
+                sub: secondaryText,
+                full: p.text?.text || `${mainText}, ${secondaryText}`,
+                isMock: false
+              };
+            });
+
+          // Merge local matches with live Google Places predictions
+          const merged = [...googleResults];
+          localMatches.forEach(lm => {
+            if (!merged.some(m => m.title.toLowerCase() === lm.title.toLowerCase())) {
+              merged.push(lm);
             }
           });
 
-          // Display all matching places
-          callback(merged.slice(0, 12));
+          // Filter and rank so exact match is at top, and only keyword-related places appear below
+          const ranked = rankAndFilterPlaces(merged, clean);
+          callback(ranked.slice(0, 20));
           return;
         }
-
-        // Fallback to live Nominatim search when Google Places has no results or restricts billing
-        fetchNominatimPlaces(clean, (nomResults) => {
-          const combined = [...localMatches];
-          if (nomResults && nomResults.length > 0) {
-            nomResults.forEach(nr => {
-              if (!combined.some(c => c.title.toLowerCase() === nr.title.toLowerCase())) {
-                combined.push(nr);
-              }
-            });
-          }
-          callback(combined.slice(0, 12));
-        });
-      });
-      return;
-    } catch (e) {
-      console.warn('[GoogleMaps] Places Autocomplete error, falling back:', e);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.warn('[GooglePlaces] Live Places (New) query notice:', err);
+      }
     }
   }
 
-  // Live OpenStreetMap Nominatim query with local matches
+  // 2. OpenStreetMap / Nominatim fallback
   fetchNominatimPlaces(clean, (nomResults) => {
     const combined = [...localMatches];
     if (nomResults && nomResults.length > 0) {
-      nomResults.forEach(lm => {
-        if (!combined.some(c => c.title.toLowerCase() === lm.title.toLowerCase())) {
-          combined.push(lm);
+      nomResults.forEach(nr => {
+        if (!combined.some(c => c.title.toLowerCase() === nr.title.toLowerCase())) {
+          combined.push(nr);
         }
       });
     }
-    callback(combined.slice(0, 12));
+    const ranked = rankAndFilterPlaces(combined, clean);
+    callback(ranked.slice(0, 15));
   });
 }
 

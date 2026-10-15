@@ -765,11 +765,6 @@ export default function BookingSheet() {
                 <label className="lab" htmlFor="bk-pickup" style={{ margin: 0 }}>
                   Pickup location
                 </label>
-                {pickupCoords && (
-                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 750, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                    ✓ Selected
-                  </span>
-                )}
               </div>
               <button
                 type="button"
@@ -803,7 +798,9 @@ export default function BookingSheet() {
                 onKeyUp={e => handlePickupChange(e.target.value)}
                 onFocus={() => {
                   setActiveSuggestField('pickup');
-                  searchGooglePlaces(pickup || 'kochi', (results) => setPickupSuggestions(results || []));
+                  if (pickup && pickup.trim()) {
+                    searchGooglePlaces(pickup, (results) => setPickupSuggestions(results || []));
+                  }
                 }}
                 autoComplete="off"
               />
@@ -874,46 +871,12 @@ export default function BookingSheet() {
               )}
             </div>
 
-            {/* Extracted Address Info Badge for Pickup */}
-            {pickupCoords && (
-              <div
-                style={{
-                  marginTop: '6px',
-                  padding: '7px 11px',
-                  background: 'rgba(22, 163, 74, 0.08)',
-                  border: '1px solid rgba(22, 163, 74, 0.25)',
-                  borderRadius: '10px',
-                  fontSize: '11.5px',
-                  color: '#15803D',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  animation: 'fadeIn 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
-                  <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#22C55E', color: '#FFFFFF', display: 'grid', placeItems: 'center', fontSize: '9px', fontWeight: 800, flexShrink: 0 }}>✓</span>
-                  <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {pickupDetails?.city || pickupCoords.name || 'Location confirmed'}
-                  </span>
-                  {pickupDetails?.state && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• {pickupDetails.state}</span>}
-                  {pickupDetails?.postalCode && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• Pin: {pickupDetails.postalCode}</span>}
-                </div>
-                <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 750, flexShrink: 0, marginLeft: '6px', background: 'rgba(34, 197, 94, 0.15)', padding: '2px 6px', borderRadius: '6px' }}>GPS Fixed</span>
-              </div>
-            )}
-
             {/* Destination (optional) */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <label className="lab" htmlFor="bk-drop" style={{ margin: 0 }}>
                   Destination (optional)
                 </label>
-                {dropCoords && (
-                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 750, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                    ✓ Selected
-                  </span>
-                )}
               </div>
               <button
                 type="button"
@@ -951,7 +914,9 @@ export default function BookingSheet() {
                 onKeyUp={e => handleDropChange(e.target.value)}
                 onFocus={() => {
                   setActiveSuggestField('drop');
-                  searchGooglePlaces(drop || 'kallachi', (results) => setDropSuggestions(results || []));
+                  if (drop && drop.trim()) {
+                    searchGooglePlaces(drop, (results) => setDropSuggestions(results || []));
+                  }
                 }}
                 autoComplete="off"
               />
@@ -1022,34 +987,6 @@ export default function BookingSheet() {
               )}
             </div>
 
-            {/* Extracted Address Info Badge for Destination */}
-            {dropCoords && (
-              <div
-                style={{
-                  marginTop: '6px',
-                  padding: '7px 11px',
-                  background: 'rgba(22, 163, 74, 0.08)',
-                  border: '1px solid rgba(22, 163, 74, 0.25)',
-                  borderRadius: '10px',
-                  fontSize: '11.5px',
-                  color: '#15803D',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  animation: 'fadeIn 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
-                  <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#22C55E', color: '#FFFFFF', display: 'grid', placeItems: 'center', fontSize: '9px', fontWeight: 800, flexShrink: 0 }}>✓</span>
-                  <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {dropDetails?.city || dropCoords.name || 'Location confirmed'}
-                  </span>
-                  {dropDetails?.state && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• {dropDetails.state}</span>}
-                  {dropDetails?.postalCode && <span style={{ opacity: 0.85, fontSize: '11px', whiteSpace: 'nowrap' }}>• Pin: {dropDetails.postalCode}</span>}
-                </div>
-                <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 750, flexShrink: 0, marginLeft: '6px', background: 'rgba(34, 197, 94, 0.15)', padding: '2px 6px', borderRadius: '6px' }}>GPS Fixed</span>
-              </div>
-            )}
 
             {/* Real Google Maps Total Distance & Estimated Travel Time (ETA) */}
             <div
