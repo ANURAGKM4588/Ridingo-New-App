@@ -4451,7 +4451,11 @@ export default function DriverApp() {
 
             <button
               type="button"
-              onClick={() => setPaymentCompletionModal(null)}
+              onClick={() => {
+                setPaymentCompletionModal(null);
+                setActiveTripAction(null);
+                setDTab('history');
+              }}
               style={{
                 width: '100%',
                 padding: '14px',
@@ -4465,7 +4469,7 @@ export default function DriverApp() {
                 boxShadow: '0 4px 14px rgba(0,0,0,0.2)'
               }}
             >
-              Done & Back to Trips
+              Done & View Trip History
             </button>
           </div>
         </div>

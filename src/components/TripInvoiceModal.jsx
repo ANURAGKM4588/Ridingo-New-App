@@ -326,29 +326,57 @@ export default function TripInvoiceModal({
           </div>
         </div>
 
-        {/* Footer Close Button (Center-aligned black text, replaces Confirm Payment) */}
+        {/* Footer Payment Settlement & Dismiss Buttons */}
         <div style={{ padding: '16px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))', borderTop: '1px solid var(--line, #F1F5F9)', background: 'var(--sheet, #FFFFFF)' }}>
+          <button
+            type="button"
+            disabled={isProcessingPayment}
+            onClick={handleSimulatePaymentSettlement}
+            style={{
+              width: '100%',
+              padding: '15px',
+              borderRadius: '14px',
+              background: '#000000',
+              color: '#FFFFFF',
+              fontSize: '15px',
+              fontWeight: 800,
+              border: 'none',
+              cursor: isProcessingPayment ? 'wait' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+              opacity: isProcessingPayment ? 0.7 : 1
+            }}
+          >
+            {isProcessingPayment ? (
+              <span>Settling Payment...</span>
+            ) : (
+              <>
+                <Icon name="check" size={18} color="#FFFFFF" />
+                <span>Payment Received · Settle ₹{totalDriverPayout}</span>
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={onClose}
             style={{
               width: '100%',
-              padding: '14px',
-              borderRadius: '14px',
-              background: '#FFFFFF',
-              color: '#000000',
-              fontSize: '15px',
-              fontWeight: 800,
-              border: '1.5px solid #000000',
+              marginTop: '10px',
+              padding: '10px',
+              borderRadius: '12px',
+              background: 'transparent',
+              color: 'var(--muted, #64748B)',
+              fontSize: '13px',
+              fontWeight: 650,
+              border: 'none',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+              textAlign: 'center'
             }}
           >
-            Close
+            Dismiss for now
           </button>
         </div>
       </div>

@@ -336,8 +336,8 @@ class RealtimeHub {
     this.emit('TRIP_REQUESTED', trip);
   }
 
-  acceptRide(tripId, driver) {
-    this.emit('TRIP_ACCEPTED', { tripId, driver, timestamp: Date.now() });
+  acceptRide(tripId, driver, startOtp) {
+    this.emit('TRIP_ACCEPTED', { tripId, driver, startOtp, timestamp: Date.now() });
   }
 
   declineRide(tripId) {

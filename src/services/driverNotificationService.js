@@ -421,8 +421,20 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
  * Standardized corporate notification copy without emojis for clean OS presentation.
  */
 
+// Strict single-notification tracking for incoming ride requests
+const notifiedIncomingTripIds = new Set();
+
 // 1. Incoming Ride Request Alert (Device Native System Notification)
 export function notifyIncomingRideRequest(trip, callbacks = {}) {
+  const tripId = trip?.id;
+  if (!tripId) return false;
+
+  // STRICT SINGLE NOTIFICATION GUARANTEE: Never show 2 or more notifications for the same request
+  if (notifiedIncomingTripIds.has(tripId)) {
+    return false;
+  }
+  notifiedIncomingTripIds.add(tripId);
+
   const pickup = trip?.pickup || trip?.from || 'Customer Pickup';
   const drop = trip?.drop_loc || trip?.drop || trip?.to || 'City Route';
   const fare = Number(trip?.fare) || 600;
@@ -436,17 +448,20 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
   // Auditory chime for incoming dispatch
   playNativeAlertChime('alert');
 
+  // Derive stable notification ID from tripId so Android & iOS never create duplicate notification rows
+  const stableNotifId = Math.abs(tripId.split('').reduce((acc, c) => ((acc << 5) - acc) + c.charCodeAt(0), 0)) % 900000 + 10000;
+
   return sendDriverNativeNotification(
     title,
     body,
     {
-      id: Math.floor(Math.random() * 500000) + 10000,
-      tag: `booking_req_${trip?.id || Date.now()}`,
+      id: stableNotifId,
+      tag: `booking_req_${tripId}`,
       type: 'request',
       actionTypeId: 'TRIP_DISPATCH_CARD',
       summaryArgument: `₹${fare} · ${pickup} to ${drop}`,
       extra: {
-        tripId: trip?.id,
+        tripId,
         fare,
         advance,
         pickup,
@@ -456,7 +471,7 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
       },
       onAction: (action) => {
         if (action === 'accept' && callbacks.onAccept) {
-          callbacks.onAccept(trip?.id);
+          callbacks.onAccept(tripId);
         } else if (callbacks.onViewMore) {
           callbacks.onViewMore(trip);
         }
@@ -531,6 +546,9 @@ export function notifyDriverOnlineStatus(isOnline) {
  */
 export async function dismissIncomingRideNotification(tripId = '') {
   try {
+    if (tripId) {
+      notifiedIncomingTripIds.delete(tripId);
+    }
     // 1. Immediately silence any active tone
     stopActiveTone();
 

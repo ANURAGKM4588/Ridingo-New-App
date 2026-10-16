@@ -344,7 +344,7 @@ export function AppProvider({ children }) {
       fare: Number(row.fare) || 600,
       advance: Number(row.advance) || 180,
       status: row.status || 'requested',
-      startOtp: carObj.startOtp || row.startOtp || '4821',
+      startOtp: row.otp || carObj.startOtp || row.startOtp || '4821',
       endOtp: carObj.endOtp || row.endOtp || '8392',
       conditionPhotos: row.conditionPhotos || { front: null, left: null, back: null, top: null },
       conditionScratches: row.conditionScratches || [],
@@ -547,15 +547,25 @@ export function AppProvider({ children }) {
     };
     document.addEventListener('visibilitychange', onVisChange);
 
-    const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver }) => {
+    const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver, startOtp, otp }) => {
       const driverName = driver?.name || 'Ravi Kumar';
       const driverPhone = driver?.phone || '+91 94471 23456';
-      let targetOtp = '4821';
+      
+      // Determine the exact booking OTP (never fall back to a random default)
+      const foundTrip = trips.find(t => t.id === tripId);
+      const targetOtp = startOtp || otp || foundTrip?.startOtp || foundTrip?.car?.startOtp || foundTrip?.otp || '4821';
+
       setTrips(prev =>
         prev.map(t => {
           if (t.id === tripId) {
-            targetOtp = t.startOtp || targetOtp;
-            return { ...t, status: 'accepted', driver: driverName, driverObj: driver };
+            const finalOtp = startOtp || otp || t.startOtp || t.car?.startOtp || t.otp || targetOtp;
+            return {
+              ...t,
+              status: 'accepted',
+              driver: driverName,
+              driverObj: driver,
+              startOtp: finalOtp
+            };
           }
           return t;
         })
@@ -1250,6 +1260,7 @@ export function AppProvider({ children }) {
           advance: tripObj.advance,
           status: tripObj.status || 'requested',
           driver: null,
+          otp: tripObj.startOtp,
           car: {
             model: tripObj.car?.model || 'Sedan',
             trans: tripObj.trans || tripObj.car?.trans || 'Automatic',
@@ -1326,17 +1337,19 @@ export function AppProvider({ children }) {
       id: driverId,
       deviceDriverId: driverId
     };
-    let targetOtp = '4821';
+    const currentTrip = trips.find(t => t.id === tripId);
+    const targetOtp = currentTrip?.startOtp || currentTrip?.car?.startOtp || currentTrip?.otp || '4821';
+
     setTrips(prev =>
       prev.map(t => {
         if (t.id === tripId) {
-          targetOtp = t.startOtp || targetOtp;
           return {
             ...t,
             status: 'accepted',
             driver: driver.name,
             driver_id: driverId,
-            driverObj
+            driverObj,
+            startOtp: targetOtp
           };
         }
         return t;
@@ -1355,7 +1368,7 @@ export function AppProvider({ children }) {
     addToast(`Trip confirmed. ${driver.name} accepted your ride.`, 'check');
 
     // Broadcast across realtime bus & update Supabase
-    realtime.acceptRide(tripId, driverObj);
+    realtime.acceptRide(tripId, driverObj, targetOtp);
     updateTripStatusInSupabase(tripId, 'accepted', {
       driver: driverObj
     });
