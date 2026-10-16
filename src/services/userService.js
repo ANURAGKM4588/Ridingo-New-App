@@ -378,3 +378,88 @@ export function isUserTrip(trip, user) {
 
   return false;
 }
+
+function parseTimeIntoDate(dateObj, timeStr) {
+  if (!dateObj || !timeStr) return;
+  const match = String(timeStr).match(/(\d+):(\d+)\s*(AM|PM)?/i);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const mins = parseInt(match[2], 10);
+    const ampm = match[3]?.toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    dateObj.setHours(hours, mins, 0, 0);
+  }
+}
+
+/**
+ * Resolves the scheduled timestamp for a trip (or when_ts for immediate bookings)
+ */
+export function getTripScheduledTimestamp(trip) {
+  if (!trip) return Date.now();
+  if (trip.scheduledTs) return Number(trip.scheduledTs);
+
+  if (trip.rawDate && trip.rawTime) {
+    const ts = new Date(`${trip.rawDate}T${trip.rawTime}:00`).getTime();
+    if (!isNaN(ts)) return ts;
+  }
+
+  if (trip.scheduledDate || trip.date) {
+    const dateStr = String(trip.scheduledDate || trip.date).trim();
+    const timeStr = String(trip.scheduledTime || trip.time || '').trim();
+
+    if (dateStr.toLowerCase().startsWith('today')) {
+      const d = new Date();
+      if (timeStr) parseTimeIntoDate(d, timeStr);
+      return d.getTime();
+    }
+    if (dateStr.toLowerCase().startsWith('tomorrow')) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      if (timeStr) parseTimeIntoDate(d, timeStr);
+      return d.getTime();
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const d = new Date(`${dateStr}T${timeStr || '12:00'}:00`);
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const parsed = Date.parse(`${dateStr} ${new Date().getFullYear()} ${timeStr}`);
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  return Number(trip.when_ts) || Date.now();
+}
+
+/**
+ * Checks whether a trip is scheduled for the future (i.e. more than 2 hours away from now).
+ * Future trips are shown in the History section only and do not have active tracking.
+ * When within 2 hours of scheduled time (or happening today/now), they show on the Home page with tracking!
+ */
+export function isUpcomingFutureTrip(trip) {
+  if (!trip) return false;
+  if (['inprogress', 'pickup_arrived', 'ready_to_start', 'ending_otp', 'invoice_pending', 'completed', 'cancelled'].includes(trip.status)) {
+    return false;
+  }
+  const schedTs = getTripScheduledTimestamp(trip);
+  const diffMs = schedTs - Date.now();
+  // Scheduled more than 2 hours in the future
+  return diffMs > 2 * 60 * 60 * 1000;
+}
+
+/**
+ * Checks whether tracking should be unlocked for this trip:
+ * Tracking is active if the trip is NOT a future trip (> 2h away),
+ * i.e., it starts within 2 hours, is happening today, or is in progress / arrived!
+ */
+export function isTripTrackingUnlocked(trip) {
+  if (!trip) return false;
+  if (['inprogress', 'pickup_arrived', 'ready_to_start'].includes(trip.status)) {
+    return true;
+  }
+  if (['requested', 'accepted', 'scheduled'].includes(trip.status)) {
+    const schedTs = getTripScheduledTimestamp(trip);
+    const diffMs = schedTs - Date.now();
+    return diffMs <= 2 * 60 * 60 * 1000;
+  }
+  return false;
+}

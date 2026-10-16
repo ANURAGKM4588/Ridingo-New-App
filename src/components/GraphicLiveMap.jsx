@@ -112,16 +112,35 @@ export default function GraphicLiveMap({
     return () => observer.disconnect();
   }, []);
 
+  const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
+  const driverLive = trip?.driverCoords;
+
+  const originCoords = isApproachingPickup
+    ? (driverLive?.lat && driverLive?.lng ? driverLive : trip?.pickupCoords)
+    : (driverLive?.lat && driverLive?.lng ? driverLive : trip?.pickupCoords);
+
+  const destCoords = isApproachingPickup
+    ? trip?.pickupCoords
+    : (trip?.dropCoords || trip?.pickupCoords);
+
+  const originName = isApproachingPickup
+    ? (driverLive?.lat ? (trip?.driver || 'Chauffeur Location') : trip?.pickup)
+    : trip?.pickup;
+
+  const destName = isApproachingPickup
+    ? trip?.pickup
+    : (trip?.drop_loc || trip?.pickup);
+
   // Fetch pure and perfect road directions from Google Maps API / Road Network Router
   useEffect(() => {
     let isSubscribed = true;
     async function loadRoadRoute() {
       try {
         const result = await fetchGoogleRoadDirections({
-          origin: trip?.pickup,
-          destination: trip?.drop_loc,
-          originCoords: trip?.pickupCoords,
-          destCoords: trip?.dropCoords
+          origin: originName,
+          destination: destName,
+          originCoords: originCoords,
+          destCoords: destCoords
         });
         if (isSubscribed && result?.points && result.points.length >= 2) {
           setRoutePoints(result.points);
@@ -134,15 +153,19 @@ export default function GraphicLiveMap({
     return () => { isSubscribed = false; };
   }, [
     trip?.id,
-    trip?.pickup,
-    trip?.drop_loc,
-    trip?.pickupCoords?.lat,
-    trip?.pickupCoords?.lng,
-    trip?.dropCoords?.lat,
-    trip?.dropCoords?.lng
+    trip?.status,
+    originName,
+    destName,
+    originCoords?.lat,
+    originCoords?.lng,
+    destCoords?.lat,
+    destCoords?.lng
   ]);
 
   const geom = useMemo(() => getRouteTelemetry(routePoints, progress), [routePoints, progress]);
+  const carLat = driverLive?.lat || geom.lat;
+  const carLng = driverLive?.lng || geom.lng;
+  const carAngle = trip?.driverHeading !== undefined ? trip.driverHeading : (geom.angle || 0);
 
   // Initialize stock Google Map once container is ready
   useEffect(() => {
@@ -222,13 +245,13 @@ export default function GraphicLiveMap({
     // Live Moving Vehicle Marker on the Road
     const carIcon = L.divIcon({
       className: 'gmap-car-marker',
-      html: `<div style="transform: rotate(${geom.angle || 0}deg); width:28px; height:28px; background:#000000; border:2px solid #FFC70A; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.45); transition: transform 0.2s ease;">
+      html: `<div style="transform: rotate(${carAngle || 0}deg); width:28px; height:28px; background:#000000; border:2px solid #FFC70A; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.45); transition: transform 0.2s ease;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFC70A"><polygon points="12 2 19 21 12 17 5 21 12 2"/></svg>
       </div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
-    carMarkerRef.current = L.marker([geom.lat, geom.lng], { icon: carIcon }).addTo(map);
+    carMarkerRef.current = L.marker([carLat, carLng], { icon: carIcon }).addTo(map);
 
     // Fit map bounds smoothly
     if (latlngs.length >= 2) {
@@ -240,6 +263,21 @@ export default function GraphicLiveMap({
       mapRef.current = null;
     };
   }, []);
+
+  // Real-time vehicle GPS tracking updates
+  useEffect(() => {
+    if (!carMarkerRef.current || !carLat || !carLng) return;
+    try {
+      carMarkerRef.current.setLatLng([carLat, carLng]);
+      const el = carMarkerRef.current.getElement();
+      if (el) {
+        const iconDiv = el.querySelector('div');
+        if (iconDiv) {
+          iconDiv.style.transform = `rotate(${carAngle}deg)`;
+        }
+      }
+    } catch (_) {}
+  }, [carLat, carLng, carAngle]);
 
   // Update polyline and markers when routePoints update from directions API
   useEffect(() => {

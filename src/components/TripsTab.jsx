@@ -23,7 +23,9 @@ export default function TripsTab() {
     setBookingCategory,
     setLiveTrackingOpen,
     setActiveTrackingTripId,
-    setTripToCancel
+    setTripToCancel,
+    isUpcomingFutureTrip,
+    isTripTrackingUnlocked
   } = useApp();
 
   const [filter, setFilter] = useState('all');
@@ -152,16 +154,6 @@ export default function TripsTab() {
             className="btn primary"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '999px', fontSize: '13.5px', fontWeight: 750, margin: '0 auto' }}
             onClick={() => {
-              const activeTrip = (trips || []).find(t =>
-                isUserTrip(t, user) &&
-                ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status)
-              );
-              if (activeTrip) {
-                if (addToast) addToast('You already have an active ride in progress. Complete your ongoing trip before booking another one.', 'warn');
-                if (setActiveTrackingTripId) setActiveTrackingTripId(activeTrip.id);
-                setLiveTrackingOpen(true);
-                return;
-              }
               setBookingCategory('hourly');
               setBookingOpen(true);
             }}
@@ -176,19 +168,24 @@ export default function TripsTab() {
             const c = CATS[t.cat] || CATS.hourly;
             const destName = t.drop_loc || t.pickup || `${c.name} trip`;
             const isAssigned = ['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status);
+            const isFuture = isUpcomingFutureTrip ? isUpcomingFutureTrip(t) : false;
+            const trackingUnlocked = isTripTrackingUnlocked ? isTripTrackingUnlocked(t) : !isFuture;
+            const canTrack = trackingUnlocked && isAssigned;
 
             return (
               <div
                 key={t.id}
                 className={`trip-row stagger-${Math.min(6, 3 + idx)}`}
                 onClick={() => {
-                  if (['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status)) {
+                  if (canTrack) {
                     if (setActiveTrackingTripId) setActiveTrackingTripId(t.id);
                     if (setLiveTrackingOpen) setLiveTrackingOpen(true);
+                  } else if (isFuture) {
+                    if (addToast) addToast(`Scheduled for ${t.scheduleDisplay || 'upcoming'}. Live GPS tracking unlocks 2 hours before pickup.`, 'info');
                   }
                 }}
                 style={{
-                  cursor: isAssigned ? 'pointer' : 'default'
+                  cursor: canTrack ? 'pointer' : 'default'
                 }}
               >
                 <div className="trip-row-head">
@@ -198,7 +195,7 @@ export default function TripsTab() {
                   <div className="trip-row-main">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <b className="trip-row-title ell">{destName}</b>
-                      {isAssigned && (
+                      {isAssigned && !isFuture && (
                         <span
                           style={{
                             fontSize: '10.5px',
@@ -221,7 +218,13 @@ export default function TripsTab() {
                   </div>
                   <div className="trip-row-right">
                     <span className="trip-row-amt">₹{t.fare}</span>
-                    {getStatusPill(t.status)}
+                    {isFuture && ['requested', 'accepted', 'scheduled'].includes(t.status) ? (
+                      <span className="pill good" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        Scheduled
+                      </span>
+                    ) : (
+                      getStatusPill(t.status)
+                    )}
                   </div>
                 </div>
 
@@ -238,31 +241,60 @@ export default function TripsTab() {
                     }}
                   >
                     <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>
-                      {['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)
-                        ? 'Chauffeur assigned · ₹100 fee applies'
-                        : 'Searching chauffeur · ₹50 fee applies'}
+                      {isFuture
+                        ? 'Scheduled · Tracking unlocks 2h before trip'
+                        : ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)
+                          ? 'Chauffeur assigned · Tracking active'
+                          : 'Searching chauffeur · ₹50 fee applies'}
                     </span>
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (setTripToCancel) setTripToCancel(t);
-                      }}
-                      style={{
-                        padding: '4px 12px',
-                        fontSize: '11.5px',
-                        fontWeight: 750,
-                        color: '#EF4444',
-                        background: 'rgba(239, 68, 68, 0.08)',
-                        border: '1px solid rgba(239, 68, 68, 0.28)',
-                        borderRadius: '999px',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      Cancel Ride
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {canTrack && (
+                        <button
+                          type="button"
+                          className="btn primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (setActiveTrackingTripId) setActiveTrackingTripId(t.id);
+                            if (setLiveTrackingOpen) setLiveTrackingOpen(true);
+                          }}
+                          style={{
+                            padding: '4px 12px',
+                            fontSize: '11.5px',
+                            fontWeight: 750,
+                            borderRadius: '999px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Icon name="navigation" size={12} />
+                          <span>Track Live</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (setTripToCancel) setTripToCancel(t);
+                        }}
+                        style={{
+                          padding: '4px 12px',
+                          fontSize: '11.5px',
+                          fontWeight: 750,
+                          color: '#EF4444',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.28)',
+                          borderRadius: '999px',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Cancel Ride
+                      </button>
+                    </div>
                   </div>
                 )}
 

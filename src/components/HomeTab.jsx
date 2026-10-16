@@ -68,7 +68,9 @@ export default function HomeTab() {
     onboardingOpen,
     declineTrip,
     cancelTripByUser,
-    setTripToCancel
+    setTripToCancel,
+    isUpcomingFutureTrip,
+    isTripTrackingUnlocked
   } = useApp();
 
   const unreadCount = (unotes || []).filter(n => !n.read).length;
@@ -100,15 +102,19 @@ export default function HomeTab() {
   const requestedTrip = (trips || []).find(t => {
     if (t.status !== 'requested') return false;
     if (!isUserTrip(t, user)) return false;
+    // Upcoming future trips (> 2 hours away) show in History section only!
+    if (isUpcomingFutureTrip && isUpcomingFutureTrip(t)) return false;
     const age = Date.now() - (Number(t.when_ts) || 0);
-    return age >= 0 && age < 15 * 60 * 1000;
+    return age >= 0 && age < 30 * 60 * 1000;
   });
 
   const isAccepted = (trips || []).find(t => {
     if (!['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) return false;
     if (!isUserTrip(t, user)) return false;
+    // Upcoming future trips (> 2 hours away) show in History section only!
+    if (isUpcomingFutureTrip && isUpcomingFutureTrip(t)) return false;
     const age = Date.now() - (Number(t.when_ts) || 0);
-    return age >= 0 && age < 12 * 60 * 60 * 1000;
+    return age >= 0 && age < 24 * 60 * 60 * 1000;
   });
 
   const inProg = (trips || []).find(t => {
@@ -131,18 +137,7 @@ export default function HomeTab() {
 
   const userActiveTrip = requestedTrip || isAccepted || inProg;
 
-  const ensureNoActiveTripOrWarn = () => {
-    if (userActiveTrip) {
-      if (addToast) addToast('You already have an active ride in progress. Please complete your ongoing trip before booking a new one.', 'warn');
-      if (setActiveTrackingTripId) setActiveTrackingTripId(userActiveTrip.id);
-      setLiveTrackingOpen(true);
-      return false;
-    }
-    return true;
-  };
-
   const openBooking = (cat) => {
-    if (!ensureNoActiveTripOrWarn()) return;
     setBookingCategory(cat);
     setBookingOpen(true);
   };
@@ -164,10 +159,6 @@ export default function HomeTab() {
   };
 
   const handlePickPlace = (placeTitle) => {
-    if (!ensureNoActiveTripOrWarn()) {
-      setSearchOpen(false);
-      return;
-    }
     const isAirport = placeTitle.toLowerCase().includes('airport');
     setBookingCategory(isAirport ? 'airport' : 'hourly');
     setBookingDestination(placeTitle);
@@ -176,10 +167,6 @@ export default function HomeTab() {
   };
 
   const handlePickTrip = (t) => {
-    if (!ensureNoActiveTripOrWarn()) {
-      setSearchOpen(false);
-      return;
-    }
     setBookingCategory(t.cat || 'hourly');
     setBookingDestination(t.drop_loc);
     setBookingOpen(true);
@@ -196,20 +183,12 @@ export default function HomeTab() {
   };
 
   const handlePickService = (srv) => {
-    if (!ensureNoActiveTripOrWarn()) {
-      setSearchOpen(false);
-      return;
-    }
     setBookingCategory(srv.cat);
     setBookingOpen(true);
     setSearchOpen(false);
   };
 
   const handleMapPick = (addr) => {
-    if (!ensureNoActiveTripOrWarn()) {
-      setMapModalOpen(false);
-      return;
-    }
     setBookingCategory('hourly');
     setBookingDestination(addr);
     setBookingOpen(true);

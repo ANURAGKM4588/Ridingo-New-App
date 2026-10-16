@@ -12,7 +12,15 @@ import {
   dismissIncomingRideNotification,
   stopActiveTone
 } from '../services/driverNotificationService';
-import { isUserTrip, generateRidingoUserId, generateSessionToken, getCompoundLoginKey } from '../services/userService';
+import {
+  isUserTrip,
+  generateRidingoUserId,
+  generateSessionToken,
+  getCompoundLoginKey,
+  isUpcomingFutureTrip,
+  isTripTrackingUnlocked,
+  getTripScheduledTimestamp
+} from '../services/userService';
 
 const AppContext = createContext(null);
 
@@ -376,7 +384,10 @@ export function AppProvider({ children }) {
       startOtp: localTrip.startOtp || remoteTrip.startOtp,
       finalSettlement: localTrip.finalSettlement || remoteTrip.finalSettlement,
       completedAt: localTrip.completedAt || remoteTrip.completedAt,
-      startedAt: localTrip.startedAt || remoteTrip.startedAt
+      startedAt: localTrip.startedAt || remoteTrip.startedAt,
+      driverCoords: localTrip.driverCoords || remoteTrip.driverCoords,
+      driverHeading: localTrip.driverHeading || remoteTrip.driverHeading,
+      driverSpeed: localTrip.driverSpeed || remoteTrip.driverSpeed
     };
   };
 
@@ -434,9 +445,14 @@ export function AppProvider({ children }) {
       driver_id: driverId,
       rider: row.rider || { name: 'Customer', phone: '+91 98401 23456' },
       cashback: Number(row.cashback) || 20,
-      cashbackStatus: row.status === 'completed' ? 'credited' : 'pending',
       pickupCoords: carObj.pickupCoords || null,
-      dropCoords: carObj.dropCoords || null
+      dropCoords: carObj.dropCoords || null,
+      driverCoords: driverObj?.location || row.driver_location || row.driverCoords || null,
+      driverHeading: driverObj?.location?.heading || row.driverHeading || 0,
+      driverSpeed: driverObj?.location?.speed || row.driverSpeed || 0,
+      scheduledTs: row.scheduled_ts || row.scheduledTs || null,
+      rawDate: row.raw_date || row.rawDate || null,
+      rawTime: row.raw_time || row.rawTime || null
     };
   };
 
@@ -810,6 +826,24 @@ export function AppProvider({ children }) {
       setUTab('home');
     });
 
+    const unbindLoc = realtime.on('LOCATION_UPDATE', (telemetry) => {
+      if (!telemetry?.tripId) return;
+      setTrips(prev =>
+        prev.map(t => {
+          if (t.id === telemetry.tripId) {
+            return {
+              ...t,
+              driverCoords: { lat: Number(telemetry.lat), lng: Number(telemetry.lng) },
+              driverHeading: Number(telemetry.heading) || 0,
+              driverSpeed: Number(telemetry.speed) || 0,
+              lastLocationTs: telemetry.timestamp || Date.now()
+            };
+          }
+          return t;
+        })
+      );
+    });
+
     return () => {
       clearInterval(pollInterval);
       document.removeEventListener('visibilitychange', onVisChange);
@@ -830,6 +864,7 @@ export function AppProvider({ children }) {
       unbindCancel();
       unbindComp();
       unbindRideComp();
+      unbindLoc();
     };
   }, []);
 
@@ -1296,19 +1331,6 @@ export function AppProvider({ children }) {
   };
 
   const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, phonepePaymentId, schedule) => {
-    // Strictly restrict: Only allow one active trip at a time FOR THE LOGGED-IN USER!
-    const activeTrip = (trips || []).find(t =>
-      isUserTrip(t, user) &&
-      ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
-    );
-    if (activeTrip) {
-      addToast('You already have an active ride in progress. Complete your ongoing trip before booking another one.', 'warn');
-      setBookingOpen(false);
-      setLiveTrackingOpen(true);
-      setActiveTrackingTripId(activeTrip.id);
-      return null;
-    }
-
     const tripId = 'TRP-' + Math.floor(1000 + Math.random() * 9000);
     const pId = String(phonepePaymentId || ('pay_ppe_' + Date.now().toString(36)));
     const safeFare = Number(fare) || 600;
@@ -1320,6 +1342,9 @@ export function AppProvider({ children }) {
     const scheduledDate = schedule?.date || null;
     const scheduledTime = schedule?.time || null;
     const tripTrans = schedule?.trans || 'Automatic';
+    const rawDate = schedule?.rawDate || null;
+    const rawTime = schedule?.rawTime || null;
+    const scheduledTs = schedule?.scheduledTs || getTripScheduledTimestamp({ scheduledDate, scheduledTime, rawDate, rawTime, when_ts: Date.now() });
 
     const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
     const endOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -1335,6 +1360,9 @@ export function AppProvider({ children }) {
       when_ts: Date.now(),
       scheduledDate,
       scheduledTime,
+      rawDate,
+      rawTime,
+      scheduledTs,
       scheduleDisplay: scheduledDate ? `${scheduledDate} · ${scheduledTime}` : 'Immediate Pickup',
       fare: safeFare,
       advance: adv,
@@ -1436,7 +1464,6 @@ export function AppProvider({ children }) {
       return [newTrip, ...arr.filter(t => t.id !== newTrip.id)];
     });
     setIncomingTripRequest(newTrip);
-    setActiveTrackingTripId(newTrip.id);
 
     // 1. Broadcast over WebSocket channel
     realtime.requestRide(newTrip);
@@ -1444,9 +1471,16 @@ export function AppProvider({ children }) {
     persistTripToSupabase(newTrip);
 
     setBookingOpen(false);
-    setUTab('home');
-    setLiveTrackingOpen(true);
-    addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via PhonePe.`, 'check');
+    const isFuture = isUpcomingFutureTrip(newTrip);
+    if (isFuture) {
+      setUTab('history');
+      addToast(`Chauffeur scheduled for ${newTrip.scheduleDisplay}! View in upcoming trips.`, 'check');
+    } else {
+      setActiveTrackingTripId(newTrip.id);
+      setLiveTrackingOpen(true);
+      setUTab('home');
+      addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via PhonePe.`, 'check');
+    }
   };
 
   const updateTripStatusInSupabase = async (tripId, status, extra = {}) => {
@@ -1889,7 +1923,10 @@ export function AppProvider({ children }) {
         acceptedTripIdsRef,
         settledTripIdsRef,
         tripToCancel,
-        setTripToCancel
+        setTripToCancel,
+        isUpcomingFutureTrip,
+        isTripTrackingUnlocked,
+        getTripScheduledTimestamp
       }}
     >
       {children}

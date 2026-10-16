@@ -548,13 +548,6 @@ export default function BookingSheet() {
 
   const handleSubmit = () => {
     try {
-      if (activeOngoingTrip) {
-        if (addToast) addToast('You already have an active ride in progress. Complete your ongoing trip before booking another one.', 'warn');
-        setBookingOpen(false);
-        if (setActiveTrackingTripId) setActiveTrackingTripId(activeOngoingTrip.id);
-        if (setLiveTrackingOpen) setLiveTrackingOpen(true);
-        return;
-      }
       const cleanPickup = pickup?.trim();
       if (!cleanPickup) {
         if (addToast) addToast('Please enter pickup location or choose on map', 'alert');
@@ -597,6 +590,8 @@ export default function BookingSheet() {
           bookRide(cat, qty, pickupLoc, dropLoc, fare, adv, pId, {
             date: dateStr,
             time: timeStr,
+            rawDate: selectedDate,
+            rawTime: selectedTime,
             trans,
             pickupCoords,
             dropCoords,

@@ -1142,7 +1142,8 @@ export default function DriverApp() {
     setDriverBalance,
     driverTx,
     setDriverTx,
-    syncTripsFromSupabase
+    syncTripsFromSupabase,
+    isTripTrackingUnlocked
   } = useApp();
 
   const [dFilter, setDFilter] = useState('all');
@@ -1225,6 +1226,116 @@ export default function DriverApp() {
       }
     });
   }, []);
+
+  // Automatic Real Live GPS Location Sharing (starts automatically 2 hours before trip until completion)
+  useEffect(() => {
+    const myDriverId = getDeviceDriverId(driverPartner || DEFAULT_DRIVER);
+    const activeAssignedTrip = (trips || []).find(t => {
+      const isMine = t.driver_id ? String(t.driver_id) === String(myDriverId) : (t.driver === driverPartner?.name || t.driver === DEFAULT_DRIVER.name);
+      if (!isMine) return false;
+      if (!['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status)) return false;
+      return isTripTrackingUnlocked ? isTripTrackingUnlocked(t) : true;
+    });
+
+    if (!activeAssignedTrip) return;
+
+    let isStreaming = true;
+    let watchId = null;
+    let lastBroadcastTs = 0;
+
+    const emitLocation = (lat, lng, heading = 0, speed = 0) => {
+      if (!isStreaming || !lat || !lng) return;
+      const now = Date.now();
+      if (now - lastBroadcastTs < 2500) return; // Smooth 2.5s update cadence
+      lastBroadcastTs = now;
+
+      // 1. Broadcast via Realtime WebSocket & Local Bus for instant 0ms user tracking
+      realtime.updateDriverLocation({
+        tripId: activeAssignedTrip.id,
+        lat,
+        lng,
+        heading: heading || 0,
+        speed: speed || 0
+      });
+
+      // 2. Persist to Supabase database (throttled every 10s)
+      if (now - (window._lastDbLocTs || 0) > 10000 && supabase) {
+        window._lastDbLocTs = now;
+        try {
+          supabase
+            .from('trips')
+            .update({
+              driver_location: { lat, lng, heading, speed, updatedAt: now }
+            })
+            .eq('id', activeAssignedTrip.id)
+            .then(() => {});
+        } catch (_) {}
+      }
+    };
+
+    // Continuous Real GPS Tracking via Capacitor Geolocation on Mobile or HTML5 Geolocation on Web
+    const startTracking = async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const { Geolocation } = await import('@capacitor/geolocation');
+          if (Geolocation && typeof Geolocation.watchPosition === 'function') {
+            const id = await Geolocation.watchPosition(
+              { enableHighAccuracy: true, timeout: 5000, maximumAge: 3000 },
+              (pos) => {
+                if (pos?.coords) {
+                  emitLocation(
+                    pos.coords.latitude,
+                    pos.coords.longitude,
+                    pos.coords.heading || 0,
+                    pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0
+                  );
+                }
+              }
+            );
+            watchId = id;
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[DriverApp] Native GPS watch error:', err);
+      }
+
+      // Web / Desktop browser tracking
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        try {
+          watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+              if (pos?.coords) {
+                emitLocation(
+                  pos.coords.latitude,
+                  pos.coords.longitude,
+                  pos.coords.heading || 0,
+                  pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0
+                );
+              }
+            },
+            (err) => console.log('[DriverApp] GPS watch notice:', err.message),
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
+          );
+        } catch (_) {}
+      }
+    };
+
+    startTracking();
+
+    return () => {
+      isStreaming = false;
+      if (watchId !== null) {
+        if (typeof watchId === 'string' && Capacitor.isNativePlatform()) {
+          import('@capacitor/geolocation').then(({ Geolocation }) => {
+            Geolocation.clearWatch({ id: watchId }).catch(() => {});
+          }).catch(() => {});
+        } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
+          navigator.geolocation.clearWatch(watchId);
+        }
+      }
+    };
+  }, [trips, driverPartner?.id, driverPartner?.name, isTripTrackingUnlocked]);
 
   useEffect(() => {
     if (incomingTripRequest?.id) {

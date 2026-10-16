@@ -354,40 +354,45 @@ export default function LiveTrackingSheet() {
                2. CHAUFFEUR ACCEPTED / ARRIVED · REACHING PICKUP
                ========================================================== */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Live Real GPS Google Map Route from Driver Location -> Pickup */}
+              <GraphicLiveMap
+                trip={trip}
+                isModal={false}
+                height={220}
+                progress={isArrived ? 0.98 : progress}
+                speed={speed}
+              />
+
+              {/* Quick Stats Grid: ETA & Distance to Pickup */}
               <div
-                className="card"
+                className="live-sheet-stats-grid"
                 style={{
-                  padding: '20px 16px',
-                  borderRadius: '20px',
-                  background: 'var(--card)',
-                  border: '1px solid var(--line)',
-                  textAlign: 'center'
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '8px'
                 }}
               >
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: isArrived ? 'rgba(34, 197, 94, 0.25)' : 'rgba(34, 197, 94, 0.15)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                  <Icon name={isArrived ? 'pin' : 'check'} size={26} color="#16A34A" />
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>ETA TO PICKUP</span>
+                  <b className="val" style={{ fontSize: '15px', color: 'var(--ink)', fontWeight: 800 }}>
+                    {isArrived ? 'Arrived' : `${etaMins} mins`}
+                  </b>
                 </div>
-                <b style={{ fontSize: '17px', color: 'var(--ink)', display: 'block' }}>
-                  {isArrived ? 'Chauffeur Arrived at Pickup!' : isReady ? 'Vehicle Inspected · Ready!' : 'Chauffeur Confirmed!'}
-                </b>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '6px 0 14px', lineHeight: 1.4 }}>
-                  {isArrived ? (
-                    <><b>{trip.driver || 'Ravi Kumar'}</b> has reached your pickup point. Share the OTP below to begin your journey.</>
-                  ) : isReady ? (
-                    <>Vehicle inspection completed. Chauffeur is verifying OTP to begin the ride.</>
-                  ) : (
-                    <><b>{trip.driver || 'Ravi Kumar'}</b> has accepted your booking and is reaching your pickup point.</>
-                  )}
-                </p>
-
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '999px', background: 'var(--field)', fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>
-                  <span className="live-pulse-dot" style={{ background: '#22C55E' }} />
-                  <span>{isArrived ? 'Share OTP with chauffeur' : 'Live GPS tracking will activate when chauffeur starts trip'}</span>
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>DISTANCE</span>
+                  <b className="val" style={{ fontSize: '15px', color: 'var(--ink)', fontWeight: 800 }}>
+                    {isArrived ? '0.0 km' : `${distLeft} km`}
+                  </b>
+                </div>
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>CHAUFFEUR</span>
+                  <b className="val" style={{ fontSize: '15px', color: '#16A34A', fontWeight: 800 }}>
+                    {isArrived ? 'At Pickup' : 'En Route'}
+                  </b>
                 </div>
               </div>
 
               {/* 4-DIGIT PICKUP OTP FOR CHAUFFEUR VERIFICATION */}
-              {/* Pickup OTP Banner */}
               <div
                 style={{
                   background: '#000000',
@@ -403,7 +408,7 @@ export default function LiveTrackingSheet() {
               >
                 <div>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
-                    Trip OTP
+                    Trip Pickup OTP
                   </span>
                   <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginTop: '1px' }}>
                     Share with chauffeur upon arrival
@@ -414,7 +419,7 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* Driver Contact Row with Consistent Call & WhatsApp Buttons */}
+              {/* Driver Contact Row with Call & WhatsApp Buttons */}
               <ContactProfileCard
                 name={trip.driver || 'Ravi Kumar'}
                 role="Assigned Chauffeur"
@@ -426,25 +431,71 @@ export default function LiveTrackingSheet() {
                 }}
               />
 
-              {/* Trip Confirmed Lock Indicator - User cannot cancel once accepted */}
-              <div
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '14px',
-                  background: 'var(--field)',
-                  border: '1px solid var(--line)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  color: 'var(--muted)',
-                  fontSize: '12.5px',
-                  fontWeight: 650
-                }}
-              >
-                <Icon name="shield" size={15} />
-                <span>Trip confirmed. Cancellation is locked as chauffeur is en route.</span>
+              {/* Action Buttons: Google Maps, Call, WhatsApp */}
+              <div className="live-sheet-actions-wrap" style={{ marginTop: '2px' }}>
+                <button
+                  type="button"
+                  className="live-act-btn live-btn-gmaps"
+                  onClick={() => openInGoogleMaps({
+                    origin: trip?.driverCoords?.lat ? trip.driverCoords : (trip?.pickupCoords?.lat ? trip.pickupCoords : trip?.pickup),
+                    destination: trip?.pickupCoords?.lat ? trip.pickupCoords : trip?.pickup
+                  })}
+                  title="Open live route to pickup in Google Maps app"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#4285F4"/>
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 2.6 1.13 5.38 2.76 8.04L12 11V2z" fill="#EA4335"/>
+                    <path d="M12 11l5.24 7.04C18.87 15.38 20 12.6 20 10c0-4.42-3.58-8-8-8v9z" fill="#FBBC04"/>
+                    <path d="M6.76 18.04C8.24 20.46 10.12 22 12 22s3.76-1.54 5.24-3.96L12 11l-5.24 7.04z" fill="#34A853"/>
+                    <circle cx="12" cy="9" r="3" fill="#FFFFFF"/>
+                  </svg>
+                  <span>Google Maps</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="live-act-btn live-btn-share"
+                  onClick={handleShareTrip}
+                >
+                  <Icon name="share" size={16} />
+                  <span>Share Ride</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="live-act-btn live-btn-sos"
+                  onClick={handleSos}
+                >
+                  <Icon name="shield" size={16} />
+                  <span>SOS</span>
+                </button>
+              </div>
+
+              {/* Cancel Button */}
+              <div style={{ marginTop: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (setTripToCancel) setTripToCancel(trip);
+                  }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.28)',
+                    color: '#EF4444',
+                    padding: '9px 20px',
+                    borderRadius: '999px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <Icon name="x" size={14} color="#EF4444" />
+                  <span>Cancel Booking</span>
+                </button>
               </div>
             </div>
           ) : (
