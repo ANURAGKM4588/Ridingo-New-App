@@ -31,9 +31,9 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
           width: '100%',
           maxWidth: '440px',
           background: 'var(--card, #FFFFFF)',
-          borderTopLeftRadius: '26px',
-          borderTopRightRadius: '26px',
-          padding: '20px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+          borderTopLeftRadius: '28px',
+          borderTopRightRadius: '28px',
+          padding: '24px 22px max(30px, calc(env(safe-area-inset-bottom, 0px) + 26px))',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
           borderTop: '2px solid #EF4444',
           position: 'relative',
@@ -42,15 +42,15 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ width: '40px', height: '4px', borderRadius: '999px', background: 'var(--line, #E2E8F0)', margin: '0 auto 16px' }} />
+        <div style={{ width: '44px', height: '4px', borderRadius: '999px', background: 'var(--line, #E2E8F0)', margin: '0 auto 18px' }} />
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Header (No close icon as requested) */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '38px',
-                height: '38px',
+                width: '42px',
+                height: '42px',
                 borderRadius: '50%',
                 background: '#FEF2F2',
                 color: '#DC2626',
@@ -60,35 +60,17 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
                 flexShrink: 0
               }}
             >
-              <Icon name="alert-triangle" size={20} color="#DC2626" />
+              <Icon name="alert-triangle" size={22} color="#DC2626" />
             </div>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink, #0F172A)', whiteSpace: 'nowrap' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink, #0F172A)', lineHeight: 1.25 }}>
                 Cancel Upcoming Trip?
               </h3>
-              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', fontWeight: 600 }}>
+              <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)', fontWeight: 600, marginTop: '2px', display: 'block' }}>
                 Booking ID: {trip.id}
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'var(--field, #F1F5F9)',
-              border: '1px solid var(--line, #E2E8F0)',
-              display: 'grid',
-              placeItems: 'center',
-              cursor: 'pointer',
-              color: 'var(--ink, #0F172A)'
-            }}
-            aria-label="Close"
-          >
-            <Icon name="x" size={16} />
-          </button>
         </div>
 
         {/* Chauffeur & Route Status Badge */}
@@ -196,34 +178,34 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
             background: 'rgba(239, 68, 68, 0.04)',
             border: '1px solid rgba(239, 68, 68, 0.16)',
             borderRadius: '14px',
-            padding: '11px 14px',
-            margin: '0 0 16px',
+            padding: '12px 14px',
+            margin: '0 0 20px',
             display: 'flex',
             alignItems: 'flex-start',
-            gap: '9px'
+            gap: '10px'
           }}
         >
           <div style={{ marginTop: '2px', flexShrink: 0 }}>
-            <Icon name="info" size={14} color="#EF4444" />
+            <Icon name="info" size={15} color="#EF4444" />
           </div>
-          <p style={{ fontSize: '11px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: 0 }}>
+          <p style={{ fontSize: '11.5px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: 0 }}>
             <b style={{ color: 'var(--ink, #0F172A)' }}>Platform Policy:</b> A cancellation charge of ₹{cancelFee} is deducted to cover dispatch & operational costs. Any remaining advance of ₹{refundAmount} is instantly credited to your wallet.
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        {/* Action Buttons: Rounded Corner Rectangle Shape */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <button
             type="button"
             onClick={onClose}
             className="btn"
             style={{
               height: '48px',
-              borderRadius: '999px',
+              borderRadius: '14px',
               background: 'var(--field, #F1F5F9)',
-              border: '1px solid var(--line, #E2E8F0)',
+              border: '1.5px solid var(--line, #E2E8F0)',
               color: 'var(--ink, #0F172A)',
-              fontSize: '13px',
+              fontSize: '13.5px',
               fontWeight: 750,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
@@ -241,11 +223,11 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
             className="btn"
             style={{
               height: '48px',
-              borderRadius: '999px',
+              borderRadius: '14px',
               background: '#DC2626',
               border: 'none',
               color: '#FFFFFF',
-              fontSize: '13px',
+              fontSize: '13.5px',
               fontWeight: 800,
               cursor: 'pointer',
               boxShadow: '0 4px 14px rgba(220, 38, 38, 0.28)',
