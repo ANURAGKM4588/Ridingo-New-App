@@ -8,6 +8,7 @@ import DriverOnboardingModal from './DriverOnboardingModal';
 import TripInvoiceModal, { generate4CharPaymentOtp } from './TripInvoiceModal';
 import TripOtpModal from './TripOtpModal';
 import VehicleConditionModal from './VehicleConditionModal';
+import { supabase } from '../lib/supabase';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
 import {
   requestDriverNotificationPermission,
@@ -1698,11 +1699,25 @@ export default function DriverApp() {
     setShowVehicleModal(false);
     triggerTactileHaptic('success');
     if (activeVehicleTrip) {
+      const tripId = activeVehicleTrip.id;
       setTrips(prev =>
-        prev.map(t => (t.id === activeVehicleTrip.id ? { ...t, vehicleDetails: vehicleData } : t))
+        prev.map(t => (t.id === tripId ? { ...t, vehicleDetails: vehicleData } : t))
       );
       if (startTrip) {
-        startTrip(activeVehicleTrip.id);
+        startTrip(tripId);
+      }
+      // Sync vehicle inspection details & photos directly to Supabase trips table
+      if (supabase && typeof supabase.from === 'function') {
+        supabase.from('trips').update({
+          vehicle_brand: vehicleData.brand,
+          vehicle_model: vehicleData.model,
+          vehicle_number: vehicleData.regNumber,
+          car_photos: vehicleData.photos,
+          updated_at: new Date().toISOString()
+        }).eq('id', tripId).then(({ error }) => {
+          if (error) console.warn('[Supabase] Vehicle photos sync notice:', error.message);
+          else console.info('[Supabase] Vehicle photos synced for trip:', tripId);
+        }).catch(() => {});
       }
       addToast(`Vehicle ${vehicleData.brand} ${vehicleData.model} (${vehicleData.regNumber}) verified! Photos stored for 5 days.`, 'check');
       setActiveVehicleTrip(null);
