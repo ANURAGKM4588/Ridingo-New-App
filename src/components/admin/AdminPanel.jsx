@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import BrandLogo from '../BrandLogo';
 import {
@@ -109,6 +109,13 @@ export default function AdminPanel() {
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [isPhotoPreviewOpen, setIsPhotoPreviewOpen] = useState(null);
   const [isAddDriverModalOpen, setIsAddDriverModalOpen] = useState(false);
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedDriver && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedDriver]);
 
   // New Driver Form state
   const [newDriverName, setNewDriverName] = useState('');
@@ -285,6 +292,7 @@ export default function AdminPanel() {
 
   return (
     <div
+      className="admin-root-container"
       style={{
         display: 'flex',
         minHeight: '100vh',
@@ -297,18 +305,425 @@ export default function AdminPanel() {
         overflowX: 'hidden'
       }}
     >
+      <style>{`
+        /* ========================================================
+           RESPONSIVE DESIGN SYSTEM:
+           - LAPTOP & DESKTOP (>=1024px): Full Landscape layouts
+           - TABLET (768px-1023px): Same Landscape Responsive as Laptop
+           - MOBILE (<768px): Strict Vertical Single-Column Layouts
+           ======================================================== */
+        .admin-root-container {
+          display: flex;
+          min-height: 100vh;
+          width: 100vw;
+          background: #F9FAFB;
+          color: #121316;
+          box-sizing: border-box;
+          overflow-x: hidden;
+        }
+
+        .admin-sidebar {
+          width: 280px;
+          background: #FFFFFF;
+          border-right: 1px solid rgba(0, 0, 0, 0.06);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 32px 20px;
+          flex-shrink: 0;
+          box-sizing: border-box;
+          transition: all 0.2s ease;
+        }
+
+        .admin-mobile-header {
+          display: none;
+        }
+
+        .admin-main-viewport {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          overflow-y: auto;
+          box-sizing: border-box;
+        }
+
+        .admin-header {
+          min-height: 76px;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+          background: #FFFFFF;
+          padding: 0 36px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-shrink: 0;
+          box-sizing: border-box;
+        }
+
+        .admin-dashboard-body {
+          padding: 32px 36px;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          box-sizing: border-box;
+        }
+
+        /* METRICS: 4-Col Landscape on Laptop */
+        .admin-metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 20px;
+        }
+
+        /* TOOLBAR: Landscape Flex Row */
+        .admin-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding-bottom: 22px;
+          flex-wrap: wrap;
+        }
+
+        /* ========================================================
+           EXPANDED PROFILE CARD IN LANDSCAPE SIZE
+           ======================================================== */
+        .admin-profile-expand-card {
+          background: #FFFFFF;
+          border-radius: 28px;
+          border: 1px solid rgba(0, 0, 0, 0.06);
+          overflow: hidden;
+          box-shadow: 0 24px 50px -15px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+          margin-bottom: 24px;
+          width: 100%;
+          box-sizing: border-box;
+          animation: adminSlideDown 0.25s ease-out;
+        }
+
+        @keyframes adminSlideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 2-Column Landscape Layout for Laptop & Tablet */
+        .admin-profile-expand-body {
+          display: grid;
+          grid-template-columns: 390px 1fr;
+          gap: 32px;
+          padding: 0 32px 28px;
+          box-sizing: border-box;
+        }
+
+        .admin-profile-expand-left {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+
+        .admin-profile-expand-right {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          justify-content: space-between;
+        }
+
+        .admin-doc-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        /* SIMULATOR: 2-Col Landscape */
+        .admin-simulator-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 36px;
+        }
+
+        /* DRIVER ROW */
+        .admin-driver-item {
+          padding: 18px 24px;
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          box-sizing: border-box;
+        }
+
+        .admin-driver-item-right {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-shrink: 0;
+        }
+
+        .admin-row-item {
+          padding: 16px 22px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          box-sizing: border-box;
+        }
+
+        /* ========================================================
+           TABLET RESPONSIVE (768px <= width < 1024px)
+           Same Landscape design as Laptop
+           ======================================================== */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .admin-sidebar {
+            width: 230px;
+            padding: 24px 14px;
+          }
+          .admin-header {
+            padding: 0 24px;
+          }
+          .admin-dashboard-body {
+            padding: 24px 20px;
+            gap: 22px;
+          }
+          .admin-metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+          }
+          .admin-profile-expand-body {
+            grid-template-columns: 320px 1fr; /* Landscape 2-column */
+            gap: 22px;
+            padding: 0 22px 24px;
+          }
+          .admin-simulator-grid {
+            grid-template-columns: 1fr 1fr; /* Landscape */
+            gap: 24px;
+          }
+        }
+
+        /* ========================================================
+           MOBILE DEVICE RESPONSIVE (<768px)
+           Strict Vertical Design for all components
+           ======================================================== */
+        @media (max-width: 767px) {
+          .admin-root-container {
+            flex-direction: column;
+          }
+          .admin-sidebar {
+            display: none;
+          }
+          .admin-mobile-header {
+            display: flex;
+            flex-direction: column;
+            background: #FFFFFF;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 12px 16px 8px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          }
+          .admin-mobile-nav-tabs {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding: 10px 0 6px;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+          }
+          .admin-mobile-nav-tabs::-webkit-scrollbar {
+            display: none;
+          }
+          .admin-header {
+            min-height: auto;
+            padding: 16px 14px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .admin-header > div:last-child {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .admin-dashboard-body {
+            padding: 14px 12px;
+            gap: 18px;
+          }
+          .admin-metrics-grid {
+            grid-template-columns: 1fr; /* Vertical */
+            gap: 12px;
+          }
+          .admin-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            padding-bottom: 14px;
+          }
+          .admin-toolbar > div {
+            width: 100%;
+          }
+          .admin-profile-expand-card {
+            border-radius: 20px;
+            margin-bottom: 18px;
+          }
+          .admin-profile-expand-body {
+            grid-template-columns: 1fr; /* VERTICAL SINGLE COLUMN ON MOBILE */
+            gap: 20px;
+            padding: 0 16px 20px;
+          }
+          .admin-doc-grid {
+            grid-template-columns: 1fr !important; /* Stack documents on mobile */
+          }
+          .admin-simulator-grid {
+            grid-template-columns: 1fr; /* Vertical */
+            gap: 24px;
+          }
+          .admin-driver-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px;
+          }
+          .admin-driver-item-right {
+            width: 100%;
+            justify-content: space-between;
+            padding-top: 10px;
+            border-top: 1px dashed rgba(0,0,0,0.08);
+          }
+          .admin-row-item {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            padding: 14px 16px !important;
+          }
+          .admin-row-item > div:last-child {
+            width: 100%;
+            justify-content: space-between;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(0,0,0,0.08);
+          }
+        }
+      `}</style>
+
+      {/* Responsive Mobile Top Bar & Horizontal Tabs Header */}
+      <div className="admin-mobile-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BrandLogo height={28} width={110} />
+            <span
+              style={{
+                fontFamily: T.fontDisplay,
+                fontSize: '10px',
+                fontWeight: 800,
+                background: T.taxi,
+                color: '#000000',
+                padding: '2px 7px',
+                borderRadius: '6px',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase'
+              }}
+            >
+              CRM
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setView('user')}
+              style={{
+                padding: '6px 9px',
+                borderRadius: '10px',
+                border: `1px solid ${T.borderStrong}`,
+                background: T.card,
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              User App
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('driver')}
+              style={{
+                padding: '6px 9px',
+                borderRadius: '10px',
+                border: `1px solid ${T.borderStrong}`,
+                background: T.card,
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Driver
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Horizontal Scrollable Navigation Tabs */}
+        <div className="admin-mobile-nav-tabs">
+          {[
+            { id: 'drivers', label: 'Drivers & KYC', badge: newCount > 0 ? `${newCount}` : null },
+            { id: 'telemetry', label: 'Revenue Engine' },
+            { id: 'trips', label: 'Live Telemetry', badge: telemetry.totalTrips },
+            { id: 'users', label: 'Customers', badge: usersList.length }
+          ].map(item => {
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setSelectedDriver(null);
+                }}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '999px',
+                  border: active ? `1px solid ${T.ink}` : `1px solid ${T.borderStrong}`,
+                  background: active ? T.ink : '#FFFFFF',
+                  color: active ? '#FFFFFF' : T.ink,
+                  fontSize: '12px',
+                  fontWeight: active ? 700 : 500,
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>{item.label}</span>
+                {item.badge && (
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: active ? T.taxi : T.surfaceHover,
+                      color: '#000000'
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ========================================================
-          LEFT SIDEBAR: MODERN MINIMAL APPAREL
+          LEFT SIDEBAR: MODERN MINIMAL APPAREL (LAPTOP & TABLET)
          ======================================================== */}
       <aside
+        className="admin-sidebar"
         style={{
-          width: '320px',
           background: T.card,
           borderRight: `1px solid ${T.border}`,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '34px 24px',
           flexShrink: 0,
           boxSizing: 'border-box'
         }}
@@ -477,14 +892,13 @@ export default function AdminPanel() {
       {/* ========================================================
           MAIN VIEWPORT: SPACIOUS, AIRY, UNCONGESTED
          ======================================================== */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowY: 'auto' }}>
+      <main className="admin-main-viewport" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowY: 'auto' }}>
         {/* Top Header Bar */}
         <header
+          className="admin-header"
           style={{
-            height: '76px',
             borderBottom: `1px solid ${T.border}`,
             background: T.card,
-            padding: '0 36px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -550,14 +964,14 @@ export default function AdminPanel() {
         </header>
 
         {/* Dashboard Body Content */}
-        <div style={{ padding: '32px 36px', flex: 1, display: 'flex', flexDirection: 'column', gap: '28px' }}>
+        <div className="admin-dashboard-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '28px' }}>
           {/* ========================================================
               EXECUTIVE METRIC CARDS (AIRY, SPACIOUS, HIGH-CONTRAST)
              ======================================================== */}
           <section
+            className="admin-metrics-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
               gap: '20px'
             }}
           >
@@ -853,195 +1267,36 @@ export default function AdminPanel() {
                 </div>
               </div>
 
-              {/* Master-Detail Split Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: selectedDriver ? '1fr 400px' : '1fr', gap: '24px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {filteredDrivers.length === 0 ? (
-                    <div
-                      style={{
-                        padding: '64px 24px',
-                        textAlign: 'center',
-                        background: T.card,
-                        borderRadius: '24px',
-                        border: `1px solid ${T.border}`
-                      }}
-                    >
-                      <b style={{ fontSize: '16px', color: T.ink, display: 'block' }}>No chauffeur records found</b>
-                      <p style={{ fontSize: '13px', color: T.inkMuted, margin: '6px 0 0' }}>
-                        {searchQuery ? 'Try clearing your search query.' : 'Newly registered drivers will appear here.'}
-                      </p>
-                    </div>
-                  ) : (
-                    filteredDrivers.map(drv => {
-                      const isSelected = selectedDriver?.id === drv.id;
-                      const isPending = drv.status === 'pending' || drv.category === 'new_registration';
-                      return (
-                        <div
-                          key={drv.id}
-                          onClick={() => setSelectedDriver(drv)}
-                          style={{
-                            padding: '18px 24px',
-                            borderRadius: '20px',
-                            background: isSelected ? '#FFFCF0' : T.card,
-                            border: isSelected ? `2px solid ${T.taxi}` : `1px solid ${T.border}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            cursor: 'pointer',
-                            boxShadow: T.shadowCard,
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {/* Driver Left Identity */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 }}>
-                            <div
-                              style={{
-                                width: '52px',
-                                height: '52px',
-                                borderRadius: '50%',
-                                background: T.surface,
-                                overflow: 'hidden',
-                                border: `1px solid ${T.border}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 800,
-                                fontSize: '17px',
-                                flexShrink: 0
-                              }}
-                            >
-                              {drv.avatar ? (
-                                <img src={drv.avatar} alt={drv.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                drv.name?.[0] || 'D'
-                              )}
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                                <b style={{ fontSize: '15.5px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {drv.name}
-                                </b>
-                                <span
-                                  style={{
-                                    fontSize: '11px',
-                                    fontWeight: 800,
-                                    padding: '2px 8px',
-                                    borderRadius: '6px',
-                                    background: T.surface,
-                                    color: T.ink,
-                                    letterSpacing: '0.04em'
-                                  }}
-                                >
-                                  {drv.id}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '13px', color: T.inkMuted }}>
-                                <span>{drv.phone}</span>
-                                <span>{drv.city} (PIN: <strong style={{ color: T.ink }}>{drv.pincode}</strong>)</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Driver Right Status & Action */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                padding: '4px 10px',
-                                borderRadius: '8px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.04em',
-                                background:
-                                  drv.status === 'approved' ? T.greenSoft :
-                                  drv.status === 'pending' ? T.amberSoft :
-                                  T.redSoft,
-                                color:
-                                  drv.status === 'approved' ? T.green :
-                                  drv.status === 'pending' ? T.amber :
-                                  T.red,
-                                border: `1px solid ${
-                                  drv.status === 'approved' ? T.greenBorder :
-                                  drv.status === 'pending' ? T.amberBorder :
-                                  T.redBorder
-                                }`
-                              }}
-                            >
-                              {drv.status === 'pending' ? 'Pending Review' : drv.status}
-                            </span>
-
-                            {isPending && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleApprove(drv.id);
-                                }}
-                                style={{
-                                  background: T.green,
-                                  color: '#FFFFFF',
-                                  border: 'none',
-                                  borderRadius: '10px',
-                                  padding: '7px 14px',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)'
-                                }}
-                              >
-                                Approve
-                              </button>
-                            )}
-
-                            <span style={{ fontSize: '14px', color: T.inkDim }}>&rarr;</span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* ========================================================
-                    FULL DRIVER PROFILE CARD (MATCHING REFERENCE UI STYLE)
-                   ======================================================== */}
-                {selectedDriver && (
+              {/* ========================================================
+                  EXPANDED DRIVER PROFILE CARD IN LANDSCAPE SIZE
+                  (Laptop & Tablet: Full Landscape 2-Column Grid; Mobile: Strict Vertical Single Column)
+                 ======================================================== */}
+              {selectedDriver && (
+                <div ref={cardRef} className="admin-profile-expand-card">
+                  {/* Top Scenic Sky & Clouds Full-Bleed Banner */}
                   <div
                     style={{
-                      background: '#FFFFFF',
-                      borderRadius: '28px',
-                      border: '1px solid rgba(0,0,0,0.06)',
-                      overflow: 'hidden',
-                      boxShadow: T.shadowElevated,
-                      position: 'sticky',
-                      top: '20px',
-                      height: 'fit-content',
+                      height: '135px',
+                      position: 'relative',
+                      background: 'linear-gradient(180deg, #A8C7DF 0%, #C3DAED 45%, #DFEDF7 80%, #EFF6FC 100%)',
+                      backgroundImage: 'radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 50%), radial-gradient(ellipse at 25% 60%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 45%), linear-gradient(180deg, #99C3E3 0%, #BFE0F7 60%, #E3F1FC 100%)',
+                      padding: '16px 24px',
                       display: 'flex',
-                      flexDirection: 'column'
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      boxSizing: 'border-box'
                     }}
                   >
-                    {/* Top Scenic Sky & Clouds Banner */}
-                    <div
-                      style={{
-                        height: '140px',
-                        position: 'relative',
-                        background: 'linear-gradient(180deg, #A8C7DF 0%, #C3DAED 45%, #DFEDF7 80%, #EFF6FC 100%)',
-                        backgroundImage: 'radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 50%), radial-gradient(ellipse at 25% 60%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 45%), linear-gradient(180deg, #99C3E3 0%, #BFE0F7 60%, #E3F1FC 100%)',
-                        padding: '16px 18px',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        justifyContent: 'space-between',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      {/* Top Left: Driver ID Pill */}
+                    {/* Top Left: Driver ID Pill + Landscape Status */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span
                         style={{
-                          fontSize: '11px',
+                          fontSize: '11.5px',
                           fontWeight: 800,
-                          background: 'rgba(255, 255, 255, 0.88)',
+                          background: 'rgba(255, 255, 255, 0.92)',
                           backdropFilter: 'blur(8px)',
                           color: '#121316',
-                          padding: '4px 10px',
+                          padding: '5px 12px',
                           borderRadius: '999px',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                           letterSpacing: '0.04em'
@@ -1049,90 +1304,105 @@ export default function AdminPanel() {
                       >
                         {selectedDriver.id}
                       </span>
-
-                      {/* Top Right: Floating Follow / Status Pill */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {selectedDriver.status === 'pending' ? (
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(selectedDriver.id)}
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              background: '#FFFFFF',
-                              color: '#121316',
-                              padding: '6px 14px',
-                              borderRadius: '999px',
-                              border: 'none',
-                              cursor: 'pointer',
-                              boxShadow: '0 3px 12px rgba(0,0,0,0.1)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'transform 0.15s ease'
-                            }}
-                          >
-                            <span>Approve</span>
-                            <span style={{ fontSize: '13px', fontWeight: 800 }}>+</span>
-                          </button>
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              background: '#FFFFFF',
-                              color: selectedDriver.status === 'approved' ? '#047857' : '#B91C1C',
-                              padding: '6px 14px',
-                              borderRadius: '999px',
-                              boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '5px'
-                            }}
-                          >
-                            <Icons.Check />
-                            <span>Partner</span>
-                          </span>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDriver(null)}
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: 'rgba(255, 255, 255, 0.88)',
-                            backdropFilter: 'blur(8px)',
-                            border: 'none',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#121316',
-                            fontSize: '13px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-                          }}
-                        >
-                          <Icons.Close />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Card Body: Overlapping Circular Avatar + Spectrum Exp Bar */}
-                    <div style={{ padding: '0 24px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                      {/* Avatar with Rainbow Iridescent Ring */}
-                      <div
+                      <span
                         style={{
-                          marginTop: '-44px',
-                          position: 'relative',
-                          marginBottom: '10px'
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          background: 'rgba(255, 255, 255, 0.75)',
+                          backdropFilter: 'blur(8px)',
+                          color: '#4B5563',
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
                         }}
                       >
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
+                        <span>Expanded Landscape Dossier</span>
+                      </span>
+                    </div>
+
+                    {/* Top Right: Status / Follow Pill & Close */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {selectedDriver.status === 'pending' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(selectedDriver.id)}
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            background: '#FFFFFF',
+                            color: '#121316',
+                            padding: '6px 14px',
+                            borderRadius: '999px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            boxShadow: '0 3px 12px rgba(0,0,0,0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'transform 0.15s ease'
+                          }}
+                        >
+                          <span>Approve Partner</span>
+                          <span style={{ fontSize: '13px', fontWeight: 800 }}>+</span>
+                        </button>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            background: '#FFFFFF',
+                            color: selectedDriver.status === 'approved' ? '#047857' : '#B91C1C',
+                            padding: '6px 14px',
+                            borderRadius: '999px',
+                            boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <Icons.Check />
+                          <span>{selectedDriver.status === 'approved' ? 'Verified Partner' : 'Suspended'}</span>
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDriver(null)}
+                        title="Close Profile"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: 'rgba(255, 255, 255, 0.9)',
+                          backdropFilter: 'blur(8px)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#121316',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                          transition: 'transform 0.15s ease'
+                        }}
+                      >
+                        <Icons.Close />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card Body: 2-Column Landscape on Laptop & Tablet, Vertical on Mobile */}
+                  <div className="admin-profile-expand-body">
+                    {/* Left Column: Avatar, exp bar, Name, Bio, Stats, Quick Contact */}
+                    <div className="admin-profile-expand-left">
+                      {/* Avatar with Rainbow Iridescent Ring */}
+                      <div style={{ marginTop: '-44px', position: 'relative', marginBottom: '10px' }}>
                         <div
                           style={{
-                            width: '88px',
-                            height: '88px',
+                            width: '92px',
+                            height: '92px',
                             borderRadius: '50%',
                             background: 'conic-gradient(from 180deg at 50% 50%, #FFC70A 0deg, #10B981 72deg, #06B6D4 144deg, #3B82F6 216deg, #8B5CF6 288deg, #EC4899 330deg, #FFC70A 360deg)',
                             padding: '3.5px',
@@ -1157,7 +1427,7 @@ export default function AdminPanel() {
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               />
                             ) : (
-                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 800, background: '#F4F5F7' }}>
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 800, background: '#F4F5F7' }}>
                                 {selectedDriver.name?.[0] || 'D'}
                               </div>
                             )}
@@ -1165,7 +1435,7 @@ export default function AdminPanel() {
                         </div>
                       </div>
 
-                      {/* Exp. Multi-colored Spectrum Segmented Bar */}
+                      {/* Exp Multi-color Spectrum Bar */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '8px' }}>
                         <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: 600 }}>exp.</span>
                         <div style={{ display: 'flex', gap: '2.5px', alignItems: 'center' }}>
@@ -1183,17 +1453,17 @@ export default function AdminPanel() {
                         </div>
                       </div>
 
-                      {/* Driver Name & Subtitle / Bio */}
-                      <b style={{ fontFamily: T.fontDisplay, fontSize: '20px', fontWeight: 800, color: '#121316', letterSpacing: '-0.02em', margin: '0 0 4px' }}>
+                      {/* Driver Name & Role */}
+                      <b style={{ fontFamily: T.fontDisplay, fontSize: '21px', fontWeight: 800, color: '#121316', letterSpacing: '-0.02em', margin: '0 0 4px' }}>
                         {selectedDriver.name}
                       </b>
-                      <p style={{ fontSize: '12.5px', color: '#4B5563', margin: '0 0 16px', lineHeight: 1.45, maxWidth: '280px' }}>
+                      <p style={{ fontSize: '12.5px', color: '#4B5563', margin: '0 0 16px', lineHeight: 1.45, maxWidth: '320px' }}>
                         {selectedDriver.category === 'new_registration'
                           ? 'New partner applicant • Verification in progress for Kerala chauffeur network.'
                           : 'Ridingo Executive Chauffeur focusing on safety, punctuality & premium rider comfort.'}
                       </p>
 
-                      {/* 3-Column Stats Container (Exact Inset Pill from Reference) */}
+                      {/* 3-Column Stats Container */}
                       <div
                         style={{
                           width: '100%',
@@ -1237,182 +1507,182 @@ export default function AdminPanel() {
                         </div>
                       </div>
 
-                      {/* Bottom Quick Contact Icons (No Emojis) */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '20px',
-                          marginBottom: '18px',
-                          padding: '4px 0'
-                        }}
-                      >
-                        {/* Phone */}
+                      {/* Quick Contact Buttons Row */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
                         <a
                           href={`tel:${selectedDriver.phone}`}
                           title={`Call ${selectedDriver.phone}`}
                           style={{
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '50%',
+                            flex: 1,
+                            minWidth: '90px',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
                             background: '#FFFFFF',
-                            border: '1px solid #EAEAEA',
+                            border: '1px solid #E5E7EB',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            gap: '6px',
                             color: '#121316',
                             textDecoration: 'none',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                            transition: 'transform 0.15s ease'
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
                           }}
                         >
                           <Icons.Phone />
+                          <span>Call</span>
                         </a>
 
-                        {/* Email */}
                         <a
                           href={`mailto:${selectedDriver.email}`}
                           title={`Email ${selectedDriver.email}`}
                           style={{
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '50%',
+                            flex: 1,
+                            minWidth: '90px',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
                             background: '#FFFFFF',
-                            border: '1px solid #EAEAEA',
+                            border: '1px solid #E5E7EB',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            gap: '6px',
                             color: '#121316',
                             textDecoration: 'none',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                            transition: 'transform 0.15s ease'
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
                           }}
                         >
                           <Icons.Mail />
+                          <span>Email</span>
                         </a>
 
-                        {/* Location / PIN Tooltip */}
                         <button
                           type="button"
                           onClick={() => alert(`Address: ${selectedDriver.homeAddress}, ${selectedDriver.street}, ${selectedDriver.city} - PIN: ${selectedDriver.pincode}`)}
                           title={`PIN: ${selectedDriver.pincode}`}
                           style={{
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '50%',
+                            flex: 1,
+                            minWidth: '90px',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
                             background: '#FFFFFF',
-                            border: '1px solid #EAEAEA',
+                            border: '1px solid #E5E7EB',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            gap: '6px',
                             color: '#121316',
                             cursor: 'pointer',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
                           }}
                         >
                           <Icons.MapPin />
-                        </button>
-
-                        {/* Docs */}
-                        <button
-                          type="button"
-                          onClick={() => selectedDriver.dlPhoto && setIsPhotoPreviewOpen(selectedDriver.dlPhoto)}
-                          title="View Documents"
-                          style={{
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '50%',
-                            background: '#FFFFFF',
-                            border: '1px solid #EAEAEA',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#121316',
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
-                          }}
-                        >
-                          <Icons.IdCard />
+                          <span>PIN</span>
                         </button>
                       </div>
+                    </div>
 
-                      {/* Expandable KYC Dossier & Document Inspection */}
+                    {/* Right Column: Address, Compliance Documents & Decisions */}
+                    <div className="admin-profile-expand-right">
+                      {/* Full Address & PIN Container */}
                       <div
                         style={{
-                          width: '100%',
-                          boxSizing: 'border-box',
                           background: '#F9FAFB',
                           borderRadius: '18px',
                           border: '1px solid #EAEAEA',
-                          padding: '16px',
+                          padding: '16px 20px',
                           textAlign: 'left',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '11px',
-                          fontSize: '12.5px'
+                          gap: '8px'
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '10.5px', color: '#6B7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
-                            Full Address & PIN
+                          <span style={{ fontSize: '11px', color: '#6B7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+                            Full Residential Address & Kerala Jurisdiction
                           </span>
-                          <span style={{ fontSize: '11px', fontWeight: 800, background: '#FFF8DB', color: '#855D00', padding: '2px 8px', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, background: '#FFF8DB', color: '#855D00', padding: '3px 9px', borderRadius: '6px' }}>
                             PIN: {selectedDriver.pincode || '682030'}
                           </span>
                         </div>
-                        <div style={{ color: '#121316', lineHeight: 1.45, fontWeight: 500 }}>
-                          {selectedDriver.homeAddress ? `${selectedDriver.homeAddress}, ${selectedDriver.street}` : 'TC 14/820, Silver Cascade, Vazhuthacaud'}, {selectedDriver.city}, {selectedDriver.state}
+                        <div style={{ color: '#121316', fontSize: '13px', lineHeight: 1.45, fontWeight: 500 }}>
+                          {selectedDriver.homeAddress ? `${selectedDriver.homeAddress}, ${selectedDriver.street}` : 'TC 14/820, Silver Cascade, Vazhuthacaud'}, {selectedDriver.city}, {selectedDriver.state || 'Kerala'}
+                        </div>
+                      </div>
+
+                      {/* Compliance Document Cards (Driving Licence & Aadhaar) */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '11px', color: '#6B7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+                            Verified Compliance Documents (Tap to inspect)
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#10B981', fontWeight: 700 }}>
+                            2/2 Uploaded
+                          </span>
                         </div>
 
-                        {/* Document Photo Cards */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
+                        <div className="admin-doc-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          {/* Driving Licence */}
                           <div
                             onClick={() => selectedDriver.dlPhoto && setIsPhotoPreviewOpen(selectedDriver.dlPhoto)}
                             style={{
-                              padding: '10px',
-                              borderRadius: '12px',
+                              padding: '12px 14px',
+                              borderRadius: '16px',
                               background: '#FFFFFF',
                               border: '1px solid #E5E7EB',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
                             }}
                           >
-                            <span style={{ fontSize: '10px', color: '#6B7280', display: 'block', fontWeight: 700 }}>Licence</span>
-                            <b style={{ fontSize: '11.5px', color: '#121316', display: 'block', margin: '2px 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {selectedDriver.dlNumber}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '10.5px', color: '#6B7280', fontWeight: 700 }}>Driving Licence</span>
+                              <span style={{ fontSize: '10px', color: '#3B82F6', fontWeight: 600 }}>Inspect &rarr;</span>
+                            </div>
+                            <b style={{ fontSize: '12.5px', color: '#121316', display: 'block', margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {selectedDriver.dlNumber || 'KL-07-20160049281'}
                             </b>
                             {selectedDriver.dlPhoto ? (
-                              <img src={selectedDriver.dlPhoto} alt="DL" style={{ width: '100%', height: '52px', borderRadius: '8px', objectFit: 'cover' }} />
+                              <img src={selectedDriver.dlPhoto} alt="DL" style={{ width: '100%', height: '76px', borderRadius: '10px', objectFit: 'cover' }} />
                             ) : (
-                              <div style={{ height: '52px', borderRadius: '8px', background: '#F4F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#6B7280' }}>Document</div>
+                              <div style={{ height: '76px', borderRadius: '10px', background: '#F4F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#6B7280' }}>Document Preview</div>
                             )}
                           </div>
 
+                          {/* Aadhaar Card */}
                           <div
                             onClick={() => selectedDriver.aadharPhoto && setIsPhotoPreviewOpen(selectedDriver.aadharPhoto)}
                             style={{
-                              padding: '10px',
-                              borderRadius: '12px',
+                              padding: '12px 14px',
+                              borderRadius: '16px',
                               background: '#FFFFFF',
                               border: '1px solid #E5E7EB',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
                             }}
                           >
-                            <span style={{ fontSize: '10px', color: '#6B7280', display: 'block', fontWeight: 700 }}>Aadhaar</span>
-                            <b style={{ fontSize: '11.5px', color: '#121316', display: 'block', margin: '2px 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {selectedDriver.aadharNumber}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '10.5px', color: '#6B7280', fontWeight: 700 }}>Aadhaar Card</span>
+                              <span style={{ fontSize: '10px', color: '#3B82F6', fontWeight: 600 }}>Inspect &rarr;</span>
+                            </div>
+                            <b style={{ fontSize: '12.5px', color: '#121316', display: 'block', margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {selectedDriver.aadharNumber || '4829 1928 4719'}
                             </b>
                             {selectedDriver.aadharPhoto ? (
-                              <img src={selectedDriver.aadharPhoto} alt="Aadhaar" style={{ width: '100%', height: '52px', borderRadius: '8px', objectFit: 'cover' }} />
+                              <img src={selectedDriver.aadharPhoto} alt="Aadhaar" style={{ width: '100%', height: '76px', borderRadius: '10px', objectFit: 'cover' }} />
                             ) : (
-                              <div style={{ height: '52px', borderRadius: '8px', background: '#F4F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#6B7280' }}>Card</div>
+                              <div style={{ height: '76px', borderRadius: '10px', background: '#F4F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#6B7280' }}>Card Preview</div>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Primary Actions */}
-                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
+                      {/* Primary Action Controls */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
                         {selectedDriver.status !== 'approved' && (
                           <button
                             type="button"
@@ -1425,13 +1695,13 @@ export default function AdminPanel() {
                               borderRadius: '14px',
                               padding: '12px',
                               fontWeight: 700,
-                              fontSize: '13px',
+                              fontSize: '13.5px',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '6px',
-                              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+                              gap: '8px',
+                              boxShadow: '0 3px 12px rgba(16, 185, 129, 0.25)'
                             }}
                           >
                             <Icons.Check />
@@ -1439,7 +1709,7 @@ export default function AdminPanel() {
                           </button>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                           <button
                             type="button"
                             onClick={() => handleOpenRejectModal(selectedDriver.id)}
@@ -1448,9 +1718,9 @@ export default function AdminPanel() {
                               color: '#EF4444',
                               border: '1px solid #FECACA',
                               borderRadius: '12px',
-                              padding: '10px',
+                              padding: '11px',
                               fontWeight: 700,
-                              fontSize: '12px',
+                              fontSize: '12.5px',
                               cursor: 'pointer'
                             }}
                           >
@@ -1464,18 +1734,161 @@ export default function AdminPanel() {
                               color: '#121316',
                               border: '1px solid #E5E7EB',
                               borderRadius: '12px',
-                              padding: '10px',
+                              padding: '11px',
                               fontWeight: 600,
-                              fontSize: '12px',
+                              fontSize: '12.5px',
                               cursor: 'pointer'
                             }}
                           >
-                            {selectedDriver.status === 'suspended' ? 'Re-activate' : 'Suspend'}
+                            {selectedDriver.status === 'suspended' ? 'Re-activate Partner' : 'Suspend Account'}
                           </button>
                         </div>
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Drivers Registry Table / Grid */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {filteredDrivers.length === 0 ? (
+                  <div
+                    style={{
+                      padding: '64px 24px',
+                      textAlign: 'center',
+                      background: T.card,
+                      borderRadius: '24px',
+                      border: `1px solid ${T.border}`
+                    }}
+                  >
+                    <b style={{ fontSize: '16px', color: T.ink, display: 'block' }}>No chauffeur records found</b>
+                    <p style={{ fontSize: '13px', color: T.inkMuted, margin: '6px 0 0' }}>
+                      {searchQuery ? 'Try clearing your search query.' : 'Newly registered drivers will appear here.'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredDrivers.map(drv => {
+                    const isSelected = selectedDriver?.id === drv.id;
+                    const isPending = drv.status === 'pending' || drv.category === 'new_registration';
+                    return (
+                      <div
+                        key={drv.id}
+                        className="admin-driver-item"
+                        onClick={() => setSelectedDriver(drv)}
+                        style={{
+                          background: isSelected ? '#FFFCF0' : T.card,
+                          border: isSelected ? `2px solid ${T.taxi}` : `1px solid ${T.border}`,
+                          boxShadow: T.shadowCard
+                        }}
+                      >
+                        {/* Driver Left Identity */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 }}>
+                          <div
+                            style={{
+                              width: '52px',
+                              height: '52px',
+                              borderRadius: '50%',
+                              background: T.surface,
+                              overflow: 'hidden',
+                              border: `1px solid ${T.border}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '17px',
+                              flexShrink: 0
+                            }}
+                          >
+                            {drv.avatar ? (
+                              <img src={drv.avatar} alt={drv.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              drv.name?.[0] || 'D'
+                            )}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                              <b style={{ fontSize: '15.5px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {drv.name}
+                              </b>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 800,
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  background: T.surface,
+                                  color: T.ink,
+                                  letterSpacing: '0.04em'
+                                }}
+                              >
+                                {drv.id}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '13px', color: T.inkMuted, flexWrap: 'wrap' }}>
+                              <span>{drv.phone}</span>
+                              <span>{drv.city} (PIN: <strong style={{ color: T.ink }}>{drv.pincode}</strong>)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Driver Right Status & Action */}
+                        <div className="admin-driver-item-right">
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              padding: '4px 10px',
+                              borderRadius: '8px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              background:
+                                drv.status === 'approved' ? T.greenSoft :
+                                drv.status === 'pending' ? T.amberSoft :
+                                T.redSoft,
+                              color:
+                                drv.status === 'approved' ? T.green :
+                                drv.status === 'pending' ? T.amber :
+                                T.red,
+                              border: `1px solid ${
+                                drv.status === 'approved' ? T.greenBorder :
+                                drv.status === 'pending' ? T.amberBorder :
+                                T.redBorder
+                              }`
+                            }}
+                          >
+                            {drv.status === 'pending' ? 'Pending Review' : drv.status}
+                          </span>
+
+                          {isPending && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApprove(drv.id);
+                              }}
+                              style={{
+                                background: T.green,
+                                color: '#FFFFFF',
+                                border: 'none',
+                                borderRadius: '10px',
+                                padding: '7px 14px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)'
+                              }}
+                            >
+                              Approve
+                            </button>
+                          )}
+
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: isSelected ? T.ink : T.inkDim }}>
+                            {isSelected ? 'Expanded ▲' : 'View ▶'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -1509,7 +1922,7 @@ export default function AdminPanel() {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '36px' }}>
+                <div className="admin-simulator-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '36px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -1652,14 +2065,10 @@ export default function AdminPanel() {
                   trips.map(trip => (
                     <div
                       key={trip.id}
+                      className="admin-row-item"
                       style={{
-                        padding: '16px 22px',
-                        borderRadius: '16px',
                         background: T.surface,
-                        border: `1px solid ${T.border}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
+                        border: `1px solid ${T.border}`
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -1718,14 +2127,10 @@ export default function AdminPanel() {
                 {usersList.map(usr => (
                   <div
                     key={usr.id}
+                    className="admin-row-item"
                     style={{
-                      padding: '16px 22px',
-                      borderRadius: '16px',
                       background: T.surface,
-                      border: `1px solid ${T.border}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
+                      border: `1px solid ${T.border}`
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
