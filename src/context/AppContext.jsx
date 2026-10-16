@@ -1005,14 +1005,14 @@ export function AppProvider({ children }) {
             scheduledDate: tripObj.scheduledDate,
             scheduledTime: tripObj.scheduledTime,
             pickupCoords: tripObj.pickupCoords,
-            dropCoords: tripObj.dropCoords
+            dropCoords: tripObj.dropCoords,
+            distanceKm: tripObj.distanceKm || null,
+            distanceText: tripObj.distanceText || null,
+            durationText: tripObj.durationText || null,
+            eta: tripObj.eta || null
           },
           rider: tripObj.rider || { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' },
           cashback: tripObj.cashback || 0,
-          distance_km: tripObj.distanceKm || null,
-          distance_text: tripObj.distanceText || null,
-          duration_text: tripObj.durationText || null,
-          eta: tripObj.eta || null,
           by_who: user?.phone || 'user'
         };
         const { error } = await supabase.from('trips').upsert(row);
