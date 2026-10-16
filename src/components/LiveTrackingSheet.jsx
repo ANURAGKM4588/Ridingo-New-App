@@ -428,31 +428,20 @@ export default function LiveTrackingSheet() {
                 }}
               />
 
-              {/* Action Buttons: Google Maps, Call, WhatsApp */}
-              <div className="live-sheet-actions-wrap" style={{ marginTop: '2px' }}>
-                <button
-                  type="button"
-                  className="live-act-btn live-btn-gmaps"
-                  onClick={() => openInGoogleMaps({
-                    origin: trip?.driverCoords?.lat ? trip.driverCoords : (trip?.pickupCoords?.lat ? trip.pickupCoords : trip?.pickup),
-                    destination: trip?.pickupCoords?.lat ? trip.pickupCoords : trip?.pickup
-                  })}
-                  title="Open live route to pickup in Google Maps app"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#4285F4"/>
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 2.6 1.13 5.38 2.76 8.04L12 11V2z" fill="#EA4335"/>
-                    <path d="M12 11l5.24 7.04C18.87 15.38 20 12.6 20 10c0-4.42-3.58-8-8-8v9z" fill="#FBBC04"/>
-                    <path d="M6.76 18.04C8.24 20.46 10.12 22 12 22s3.76-1.54 5.24-3.96L12 11l-5.24 7.04z" fill="#34A853"/>
-                    <circle cx="12" cy="9" r="3" fill="#FFFFFF"/>
-                  </svg>
-                  <span>Google Maps</span>
-                </button>
-
+              {/* Action Buttons: Share Ride (First) & Cancel Trip (Second) */}
+              <div className="live-sheet-actions-wrap" style={{ marginTop: '12px', marginBottom: '14px' }}>
                 <button
                   type="button"
                   className="live-act-btn live-btn-share"
                   onClick={handleShareTrip}
+                  style={{
+                    background: 'var(--card)',
+                    border: '1.5px solid var(--line)',
+                    color: 'var(--ink)',
+                    borderRadius: '14px',
+                    height: '46px',
+                    fontWeight: 700
+                  }}
                 >
                   <Icon name="share" size={16} />
                   <span>Share Ride</span>
@@ -460,38 +449,21 @@ export default function LiveTrackingSheet() {
 
                 <button
                   type="button"
-                  className="live-act-btn live-btn-sos"
-                  onClick={handleSos}
-                >
-                  <Icon name="shield" size={16} />
-                  <span>SOS</span>
-                </button>
-              </div>
-
-              {/* Cancel Button */}
-              <div style={{ marginTop: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
-                <button
-                  type="button"
+                  className="live-act-btn"
                   onClick={() => {
                     if (setTripToCancel) setTripToCancel(trip);
                   }}
                   style={{
                     background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1px solid rgba(239, 68, 68, 0.28)',
-                    color: '#EF4444',
-                    padding: '9px 20px',
-                    borderRadius: '999px',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    whiteSpace: 'nowrap'
+                    border: '1.5px solid rgba(239, 68, 68, 0.28)',
+                    color: '#DC2626',
+                    borderRadius: '14px',
+                    height: '46px',
+                    fontWeight: 700
                   }}
                 >
-                  <Icon name="x" size={14} color="#EF4444" />
-                  <span>Cancel Booking</span>
+                  <Icon name="x" size={15} color="#DC2626" />
+                  <span>Cancel Trip</span>
                 </button>
               </div>
             </div>
@@ -690,74 +662,46 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* Action Buttons: Google Maps, Share Trip & Emergency SOS */}
-              <div className="live-sheet-actions-wrap">
-                <button
-                  type="button"
-                  className="live-act-btn live-btn-gmaps"
-                  onClick={() => openInGoogleMaps({
-                    origin: trip?.pickupCoords?.lat ? trip.pickupCoords : trip?.pickup,
-                    destination: trip?.dropCoords?.lat ? trip.dropCoords : trip?.drop_loc
-                  })}
-                  title="Open live route in Google Maps app"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#4285F4"/>
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 2.6 1.13 5.38 2.76 8.04L12 11V2z" fill="#EA4335"/>
-                    <path d="M12 11l5.24 7.04C18.87 15.38 20 12.6 20 10c0-4.42-3.58-8-8-8v9z" fill="#FBBC04"/>
-                    <path d="M6.76 18.04C8.24 20.46 10.12 22 12 22s3.76-1.54 5.24-3.96L12 11l-5.24 7.04z" fill="#34A853"/>
-                    <circle cx="12" cy="9" r="3" fill="#FFFFFF"/>
-                  </svg>
-                  <span>Google Maps</span>
-                </button>
-
+              {/* Action Buttons: Share Trip (First) & Cancel Trip (Second) */}
+              <div className="live-sheet-actions-wrap" style={{ marginTop: '12px', marginBottom: '14px' }}>
                 <button
                   type="button"
                   className="live-act-btn live-btn-share"
                   onClick={handleShareTrip}
+                  style={{
+                    background: 'var(--card)',
+                    border: '1.5px solid var(--line)',
+                    color: 'var(--ink)',
+                    borderRadius: '14px',
+                    height: '46px',
+                    fontWeight: 700
+                  }}
                 >
                   <Icon name="share" size={16} />
-                  <span>Share Trip</span>
+                  <span>Share Ride</span>
                 </button>
 
-                <button
-                  type="button"
-                  className="live-act-btn live-btn-sos"
-                  onClick={handleSos}
-                >
-                  <Icon name="shield" size={16} />
-                  <span>Emergency SOS</span>
-                </button>
-              </div>
-
-              {!isStarted && (
-                <div style={{ marginTop: '14px', marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
+                {!isStarted && (
                   <button
                     type="button"
+                    className="live-act-btn"
                     onClick={() => {
                       if (setTripToCancel) setTripToCancel(trip);
                     }}
                     style={{
                       background: 'rgba(239, 68, 68, 0.08)',
-                      border: '1px solid rgba(239, 68, 68, 0.28)',
-                      color: '#EF4444',
-                      padding: '10px 22px',
-                      borderRadius: '999px',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.15s ease'
+                      border: '1.5px solid rgba(239, 68, 68, 0.28)',
+                      color: '#DC2626',
+                      borderRadius: '14px',
+                      height: '46px',
+                      fontWeight: 700
                     }}
                   >
-                    <Icon name="x" size={14} color="#EF4444" />
-                    <span>Cancel Booking</span>
+                    <Icon name="x" size={15} color="#DC2626" />
+                    <span>Cancel Trip</span>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </>
           )}
         </div>
