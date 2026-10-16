@@ -9,7 +9,7 @@ import templateBgSrc from '../assets/trip_ticket_template.png';
 export { ticketConfig };
 
 /**
- * Loads an image async
+ * Loads an image async with resilient fallback paths
  */
 function loadImage(src) {
   return new Promise((resolve) => {
@@ -18,9 +18,14 @@ function loadImage(src) {
       return;
     }
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
+    img.onerror = () => {
+      // Fallback to public folder path if bundled asset URL fails
+      const fallbackImg = new Image();
+      fallbackImg.onload = () => resolve(fallbackImg);
+      fallbackImg.onerror = () => resolve(null);
+      fallbackImg.src = './trip_ticket_template.png';
+    };
     img.src = src;
   });
 }
