@@ -6,6 +6,7 @@ import { openInGoogleMaps } from '../services/googleMapsService';
 import ContactProfileCard from './ContactProfileCard';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import { generateTripTicketImage } from '../utils/tripTicketGenerator';
 
 export default function LiveTrackingSheet() {
   const {
@@ -87,20 +88,57 @@ export default function LiveTrackingSheet() {
     if (!trip) return;
     const driverName = (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) || trip.driverObj?.name || 'Assigned Chauffeur';
     const trackUrl = `https://ridingo.app/track/${trip.id}`;
-    const shareTitle = `Track My Ridingo Chauffeur Ride`;
-    const shareText = `I'm riding with Ridingo! Track my live trip (${trip.id}) with chauffeur ${driverName}.\nPickup: ${trip.pickup}\nDestination: ${trip.drop_loc || 'City Destination'}`;
+    const pickupLoc = trip.pickup || 'Pickup Location';
+    const dropLoc = trip.drop_loc || 'City Destination';
+    const fare = Number(trip.fare) || 750;
+    const otp = trip.startOtp || trip.otp || '4821';
+
+    // Comprehensive text with from/to location, driver, fare, OTP, and tracking URL
+    const shareTitle = `Track My Ridingo Chauffeur Ride · ${trip.id}`;
+    const shareText = 
+`🚗 Ridingo Chauffeur Trip Details
+Trip ID: ${trip.id}
+━━━━━━━━━━━━━━━━━━━━
+📍 From (Pickup): ${pickupLoc}
+🏁 To (Destination): ${dropLoc}
+👤 Assigned Chauffeur: ${driverName}
+💰 Total Fare: ₹${fare}
+🔑 Trip Pickup OTP: ${otp}
+━━━━━━━━━━━━━━━━━━━━
+Live GPS Tracking: ${trackUrl}`;
 
     try {
+      // 1. Generate minimal ticket style image
+      let ticketImage = null;
+      try {
+        ticketImage = await generateTripTicketImage(trip);
+      } catch (genErr) {
+        console.warn('Ticket image generation note:', genErr);
+      }
+
+      // 2. Try native device sharing with image file + text
+      if (ticketImage?.file && typeof navigator !== 'undefined' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [ticketImage.file] })) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          files: [ticketImage.file]
+        });
+        addToast('Trip ticket shared successfully!', 'check');
+        return;
+      }
+
+      // 3. Fallback to native Capacitor Share plugin
       if (Capacitor.isPluginAvailable('Share')) {
         await Share.share({
           title: shareTitle,
           text: shareText,
           url: trackUrl,
-          dialogTitle: 'Share Live Ride with Family & Friends'
+          dialogTitle: 'Share Live Trip Ticket'
         });
         return;
       }
 
+      // 4. Fallback to Web Share API text
       if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
         await navigator.share({
           title: shareTitle,
@@ -110,10 +148,10 @@ export default function LiveTrackingSheet() {
         return;
       }
 
-      // Fallback for browsers without Share API
+      // 5. Fallback for browsers without Share API
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(`${shareText}\n${trackUrl}`);
-        addToast('Live tracking link copied to clipboard!', 'check');
+        await navigator.clipboard.writeText(shareText);
+        addToast('Trip details copied to clipboard!', 'check');
       } else {
         addToast('Sharing is not supported on this device', 'info');
       }
@@ -121,8 +159,8 @@ export default function LiveTrackingSheet() {
       if (err?.name !== 'AbortError') {
         console.warn('Native share note:', err);
         if (navigator.clipboard?.writeText) {
-          navigator.clipboard.writeText(trackUrl);
-          addToast('Live tracking link copied to clipboard!', 'check');
+          navigator.clipboard.writeText(shareText);
+          addToast('Trip details copied to clipboard!', 'check');
         }
       }
     }
