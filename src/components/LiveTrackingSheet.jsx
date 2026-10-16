@@ -4,6 +4,8 @@ import Icon from './Icon';
 import GraphicLiveMap, { getRouteTelemetry } from './GraphicLiveMap';
 import { openInGoogleMaps } from '../services/googleMapsService';
 import ContactProfileCard from './ContactProfileCard';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 export default function LiveTrackingSheet() {
   const {
@@ -81,9 +83,49 @@ export default function LiveTrackingSheet() {
     return null;
   }
 
-  const handleShareTrip = () => {
-    navigator.clipboard?.writeText?.(`https://ridingo.app/track/${trip.id}`);
-    addToast('Live tracking link copied to clipboard!', 'check');
+  const handleShareTrip = async () => {
+    if (!trip) return;
+    const driverName = (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) || trip.driverObj?.name || 'Assigned Chauffeur';
+    const trackUrl = `https://ridingo.app/track/${trip.id}`;
+    const shareTitle = `Track My Ridingo Chauffeur Ride`;
+    const shareText = `I'm riding with Ridingo! Track my live trip (${trip.id}) with chauffeur ${driverName}.\nPickup: ${trip.pickup}\nDestination: ${trip.drop_loc || 'City Destination'}`;
+
+    try {
+      if (Capacitor.isPluginAvailable('Share')) {
+        await Share.share({
+          title: shareTitle,
+          text: shareText,
+          url: trackUrl,
+          dialogTitle: 'Share Live Ride with Family & Friends'
+        });
+        return;
+      }
+
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: trackUrl
+        });
+        return;
+      }
+
+      // Fallback for browsers without Share API
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(`${shareText}\n${trackUrl}`);
+        addToast('Live tracking link copied to clipboard!', 'check');
+      } else {
+        addToast('Sharing is not supported on this device', 'info');
+      }
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        console.warn('Native share note:', err);
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(trackUrl);
+          addToast('Live tracking link copied to clipboard!', 'check');
+        }
+      }
+    }
   };
 
   const handleSos = () => {
