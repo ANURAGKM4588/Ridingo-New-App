@@ -63,12 +63,13 @@ export async function generateTripTicketImage(trip) {
     drawTemplateFallback(ctx, canvasWidth, canvasHeight, labelColor);
   }
 
-  // Draw Trip ID Tag on header
+  // Draw Trip ID in header top-right, aligned with "TRIP DETAILS"
   ctx.save();
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '800 22px monospace';
+  ctx.fillStyle = labelColor;
+  ctx.font = '600 28px monospace';
   ctx.textAlign = 'right';
-  ctx.fillText(tripId, canvasWidth - 60, 96);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(tripId, canvasWidth - 60, 68);
   ctx.restore();
 
   // 2. Field: from_location (Strictly using JSON coordinates)
@@ -76,7 +77,7 @@ export async function generateTripTicketImage(trip) {
     const f = fields.from_location;
     ctx.save();
     ctx.fillStyle = textColor;
-    ctx.font = `700 ${f.suggested_font_px || 52}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = `600 ${f.suggested_font_px || 52}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     ctx.textAlign = f.align || 'left';
     ctx.textBaseline = 'alphabetic';
 
@@ -90,7 +91,7 @@ export async function generateTripTicketImage(trip) {
     const f = fields.to_location;
     ctx.save();
     ctx.fillStyle = textColor;
-    ctx.font = `700 ${f.suggested_font_px || 52}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = `600 ${f.suggested_font_px || 52}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     ctx.textAlign = f.align || 'left';
     ctx.textBaseline = 'alphabetic';
 
@@ -104,7 +105,7 @@ export async function generateTripTicketImage(trip) {
     const f = fields.driver_name;
     ctx.save();
     ctx.fillStyle = textColor;
-    ctx.font = `750 ${f.suggested_font_px || 52}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = `650 ${f.suggested_font_px || 52}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     ctx.textAlign = f.align || 'left';
     ctx.textBaseline = 'alphabetic';
 
@@ -118,7 +119,7 @@ export async function generateTripTicketImage(trip) {
     const f = fields.total_fare;
     ctx.save();
     ctx.fillStyle = textColor;
-    ctx.font = `900 ${f.suggested_font_px || 60}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = `800 ${f.suggested_font_px || 60}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     ctx.textAlign = f.align || 'left';
     ctx.textBaseline = 'alphabetic';
 
@@ -135,7 +136,7 @@ export async function generateTripTicketImage(trip) {
 
     ctx.save();
     ctx.fillStyle = textColor;
-    ctx.font = `900 ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`;
+    ctx.font = `800 ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -186,94 +187,124 @@ function fitSingleLine(ctx, text, maxWidth) {
 }
 
 /**
- * Fallback vector canvas renderer matching ticket template if background image fails
+ * Fallback vector canvas renderer matching user's template if background image fails
  */
 function drawTemplateFallback(ctx, width, height, labelColor) {
-  // Background
-  ctx.fillStyle = '#F8FAFC';
+  // 1. Soft warm background
+  ctx.fillStyle = '#FAF8F5';
   ctx.fillRect(0, 0, width, height);
 
-  // Card outline
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(30, 30, width - 60, height - 60);
-  ctx.strokeStyle = '#E2E8F0';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(30, 30, width - 60, height - 60);
-
-  // Header band
-  ctx.fillStyle = '#0F172A';
-  ctx.fillRect(30, 30, width - 60, 120);
-
-  ctx.fillStyle = '#FFC70A';
-  ctx.font = '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('RIDINGO', 60, 85);
-
-  ctx.fillStyle = '#94A3B8';
-  ctx.font = '700 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('VERIFIED CHAUFFEUR PASS', 62, 118);
-
-  // Labels
+  // 2. Header: "TRIP DETAILS"
   ctx.fillStyle = labelColor;
-  ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('PICKUP LOCATION (FROM)', 140, 195);
-  ctx.fillText('DROP DESTINATION (TO)', 140, 405);
+  ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('TRIP DETAILS', 60, 68);
+  ctx.letterSpacing = '0px';
 
-  // Route markers
-  ctx.fillStyle = '#22C55E';
+  ctx.strokeStyle = '#D8D4CC';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(86, 240, 16, 0, Math.PI * 2);
+  ctx.moveTo(60, 88);
+  ctx.lineTo(width - 60, 88);
+  ctx.stroke();
+
+  // 3. FROM section
+  ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('FROM', 140, 146);
+  ctx.letterSpacing = '0px';
+
+  // Amber route target pin
+  ctx.strokeStyle = '#D97706';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(84, 194, 14, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#D97706';
+  ctx.beginPath();
+  ctx.arc(84, 194, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = '#CBD5E1';
-  ctx.lineWidth = 3;
-  ctx.setLineDash([6, 6]);
+  // Dotted route line
+  ctx.fillStyle = '#D8D4CC';
+  for (let dy = 220; dy < 330; dy += 20) {
+    ctx.beginPath();
+    ctx.arc(84, dy, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Underline for FROM
+  ctx.strokeStyle = '#D8D4CC';
   ctx.beginPath();
-  ctx.moveTo(86, 260);
-  ctx.lineTo(86, 430);
+  ctx.moveTo(140, 222);
+  ctx.lineTo(width - 60, 222);
   ctx.stroke();
-  ctx.setLineDash([]);
 
-  ctx.fillStyle = '#EF4444';
-  ctx.fillRect(72, 440, 28, 28);
+  // 4. TO section
+  ctx.fillStyle = labelColor;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('TO', 140, 310);
+  ctx.letterSpacing = '0px';
 
-  // Dividers
-  ctx.strokeStyle = '#E2E8F0';
+  // Amber square pin
+  ctx.fillStyle = '#D97706';
+  ctx.fillRect(70, 348, 28, 28);
+
+  // Underline for TO
+  ctx.beginPath();
+  ctx.moveTo(140, 390);
+  ctx.lineTo(width - 60, 390);
+  ctx.stroke();
+
+  // 5. DRIVER & FARE labels and underlines
+  ctx.fillStyle = labelColor;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('DRIVER', 60, 480);
+  ctx.fillText('FARE', 560, 480);
+  ctx.letterSpacing = '0px';
+
+  ctx.beginPath();
+  ctx.moveTo(60, 565);
+  ctx.lineTo(500, 565);
+  ctx.moveTo(560, 565);
+  ctx.lineTo(width - 60, 565);
+  ctx.stroke();
+
+  // 6. Perforated tear line & half-circle cutouts
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(0, 686, 32, -Math.PI / 2, Math.PI / 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(width, 686, 32, Math.PI / 2, -Math.PI / 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#D8D4CC';
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 8]);
   ctx.beginPath();
-  ctx.moveTo(60, 560);
-  ctx.lineTo(width - 60, 560);
-  ctx.stroke();
-
-  ctx.fillStyle = labelColor;
-  ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('ASSIGNED CHAUFFEUR', 60, 620);
-  ctx.fillText('TOTAL FARE', 560, 620);
-
-  ctx.beginPath();
-  ctx.moveTo(60, 800);
-  ctx.lineTo(width - 60, 800);
+  ctx.moveTo(60, 686);
+  ctx.lineTo(width - 60, 686);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillText('TRIP PICKUP OTP', 60, 850);
-  ctx.fillStyle = '#64748B';
-  ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('Share this 4-digit verification code with your chauffeur upon arrival', 60, 885);
+  // 7. OTP section
+  ctx.fillStyle = labelColor;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('OTP', 60, 750);
+  ctx.letterSpacing = '0px';
 
-  // Digit boxes
-  ctx.fillStyle = '#F8FAFC';
-  ctx.strokeStyle = '#CBD5E1';
-  ctx.lineWidth = 2.5;
-
+  // 4 OTP boxes
+  ctx.strokeStyle = '#1C2130';
+  ctx.lineWidth = 3;
   const boxes = [60, 280, 500, 720];
   boxes.forEach((bx) => {
-    ctx.fillRect(bx, 990, 180, 150);
     ctx.strokeRect(bx, 990, 180, 150);
   });
 
-  // Footer
   ctx.fillStyle = labelColor;
-  ctx.font = '700 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('🛡️ VERIFIED & TRACKED RIDE · RIDINGO CHAUFFEUR SERVICES', 60, 1200);
+  ctx.font = '600 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('SHARE ONLY WITH YOUR DRIVER', 60, 1180);
+  ctx.letterSpacing = '0px';
 }
