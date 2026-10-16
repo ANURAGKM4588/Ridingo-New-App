@@ -1755,7 +1755,9 @@ export function AppProvider({ children }) {
         setLegalModal,
         openLegal,
         closeLegal,
-        syncTripsFromSupabase
+        syncTripsFromSupabase,
+        acceptedTripIdsRef,
+        settledTripIdsRef
       }}
     >
       {children}

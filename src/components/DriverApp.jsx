@@ -1093,6 +1093,16 @@ export default function DriverApp() {
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
   const [driverCustomTune, setDriverCustomTune] = useState(getSelectedCustomTune());
   const settlingTripIdsRef = useRef(new Set());
+  const acceptedTripIdsRef = useRef(new Set());
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
+      if (Array.isArray(saved)) {
+        saved.forEach(id => acceptedTripIdsRef.current.add(id));
+      }
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
     // Proactively request initial device runtime permissions on launch:
