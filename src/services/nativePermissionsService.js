@@ -22,6 +22,7 @@
  */
 
 import { Platform, Alert, Linking } from 'react-native';
+import { Capacitor } from '@capacitor/core';
 
 // Safe dynamic loader for 'react-native-permissions'
 let RNP = null;
@@ -250,6 +251,30 @@ export async function requestAppPermission(feature, role = 'user', options = { s
     }
   }
 
+  // 2. Native / Web Camera handling (deferred dynamic request)
+  if (feature === PERMISSION_TYPES.CAMERA) {
+    try {
+      if (typeof navigator !== 'undefined' && navigator?.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        // Immediately release tracks so camera hardware isn't held open
+        stream.getTracks().forEach(t => t.stop());
+        return PERMISSION_RESULTS.GRANTED;
+      }
+    } catch (err) {
+      console.warn('[Permissions] Camera permission query error:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        if (options.showAlertOnBlocked) {
+          await openAppSettingsGuide(feature, role);
+        }
+        return PERMISSION_RESULTS.BLOCKED;
+      }
+      return PERMISSION_RESULTS.DENIED;
+    }
+    return PERMISSION_RESULTS.GRANTED;
+  }
+
   const permKey = getPlatformPermissionKey(feature, role);
   if (!permKey || !RNP?.request) {
     return PERMISSION_RESULTS.GRANTED;
@@ -296,9 +321,16 @@ export async function requestAppPermission(feature, role = 'user', options = { s
 }
 
 /**
+ * Dedicated helper to request Camera permission dynamically on first user interaction
+ */
+export async function requestDynamicCameraPermission() {
+  return await requestAppPermission(PERMISSION_TYPES.CAMERA, 'driver', { showAlertOnBlocked: true });
+}
+
+/**
  * Batch request all required system permissions based on application role
  * - User App: Location & Notifications
- * - Driver App: Location, Camera, Photo Library, Notifications & Background Location
+ * - Driver App: Location & Notifications on launch (Camera is deferred until first user tap)
  */
 export async function requestAllRolePermissions(role = 'user') {
   const summary = {};
@@ -317,38 +349,20 @@ export async function requestAllRolePermissions(role = 'user') {
       { showAlertOnBlocked: false }
     );
   } else {
-    // 1. Driver App: Foreground Location
+    // 1. Driver App: Foreground Location (Launch)
     summary[PERMISSION_TYPES.LOCATION_FOREGROUND] = await requestAppPermission(
       PERMISSION_TYPES.LOCATION_FOREGROUND,
       'driver',
       { showAlertOnBlocked: false }
     );
-    // 2. Driver App: Notifications (Critical for dispatch alerts)
+    // 2. Driver App: Notifications (Launch - Critical for dispatch alerts)
     summary[PERMISSION_TYPES.NOTIFICATIONS] = await requestAppPermission(
       PERMISSION_TYPES.NOTIFICATIONS,
       'driver',
       { showAlertOnBlocked: false }
     );
-    // 3. Driver App: Camera (KYC inspection)
-    summary[PERMISSION_TYPES.CAMERA] = await requestAppPermission(
-      PERMISSION_TYPES.CAMERA,
-      'driver',
-      { showAlertOnBlocked: false }
-    );
-    // 4. Driver App: Photo Library
-    summary[PERMISSION_TYPES.PHOTO_LIBRARY] = await requestAppPermission(
-      PERMISSION_TYPES.PHOTO_LIBRARY,
-      'driver',
-      { showAlertOnBlocked: false }
-    );
-    // 5. Driver App: Background Location (Android requires foreground granted first)
-    if (summary[PERMISSION_TYPES.LOCATION_FOREGROUND] === PERMISSION_RESULTS.GRANTED) {
-      summary[PERMISSION_TYPES.LOCATION_BACKGROUND] = await requestAppPermission(
-        PERMISSION_TYPES.LOCATION_BACKGROUND,
-        'driver',
-        { showAlertOnBlocked: false }
-      );
-    }
+    // NOTE: Camera permission is intentionally DEFERRED and NOT requested on launch.
+    // It is triggered dynamically only when the user taps to open the camera for the first time.
   }
 
   return summary;

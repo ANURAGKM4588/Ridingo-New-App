@@ -113,63 +113,83 @@ async function ensureNativeChannel() {
 import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
 
+let isAPNsRegistered = false;
+let apnsListenersAttached = false;
+
 /**
  * Register Driver App with Apple Push Notification service (APNs)
  * Enables remote native notifications when app is minimized or phone is locked.
+ * Note: APNs is strictly for iOS. On Android without google-services.json, PushNotifications.register()
+ * throws an unhandled IllegalStateException which crashes the app when 'Allow' is tapped.
  */
 export async function registerDriverAPNsPush(onTripRequestReceived) {
   if (!Capacitor.isNativePlatform()) return null;
 
+  // On Android devices, LocalNotifications channel handles heads-up alerts.
+  // Avoid calling PushNotifications.register() on Android to prevent Firebase initialization crash.
+  if (Capacitor.getPlatform() !== 'ios') {
+    return false;
+  }
+
+  if (isAPNsRegistered) return true;
+
   try {
     // 1. Request APNs Push Permission
     let perm = await PushNotifications.checkPermissions();
-    if (perm.receive !== 'granted') {
+    if (perm?.receive !== 'granted') {
       perm = await PushNotifications.requestPermissions();
     }
 
-    if (perm.receive === 'granted') {
+    if (perm?.receive === 'granted') {
       // 2. Register with Apple Push Notification service
       await PushNotifications.register();
+      isAPNsRegistered = true;
 
-      // 3. APNs Device Token Listener
-      PushNotifications.addListener('registration', (token) => {
-        console.info('[APNs] Device Token successfully generated:', token.value);
-        try {
-          localStorage.setItem('ridingo_apns_device_token', token.value);
-        } catch (e) {}
-      });
+      // 3. Attach listeners once only
+      if (!apnsListenersAttached) {
+        apnsListenersAttached = true;
 
-      PushNotifications.addListener('registrationError', (error) => {
-        console.warn('[APNs] Registration Error:', error);
-      });
+        PushNotifications.addListener('registration', (token) => {
+          console.info('[APNs] Device Token successfully generated:', token?.value);
+          try {
+            if (token?.value) {
+              localStorage.setItem('ridingo_apns_device_token', token.value);
+            }
+          } catch (e) {}
+        });
 
-      // 4. Remote Push Received (Foreground or Background)
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        console.info('[APNs] Push notification received in background/foreground:', notification);
+        PushNotifications.addListener('registrationError', (error) => {
+          console.warn('[APNs] Registration Error (safely handled):', error);
+        });
 
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          try { navigator.vibrate([150, 75, 150, 75, 300]); } catch (e) {}
-        }
+        // 4. Remote Push Received (Foreground or Background)
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          console.info('[APNs] Push notification received in background/foreground:', notification);
 
-        const data = notification.data || {};
-        if ((data.type === 'TRIP_REQUESTED' || notification.title?.includes('Booking')) && onTripRequestReceived) {
-          onTripRequestReceived(data.trip || data);
-        }
-      });
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate([150, 75, 150, 75, 300]); } catch (e) {}
+          }
 
-      // 5. User taps APNs Banner from Lockscreen / Notification Center
-      PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-        console.info('[APNs] User opened app from notification banner:', action);
-        const data = action.notification?.data || {};
-        if (onTripRequestReceived) {
-          onTripRequestReceived(data.trip || data);
-        }
-      });
+          const data = notification?.data || {};
+          if ((data.type === 'TRIP_REQUESTED' || notification?.title?.includes('Booking')) && onTripRequestReceived) {
+            onTripRequestReceived(data.trip || data);
+          }
+        });
+
+        // 5. User taps APNs Banner from Lockscreen / Notification Center
+        PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+          console.info('[APNs] User opened app from notification banner:', action);
+          const data = action?.notification?.data || {};
+          if (onTripRequestReceived) {
+            onTripRequestReceived(data.trip || data);
+          }
+        });
+      }
 
       return true;
     }
   } catch (err) {
-    console.warn('[APNs] Push notification setup error:', err);
+    console.warn('[APNs] Push notification setup error (safely caught):', err);
   }
   return false;
 }
@@ -203,14 +223,30 @@ export function setupBackgroundNotificationHandler(onWakeupCheck) {
 
 /**
  * Request OS-level notification permissions
+ * Ensures heads-up channel on Android and safely requests runtime permission.
  */
 export async function requestDriverNotificationPermission() {
   try {
     if (Capacitor.isNativePlatform()) {
       await ensureNativeChannel();
-      const localResult = await LocalNotifications.requestPermissions();
-      await registerDriverAPNsPush();
-      return localResult.display === 'granted';
+      let granted = false;
+      try {
+        const localResult = await LocalNotifications.requestPermissions();
+        granted = localResult?.display === 'granted';
+      } catch (locErr) {
+        console.warn('[DriverNotifications] Local notification permission request error:', locErr);
+      }
+
+      // Only attempt remote push / APNs register on iOS where APNs is supported
+      if (Capacitor.getPlatform() === 'ios' && granted) {
+        try {
+          await registerDriverAPNsPush();
+        } catch (pushErr) {
+          console.warn('[DriverNotifications] APNs push registration error:', pushErr);
+        }
+      }
+
+      return granted;
     }
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -230,12 +266,14 @@ export async function getDriverNotificationPermission() {
   try {
     if (Capacitor.isNativePlatform()) {
       const status = await LocalNotifications.checkPermissions();
-      return status.display; // 'granted' | 'denied' | 'prompt'
+      return status?.display || 'prompt'; // 'granted' | 'denied' | 'prompt'
     }
     if (typeof window !== 'undefined' && 'Notification' in window) {
       return Notification.permission; // 'granted' | 'denied' | 'default'
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[DriverNotifications] Error checking notification permission:', e);
+  }
   return 'denied';
 }
 

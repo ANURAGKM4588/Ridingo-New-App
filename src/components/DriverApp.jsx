@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useApp } from '../context/AppContext';
 import { realtime } from '../utils/realtime';
 import Icon from './Icon';
@@ -1070,24 +1071,50 @@ export default function DriverApp() {
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
 
   useEffect(() => {
-    // 1. Proactively request initial device GPS location permission on launch
-    try {
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          () => console.info('[DriverApp] Location permission active'),
-          (err) => console.log('[DriverApp] Location permission query:', err.message),
-          { enableHighAccuracy: true, timeout: 8000 }
-        );
+    // Proactively request initial device runtime permissions on launch:
+    // 1. Location (GPS) runtime permission via Capacitor / Web safely
+    const initLaunchPermissions = async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const { Geolocation } = await import('@capacitor/geolocation');
+          if (Geolocation && typeof Geolocation.checkPermissions === 'function') {
+            const status = await Geolocation.checkPermissions();
+            if (status?.location !== 'granted') {
+              await Geolocation.requestPermissions();
+            }
+          }
+        } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            () => console.info('[DriverApp] Location permission active'),
+            (err) => console.log('[DriverApp] Location permission query:', err.message),
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        }
+      } catch (locErr) {
+        console.warn('[DriverApp] Location permission launch check:', locErr);
       }
-    } catch (e) {}
 
-    // 2. Request device-level OS notification permission & register APNs push on driver app initialization
-    requestDriverNotificationPermission();
-    registerDriverAPNsPush((trip) => {
-      if (trip) {
-        realtime.emit('TRIP_REQUESTED', trip);
+      // 2. Notifications runtime permission (heads-up channel on Android, APNs on iOS)
+      try {
+        await requestDriverNotificationPermission();
+      } catch (notifErr) {
+        console.warn('[DriverApp] Notification permission launch check:', notifErr);
       }
-    });
+
+      // 3. APNs Push register (guarded for iOS only to prevent Android Firebase crash)
+      try {
+        registerDriverAPNsPush((trip) => {
+          if (trip) {
+            realtime.emit('TRIP_REQUESTED', trip);
+          }
+        });
+      } catch (apnsErr) {
+        console.warn('[DriverApp] APNs push setup:', apnsErr);
+      }
+      // Note: Camera permission is intentionally deferred and requested only when the driver taps to take photos.
+    };
+
+    initLaunchPermissions();
 
     // Handle app resume from background / phone lock screen to sync active dispatches
     setupBackgroundNotificationHandler(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
 
 // Default realistic sample vehicle angle images for simulator/fallback
@@ -91,8 +91,10 @@ export default function VehicleConditionModal({
   });
   const [activeAngle, setActiveAngle] = useState(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
   const [notes, setNotes] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const fileInputsRef = useRef({});
 
   // Auto clean expired records when modal mounts
   useEffect(() => {
@@ -101,6 +103,69 @@ export default function VehicleConditionModal({
 
   const capturedCount = Object.values(photos).filter(Boolean).length;
   const isFormValid = brand.trim() && model.trim() && regNumber.trim() && capturedCount >= 2;
+
+  /**
+   * Defer Camera Permission:
+   * Requests runtime camera permission dynamically ONLY when user taps to open camera for the first time.
+   */
+  const requestCameraPermissionDynamically = async () => {
+    if (cameraPermissionGranted) return true;
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator?.mediaDevices?.getUserMedia) {
+        // Triggers Android native runtime dialog ("While using the app" / "Only this time")
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        // Permission was granted by user: immediately stop all tracks so camera hardware is free
+        stream.getTracks().forEach(track => track.stop());
+        setCameraPermissionGranted(true);
+        return true;
+      }
+    } catch (err) {
+      console.warn('[Camera] Runtime permission request note:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setErrorMsg('Camera permission is required to photograph vehicle condition. Please allow camera access.');
+        return false;
+      }
+    }
+
+    // Fallback for environments where getUserMedia is restricted
+    setCameraPermissionGranted(true);
+    return true;
+  };
+
+  /**
+   * User taps to open camera for an angle:
+   * 1. Dynamically prompts runtime camera permission on first tap only
+   * 2. Programmatically opens the camera capture file input
+   */
+  const handleTapCameraBox = async (angleId) => {
+    setErrorMsg('');
+    setActiveAngle(angleId);
+    setIsCapturing(true);
+
+    try {
+      const isAllowed = await requestCameraPermissionDynamically();
+      if (!isAllowed) {
+        setIsCapturing(false);
+        setActiveAngle(null);
+        return;
+      }
+
+      const inputEl = fileInputsRef.current[angleId];
+      if (inputEl) {
+        inputEl.click();
+      } else {
+        handleCaptureAngle(angleId);
+      }
+    } catch (e) {
+      console.warn('[Camera] Open error:', e);
+    } finally {
+      setIsCapturing(false);
+      setActiveAngle(null);
+    }
+  };
 
   const handleCaptureAngle = (angleId) => {
     setIsCapturing(true);
@@ -113,7 +178,7 @@ export default function VehicleConditionModal({
       setIsCapturing(false);
       setActiveAngle(null);
       setErrorMsg('');
-    }, 600);
+    }, 400);
   };
 
   const handleNativePhotoUpload = (angleId, e) => {
@@ -393,7 +458,8 @@ export default function VehicleConditionModal({
                         cursor: 'pointer',
                         background: '#F1F5F9'
                       }}
-                      onClick={() => handleCaptureAngle(ang.id)}
+                      onClick={() => handleTapCameraBox(ang.id)}
+                      title={photo ? 'Tap to retake photo with camera' : 'Tap to open camera and take photo'}
                     >
                       {photo ? (
                         <img
@@ -407,7 +473,7 @@ export default function VehicleConditionModal({
                             <Icon name="camera" size={16} color="#0F172A" />
                           </div>
                           <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
-                            {isBusy ? 'Taking Photo...' : 'Tap for Camera'}
+                            {isBusy ? 'Opening Camera...' : 'Tap for Camera'}
                           </span>
                         </div>
                       )}
@@ -423,25 +489,22 @@ export default function VehicleConditionModal({
                             fontSize: '9.5px',
                             fontWeight: 800,
                             padding: '2px 6px',
-                            borderRadius: '6px'
+                            borderRadius: '6px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
                           }}
                         >
                           ✓ Photo Saved
                         </span>
                       )}
 
-                      {/* Native Camera input overlay */}
+                      {/* Native Camera File Input triggered dynamically after runtime permission check */}
                       <input
+                        ref={el => { fileInputsRef.current[ang.id] = el; }}
                         type="file"
                         accept="image/*"
                         capture="environment"
                         onChange={e => handleNativePhotoUpload(ang.id, e)}
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          opacity: 0,
-                          cursor: 'pointer'
-                        }}
+                        style={{ display: 'none' }}
                         title={`Capture ${ang.label} with device camera`}
                       />
                     </div>
