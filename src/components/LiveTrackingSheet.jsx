@@ -39,7 +39,10 @@ export default function LiveTrackingSheet() {
     rider: { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' }
   };
 
-  const isStarted = trip.status === 'inprogress';
+  const isStarted = ['inprogress', 'ending_otp', 'invoice_pending'].includes(trip.status);
+  const isDriverAssigned = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip.status);
+  const isArrived = trip.status === 'pickup_arrived';
+  const isReady = trip.status === 'ready_to_start';
   const isAccepted = trip.status === 'accepted';
   const isWaiting = trip.status === 'requested';
 
@@ -120,6 +123,42 @@ export default function LiveTrackingSheet() {
                 >
                   <span className="live-pulse-dot" style={{ background: '#22C55E' }} />
                   LIVE GPS TRACKING
+                </span>
+              ) : isArrived ? (
+                <span
+                  className="pill good"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    color: 'var(--good)'
+                  }}
+                >
+                  <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
+                  CHAUFFEUR AT PICKUP
+                </span>
+              ) : isReady ? (
+                <span
+                  className="pill good"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    color: 'var(--good)'
+                  }}
+                >
+                  <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
+                  READY TO START
                 </span>
               ) : isAccepted ? (
                 <span
@@ -307,9 +346,9 @@ export default function LiveTrackingSheet() {
                 <span>Cancel Request</span>
               </button>
             </div>
-          ) : isAccepted ? (
+          ) : isDriverAssigned ? (
             /* ==========================================================
-               2. CHAUFFEUR ACCEPTED · REACHING PICKUP (NO LIVE ROUTE MAP)
+               2. CHAUFFEUR ACCEPTED / ARRIVED · REACHING PICKUP
                ========================================================== */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div
@@ -322,19 +361,25 @@ export default function LiveTrackingSheet() {
                   textAlign: 'center'
                 }}
               >
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                  <Icon name="check" size={26} color="#16A34A" />
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: isArrived ? 'rgba(34, 197, 94, 0.25)' : 'rgba(34, 197, 94, 0.15)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <Icon name={isArrived ? 'pin' : 'check'} size={26} color="#16A34A" />
                 </div>
                 <b style={{ fontSize: '17px', color: 'var(--ink)', display: 'block' }}>
-                  Chauffeur Confirmed!
+                  {isArrived ? 'Chauffeur Arrived at Pickup!' : isReady ? 'Vehicle Inspected · Ready!' : 'Chauffeur Confirmed!'}
                 </b>
                 <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '6px 0 14px', lineHeight: 1.4 }}>
-                  <b>{trip.driver || 'Ravi Kumar'}</b> has accepted your booking and is reaching your pickup point.
+                  {isArrived ? (
+                    <><b>{trip.driver || 'Ravi Kumar'}</b> has reached your pickup point. Share the OTP below to begin your journey.</>
+                  ) : isReady ? (
+                    <>Vehicle inspection completed. Chauffeur is verifying OTP to begin the ride.</>
+                  ) : (
+                    <><b>{trip.driver || 'Ravi Kumar'}</b> has accepted your booking and is reaching your pickup point.</>
+                  )}
                 </p>
 
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '999px', background: 'var(--field)', fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>
                   <span className="live-pulse-dot" style={{ background: '#22C55E' }} />
-                  <span>Live GPS tracking will activate when chauffeur starts trip</span>
+                  <span>{isArrived ? 'Share OTP with chauffeur' : 'Live GPS tracking will activate when chauffeur starts trip'}</span>
                 </div>
               </div>
 

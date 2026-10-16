@@ -4334,7 +4334,7 @@ export default function DriverApp() {
         <TripOtpModal
           title="Enter Trip OTP"
           subtitle="Ask customer for the 4-digit Trip OTP displayed on their Ridingo User App to verify identity."
-          correctOtp={activeTripAction?.startOtp || '4821'}
+          correctOtp={activeTripAction?.startOtp || activeTripAction?.car?.startOtp || trips.find(x => x.id === activeTripAction?.id)?.startOtp || '4821'}
           onVerified={handleVerifyStartOtpSuccess}
           onCancel={() => setShowStartOtpModal(false)}
         />
