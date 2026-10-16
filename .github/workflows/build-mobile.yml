@@ -51,8 +51,9 @@ jobs:
           npm install --legacy-peer-deps
           npx cap sync android
           cd android
+          sed -i 's/\r$//' gradlew 2>/dev/null || true
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
           mkdir -p "${{ github.workspace }}/build-outputs"
           find app/build/outputs/apk -name "*.apk" -exec cp -v {} "${{ github.workspace }}/build-outputs/Ridingo-User.apk" \;
           ls -lh "${{ github.workspace }}/build-outputs"
@@ -64,8 +65,9 @@ jobs:
           npm install --legacy-peer-deps
           npx cap sync android
           cd android
+          sed -i 's/\r$//' gradlew 2>/dev/null || true
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
           mkdir -p "${{ github.workspace }}/build-outputs"
           find app/build/outputs/apk -name "*.apk" -exec cp -v {} "${{ github.workspace }}/build-outputs/Ridingo-Driver.apk" \;
           ls -lh "${{ github.workspace }}/build-outputs"
