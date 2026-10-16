@@ -3286,29 +3286,6 @@ export default function DriverApp() {
                 center
                 style={{ opacity: 0.8, marginBottom: '8px' }}
               />
-              <button
-                type="button"
-                onClick={() => setView('admin')}
-                style={{
-                  width: '100%',
-                  height: '46px',
-                  borderRadius: '16px',
-                  background: 'var(--card)',
-                  border: '1.5px solid var(--line)',
-                  color: 'var(--ink)',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '16px'
-                }}
-              >
-                <Icon name="settings" size={16} />
-                <span>Admin CRM Portal (ridingo.in/admin)</span>
-              </button>
 
               <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>
                 Ridingo Driver Partner · v2.4.2
