@@ -670,14 +670,15 @@ export function AppProvider({ children }) {
     const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver, startOtp, otp }) => {
       const driverName = driver?.name || 'Ravi Kumar';
       const driverPhone = driver?.phone || '+91 94471 23456';
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       
       // Determine the exact booking OTP (never fall back to a random default)
-      const foundTrip = trips.find(t => t.id === tripId);
+      const foundTrip = trips.find(t => isMatch(t.id));
       const targetOtp = startOtp || otp || foundTrip?.startOtp || foundTrip?.car?.startOtp || foundTrip?.otp || '4821';
 
       setTrips(prev =>
         prev.map(t => {
-          if (t.id === tripId) {
+          if (isMatch(t.id)) {
             const finalOtp = startOtp || otp || t.startOtp || t.car?.startOtp || t.otp || targetOtp;
             return {
               ...t,
@@ -690,7 +691,7 @@ export function AppProvider({ children }) {
           return t;
         })
       );
-      setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
+      setIncomingTripRequest(prev => (prev && isMatch(prev.id) ? null : prev));
       dismissIncomingRideNotification(tripId);
       stopActiveTone();
 
@@ -723,10 +724,11 @@ export function AppProvider({ children }) {
     });
 
     const unbindArr = realtime.on('ARRIVED_PICKUP', ({ tripId }) => {
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       let targetOtp = '4821';
       setTrips(prev =>
         prev.map(t => {
-          if (t.id === tripId) {
+          if (isMatch(t.id)) {
             targetOtp = t.startOtp || targetOtp;
             return { ...t, status: 'pickup_arrived' };
           }
@@ -742,22 +744,25 @@ export function AppProvider({ children }) {
     });
 
     const unbindOtp1 = realtime.on('START_OTP_VERIFIED', ({ tripId }) => {
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'ready_to_start' } : t))
+        prev.map(t => (isMatch(t.id) ? { ...t, status: 'ready_to_start' } : t))
       );
       addToast('Pickup OTP verified. Trip ready to start.', 'check');
     });
 
     const unbindCond = realtime.on('CONDITION_VERIFIED', ({ tripId, photos, scratches }) => {
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'ready_to_start', conditionPhotos: photos, conditionScratches: scratches } : t))
+        prev.map(t => (isMatch(t.id) ? { ...t, status: 'ready_to_start', conditionPhotos: photos, conditionScratches: scratches } : t))
       );
       addToast('Vehicle condition check verified.', 'check');
     });
 
     const unbindStart = realtime.on('TRIP_STARTED', ({ tripId }) => {
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'inprogress', startedAt: Date.now() } : t))
+        prev.map(t => (isMatch(t.id) ? { ...t, status: 'inprogress', startedAt: Date.now() } : t))
       );
       addNotification(
         'Trip in Progress',
@@ -768,8 +773,9 @@ export function AppProvider({ children }) {
     });
 
     const unbindEndReq = realtime.on('END_OTP_REQUESTED', ({ tripId }) => {
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
+        prev.map(t => (isMatch(t.id) ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
       );
       // Immediately remove and close tracking popup on User App when driver ends trip
       setLiveTrackingOpen(false);
@@ -784,8 +790,9 @@ export function AppProvider({ children }) {
     });
 
     const unbindRideEnded = realtime.on('RIDE_ENDED', ({ tripId }) => {
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
+        prev.map(t => (isMatch(t.id) ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
       );
       // Immediately remove and close tracking popup on User App when driver ends trip
       setLiveTrackingOpen(false);
@@ -797,17 +804,19 @@ export function AppProvider({ children }) {
     // realtime.on('TRIP_DECLINED') intentionally omitted to allow other chauffeurs to accept
 
     const unbindCancel = realtime.on('TRIP_CANCELLED', ({ tripId }) => {
-      setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
-      setTrips(prev => prev.filter(t => t.id !== tripId));
-      setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
+      setIncomingTripRequest(prev => (prev && isMatch(prev.id) ? null : prev));
+      setTrips(prev => prev.filter(t => !isMatch(t.id)));
+      setActiveTrackingTripId(prev => (prev && isMatch(prev) ? null : prev));
       setLiveTrackingOpen(false);
       dismissIncomingRideNotification(tripId);
       stopActiveTone();
     });
 
     const unbindComp = realtime.on('TRIP_COMPLETED', ({ tripId }) => {
+      const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'completed' } : t))
+        prev.map(t => (isMatch(t.id) ? { ...t, status: 'completed' } : t))
       );
       addNotification(
         'Trip Completed',
