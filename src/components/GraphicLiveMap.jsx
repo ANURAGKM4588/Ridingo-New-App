@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import Icon from './Icon';
-import { GOOGLE_MAP_TILES, openInGoogleMaps } from '../services/googleMapsService';
+import { GOOGLE_MAP_TILES, openInGoogleMaps, fetchGoogleRoadDirections } from '../services/googleMapsService';
 
-// Real Kochi geographic route waypoints for authentic Google Maps display
+// Fallback geographic route waypoints for authentic Google Maps display
 export const ROUTE_COORDS = [
   { lat: 10.0245, lng: 76.3075, name: 'Edappally Toll (Pickup)' },
   { lat: 10.0210, lng: 76.3088, name: 'Metro Corridor' },
@@ -16,13 +16,16 @@ export const ROUTE_COORDS = [
 export const ROUTE_PTS_MODAL = ROUTE_COORDS.map((c, i) => ({ x: 50 + i * 55, y: 220 - i * 32, name: c.name }));
 export const ROUTE_PTS_MINI = ROUTE_COORDS.map((c, i) => ({ x: 60 + i * 50, y: 150 - i * 22, name: c.name }));
 
-export function getRouteTelemetry(prog = 0.42, isModal = false) {
-  prog = Math.max(0.02, Math.min(0.98, prog));
-  const pts = ROUTE_COORDS;
+/**
+ * Calculates vehicle position and rotation angle along the active road polyline
+ */
+export function getRouteTelemetry(pts = ROUTE_COORDS, prog = 0.42) {
+  prog = Math.max(0.01, Math.min(0.99, prog));
+  const validPts = Array.isArray(pts) && pts.length >= 2 ? pts : ROUTE_COORDS;
   let totalLen = 0;
   const lens = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const d = Math.hypot(pts[i + 1].lat - pts[i].lat, pts[i + 1].lng - pts[i].lng);
+  for (let i = 0; i < validPts.length - 1; i++) {
+    const d = Math.hypot(validPts[i + 1].lat - validPts[i].lat, validPts[i + 1].lng - validPts[i].lng);
     lens.push(d);
     totalLen += d;
   }
@@ -31,29 +34,29 @@ export function getRouteTelemetry(prog = 0.42, isModal = false) {
   for (let i = 0; i < lens.length; i++) {
     if (accumulated + lens[i] >= targetDist || i === lens.length - 1) {
       const segT = (targetDist - accumulated) / (lens[i] || 1);
-      const p0 = pts[i];
-      const p1 = pts[i + 1];
+      const p0 = validPts[i];
+      const p1 = validPts[i + 1];
       const lat = p0.lat + (p1.lat - p0.lat) * segT;
       const lng = p0.lng + (p1.lng - p0.lng) * segT;
       const angle = (Math.atan2(p1.lng - p0.lng, p1.lat - p0.lat) * 180) / Math.PI;
       return {
         lat,
         lng,
-        x: Math.round(50 + (i + segT) * 55),
-        y: Math.round(220 - (i + segT) * 32),
+        x: Math.round(50 + (i + segT) * 20),
+        y: Math.round(220 - (i + segT) * 15),
         angle: Math.round(angle),
-        currentStreet: p0.name
+        currentStreet: p0.name || ''
       };
     }
     accumulated += lens[i];
   }
-  return { lat: pts[0].lat, lng: pts[0].lng, x: 50, y: 220, angle: 0, currentStreet: pts[0].name };
+  return { lat: validPts[0].lat, lng: validPts[0].lng, x: 50, y: 220, angle: 0, currentStreet: validPts[0].name || '' };
 }
 
 /**
  * Stock Google Maps Live Tracking Component
- * Replaces custom cartoon SVG canvas with real Google Maps stock tiles,
- * Google Maps blue route polyline, origin/destination pins, and light/dark theme synchronization.
+ * Powered by Google Maps Directions API & Road Network Routing
+ * Renders real road-following polyline, official markers, and live vehicle orientation.
  */
 export default function GraphicLiveMap({
   trip,
@@ -68,8 +71,20 @@ export default function GraphicLiveMap({
   const mapRef = useRef(null);
   const tileLayerRef = useRef(null);
   const carMarkerRef = useRef(null);
+  const originMarkerRef = useRef(null);
+  const destMarkerRef = useRef(null);
   const polylineOuterRef = useRef(null);
   const polylineInnerRef = useRef(null);
+
+  const [routePoints, setRoutePoints] = useState(() => {
+    if (trip?.pickupCoords?.lat && trip?.dropCoords?.lat) {
+      return [
+        { lat: trip.pickupCoords.lat, lng: trip.pickupCoords.lng },
+        { lat: trip.dropCoords.lat, lng: trip.dropCoords.lng }
+      ];
+    }
+    return ROUTE_COORDS;
+  });
 
   const [mapType, setMapType] = useState('roadmap'); // 'roadmap' | 'hybrid'
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
@@ -97,9 +112,39 @@ export default function GraphicLiveMap({
     return () => observer.disconnect();
   }, []);
 
-  const geom = getRouteTelemetry(progress, isModal);
+  // Fetch pure and perfect road directions from Google Maps API / Road Network Router
+  useEffect(() => {
+    let isSubscribed = true;
+    async function loadRoadRoute() {
+      try {
+        const result = await fetchGoogleRoadDirections({
+          origin: trip?.pickup,
+          destination: trip?.drop_loc,
+          originCoords: trip?.pickupCoords,
+          destCoords: trip?.dropCoords
+        });
+        if (isSubscribed && result?.points && result.points.length >= 2) {
+          setRoutePoints(result.points);
+        }
+      } catch (err) {
+        console.warn('[GraphicLiveMap] Error fetching road directions:', err);
+      }
+    }
+    loadRoadRoute();
+    return () => { isSubscribed = false; };
+  }, [
+    trip?.id,
+    trip?.pickup,
+    trip?.drop_loc,
+    trip?.pickupCoords?.lat,
+    trip?.pickupCoords?.lng,
+    trip?.dropCoords?.lat,
+    trip?.dropCoords?.lng
+  ]);
 
-  // Initialize stock Google Map
+  const geom = useMemo(() => getRouteTelemetry(routePoints, progress), [routePoints, progress]);
+
+  // Initialize stock Google Map once container is ready
   useEffect(() => {
     if (!containerRef.current) return;
     if (mapRef.current) {
@@ -107,26 +152,14 @@ export default function GraphicLiveMap({
       mapRef.current = null;
     }
 
-    const hasCustomPoints = Boolean(trip?.pickupCoords?.lat && trip?.dropCoords?.lat);
-    const originPt = trip?.pickupCoords?.lat ? { lat: trip.pickupCoords.lat, lng: trip.pickupCoords.lng } : ROUTE_COORDS[0];
-    const destPt = trip?.dropCoords?.lat ? { lat: trip.dropCoords.lat, lng: trip.dropCoords.lng } : ROUTE_COORDS[ROUTE_COORDS.length - 1];
-
-    let activeWaypoints = ROUTE_COORDS;
-    if (hasCustomPoints) {
-      activeWaypoints = [
-        originPt,
-        { lat: (originPt.lat * 2 + destPt.lat) / 3 + 0.002, lng: (originPt.lng * 2 + destPt.lng) / 3 + 0.003 },
-        { lat: (originPt.lat + destPt.lat * 2) / 3 - 0.001, lng: (originPt.lng + destPt.lng * 2) / 3 - 0.002 },
-        destPt
-      ];
-    }
-
-    const centerLat = (originPt.lat + destPt.lat) / 2;
-    const centerLng = (originPt.lng + destPt.lng) / 2;
+    const firstPt = routePoints[0] || ROUTE_COORDS[0];
+    const lastPt = routePoints[routePoints.length - 1] || ROUTE_COORDS[ROUTE_COORDS.length - 1];
+    const centerLat = (firstPt.lat + lastPt.lat) / 2;
+    const centerLng = (firstPt.lng + lastPt.lng) / 2;
 
     const map = L.map(containerRef.current, {
       center: [centerLat, centerLng],
-      zoom: isModal ? 15 : 14,
+      zoom: isModal ? 13 : 12,
       zoomControl: false,
       attributionControl: false
     });
@@ -141,8 +174,8 @@ export default function GraphicLiveMap({
     }).addTo(map);
     tileLayerRef.current = gLayer;
 
-    // Google Maps Classic Blue Route Line
-    const latlngs = activeWaypoints.map(p => [p.lat, p.lng]);
+    // Google Maps Classic Blue Road Polyline
+    const latlngs = routePoints.map(p => [p.lat, p.lng]);
     
     // Outer outline casing for Google Maps route
     const polyOuter = L.polyline(latlngs, {
@@ -171,7 +204,7 @@ export default function GraphicLiveMap({
       iconSize: [14, 14],
       iconAnchor: [7, 7]
     });
-    L.marker([originPt.lat, originPt.lng], { icon: originIcon }).addTo(map);
+    originMarkerRef.current = L.marker([firstPt.lat, firstPt.lng], { icon: originIcon }).addTo(map);
 
     // Destination Marker: Official Google Maps Red Teardrop Pin
     const destIcon = L.divIcon({
@@ -184,22 +217,23 @@ export default function GraphicLiveMap({
       iconSize: [26, 36],
       iconAnchor: [13, 36]
     });
-    L.marker([destPt.lat, destPt.lng], { icon: destIcon }).addTo(map);
+    destMarkerRef.current = L.marker([lastPt.lat, lastPt.lng], { icon: destIcon }).addTo(map);
 
     // Live Moving Vehicle Marker on the Road
     const carIcon = L.divIcon({
       className: 'gmap-car-marker',
-      html: `<div style="transform: rotate(${geom.angle || 0}deg); width:28px; height:28px; background:#000000; border:2px solid #FFC70A; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.45);">
+      html: `<div style="transform: rotate(${geom.angle || 0}deg); width:28px; height:28px; background:#000000; border:2px solid #FFC70A; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.45); transition: transform 0.2s ease;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFC70A"><polygon points="12 2 19 21 12 17 5 21 12 2"/></svg>
       </div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
-    const car = L.marker([geom.lat, geom.lng], { icon: carIcon }).addTo(map);
-    carMarkerRef.current = car;
+    carMarkerRef.current = L.marker([geom.lat, geom.lng], { icon: carIcon }).addTo(map);
 
     // Fit map bounds smoothly
-    map.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
+    if (latlngs.length >= 2) {
+      map.fitBounds(L.latLngBounds(latlngs), { padding: [32, 32] });
+    }
 
     return () => {
       map.remove();
@@ -207,12 +241,28 @@ export default function GraphicLiveMap({
     };
   }, []);
 
-  // Update vehicle position when progress changes
+  // Update polyline and markers when routePoints update from directions API
   useEffect(() => {
-    if (carMarkerRef.current && geom.lat && geom.lng) {
-      carMarkerRef.current.setLatLng([geom.lat, geom.lng]);
+    if (!mapRef.current || !routePoints || routePoints.length < 2) return;
+    const latlngs = routePoints.map(p => [p.lat, p.lng]);
+    if (polylineOuterRef.current) {
+      polylineOuterRef.current.setLatLngs(latlngs);
     }
-  }, [geom.lat, geom.lng, geom.angle]);
+    if (polylineInnerRef.current) {
+      polylineInnerRef.current.setLatLngs(latlngs);
+    }
+    const first = routePoints[0];
+    const last = routePoints[routePoints.length - 1];
+    if (originMarkerRef.current && first) {
+      originMarkerRef.current.setLatLng([first.lat, first.lng]);
+    }
+    if (destMarkerRef.current && last) {
+      destMarkerRef.current.setLatLng([last.lat, last.lng]);
+    }
+    try {
+      mapRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [32, 32] });
+    } catch (e) {}
+  }, [routePoints]);
 
   // Update polyline colors when theme changes
   useEffect(() => {

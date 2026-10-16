@@ -580,17 +580,6 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* PhonePe Escrow & Cashback Pill */}
-              <div style={{ padding: '8px 12px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon name="shield" size={14} />
-                  <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--ink)' }}>PhonePe Escrow Protected</span>
-                </div>
-                <span style={{ fontSize: '11px', fontWeight: 750, color: '#16A34A', background: 'rgba(34, 197, 94, 0.1)', padding: '2px 8px', borderRadius: '6px' }}>
-                  +5% Cashback on Arrival
-                </span>
-              </div>
-
               {/* Route Timeline */}
               <div className="card" style={{ padding: '10px 12px', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', position: 'relative' }}>
@@ -655,17 +644,19 @@ export default function LiveTrackingSheet() {
               <div className="live-sheet-actions-wrap">
                 <button
                   type="button"
-                  className="live-act-btn"
-                  onClick={() => openInGoogleMaps({ origin: trip?.pickup, destination: trip?.drop_loc })}
-                  style={{
-                    background: 'var(--field)',
-                    color: 'var(--ink)',
-                    border: '1.5px solid var(--line)'
-                  }}
+                  className="live-act-btn live-btn-gmaps"
+                  onClick={() => openInGoogleMaps({
+                    origin: trip?.pickupCoords?.lat ? trip.pickupCoords : trip?.pickup,
+                    destination: trip?.dropCoords?.lat ? trip.dropCoords : trip?.drop_loc
+                  })}
                   title="Open live route in Google Maps app"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#EA4335"/>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#4285F4"/>
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 2.6 1.13 5.38 2.76 8.04L12 11V2z" fill="#EA4335"/>
+                    <path d="M12 11l5.24 7.04C18.87 15.38 20 12.6 20 10c0-4.42-3.58-8-8-8v9z" fill="#FBBC04"/>
+                    <path d="M6.76 18.04C8.24 20.46 10.12 22 12 22s3.76-1.54 5.24-3.96L12 11l-5.24 7.04z" fill="#34A853"/>
+                    <circle cx="12" cy="9" r="3" fill="#FFFFFF"/>
                   </svg>
                   <span>Google Maps</span>
                 </button>

@@ -1729,3 +1729,134 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
     destCoords: dCoords
   };
 }
+
+/**
+ * Fetches real, road-hugging driving directions between origin and destination.
+ * 1. Checks if Google Maps DirectionsService is available in window.google and returns
+ *    the official driving route overview_path.
+ * 2. If Google Directions is unavailable or errors, uses high-precision OSRM driving
+ *    geometry which returns real highway / road coordinates.
+ * 3. Falls back gracefully to interpolated waypoints if network is offline.
+ */
+export async function fetchGoogleRoadDirections({ origin, destination, originCoords, destCoords }) {
+  // 1. Resolve coordinates if not provided
+  let oLat = originCoords?.lat;
+  let oLng = originCoords?.lng;
+  let dLat = destCoords?.lat;
+  let dLng = destCoords?.lng;
+
+  if ((!oLat || !oLng) && origin) {
+    const geo = await geocodeAddress(origin);
+    if (geo) {
+      oLat = geo.lat;
+      oLng = geo.lng;
+    }
+  }
+  if ((!dLat || !dLng) && destination) {
+    const geo = await geocodeAddress(destination);
+    if (geo) {
+      dLat = geo.lat;
+      dLng = geo.lng;
+    }
+  }
+
+  // Fallback defaults if still missing
+  oLat = oLat || 10.0245;
+  oLng = oLng || 76.3075;
+  dLat = dLat || 10.0285;
+  dLng = dLng || 76.3120;
+
+  // 2. Try Google Maps JS SDK DirectionsService first
+  if (!isMockMode() && typeof window !== 'undefined' && window.google?.maps?.DirectionsService) {
+    try {
+      const directionsService = new window.google.maps.DirectionsService();
+      const originParam = (originCoords?.lat && originCoords?.lng)
+        ? new window.google.maps.LatLng(Number(oLat), Number(oLng))
+        : (origin || new window.google.maps.LatLng(Number(oLat), Number(oLng)));
+
+      const destParam = (destCoords?.lat && destCoords?.lng)
+        ? new window.google.maps.LatLng(Number(dLat), Number(dLng))
+        : (destination || new window.google.maps.LatLng(Number(dLat), Number(dLng)));
+
+      const result = await new Promise((resolve, reject) => {
+        directionsService.route(
+          {
+            origin: originParam,
+            destination: destParam,
+            travelMode: window.google.maps.TravelMode.DRIVING
+          },
+          (res, status) => {
+            if (status === 'OK' && res?.routes?.[0]) {
+              resolve(res);
+            } else {
+              reject(status);
+            }
+          }
+        );
+      });
+
+      const route = result.routes[0];
+      if (route?.overview_path && route.overview_path.length > 0) {
+        const points = route.overview_path.map(pt => ({
+          lat: typeof pt.lat === 'function' ? pt.lat() : pt.lat,
+          lng: typeof pt.lng === 'function' ? pt.lng() : pt.lng
+        }));
+
+        const leg = route.legs?.[0];
+        const distKm = leg?.distance?.value ? Number((leg.distance.value / 1000).toFixed(1)) : null;
+        const durMins = leg?.duration?.value ? Math.round(leg.duration.value / 60) : null;
+
+        return {
+          points,
+          distanceKm: distKm,
+          durationMins: durMins,
+          source: 'google_directions_api'
+        };
+      }
+    } catch (gErr) {
+      console.warn('[GoogleRoadDirections] Google DirectionsService unavailable or failed, switching to road network router:', gErr);
+    }
+  }
+
+  // 3. High-precision road driving router (OSRM highway network)
+  try {
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+    const response = await fetch(osrmUrl, { headers: { 'Accept': 'application/json' } });
+    if (response.ok) {
+      const data = await response.json();
+      const route = data.routes?.[0];
+      if (route?.geometry?.coordinates && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 1) {
+        const rawCoords = route.geometry.coordinates; // [ [lng, lat], ... ]
+        
+        // Decimate points if there are thousands (to keep Leaflet rendering ultra-smooth at 60fps)
+        let sampled = rawCoords;
+        if (rawCoords.length > 500) {
+          const step = Math.ceil(rawCoords.length / 500);
+          sampled = rawCoords.filter((_, idx) => idx % step === 0 || idx === rawCoords.length - 1);
+        }
+
+        const points = sampled.map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }));
+        const distanceKm = Number((route.distance / 1000).toFixed(1));
+        const durationMins = Math.round(route.duration / 60);
+
+        return {
+          points,
+          distanceKm,
+          durationMins,
+          source: 'road_network_driving'
+        };
+      }
+    }
+  } catch (osrmErr) {
+    console.warn('[GoogleRoadDirections] Road network router fallback error:', osrmErr);
+  }
+
+  // 4. Offline fallback: Smooth curved highway waypoints
+  const mock = calculateMockRoute({ lat: oLat, lng: oLng }, { lat: dLat, lng: dLng });
+  return {
+    points: mock.waypoints,
+    distanceKm: mock.distanceKm,
+    durationMins: mock.durationMins,
+    source: 'interpolated_highway'
+  };
+}
