@@ -72,7 +72,7 @@ Live GPS Tracking: ${trackUrl}`;
     }
 
     try {
-      // A. Mobile Native via Capacitor Filesystem + Share (Guarantees image attachment in WhatsApp)
+      // A. Mobile Native via Capacitor Filesystem + Share (Guarantees image attachment in WhatsApp / Android / iOS)
       if (Capacitor.isNativePlatform()) {
         try {
           const base64Data = ticketData.dataUrl.split(',')[1];
@@ -87,30 +87,66 @@ Live GPS Tracking: ${trackUrl}`;
             title: `Ridingo Ticket · ${trip.id}`,
             text: `Ridingo Chauffeur Ticket · ${trip.id}\nDriver: ${driverName} (${driverPhone})\nOTP: ${otp}\nLive Track: ${trackUrl}`,
             files: [savedFile.uri],
-            dialogTitle: 'Share Trip Ticket Image'
+            dialogTitle: 'Share Trip Ticket'
           });
           if (addToast) addToast('Ticket shared successfully!', 'check');
           return;
         } catch (capErr) {
+          if (capErr?.message?.toLowerCase().includes('cancel')) {
+            return; // User dismissed share sheet
+          }
           console.warn('[TicketModal] Capacitor native share fallback note:', capErr);
+          // Fallback to text share natively if files fail
+          try {
+            await Share.share({
+              title: `Ridingo Ticket · ${trip.id}`,
+              text: shareText,
+              url: trackUrl,
+              dialogTitle: 'Share Trip Details'
+            });
+            if (addToast) addToast('Trip details shared!', 'check');
+            return;
+          } catch (capTextErr) {
+            console.warn('[TicketModal] Native text share failed:', capTextErr);
+          }
         }
       }
 
       // B. Web Share API with File (Supported in Mobile Chrome, Safari, etc.)
-      // Note: Passing the file with concise caption ensures WhatsApp enters image-attachment mode
       if (
         ticketData.file &&
         typeof navigator !== 'undefined' &&
         typeof navigator.canShare === 'function' &&
         navigator.canShare({ files: [ticketData.file] })
       ) {
-        await navigator.share({
-          files: [ticketData.file],
-          title: `Ridingo Ticket · ${trip.id}`,
-          text: `Ridingo Chauffeur Ticket · ${trip.id}\nDriver: ${driverName} (${driverPhone})\nOTP: ${otp}\nLive Track: ${trackUrl}`
-        });
-        if (addToast) addToast('Ticket shared successfully!', 'check');
-        return;
+        try {
+          await navigator.share({
+            files: [ticketData.file],
+            title: `Ridingo Ticket · ${trip.id}`,
+            text: `Ridingo Chauffeur Ticket · ${trip.id}\nDriver: ${driverName} (${driverPhone})\nOTP: ${otp}\nLive Track: ${trackUrl}`
+          });
+          if (addToast) addToast('Ticket shared successfully!', 'check');
+          return;
+        } catch (webFileErr) {
+          if (webFileErr?.name === 'AbortError') return;
+          console.warn('[TicketModal] Web file share note:', webFileErr);
+        }
+      }
+
+      // B2. Web Share API with Text (Supported when files are not shareable)
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        try {
+          await navigator.share({
+            title: `Ridingo Ticket · ${trip.id}`,
+            text: shareText,
+            url: trackUrl
+          });
+          if (addToast) addToast('Trip details shared successfully!', 'check');
+          return;
+        } catch (webShareErr) {
+          if (webShareErr?.name === 'AbortError') return;
+          console.warn('[TicketModal] Web text share note:', webShareErr);
+        }
       }
 
       // C. Fallback: Copy image to clipboard so user can paste it directly into WhatsApp

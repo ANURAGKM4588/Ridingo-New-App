@@ -6,7 +6,37 @@
 import ticketConfig from '../assets/trip_ticket_fields.json';
 import templateBgSrc from '../assets/trip_ticket_template.png';
 
-export { ticketConfig };
+const DEFAULT_CONFIG = {
+  canvas: { width: 960, height: 1270 },
+  text_color: '#1C2130',
+  label_color: '#8B8A85',
+  fields: {
+    from_location: { type: 'text', x: 140, y: 208, width: 760, height: 76, baseline: 284, align: 'left', suggested_font_px: 52 },
+    to_location: { type: 'text', x: 140, y: 420, width: 760, height: 76, baseline: 496, align: 'left', suggested_font_px: 52 },
+    driver_name: { type: 'text', x: 60, y: 640, width: 440, height: 76, baseline: 716, align: 'left', suggested_font_px: 52 },
+    total_fare: { type: 'text', x: 560, y: 640, width: 340, height: 76, baseline: 716, align: 'left', suggested_font_px: 60 },
+    otp_text: {
+      type: 'digit_boxes',
+      count: 4,
+      boxes: [
+        { x: 60, y: 990, width: 180, height: 180 },
+        { x: 280, y: 990, width: 180, height: 180 },
+        { x: 500, y: 990, width: 180, height: 180 },
+        { x: 720, y: 990, width: 180, height: 180 }
+      ],
+      suggested_font_px: 84
+    }
+  }
+};
+
+const resolvedConfig =
+  ticketConfig && (ticketConfig.fields || ticketConfig.canvas)
+    ? ticketConfig
+    : ticketConfig && ticketConfig.default && (ticketConfig.default.fields || ticketConfig.default.canvas)
+      ? ticketConfig.default
+      : DEFAULT_CONFIG;
+
+export { resolvedConfig as ticketConfig };
 
 /**
  * Loads an image async with resilient fallback paths
@@ -18,13 +48,15 @@ function loadImage(src) {
       return;
     }
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => {
       // Fallback to public folder path if bundled asset URL fails
       const fallbackImg = new Image();
+      fallbackImg.crossOrigin = 'anonymous';
       fallbackImg.onload = () => resolve(fallbackImg);
       fallbackImg.onerror = () => resolve(null);
-      fallbackImg.src = './trip_ticket_template.png';
+      fallbackImg.src = '/assets/trip_ticket_template.png';
     };
     img.src = src;
   });
@@ -36,11 +68,12 @@ function loadImage(src) {
 export async function generateTripTicketImage(trip) {
   if (!trip || typeof document === 'undefined') return null;
 
-  const canvasWidth = ticketConfig.canvas?.width || 960;
-  const canvasHeight = ticketConfig.canvas?.height || 1270;
-  const textColor = ticketConfig.text_color || '#1C2130';
-  const labelColor = ticketConfig.label_color || '#8B8A85';
-  const fields = ticketConfig.fields;
+  const config = resolvedConfig || DEFAULT_CONFIG;
+  const canvasWidth = config.canvas?.width || 960;
+  const canvasHeight = config.canvas?.height || 1270;
+  const textColor = config.text_color || '#1C2130';
+  const labelColor = config.label_color || '#8B8A85';
+  const fields = config.fields || DEFAULT_CONFIG.fields;
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -78,7 +111,7 @@ export async function generateTripTicketImage(trip) {
   ctx.restore();
 
   // 2. Field: from_location (Strictly using JSON coordinates)
-  if (fields.from_location) {
+  if (fields?.from_location) {
     const f = fields.from_location;
     ctx.save();
     ctx.fillStyle = textColor;
@@ -92,7 +125,7 @@ export async function generateTripTicketImage(trip) {
   }
 
   // 3. Field: to_location (Strictly using JSON coordinates)
-  if (fields.to_location) {
+  if (fields?.to_location) {
     const f = fields.to_location;
     ctx.save();
     ctx.fillStyle = textColor;
@@ -106,7 +139,7 @@ export async function generateTripTicketImage(trip) {
   }
 
   // 4. Field: driver_name (Strictly using JSON coordinates)
-  if (fields.driver_name) {
+  if (fields?.driver_name) {
     const f = fields.driver_name;
     ctx.save();
     ctx.fillStyle = textColor;
@@ -120,7 +153,7 @@ export async function generateTripTicketImage(trip) {
   }
 
   // 5. Field: total_fare (Strictly using JSON coordinates, includes currency symbol)
-  if (fields.total_fare) {
+  if (fields?.total_fare) {
     const f = fields.total_fare;
     ctx.save();
     ctx.fillStyle = textColor;
@@ -134,7 +167,7 @@ export async function generateTripTicketImage(trip) {
   }
 
   // 6. Field: otp_text (Strictly using JSON digit boxes)
-  if (fields.otp_text && Array.isArray(fields.otp_text.boxes)) {
+  if (fields?.otp_text && Array.isArray(fields.otp_text.boxes)) {
     const f = fields.otp_text;
     const boxes = f.boxes;
     const fontPx = f.suggested_font_px || 84;
