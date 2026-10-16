@@ -83,17 +83,15 @@ const formatDateDisplay = (dateISO) => {
   const tomorrow = getTomorrowISO();
   const parts = dateISO.split('-').map(Number);
   const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-  const dayName = dateObj.toLocaleDateString('en-IN', { weekday: 'short' });
   const monthName = dateObj.toLocaleDateString('en-IN', { month: 'short' });
   const d = parts[2];
-  const y = parts[0];
 
   if (dateISO === today) {
-    return `Today (${dayName}, ${d} ${monthName})`;
+    return 'Today';
   } else if (dateISO === tomorrow) {
-    return `Tomorrow (${dayName}, ${d} ${monthName})`;
+    return 'Tomorrow';
   } else {
-    return `${dayName}, ${d} ${monthName} ${y}`;
+    return `${d} ${monthName}`;
   }
 };
 

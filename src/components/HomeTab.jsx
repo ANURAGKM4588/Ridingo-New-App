@@ -411,7 +411,9 @@ export default function HomeTab() {
                 padding: '5px 12px',
                 borderRadius: '999px',
                 background: 'rgba(245, 158, 11, 0.15)',
-                border: '1px solid rgba(245, 158, 11, 0.35)'
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               <span
@@ -421,10 +423,11 @@ export default function HomeTab() {
                   borderRadius: '50%',
                   background: '#F59E0B',
                   boxShadow: '0 0 0 0 rgba(245, 158, 11, 0.7)',
-                  animation: 'pulse-dot 1.5s infinite'
+                  animation: 'pulse-dot 1.5s infinite',
+                  flexShrink: 0
                 }}
               />
-              <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink)', whiteSpace: 'nowrap' }}>
                 Finding Chauffeur · Live
               </span>
             </div>

@@ -56,33 +56,37 @@ export const cleanLocationName = (loc) => {
  */
 export const formatTripSchedule = (trip) => {
   if (!trip) return 'Immediate Pickup';
-  if (trip.scheduleDisplay && trip.scheduleDisplay !== 'Immediate Pickup') return trip.scheduleDisplay;
-  if (trip.scheduledDate) {
+  let str = '';
+  if (trip.scheduleDisplay && trip.scheduleDisplay !== 'Immediate Pickup') {
+    str = trip.scheduleDisplay;
+  } else if (trip.scheduledDate) {
     const timeStr = trip.scheduledTime ? ` · ${trip.scheduledTime}` : '';
-    return `${trip.scheduledDate}${timeStr}`;
-  }
-  if (trip.date) {
+    str = `${trip.scheduledDate}${timeStr}`;
+  } else if (trip.date) {
     const timeStr = trip.time ? ` · ${trip.time}` : '';
-    return `${trip.date}${timeStr}`;
-  }
-  if (trip.when_ts) {
+    str = `${trip.date}${timeStr}`;
+  } else if (trip.when_ts) {
     try {
       const dt = new Date(Number(trip.when_ts));
       const now = new Date();
       const isToday = dt.toDateString() === now.toDateString();
       const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
       if (isToday) {
-        return `Today · ${timeStr}`;
+        str = `Today · ${timeStr}`;
+      } else {
+        const tomorrow = new Date();
+        tomorrow.setDate(now.getDate() + 1);
+        if (dt.toDateString() === tomorrow.toDateString()) {
+          str = `Tomorrow · ${timeStr}`;
+        } else {
+          str = `${dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${timeStr}`;
+        }
       }
-      const tomorrow = new Date();
-      tomorrow.setDate(now.getDate() + 1);
-      if (dt.toDateString() === tomorrow.toDateString()) {
-        return `Tomorrow · ${timeStr}`;
-      }
-      return `${dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${timeStr}`;
     } catch (_) {}
   }
-  return 'Immediate Pickup';
+  if (!str) str = 'Immediate Pickup';
+  // Strip redundant date parentheses like "(Sat, 17 Oct)" to keep text strictly single-line
+  return str.replace(/\s*\([^\)]*\)/g, '').trim();
 };
 
 /**
@@ -942,10 +946,10 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             padding: '10px 14px'
           }}
         >
-          <span style={{ fontSize: '11px', fontWeight: 750, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span style={{ fontSize: '11px', fontWeight: 750, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
             Trip Schedule
           </span>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: '#1E40AF' }}>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#1E40AF', whiteSpace: 'nowrap' }}>
             {formatTripSchedule(trip)}
           </span>
         </div>
@@ -963,10 +967,10 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
           }}
         >
           <div>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
               Driver Earnings
             </span>
-            <div style={{ fontSize: '26px', fontWeight: 850, color: '#16A34A', letterSpacing: '-0.02em', marginTop: '2px' }}>
+            <div style={{ fontSize: '26px', fontWeight: 850, color: '#16A34A', letterSpacing: '-0.02em', marginTop: '2px', whiteSpace: 'nowrap' }}>
               ₹{driverEarn}
             </div>
           </div>
@@ -981,13 +985,14 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
                 background: 'var(--yellow, #FFC70A)',
                 color: '#000',
                 fontSize: '11px',
-                fontWeight: 800
+                fontWeight: 800,
+                whiteSpace: 'nowrap'
               }}
             >
               <Icon name={cat.icon || 'clock'} size={14} />
-              {cat.name.toUpperCase()} · {trip.qty || 1} {cat.unit || 'hr'}
+              <span style={{ whiteSpace: 'nowrap' }}>{cat.name.toUpperCase()} · {trip.qty || 1} {cat.unit || 'hr'}</span>
             </span>
-            <div style={{ fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '4px', fontWeight: 600 }}>
+            <div style={{ fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '4px', fontWeight: 600, whiteSpace: 'nowrap' }}>
               1.2 km away · ~4 min pickup
             </div>
           </div>
@@ -2343,9 +2348,9 @@ export default function DriverApp() {
                       {/* Top Accent Line */}
                       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--yellow)' }} />
 
-                      {/* Header with live indicator & badge */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {/* Top Header: LIVE REQUEST indicator & Category Badge on a single line */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                           <span
                             style={{
                               width: '8px',
@@ -2353,35 +2358,53 @@ export default function DriverApp() {
                               borderRadius: '50%',
                               background: '#16A34A',
                               boxShadow: '0 0 0 3px rgba(22, 163, 74, 0.25)',
-                              animation: 'pulse 1.2s infinite'
+                              animation: 'pulse 1.2s infinite',
+                              flexShrink: 0
                             }}
                           />
-                          <span style={{ fontSize: '11.5px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#16A34A' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#16A34A', whiteSpace: 'nowrap' }}>
                             LIVE REQUEST
-                          </span>
-                          <span style={{ fontSize: '11px', fontWeight: 750, color: '#2563EB', background: 'rgba(37, 99, 235, 0.08)', padding: '2px 8px', borderRadius: '6px' }}>
-                            {formatTripSchedule(t)}
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '3px 8px',
-                              borderRadius: '8px',
-                              background: 'var(--yellow)',
-                              color: '#000000',
-                              fontSize: '11px',
-                              fontWeight: 800
-                            }}
-                          >
-                            <Icon name={c.icon} size={12} />
-                            <span>{c.name.toUpperCase()} · {t.qty || 1} {c.unit || 'hr'}</span>
-                          </span>
-                        </div>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '8px',
+                            background: 'var(--yellow)',
+                            color: '#000000',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}
+                        >
+                          <Icon name={c.icon} size={12} />
+                          <span style={{ whiteSpace: 'nowrap' }}>{c.name.toUpperCase()} · {t.qty || 1} {c.unit || 'hr'}</span>
+                        </span>
+                      </div>
+
+                      {/* Clean Single-Line Trip Schedule Strip */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '5px 10px',
+                          borderRadius: '8px',
+                          background: 'rgba(37, 99, 235, 0.08)',
+                          marginBottom: '10px'
+                        }}
+                      >
+                        <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                          Trip Schedule
+                        </span>
+                        <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#1E40AF', whiteSpace: 'nowrap' }}>
+                          {formatTripSchedule(t)}
+                        </span>
                       </div>
 
                       {/* Driver Earnings (Shows ONLY Driver's Earnings after 30% platform commission) */}
@@ -2562,7 +2585,9 @@ export default function DriverApp() {
                               fontSize: '11px',
                               fontWeight: 700,
                               background: t.status === 'inprogress' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(37, 99, 235, 0.12)',
-                              color: t.status === 'inprogress' ? '#16A34A' : '#2563EB'
+                              color: t.status === 'inprogress' ? '#16A34A' : '#2563EB',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
                             }}
                           >
                             {t.status === 'accepted' ? 'Accepted · Heading to Pickup' :
@@ -2758,7 +2783,7 @@ export default function DriverApp() {
                       <div className="trip-body">
                         {/* Scheduled Date badge */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', padding: '3px 8px', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {formatTripSchedule(t)}
                           </span>
                         </div>
@@ -2776,7 +2801,9 @@ export default function DriverApp() {
                               fontSize: '11px',
                               fontWeight: 700,
                               background: 'rgba(37, 99, 235, 0.12)',
-                              color: '#2563EB'
+                              color: '#2563EB',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
                             }}
                           >
                             Scheduled

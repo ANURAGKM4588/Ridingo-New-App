@@ -1423,7 +1423,36 @@ body.standalone-app[data-theme="dark"] .nv.on .nv-i svg {
   width: 100%;
 }
 
-/* Modern Minimalist Black & White Button Engine */
+/* Modern Minimalist Black & White Button & Status Engine - Strictly Single Line Text Across Entire App */
+button,
+.btn,
+.pill,
+.chip,
+.badge,
+.tag,
+.status-badge,
+.trip-row-amt,
+.nv .nv-l,
+[class*="pill"],
+[class*="chip"],
+[class*="badge"],
+[class*="status"] {
+  white-space: nowrap !important;
+  text-overflow: ellipsis;
+}
+
+/* Ensure inner label text elements inside buttons, pills and badges never wrap onto two lines */
+button > span,
+button > b,
+.btn > span,
+.btn > b,
+.pill > span,
+.pill > b,
+.chip > span,
+.badge > span {
+  white-space: nowrap !important;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1435,6 +1464,8 @@ body.standalone-app[data-theme="dark"] .nv.on .nv-i svg {
   font-weight: 700;
   font-size: 15.5px;
   text-align: center;
+  white-space: nowrap !important;
+  flex-shrink: 0;
   transition: transform .15s cubic-bezier(0.16, 1, 0.3, 1), opacity .15s, background .15s;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
