@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar } from '@capacitor/status-bar';
@@ -8,6 +8,7 @@ import { realtime } from '../utils/realtime';
 import {
   notifyIncomingRideRequest,
   sendUserNativeNotification,
+  requestUserNotificationPermission,
   dismissIncomingRideNotification,
   stopActiveTone
 } from '../services/driverNotificationService';
@@ -294,6 +295,23 @@ export function AppProvider({ children }) {
   const [driverTx, setDriverTx] = useState([]);
   const [toasts, setToasts] = useState([]);
 
+  // Push notification deduplication set for User App
+  const notifiedAcceptedTripsRef = useRef(new Set());
+
+  const notifyUserTripAccepted = (tripId, driverName = 'Ravi Kumar', driverPhone = '+91 94471 23456', targetOtp = '4821') => {
+    if (!tripId || notifiedAcceptedTripsRef.current.has(tripId)) return;
+    notifiedAcceptedTripsRef.current.add(tripId);
+
+    const isUserDevice = typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver';
+    if (!isUserDevice) return;
+
+    sendUserNativeNotification(
+      `Chauffeur Assigned: ${driverName}`,
+      `${driverName} (${driverPhone}) is en route to your pickup. Your 4-digit Pickup OTP is ${targetOtp}.`,
+      { extra: { tripId, driverName, driverPhone, otp: targetOtp } }
+    );
+  };
+
   // Helper to map Supabase public.trips database row to App Trip Object
   const mapSupabaseRowToTrip = (row) => {
     if (!row) return null;
@@ -384,6 +402,18 @@ export function AppProvider({ children }) {
             return prev;
           });
         }
+
+        // Notify User App if trip was accepted
+        if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
+          mapped.forEach(t => {
+            if (t.status === 'accepted' && Math.abs(Date.now() - t.when_ts) < 2 * 60 * 60 * 1000) {
+              const dName = (typeof t.driver === 'string' ? t.driver : t.driver?.name) || 'Ravi Kumar';
+              const dPhone = t.driverObj?.phone || '+91 94471 23456';
+              const otp = t.startOtp || '4821';
+              notifyUserTripAccepted(t.id, dName, dPhone, otp);
+            }
+          });
+        }
       }
     } catch (err) {
       console.warn('[Supabase] Sync trips error:', err);
@@ -392,6 +422,13 @@ export function AppProvider({ children }) {
 
   // Subscribe to real-time communication between User and Driver apps
   useEffect(() => {
+    // Proactively request notification permissions on user device
+    if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
+      try {
+        requestUserNotificationPermission();
+      } catch (e) {}
+    }
+
     // 1. Initial sync from Supabase database
     syncTripsFromSupabase();
 
@@ -450,7 +487,15 @@ export function AppProvider({ children }) {
                       setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                       dismissIncomingRideNotification(tripObj.id);
                       stopActiveTone();
-                      setTrips(prev => prev.filter(t => t.id !== tripObj.id));
+                      if (window.RIDINGO_TARGET === 'driver') {
+                        setTrips(prev => prev.filter(t => t.id !== tripObj.id));
+                      } else {
+                        // User App: Trigger system push notification with chauffeur details
+                        const driverName = (typeof tripObj.driver === 'string' ? tripObj.driver : tripObj.driver?.name) || 'Ravi Kumar';
+                        const driverPhone = tripObj.driverObj?.phone || '+91 94471 23456';
+                        const otp = tripObj.startOtp || '4821';
+                        notifyUserTripAccepted(tripObj.id, driverName, driverPhone, otp);
+                      }
                     }
                   } else if (['cancelled', 'completed'].includes(tripObj.status)) {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
@@ -514,12 +559,8 @@ export function AppProvider({ children }) {
       addToast(`Chauffeur confirmed. ${driverName} accepted your ride.`, 'check');
 
       // 2. Native Device Default System Notification for User App with driver details
-      if (typeof window !== 'undefined' && (window.RIDINGO_TARGET === 'user' || view === 'user')) {
-        sendUserNativeNotification(
-          `Chauffeur Assigned: ${driverName}`,
-          `${driverName} (${driverPhone}) is en route to your pickup. Your 4-digit Pickup OTP is ${targetOtp}.`,
-          { extra: { tripId, driverName, driverPhone, otp: targetOtp } }
-        );
+      if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
+        notifyUserTripAccepted(tripId, driverName, driverPhone, targetOtp);
       }
     });
 

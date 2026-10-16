@@ -74,6 +74,17 @@ async function ensureNativeChannel() {
         lightColor: '#FFC70A'
       });
 
+      await LocalNotifications.createChannel({
+        id: 'user_trip_updates',
+        name: 'Ridingo Trip Updates',
+        description: 'Chauffeur assignment, arrival, and live trip status updates',
+        importance: 5, // Maximum heads-up priority
+        visibility: 1, // Visible on lockscreen
+        vibration: true,
+        lights: true,
+        lightColor: '#FFC70A'
+      });
+
       // Register interactive action buttons for lockscreen & notification center
       try {
         await LocalNotifications.registerActionTypes({
@@ -249,6 +260,36 @@ export async function requestDriverNotificationPermission() {
     }
   } catch (err) {
     console.warn('Failed to request notification permission:', err);
+  }
+  return false;
+}
+
+/**
+ * Request OS-level notification permissions for User App
+ */
+export async function requestUserNotificationPermission() {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await ensureNativeChannel();
+      let granted = false;
+      try {
+        const localResult = await LocalNotifications.requestPermissions();
+        granted = localResult?.display === 'granted';
+      } catch (locErr) {
+        console.warn('[UserNotifications] Local notification permission request error:', locErr);
+      }
+      return granted;
+    }
+
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      }
+      return Notification.permission === 'granted';
+    }
+  } catch (err) {
+    console.warn('Failed to request user notification permission:', err);
   }
   return false;
 }
@@ -549,7 +590,7 @@ export async function sendUserNativeNotification(title, body, options = {}) {
             id,
             title,
             body,
-            channelId: 'driver_dispatch_alerts',
+            channelId: 'user_trip_updates',
             smallIcon: 'ic_stat_icon_config_sample',
             largeIcon: 'res://drawable/ic_launcher',
             iconColor: '#FFC70A',
