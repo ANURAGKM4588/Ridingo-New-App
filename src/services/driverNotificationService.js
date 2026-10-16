@@ -349,7 +349,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
             summaryArgument: options.summaryArgument,
             channelId: 'driver_dispatch_alerts',
             smallIcon: 'ic_stat_icon_config_sample',
-            largeIcon: 'res://drawable/ic_launcher',
+            largeIcon: 'res://drawable/app_icon',
             iconColor: '#FFC70A',
             schedule: { at: new Date(Date.now() + 100) },
             extra: {
@@ -369,6 +369,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
   // 4. Web / Desktop / PWA OS Notification Center Fallback
   if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
+      const appIconUrl = window.location?.origin ? `${window.location.origin}/App%20icon.png` : '/App icon.png';
       if (Notification.permission === 'granted') {
         // If Service Worker registration is available, use showNotification for persistent OS shade display
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -376,8 +377,8 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
           if (reg && reg.showNotification) {
             await reg.showNotification(title, {
               body,
-              icon: '/App icon.png',
-              badge: '/App icon.png',
+              icon: appIconUrl,
+              badge: appIconUrl,
               tag,
               renotify: true,
               requireInteraction: true,
@@ -391,7 +392,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
         // Direct OS Notification
         const n = new Notification(title, {
           body,
-          icon: '/App icon.png',
+          icon: appIconUrl,
           tag,
           silent: false
         });
@@ -404,7 +405,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
         // Request on the fly if user hasn't explicitly denied
         const perm = await Notification.requestPermission();
         if (perm === 'granted') {
-          new Notification(title, { body, icon: '/App icon.png', tag });
+          new Notification(title, { body, icon: appIconUrl, tag });
           return true;
         }
       }
@@ -610,7 +611,7 @@ export async function sendUserNativeNotification(title, body, options = {}) {
             body,
             channelId: 'user_trip_updates',
             smallIcon: 'ic_stat_icon_config_sample',
-            largeIcon: 'res://drawable/ic_launcher',
+            largeIcon: 'res://drawable/app_icon',
             iconColor: '#FFC70A',
             schedule: { at: new Date(Date.now() + 50) },
             extra: {
@@ -630,10 +631,12 @@ export async function sendUserNativeNotification(title, body, options = {}) {
   // 4. Web Browser Notification
   if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
+      const appIconUrl = window.location?.origin ? `${window.location.origin}/App%20icon.png` : '/App icon.png';
       if (Notification.permission === 'granted') {
         new Notification(title, {
           body,
-          icon: '/App icon.png',
+          icon: appIconUrl,
+          badge: appIconUrl,
           tag,
           silent: false
         });
