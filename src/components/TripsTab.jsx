@@ -153,7 +153,7 @@ export default function TripsTab() {
             onClick={() => {
               const activeTrip = (trips || []).find(t =>
                 isUserTrip(t, user) &&
-                ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
+                ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status)
               );
               if (activeTrip) {
                 if (addToast) addToast('You already have an active ride in progress. Complete your ongoing trip before booking another one.', 'warn');

@@ -20,27 +20,28 @@ export default function LiveTrackingSheet() {
     cancelTripByUser
   } = useApp();
 
-  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && isUserTrip(t, user)) : null) ||
-                     trips.find(t => isUserTrip(t, user) && ['inprogress', 'ending_otp'].includes(t.status)) ||
+  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && isUserTrip(t, user) && !['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(t.status)) : null) ||
+                     trips.find(t => isUserTrip(t, user) && t.status === 'inprogress') ||
                      trips.find(t => isUserTrip(t, user) && ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) ||
-                     trips.find(t => isUserTrip(t, user) && t.status === 'requested') ||
-                     trips.find(t => isUserTrip(t, user));
+                     trips.find(t => isUserTrip(t, user) && t.status === 'requested');
 
-  const trip = activeTrip || {
-    id: 'TRP-1092',
-    cat: 'hourly',
-    qty: 2,
-    pickup: 'Edappally Toll, Kochi',
-    drop_loc: 'City Route',
-    fare: 600,
-    advance: 180,
-    status: 'requested',
-    trans: 'Automatic',
-    car: { trans: 'Automatic' },
-    rider: { name: user?.name || 'Customer', phone: user?.phone || '+91 98401 23456' }
-  };
+  // Auto-close and remove tracking popup immediately if the trip ended, completed, or cancelled
+  useEffect(() => {
+    if (!activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip.status)) {
+      if (liveTrackingOpen) {
+        setLiveTrackingOpen(false);
+        if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+      }
+    }
+  }, [activeTrip, activeTrip?.status, liveTrackingOpen, setLiveTrackingOpen, setActiveTrackingTripId]);
 
-  const isStarted = ['inprogress', 'ending_otp', 'invoice_pending'].includes(trip.status);
+  if (!liveTrackingOpen || !activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip.status)) {
+    return null;
+  }
+
+  const trip = activeTrip;
+
+  const isStarted = trip.status === 'inprogress';
   const isDriverAssigned = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip.status);
   const isArrived = trip.status === 'pickup_arrived';
   const isReady = trip.status === 'ready_to_start';

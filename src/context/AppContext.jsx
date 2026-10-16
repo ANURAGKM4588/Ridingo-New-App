@@ -498,7 +498,7 @@ export function AppProvider({ children }) {
           });
         }
 
-        // Notify User App if trip was accepted
+        // Notify User App if trip was accepted & auto-close tracking if trip ended or completed
         if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
           mapped.forEach(t => {
             if (t.status === 'accepted' && Math.abs(Date.now() - t.when_ts) < 2 * 60 * 60 * 1000) {
@@ -508,6 +508,14 @@ export function AppProvider({ children }) {
               notifyUserTripAccepted(t.id, dName, dPhone, otp);
             }
           });
+
+          if (activeTrackingTripId) {
+            const curTracked = mapped.find(t => t.id === activeTrackingTripId);
+            if (curTracked && ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(curTracked.status)) {
+              setLiveTrackingOpen(false);
+              setActiveTrackingTripId(null);
+            }
+          }
         }
       }
     } catch (err) {
@@ -604,11 +612,23 @@ export function AppProvider({ children }) {
                     stopActiveTone();
                     // Retain completed trips so History tab displays Completed!
                     setTrips(prev => prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj, status: 'completed' } : t)));
+                    // Immediately dismiss and remove tracking popup on User App when payment completed
+                    setLiveTrackingOpen(false);
+                    setActiveTrackingTripId(null);
+                    setUTab('home');
+                  } else if (tripObj.status === 'invoice_pending' || tripObj.status === 'ending_otp') {
+                    setTrips(prev => prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj } : t)));
+                    // Immediately dismiss and remove tracking popup on User App when trip ends
+                    setLiveTrackingOpen(false);
+                    setActiveTrackingTripId(null);
+                    setUTab('home');
                   } else if (tripObj.status === 'cancelled') {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                     dismissIncomingRideNotification(tripObj.id);
                     stopActiveTone();
                     setTrips(prev => prev.map(t => (t.id === tripObj.id ? { ...t, status: 'cancelled' } : t)));
+                    setLiveTrackingOpen(false);
+                    setActiveTrackingTripId(null);
                   }
                 }
               }
@@ -726,23 +746,30 @@ export function AppProvider({ children }) {
       addToast('Trip started. Live tracking active.', 'check');
     });
 
-    const unbindEndReq = realtime.on('END_OTP_REQUESTED', ({ tripId, endOtp }) => {
-      let targetOtp = endOtp || '8392';
+    const unbindEndReq = realtime.on('END_OTP_REQUESTED', ({ tripId }) => {
       setTrips(prev =>
-        prev.map(t => {
-          if (t.id === tripId) {
-            targetOtp = t.endOtp || targetOtp;
-            return { ...t, status: 'ending_otp' };
-          }
-          return t;
-        })
+        prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
       );
+      // Immediately remove and close tracking popup on User App when driver ends trip
+      setLiveTrackingOpen(false);
+      setActiveTrackingTripId(null);
+      setUTab('home');
       addNotification(
         'Arrived at Destination',
-        `Trip ending. Please share Drop OTP: ${targetOtp} with your chauffeur to complete.`,
+        'Trip ended at destination. Chauffeur is finalizing invoice.',
         'flag'
       );
-      addToast(`Arrived at destination. Share Drop OTP ${targetOtp} to finalize.`, 'info');
+      addToast('Destination reached. Trip ended.', 'check');
+    });
+
+    const unbindRideEnded = realtime.on('RIDE_ENDED', ({ tripId }) => {
+      setTrips(prev =>
+        prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
+      );
+      // Immediately remove and close tracking popup on User App when driver ends trip
+      setLiveTrackingOpen(false);
+      setActiveTrackingTripId(null);
+      setUTab('home');
     });
 
     // Local driver decline does not dismiss pop-up or tone on other drivers' devices
@@ -752,6 +779,7 @@ export function AppProvider({ children }) {
       setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
       setTrips(prev => prev.filter(t => t.id !== tripId));
       setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
+      setLiveTrackingOpen(false);
       dismissIncomingRideNotification(tripId);
       stopActiveTone();
     });
@@ -765,7 +793,17 @@ export function AppProvider({ children }) {
         'Thank you for riding with Ridingo. Your digital invoice has been settled.',
         'check'
       );
-      // Automatic redirection to the home screen after trip completion and payment settlement
+      // Automatic dismissal of live tracking popup & return to home after payment settlement
+      setLiveTrackingOpen(false);
+      setActiveTrackingTripId(null);
+      setUTab('home');
+    });
+
+    const unbindRideComp = realtime.on('RIDE_COMPLETED', ({ tripId }) => {
+      setTrips(prev =>
+        prev.map(t => (t.id === tripId ? { ...t, status: 'completed' } : t))
+      );
+      // Automatic dismissal of live tracking popup & return to home after payment settlement
       setLiveTrackingOpen(false);
       setActiveTrackingTripId(null);
       setUTab('home');
@@ -787,8 +825,10 @@ export function AppProvider({ children }) {
       unbindCond();
       unbindStart();
       unbindEndReq();
+      unbindRideEnded();
       unbindCancel();
       unbindComp();
+      unbindRideComp();
     };
   }, []);
 
@@ -1541,18 +1581,26 @@ export function AppProvider({ children }) {
   const requestEndTrip = (tripId) => {
     // End trip directly without requiring customer OTP
     setTrips(prev =>
-      prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending' } : t))
+      prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
     );
     realtime.requestEndTrip(tripId, null);
-    updateTripStatusInSupabase(tripId, 'invoice_pending');
+    updateTripStatusInSupabase(tripId, 'invoice_pending', { done_ts: Date.now() });
+    // Immediately remove and close tracking popup on User App when trip ends
+    setLiveTrackingOpen(false);
+    setActiveTrackingTripId(null);
+    setUTab('home');
     addToast('Destination reached! Trip ended. Please view invoice.', 'check');
   };
 
   const verifyEndOtp = (tripId) => {
     // Retained for direct workflow transition
     setTrips(prev =>
-      prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending' } : t))
+      prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending', endedAt: Date.now() } : t))
     );
+    // Immediately remove and close tracking popup on User App when trip ends
+    setLiveTrackingOpen(false);
+    setActiveTrackingTripId(null);
+    setUTab('home');
   };
 
   const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false } = {}) => {

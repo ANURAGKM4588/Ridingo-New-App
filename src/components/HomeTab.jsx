@@ -113,7 +113,7 @@ export default function HomeTab() {
   });
 
   const inProg = (trips || []).find(t => {
-    if (!['inprogress', 'ending_otp'].includes(t.status)) return false;
+    if (t.status !== 'inprogress') return false;
     if (!isUserTrip(t, user)) return false;
     const age = Date.now() - (Number(t.when_ts) || 0);
     return age >= 0 && age < 24 * 60 * 60 * 1000;

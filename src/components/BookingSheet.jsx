@@ -115,7 +115,7 @@ export default function BookingSheet() {
 
   const activeOngoingTrip = (trips || []).find(t =>
     isUserTrip(t, user) &&
-    ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)
+    ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status)
   );
 
   const [cat, setCat] = useState('hourly');
