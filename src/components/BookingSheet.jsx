@@ -4,7 +4,7 @@ import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
-import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement } from '../services/googleMapsService';
+import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement, cleanPlusCode } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 
 const highlightMatchGoogleStock = (text, query) => {
@@ -208,7 +208,8 @@ export default function BookingSheet() {
     setActiveSuggestField(null);
     setPickupSuggestions([]);
 
-    const chosen = item.full || (item.title + (item.sub ? `, ${item.sub}` : ''));
+    const rawChosen = item.full || (item.title + (item.sub ? `, ${item.sub}` : ''));
+    const chosen = cleanPlusCode(rawChosen);
     setPickup(chosen);
 
     if (item.place_id && !item.isMock) {
@@ -218,8 +219,8 @@ export default function BookingSheet() {
           const coords = {
             lat: Number(details.lat),
             lng: Number(details.lng),
-            name: details.name || item.title,
-            formatted: details.formatted_address || chosen,
+            name: cleanPlusCode(details.name) || item.title,
+            formatted: cleanPlusCode(details.formatted_address || chosen),
             city: details.city || '',
             state: details.state || '',
             postalCode: details.postalCode || ''
@@ -238,7 +239,7 @@ export default function BookingSheet() {
       const coords = {
         lat: Number(item.lat),
         lng: Number(item.lng),
-        name: item.title,
+        name: cleanPlusCode(item.title),
         formatted: chosen,
         city: item.sub?.split(',')?.[0]?.trim() || '',
         state: 'Kerala'
@@ -249,7 +250,7 @@ export default function BookingSheet() {
     } else {
       const coords = await geocodeAddress(chosen);
       if (coords) {
-        const cObj = { ...coords, name: item.title, formatted: chosen };
+        const cObj = { ...coords, name: cleanPlusCode(item.title), formatted: chosen };
         setPickupCoords(cObj);
         setPickupDetails(cObj);
         addToast(`Pickup confirmed: ${item.title}`, 'pin');
@@ -262,7 +263,8 @@ export default function BookingSheet() {
     setActiveSuggestField(null);
     setDropSuggestions([]);
 
-    const chosen = item.full || (item.title + (item.sub ? `, ${item.sub}` : ''));
+    const rawChosen = item.full || (item.title + (item.sub ? `, ${item.sub}` : ''));
+    const chosen = cleanPlusCode(rawChosen);
     setDrop(chosen);
 
     if (item.place_id && !item.isMock) {
@@ -272,8 +274,8 @@ export default function BookingSheet() {
           const coords = {
             lat: Number(details.lat),
             lng: Number(details.lng),
-            name: details.name || item.title,
-            formatted: details.formatted_address || chosen,
+            name: cleanPlusCode(details.name) || item.title,
+            formatted: cleanPlusCode(details.formatted_address || chosen),
             city: details.city || '',
             state: details.state || '',
             postalCode: details.postalCode || ''
@@ -425,20 +427,21 @@ export default function BookingSheet() {
     try {
       const loc = await getDeviceLocation(true);
       if (loc && loc.address) {
-        setPickup(loc.address);
+        const cleanAddr = cleanPlusCode(loc.address);
+        setPickup(cleanAddr);
         if (loc.lat && loc.lng) {
           const cObj = {
             lat: Number(loc.lat),
             lng: Number(loc.lng),
-            name: loc.address.split(',')[0].trim(),
-            formatted: loc.address,
-            city: loc.city || loc.address.split(',')[0].trim(),
+            name: cleanAddr.split(',')[0].trim(),
+            formatted: cleanAddr,
+            city: loc.city || cleanAddr.split(',')[0].trim(),
             state: 'Kerala'
           };
           setPickupCoords(cObj);
           setPickupDetails(cObj);
         }
-        const short = loc.address.split(',')[0].trim();
+        const short = cleanAddr.split(',')[0].trim();
         addToast(`Pickup set to device location: ${short}`, 'check');
       } else {
         addToast('Could not resolve device address', 'alert');

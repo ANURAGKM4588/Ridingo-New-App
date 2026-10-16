@@ -43,6 +43,16 @@ export function setMockMode(enabled) {
   console.info(`[GoogleMaps] Mock mode set to: ${enabled}`);
 }
 
+/**
+ * Strips Google Plus Codes (e.g. "378M+Q3R, ") so only the clean location name is displayed
+ */
+export function cleanPlusCode(str) {
+  if (!str || typeof str !== 'string') return '';
+  let cleaned = str.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}[,\s]*/i, '').trim();
+  cleaned = cleaned.replace(/^[,-\s]+/, '').trim();
+  return cleaned || str;
+}
+
 // ============================================================================
 // Google Maps Stock Tile Endpoints
 // ============================================================================
@@ -986,12 +996,15 @@ export function initGooglePlacesAutocomplete(inputElement, onPlaceSelected, opti
 
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
-        const formatted = place.formatted_address || place.name || inputElement.value;
+        const formatted = cleanPlusCode(place.formatted_address || place.name || inputElement.value);
+        if (inputElement) {
+          inputElement.value = formatted;
+        }
         const parsed = parseAddressComponents(place.address_components);
 
         const fullDetails = {
           place_id: place.place_id,
-          name: place.name || formatted.split(',')[0].trim(),
+          name: cleanPlusCode(place.name) || formatted.split(',')[0].trim(),
           formatted_address: formatted,
           lat,
           lng,
@@ -1202,14 +1215,19 @@ export async function searchGooglePlaces(query, callback, options = {}) {
 
       autocompleteService.getPlacePredictions(request, (predictions, status) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && Array.isArray(predictions) && predictions.length > 0) {
-          const formatted = predictions.map(p => ({
-            id: p.place_id,
-            place_id: p.place_id,
-            title: p.structured_formatting?.main_text || p.description.split(',')[0],
-            sub: p.structured_formatting?.secondary_text || '',
-            full: p.description,
-            isMock: false
-          }));
+          const formatted = predictions.map(p => {
+            const rawTitle = p.structured_formatting?.main_text || p.description.split(',')[0];
+            const rawSub = p.structured_formatting?.secondary_text || '';
+            const rawFull = p.description;
+            return {
+              id: p.place_id,
+              place_id: p.place_id,
+              title: cleanPlusCode(rawTitle),
+              sub: cleanPlusCode(rawSub),
+              full: cleanPlusCode(rawFull),
+              isMock: false
+            };
+          });
 
           const ranked = rankAndFilterPlaces(formatted, clean).slice(0, 20);
           placesMemoryCache.set(lower, ranked);
@@ -1271,14 +1289,14 @@ export async function searchGooglePlaces(query, callback, options = {}) {
             .map(s => {
               const p = s.placePrediction;
               const placeId = p.placeId || (p.place ? p.place.replace(/^places\//, '') : '');
-              const mainText = p.structuredFormat?.mainText?.text || p.text?.text?.split(',')?.[0] || clean;
-              const secondaryText = p.structuredFormat?.secondaryText?.text || p.text?.text || '';
+              const mainText = cleanPlusCode(p.structuredFormat?.mainText?.text || p.text?.text?.split(',')?.[0] || clean);
+              const secondaryText = cleanPlusCode(p.structuredFormat?.secondaryText?.text || p.text?.text || '');
               return {
                 id: placeId,
                 place_id: placeId,
                 title: mainText,
                 sub: secondaryText,
-                full: p.text?.text || `${mainText}, ${secondaryText}`,
+                full: cleanPlusCode(p.text?.text || `${mainText}, ${secondaryText}`),
                 isMock: false
               };
             });
@@ -1394,13 +1412,13 @@ export async function reverseGeocodeGoogle(lat, lng) {
       const res = await new Promise((resolve, reject) => {
         geocoder.geocode({ location: { lat: Number(lat), lng: Number(lng) } }, (results, status) => {
           if (status === 'OK' && results && results[0]) {
-            resolve(results[0].formatted_address);
+            resolve(cleanPlusCode(results[0].formatted_address));
           } else {
             reject(status);
           }
         });
       });
-      if (res) return res;
+      if (res) return cleanPlusCode(res);
     } catch (e) {
       console.warn('[GoogleMaps] Geocoder error, using mock/Nominatim fallback:', e);
     }

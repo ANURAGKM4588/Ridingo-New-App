@@ -42,6 +42,50 @@ const CATS = {
 };
 
 /**
+ * Strips Google Plus Codes (e.g. "378M+Q3R, ") so only the clean location name is displayed
+ */
+export const cleanLocationName = (loc) => {
+  if (!loc || typeof loc !== 'string') return '';
+  let cleaned = loc.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}[,\s]*/i, '').trim();
+  cleaned = cleaned.replace(/^[,-\s]+/, '').trim();
+  return cleaned || loc;
+};
+
+/**
+ * Formats trip date and time for clean display on popups and cards
+ */
+export const formatTripSchedule = (trip) => {
+  if (!trip) return 'Immediate Pickup';
+  if (trip.scheduleDisplay && trip.scheduleDisplay !== 'Immediate Pickup') return trip.scheduleDisplay;
+  if (trip.scheduledDate) {
+    const timeStr = trip.scheduledTime ? ` · ${trip.scheduledTime}` : '';
+    return `${trip.scheduledDate}${timeStr}`;
+  }
+  if (trip.date) {
+    const timeStr = trip.time ? ` · ${trip.time}` : '';
+    return `${trip.date}${timeStr}`;
+  }
+  if (trip.when_ts) {
+    try {
+      const dt = new Date(Number(trip.when_ts));
+      const now = new Date();
+      const isToday = dt.toDateString() === now.toDateString();
+      const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      if (isToday) {
+        return `Today · ${timeStr}`;
+      }
+      const tomorrow = new Date();
+      tomorrow.setDate(now.getDate() + 1);
+      if (dt.toDateString() === tomorrow.toDateString()) {
+        return `Tomorrow · ${timeStr}`;
+      }
+      return `${dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${timeStr}`;
+    } catch (_) {}
+  }
+  return 'Immediate Pickup';
+};
+
+/**
  * Multi-Tier Tactile & Acoustic Haptic Engine
  * Provides authentic iOS-style tactile feedback using Device Vibration API
  * with synchronized Web Audio micro-acoustic reinforcement.
@@ -886,6 +930,26 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
           />
         </div>
 
+        {/* Trip Date & Time Banner */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'rgba(37, 99, 235, 0.08)',
+            border: '1.5px solid rgba(37, 99, 235, 0.22)',
+            borderRadius: '14px',
+            padding: '10px 14px'
+          }}
+        >
+          <span style={{ fontSize: '11px', fontWeight: 750, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Trip Schedule
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#1E40AF' }}>
+            {formatTripSchedule(trip)}
+          </span>
+        </div>
+
         {/* Earning & Category Block */}
         <div
           style={{
@@ -936,7 +1000,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             <div style={{ minWidth: 0, flex: 1 }}>
               <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', fontWeight: 700, textTransform: 'uppercase' }}>Pickup Location</span>
               <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {trip.pickup || 'Edappally Toll, Kochi'}
+                {cleanLocationName(trip.pickup) || 'Edappally Toll, Kochi'}
               </div>
             </div>
           </div>
@@ -946,7 +1010,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             <div style={{ minWidth: 0, flex: 1 }}>
               <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', fontWeight: 700, textTransform: 'uppercase' }}>Destination / Route</span>
               <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {trip.drop_loc || 'Lulu Mall, Edappally'}
+                {cleanLocationName(trip.drop_loc) || 'Lulu Mall, Edappally'}
               </div>
             </div>
           </div>
@@ -977,7 +1041,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
           </span>
         </div>
 
-        {/* Action Buttons with Perfect Alignment */}
+        {/* Action Buttons with Perfect Alignment - Clean Text Only */}
         <div
           style={{
             display: 'grid',
@@ -1031,12 +1095,10 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
               boxSizing: 'border-box'
             }}
           >
             <span>{isAccepting ? 'Accepting...' : 'Accept Ride'}</span>
-            <Icon name="check" size={16} color="#FFFFFF" />
           </button>
         </div>
       </div>
@@ -1687,18 +1749,39 @@ export default function DriverApp() {
   };
 
   const isTripToday = (t) => {
-    // If active / in progress / accepted / ready / invoice_pending, it's definitely today's active workflow
-    if (['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)) {
+    if (!t) return false;
+
+    // 1. If in active ride execution (pickup arrived, driving, ending), it belongs to today's active dashboard
+    if (['pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)) {
       return true;
     }
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+
+    // 2. Check explicit scheduled date
+    const tripDate = t.scheduledDate || t.car?.scheduledDate || t.date || null;
+    const todayISO = getTodayISO();
+
+    if (tripDate) {
+      const lower = String(tripDate).trim().toLowerCase();
+      if (lower === 'today' || lower === todayISO) return true;
+      if (lower === 'tomorrow') return false;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(tripDate)) {
+        return tripDate <= todayISO;
+      }
+      const parsed = Date.parse(tripDate);
+      if (!isNaN(parsed)) {
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+        return parsed <= todayEnd.getTime();
+      }
+    }
+
+    // 3. Check timestamp
     if (t.when_ts) {
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
       return Number(t.when_ts) <= todayEnd.getTime();
     }
-    if (t.date) {
-      return t.date <= getTodayISO();
-    }
+
     return true;
   };
 
@@ -1716,6 +1799,14 @@ export default function DriverApp() {
         localStorage.setItem('ridingo_accepted_trips', JSON.stringify(existing));
       }
     } catch (_) {}
+
+    const targetTrip = (trips || []).find(t => t.id === tripId) || incomingTripRequest || selectedRequestDetails;
+    const isToday = isTripToday(targetTrip);
+    if (isToday) {
+      addToast('Trip accepted! Added to Today Trips.', 'check');
+    } else {
+      addToast('Trip accepted! Scheduled in Upcoming Trips.', 'check');
+    }
 
     if (selectedRequestDetails?.id === tripId) {
       setSelectedRequestDetails(null);
@@ -1824,6 +1915,8 @@ export default function DriverApp() {
           ...t,
           status: 'inprogress',
           vehicleDetails: vehicleData,
+          car_photos: vehicleData.photos,
+          videoUrl: vehicleData.videoUrl || null,
           startedAt: Date.now()
         } : t))
       );
@@ -1832,7 +1925,10 @@ export default function DriverApp() {
           vehicle_brand: vehicleData.brand,
           vehicle_model: vehicleData.model,
           vehicle_number: vehicleData.regNumber,
-          car_photos: vehicleData.photos
+          car_photos: vehicleData.photos,
+          vehicle_video: vehicleData.videoUrl || null,
+          videoUrl: vehicleData.videoUrl || null,
+          vehicleDetails: vehicleData
         });
       }
       // Sync vehicle inspection details & photos directly to Supabase trips table
@@ -1842,6 +1938,7 @@ export default function DriverApp() {
           vehicle_model: vehicleData.model,
           vehicle_number: vehicleData.regNumber,
           car_photos: vehicleData.photos,
+          vehicle_video: vehicleData.videoUrl || null,
           status: 'inprogress',
           updated_at: new Date().toISOString()
         }).eq('id', tripId).then(({ error }) => {
@@ -2262,8 +2359,8 @@ export default function DriverApp() {
                           <span style={{ fontSize: '11.5px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#16A34A' }}>
                             LIVE REQUEST
                           </span>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)', background: 'var(--field)', padding: '2px 8px', borderRadius: '6px' }}>
-                            {formatRequestTime(t.when_ts || t.createdAt)}
+                          <span style={{ fontSize: '11px', fontWeight: 750, color: '#2563EB', background: 'rgba(37, 99, 235, 0.08)', padding: '2px 8px', borderRadius: '6px' }}>
+                            {formatTripSchedule(t)}
                           </span>
                         </div>
 
@@ -2318,13 +2415,13 @@ export default function DriverApp() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
                           <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {t.pickup || 'Edappally Toll, Kochi'}
+                            {cleanLocationName(t.pickup) || 'Edappally Toll, Kochi'}
                           </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#EF4444', flexShrink: 0 }} />
                           <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {t.drop_loc || 'City Route'}
+                            {cleanLocationName(t.drop_loc) || 'City Route'}
                           </span>
                         </div>
                       </div>
@@ -2363,7 +2460,7 @@ export default function DriverApp() {
                         <span>{t.trans || t.car?.trans || 'Manual'} Transmission</span>
                       </div>
 
-                      {/* Action Buttons: Decline and Accept Ride */}
+                      {/* Action Buttons: Decline and Accept Ride - Clean Text Only */}
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <button
                           type="button"
@@ -2400,13 +2497,11 @@ export default function DriverApp() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '6px',
                             boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
                           }}
                           onClick={() => handleAccept(t.id)}
                         >
                           <span>Accept Ride</span>
-                          <Icon name="check" size={15} color="#FFFFFF" />
                         </button>
                       </div>
                     </article>
@@ -2454,8 +2549,8 @@ export default function DriverApp() {
                       </div>
                       <div className="trip-body">
                         <div className="route">
-                          <div className="ell">{t.pickup}</div>
-                          <div className="ell">{t.drop_loc || 'Stays with rider for trip'}</div>
+                          <div className="ell">{cleanLocationName(t.pickup)}</div>
+                          <div className="ell">{cleanLocationName(t.drop_loc) || 'Stays with rider for trip'}</div>
                         </div>
                         <div className="row small" style={{ marginTop: '8px', alignItems: 'center' }}>
                           <span className="mut grow ell">
@@ -2664,12 +2759,12 @@ export default function DriverApp() {
                         {/* Scheduled Date badge */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                           <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', padding: '3px 8px', borderRadius: '6px' }}>
-                            {t.date || 'Upcoming'} · {t.time || 'Scheduled'}
+                            {formatTripSchedule(t)}
                           </span>
                         </div>
                         <div className="route">
-                          <div className="ell">{t.pickup}</div>
-                          <div className="ell">{t.drop_loc || 'Stays with rider for trip'}</div>
+                          <div className="ell">{cleanLocationName(t.pickup)}</div>
+                          <div className="ell">{cleanLocationName(t.drop_loc) || 'Stays with rider for trip'}</div>
                         </div>
                         <div className="row small" style={{ marginTop: '8px', alignItems: 'center' }}>
                           <span className="mut grow ell">
@@ -2743,24 +2838,43 @@ export default function DriverApp() {
                   {filtered.map((t, idx) => {
                     const c = CATS[t.cat] || CATS.hourly;
                     const isOpen = expandedHistoryTripId === t.id;
-                    const destName = t.drop_loc || t.pickup || `${c.name} trip`;
+                    const destName = cleanLocationName(t.drop_loc) || cleanLocationName(t.pickup) || `${c.name} trip`;
                     const fare = Number(t.fare) || 600;
                     const driverEarn = Math.round(fare * 0.70);
                     const platformFee = fare - driverEarn;
+                    const savedInspection = (() => {
+                      try {
+                        const raw = localStorage.getItem('ridingo_vehicle_inspections');
+                        const records = raw ? JSON.parse(raw) : [];
+                        return records.find(r => String(r.tripId) === String(t.id));
+                      } catch (_) { return null; }
+                    })();
+
+                    const realPhotos = (() => {
+                      if (Array.isArray(t.car_photos) && t.car_photos.length > 0) return t.car_photos;
+                      if (Array.isArray(t.vehicleDetails?.photos) && t.vehicleDetails.photos.length > 0) return t.vehicleDetails.photos;
+                      if (Array.isArray(savedInspection?.photos) && savedInspection.photos.length > 0) return savedInspection.photos;
+                      if (t.conditionPhotos && typeof t.conditionPhotos === 'object') {
+                        const vals = Object.values(t.conditionPhotos).filter(p => typeof p === 'string' && (p.startsWith('data:image') || p.startsWith('blob:')));
+                        if (vals.length > 0) return vals;
+                      }
+                      return [];
+                    })();
+
+                    const realVideo = t.videoUrl || t.vehicle_video || t.vehicleDetails?.videoUrl || savedInspection?.videoUrl || null;
 
                     return (
                       <div
                         key={t.id}
                         className={`trip-row stagger-${Math.min(6, 3 + idx)}`}
                         style={{
-                          background: isOpen ? 'var(--card, #FFFFFF)' : 'transparent',
-                          borderRadius: isOpen ? '20px' : '0px',
-                          border: isOpen ? '1.5px solid var(--line, #E2E8F0)' : 'none',
-                          borderBottom: !isOpen ? '1px solid var(--line, #E2E8F0)' : '1.5px solid var(--line, #E2E8F0)',
-                          padding: isOpen ? '16px' : '14px 4px',
-                          margin: isOpen ? '10px 0' : '0',
-                          boxShadow: isOpen ? '0 6px 24px rgba(0, 0, 0, 0.06)' : 'none',
-                          transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+                          background: 'var(--card, #FFFFFF)',
+                          borderRadius: '16px',
+                          border: '1px solid var(--line, #E2E8F0)',
+                          padding: '14px 16px',
+                          margin: '8px 0',
+                          boxShadow: isOpen ? '0 4px 18px rgba(0, 0, 0, 0.06)' : 'none',
+                          transition: 'box-shadow 0.25s ease'
                         }}
                       >
                         {/* Clickable Header with Auto-Collapse */}
@@ -2789,7 +2903,7 @@ export default function DriverApp() {
                               <span
                                 style={{
                                   transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                                  transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
                                   color: 'var(--muted)',
                                   display: 'inline-flex',
                                   alignItems: 'center'
@@ -2801,104 +2915,127 @@ export default function DriverApp() {
                           </div>
                         </button>
 
-                        {/* Expanded Full Details */}
-                        {isOpen && (
-                          <div className="trip-row-body" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--line, #E2E8F0)' }}>
-                            {/* Passenger Profile Card (no call/WhatsApp buttons in history per requirement) */}
-                            <div style={{ marginBottom: '10px' }}>
-                              <ContactProfileCard
-                                name={t.rider?.name || 'Customer'}
-                                role="Passenger / Car Owner"
-                                phone={t.rider?.phone || '+91 98470 12345'}
-                                rating="4.9"
-                                badge="Verified Rider"
-                                showActions={false}
-                              />
-                            </div>
+                        {/* Expanded Full Details with Apple-Grade Smooth Grid Animation */}
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateRows: isOpen ? '1fr' : '0fr',
+                            transition: 'grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <div
+                            style={{
+                              minHeight: 0,
+                              opacity: isOpen ? 1 : 0,
+                              transform: isOpen ? 'translateY(0)' : 'translateY(-6px)',
+                              transition: 'opacity 0.25s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+                            }}
+                          >
+                            <div className="trip-row-body" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--line, #E2E8F0)' }}>
+                              {/* Passenger Profile Card */}
+                              <div style={{ marginBottom: '10px' }}>
+                                <ContactProfileCard
+                                  name={t.rider?.name || 'Customer'}
+                                  role="Passenger / Car Owner"
+                                  phone={t.rider?.phone || '+91 98470 12345'}
+                                  rating="4.9"
+                                  badge="Verified Rider"
+                                  showActions={false}
+                                />
+                              </div>
 
-                            {/* Complete Route & Telemetry Details */}
-                            <div className="route" style={{ margin: '8px 0', padding: '10px 12px', background: 'var(--field, #F8FAFC)', borderRadius: '14px', border: '1px solid var(--line, #E2E8F0)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                                <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 650 }}>{t.pickup}</span>
+                              {/* Complete Route & Telemetry Details */}
+                              <div className="route" style={{ margin: '8px 0', padding: '10px 12px', background: 'var(--field, #F8FAFC)', borderRadius: '14px', border: '1px solid var(--line, #E2E8F0)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
+                                  <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 650 }}>{cleanLocationName(t.pickup)}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
+                                  <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 650 }}>
+                                    {cleanLocationName(t.drop_loc) || 'City Route · Stays with you'}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--line, #E2E8F0)', fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
+                                  <span>Distance: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.distanceText || '12.4 km'}</b></span>
+                                  <span>Estimated: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.durationText || '28 mins'}</b></span>
+                                  <span>Car: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.car?.model || 'Sedan'} ({t.trans || t.car?.trans || 'Automatic'})</b></span>
+                                </div>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
-                                <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 650 }}>
-                                  {t.drop_loc || 'City Route · Stays with you'}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', gap: '16px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--line, #E2E8F0)', fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
-                                <span>Distance: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.distanceText || '12.4 km'}</b></span>
-                                <span>Estimated: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.durationText || '28 mins'}</b></span>
-                                <span>Car: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.car?.model || 'Sedan'} ({t.trans || t.car?.trans || 'Automatic'})</b></span>
-                              </div>
-                            </div>
 
-                            {/* Pre-Trip Vehicle Condition Images Gallery */}
-                            <div style={{ margin: '10px 0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
-                                  Vehicle Inspection Photos (4-Angle)
-                                </b>
-                                <span style={{ fontSize: '10.5px', color: '#16A34A', fontWeight: 700 }}>
-                                  Verified Condition
-                                </span>
+                              {/* Pre-Trip Vehicle Condition Images Gallery (Driver's Real Taken Photos) */}
+                              <div style={{ margin: '10px 0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                  <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
+                                    Vehicle Inspection Photos {realPhotos.length > 0 ? `(${realPhotos.length})` : ''}
+                                  </b>
+                                  {realPhotos.length > 0 && (
+                                    <span style={{ fontSize: '10.5px', color: '#16A34A', fontWeight: 700 }}>
+                                      Verified Condition
+                                    </span>
+                                  )}
+                                </div>
+
+                                {realPhotos.length > 0 ? (
+                                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(realPhotos.length, 4)}, 1fr)`, gap: '6px' }}>
+                                    {realPhotos.map((imgUrl, pIdx) => (
+                                      <div key={pIdx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '4/3', border: '1px solid var(--line, #E2E8F0)', background: '#000000' }}>
+                                        <img src={imgUrl} alt={`Vehicle Photo ${pIdx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <span style={{ position: 'absolute', bottom: 0, insetInline: 0, padding: '2px', background: 'rgba(0,0,0,0.65)', color: '#FFFFFF', fontSize: '9px', textAlign: 'center', fontWeight: 700 }}>
+                                          Photo {pIdx + 1}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--field, #F8FAFC)', border: '1px dashed var(--line, #CBD5E1)', fontSize: '11.5px', color: 'var(--muted, #64748B)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Icon name="camera" size={14} />
+                                    <span>No pre-trip inspection photos recorded for this trip.</span>
+                                  </div>
+                                )}
                               </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                                {[
-                                  { label: 'Front', img: t.vehicleDetails?.photos?.front || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=400&auto=format&fit=crop&q=80' },
-                                  { label: 'Left Profile', img: t.vehicleDetails?.photos?.left || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&auto=format&fit=crop&q=80' },
-                                  { label: 'Rear', img: t.vehicleDetails?.photos?.back || 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&auto=format&fit=crop&q=80' },
-                                  { label: 'Dashboard', img: t.vehicleDetails?.photos?.top || 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=400&auto=format&fit=crop&q=80' }
-                                ].map((p, pIdx) => (
-                                  <div key={pIdx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '4/3', border: '1px solid var(--line, #E2E8F0)', background: '#000' }}>
-                                    <img src={p.img} alt={p.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    <span style={{ position: 'absolute', bottom: 0, insetInline: 0, padding: '2px', background: 'rgba(0,0,0,0.65)', color: '#FFFFFF', fontSize: '9px', textAlign: 'center', fontWeight: 700 }}>
-                                      {p.label}
+
+                              {/* Walkaround Video Player (Driver's Real Taken Video) */}
+                              {realVideo && (
+                                <div style={{ margin: '10px 0' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                    <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
+                                      Walkaround Inspection Video
+                                    </b>
+                                    <span style={{ fontSize: '10.5px', color: '#16A34A', fontWeight: 700 }}>
+                                      Recorded Video
                                     </span>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
+                                  <CustomVideoPlayer
+                                    src={realVideo}
+                                    poster={realPhotos[0] || null}
+                                    title={`${t.car?.model || 'Vehicle'} Walkaround Inspection`}
+                                  />
+                                </div>
+                              )}
 
-                            {/* Custom Video Player with Play, Pause & Replay */}
-                            <div style={{ margin: '10px 0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
-                                  Walkaround Inspection Video
-                                </b>
-                                <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)' }}>
-                                  Controls: Play · Pause · Replay
-                                </span>
+                              {/* Driver Earnings & Fare Breakdown */}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  padding: '10px 12px',
+                                  background: 'var(--field, #F8FAFC)',
+                                  borderRadius: '12px',
+                                  fontSize: '12px',
+                                  color: 'var(--muted, #64748B)',
+                                  margin: '6px 0 4px'
+                                }}
+                              >
+                                <span>Total Fare: <b style={{ color: 'var(--ink, #0F172A)' }}>₹{fare}</b></span>
+                                <span>Commission: <b style={{ color: 'var(--muted, #64748B)' }}>₹{platformFee} (30%)</b></span>
+                                <span>Your Earning: <b style={{ color: '#16A34A', fontWeight: 850 }}>₹{driverEarn} (70%)</b></span>
                               </div>
-                              <CustomVideoPlayer
-                                src={t.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'}
-                                poster={t.vehicleDetails?.photos?.front || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=600&auto=format&fit=crop&q=80'}
-                                title={`${t.car?.model || 'Vehicle'} Walkaround Inspection`}
-                              />
-                            </div>
-
-                            {/* Driver Earnings & Fare Breakdown */}
-                            <div
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '10px 12px',
-                                background: 'var(--field, #F8FAFC)',
-                                borderRadius: '12px',
-                                fontSize: '12px',
-                                color: 'var(--muted, #64748B)',
-                                margin: '6px 0 4px'
-                              }}
-                            >
-                              <span>Total Fare: <b style={{ color: 'var(--ink, #0F172A)' }}>₹{fare}</b></span>
-                              <span>Commission: <b style={{ color: 'var(--muted, #64748B)' }}>₹{platformFee} (30%)</b></span>
-                              <span>Your Earning: <b style={{ color: '#16A34A', fontWeight: 850 }}>₹{driverEarn} (70%)</b></span>
                             </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
@@ -4467,6 +4604,27 @@ export default function DriverApp() {
               </button>
             </div>
 
+            {/* Trip Date & Time Banner */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '14px',
+                background: 'rgba(37, 99, 235, 0.08)',
+                border: '1.5px solid rgba(37, 99, 235, 0.22)',
+                marginBottom: '14px'
+              }}
+            >
+              <span style={{ fontSize: '11px', fontWeight: 750, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Trip Schedule
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#1E40AF' }}>
+                {formatTripSchedule(selectedRequestDetails)}
+              </span>
+            </div>
+
             {/* Google Maps Distance & ETA Pill */}
             <div
               style={{
@@ -4514,7 +4672,7 @@ export default function DriverApp() {
                     Pickup Location
                   </span>
                   <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)' }}>
-                    {selectedRequestDetails.pickup || 'Pickup location'}
+                    {cleanLocationName(selectedRequestDetails.pickup) || 'Pickup location'}
                   </div>
                 </div>
               </div>
@@ -4525,7 +4683,7 @@ export default function DriverApp() {
                     Destination
                   </span>
                   <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)' }}>
-                    {selectedRequestDetails.drop_loc || 'City Destination'}
+                    {cleanLocationName(selectedRequestDetails.drop_loc) || 'City Destination'}
                   </div>
                 </div>
               </div>
@@ -4562,7 +4720,7 @@ export default function DriverApp() {
               </div>
             </div>
 
-            {/* Action Buttons: Decline and Accept */}
+            {/* Action Buttons: Decline and Accept - Clean Text Only */}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 type="button"
@@ -4578,14 +4736,13 @@ export default function DriverApp() {
               <button
                 type="button"
                 className="btn primary"
-                style={{ flex: 1.8, height: '46px', borderRadius: '14px', background: '#000000', color: '#FFFFFF', border: 'none', fontWeight: 800, fontSize: '14.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: 1.8, height: '46px', borderRadius: '14px', background: '#000000', color: '#FFFFFF', border: 'none', fontWeight: 800, fontSize: '14.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 onClick={() => {
                   handleAccept(selectedRequestDetails.id);
                   setSelectedRequestDetails(null);
                 }}
               >
                 <span>Accept Trip</span>
-                <Icon name="check" size={14} color="#FFFFFF" />
               </button>
             </div>
           </div>

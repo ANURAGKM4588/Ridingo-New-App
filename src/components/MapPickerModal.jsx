@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import L from 'leaflet';
 import Icon from './Icon';
 import { getDeviceLocation, reverseGeocode, getCachedDeviceLocation } from '../lib/deviceLocation';
-import { GOOGLE_MAP_TILES, openInGoogleMaps, isMockMode } from '../services/googleMapsService';
+import { GOOGLE_MAP_TILES, openInGoogleMaps, isMockMode, cleanPlusCode } from '../services/googleMapsService';
 
 export default function MapPickerModal({ isOpen, onClose, onSelect, targetField = 'pickup' }) {
   const label = targetField === 'pickup' ? 'Pickup Location' : 'Destination';
@@ -62,7 +62,7 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
     setCoordsInfo(prev => ({ ...prev, lat: centerLat, lng: centerLng }));
     try {
       const addr = await reverseGeocode(centerLat, centerLng);
-      setSelectedAddr(addr);
+      setSelectedAddr(cleanPlusCode(addr));
     } catch {
       setSelectedAddr(`Pin (${centerLat.toFixed(4)}, ${centerLng.toFixed(4)})`);
     } finally {
@@ -254,7 +254,7 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
   };
 
   const handleConfirm = () => {
-    onSelect(selectedAddr);
+    onSelect(cleanPlusCode(selectedAddr));
     onClose();
   };
 

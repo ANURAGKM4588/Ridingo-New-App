@@ -15,6 +15,13 @@ let cachedAddress = cachedDeviceCoords?.address || null;
 let isLocatingPromise = null;
 const geocodeCache = new Map();
 
+export function cleanPlusCode(str) {
+  if (!str || typeof str !== 'string') return '';
+  let cleaned = str.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}[,\s]*/i, '').trim();
+  cleaned = cleaned.replace(/^[,-\s]+/, '').trim();
+  return cleaned || str;
+}
+
 /**
  * Reverse geocode latitude and longitude using Google Maps or OpenStreetMap Nominatim
  * Includes fast in-memory caching and 2.5s network timeout to prevent UI freezes
@@ -32,7 +39,7 @@ export async function reverseGeocode(lat, lng) {
       const googleResult = await new Promise((resolve) => {
         geocoder.geocode({ location: { lat: Number(lat), lng: Number(lng) } }, (results, status) => {
           if (status === 'OK' && results && results[0]) {
-            resolve(results[0].formatted_address);
+            resolve(cleanPlusCode(results[0].formatted_address));
           } else {
             resolve(null);
           }
