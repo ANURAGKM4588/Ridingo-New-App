@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { useApp } from '../context/AppContext';
+import { useApp, getDeviceDriverId, DEFAULT_DRIVER } from '../context/AppContext';
 import { realtime } from '../utils/realtime';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
@@ -1188,17 +1188,18 @@ export default function DriverApp() {
       const acceptedDriver = data?.driver;
       if (!acceptedId) return;
 
-      // If ANOTHER driver accepted this trip, remove the popup, banner, and notification for this driver
-      const currentDriverId = String(driverPartner?.id || driverPartner?.phone || 'ravi_1');
-      const assignedDriverId = String(acceptedDriver?.id || acceptedDriver?.phone || '');
+      // If ANOTHER chauffeur accepted this trip, remove the popup, banner, and notification for this driver
+      const myDriverId = getDeviceDriverId(driverPartner || DEFAULT_DRIVER);
+      const assignedDriverId = String(acceptedDriver?.deviceDriverId || acceptedDriver?.id || acceptedDriver?.phone || '');
 
-      if (assignedDriverId && assignedDriverId !== currentDriverId) {
+      if (assignedDriverId && assignedDriverId !== myDriverId) {
         setIncomingTripRequest(prev => (prev?.id === acceptedId ? null : prev));
         setSelectedRequestDetails(prev => (prev?.id === acceptedId ? null : prev));
         setMinimizedRequestTripId(prev => (prev === acceptedId ? null : prev));
         setTrips(prev => prev.filter(t => t.id !== acceptedId));
         stopActiveTone();
         dismissIncomingRideNotification(acceptedId);
+        addToast(`Trip was accepted by another chauffeur (${acceptedDriver?.name || 'Partner'})`, 'info');
       }
     };
 
@@ -1223,13 +1224,6 @@ export default function DriverApp() {
       const activeRequests = typeof realtime.getActiveTripRequests === 'function'
         ? realtime.getActiveTripRequests()
         : [realtime.getActiveTripRequest()].filter(Boolean);
-
-      // If incoming trip request is no longer active (cancelled by user), immediately vanish all popups
-      if (incomingTripRequest && !activeRequests.some(r => r.id === incomingTripRequest.id)) {
-        setIncomingTripRequest(null);
-        setSelectedRequestDetails(null);
-        setMinimizedRequestTripId(null);
-      }
 
       if (Array.isArray(activeRequests) && activeRequests.length > 0) {
         setTrips(prev => {
@@ -1599,6 +1593,10 @@ export default function DriverApp() {
   const requestedTrips = (trips || [])
     .filter(t => {
       if (t.status !== 'requested') return false;
+      try {
+        const declined = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+        if (declined.includes(t.id)) return false;
+      } catch (_) {}
       const cat = t.cat || 'hourly';
       // Exclude trip requests if driver explicitly toggled off this service
       if (driverServices[cat] === false) return false;
@@ -1625,17 +1623,16 @@ export default function DriverApp() {
     }
 
     // Driver isolation: only show trip in upcoming trips if accepted by THIS logged-in driver
-    const currentDriverId = String(driverPartner?.id || driverPartner?.phone || 'ravi_1');
-    const currentDriverName = (driverPartner?.name || 'Ravi Kumar').toLowerCase().trim();
-
-    const tripDriverId = t.driver_id ? String(t.driver_id) : (t.driver?.id ? String(t.driver.id) : null);
-    const tripDriverName = (typeof t.driver === 'string' ? t.driver : (t.driver?.name || '')).toLowerCase().trim();
+    const myDriverId = getDeviceDriverId(driverPartner || DEFAULT_DRIVER);
+    const tripDriverId = t.driver_id ? String(t.driver_id) : (t.driverObj?.deviceDriverId || (t.driver?.id ? String(t.driver.id) : null));
 
     if (tripDriverId) {
-      return tripDriverId === currentDriverId || tripDriverName === currentDriverName;
+      return tripDriverId === myDriverId;
     }
+    const currentDriverName = (driverPartner?.name || 'Ravi Kumar').toLowerCase().trim();
+    const tripDriverName = (typeof t.driver === 'string' ? t.driver : (t.driver?.name || '')).toLowerCase().trim();
     if (tripDriverName) {
-      return tripDriverName === currentDriverName || currentDriverName.includes(tripDriverName) || tripDriverName.includes(currentDriverName);
+      return tripDriverName === currentDriverName;
     }
     return true;
   });
@@ -1671,6 +1668,11 @@ export default function DriverApp() {
     if (selectedRequestDetails?.id === tripId) {
       setSelectedRequestDetails(null);
     }
+    if (incomingTripRequest?.id === tripId) {
+      setIncomingTripRequest(null);
+    }
+    stopActiveTone();
+    dismissIncomingRideNotification(tripId);
     if (acceptTrip) {
       acceptTrip(tripId);
     }
@@ -1679,13 +1681,15 @@ export default function DriverApp() {
   // Decline trip handler: Retains requests in list until driver explicitly declines
   const handleDecline = (tripId) => {
     triggerTactileHaptic('tick');
-    setTrips(prev => prev.filter(t => t.id !== tripId));
     if (incomingTripRequest?.id === tripId) {
       setIncomingTripRequest(null);
     }
     if (selectedRequestDetails?.id === tripId) {
       setSelectedRequestDetails(null);
     }
+    setTrips(prev => prev.filter(t => t.id !== tripId));
+    stopActiveTone();
+    dismissIncomingRideNotification(tripId);
     if (declineTrip) {
       declineTrip(tripId);
     }
@@ -4148,6 +4152,16 @@ export default function DriverApp() {
           <span className="nv-l">Profile</span>
         </button>
       </nav>
+
+      {/* Real-time incoming ride request pop-up on Driver App */}
+      {incomingTripRequest && (!minimizedRequestTripId || minimizedRequestTripId !== incomingTripRequest.id) && (
+        <IncomingRideModal
+          trip={incomingTripRequest}
+          onAccept={handleAccept}
+          onDecline={handleDecline}
+          onMinimize={() => setMinimizedRequestTripId(incomingTripRequest.id)}
+        />
+      )}
 
       {/* "View More" Full Details Modal for any trip request in the Trip Requests list */}
       {selectedRequestDetails && (

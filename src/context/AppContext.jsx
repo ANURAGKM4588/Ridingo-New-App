@@ -74,6 +74,26 @@ export const DEFAULT_DRIVER = {
   haptic: true
 };
 
+export const getDeviceDriverId = (driver) => {
+  if (driver?.id && !driver.isDefault && String(driver.id) !== 'ravi_1') {
+    return String(driver.id);
+  }
+  if (typeof window === 'undefined') {
+    return String(driver?.id || driver?.phone || 'driver_default');
+  }
+  try {
+    let deviceDriverId = localStorage.getItem('ridingo_device_driver_id');
+    if (!deviceDriverId) {
+      const platform = (typeof window.Capacitor !== 'undefined' && window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || 'web';
+      deviceDriverId = `driver_${platform}_${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem('ridingo_device_driver_id', deviceDriverId);
+    }
+    return deviceDriverId;
+  } catch (_) {
+    return String(driver?.id || driver?.phone || 'driver_default');
+  }
+};
+
 export const INITIAL_TRIPS = [];
 
 export const INITIAL_UTX = [];
@@ -423,10 +443,20 @@ export function AppProvider({ children }) {
                     if (!declinedTripIds.includes(tripObj.id)) {
                       setIncomingTripRequest(tripObj);
                     }
-                  } else if (['accepted', 'declined', 'cancelled', 'completed'].includes(tripObj.status)) {
+                  } else if (tripObj.status === 'accepted') {
+                    const myDriverId = getDeviceDriverId(driverPartner || DEFAULT_DRIVER);
+                    const isAcceptedByMe = tripObj.driver_id && String(tripObj.driver_id) === String(myDriverId);
+                    if (!isAcceptedByMe) {
+                      setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
+                      dismissIncomingRideNotification(tripObj.id);
+                      stopActiveTone();
+                      setTrips(prev => prev.filter(t => t.id !== tripObj.id));
+                    }
+                  } else if (['cancelled', 'completed'].includes(tripObj.status)) {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                     dismissIncomingRideNotification(tripObj.id);
                     stopActiveTone();
+                    setTrips(prev => prev.filter(t => t.id !== tripObj.id));
                   }
                 }
               }
@@ -557,11 +587,8 @@ export function AppProvider({ children }) {
       addToast(`Arrived at destination. Share Drop OTP ${targetOtp} to finalize.`, 'info');
     });
 
-    const unbindDec = realtime.on('TRIP_DECLINED', ({ tripId }) => {
-      // Driver declined: dismiss local incoming prompt and silence tone without cancelling ride for others
-      setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
-      stopActiveTone();
-    });
+    // Local driver decline does not dismiss pop-up or tone on other drivers' devices
+    // realtime.on('TRIP_DECLINED') intentionally omitted to allow other chauffeurs to accept
 
     const unbindCancel = realtime.on('TRIP_CANCELLED', ({ tripId }) => {
       setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
@@ -598,7 +625,6 @@ export function AppProvider({ children }) {
       unbindCond();
       unbindStart();
       unbindEndReq();
-      unbindDec();
       unbindCancel();
       unbindComp();
     };
@@ -911,7 +937,7 @@ export function AppProvider({ children }) {
 
   // Single Active Session Verification for Driver Partner
   useEffect(() => {
-    if (!driverPartner?.phone || !driverPartner?.sessionToken) return;
+    if (!driverPartner?.phone || !driverPartner?.sessionToken || driverPartner?.isDemo || driverPartner?.phone === DEFAULT_DRIVER.phone) return;
     let isVerifying = false;
 
     const verifyDriverSession = async () => {
@@ -952,7 +978,7 @@ export function AppProvider({ children }) {
       clearInterval(driverSessionTimer);
       document.removeEventListener('visibilitychange', handleVis);
     };
-  }, [driverPartner?.phone, driverPartner?.sessionToken]);
+  }, [driverPartner?.phone, driverPartner?.sessionToken, driverPartner?.isDemo]);
 
   const updateUserProfile = (updates) => {
     setUser(prev => {
@@ -975,9 +1001,10 @@ export function AppProvider({ children }) {
   };
 
   const loginDriverDemo = () => {
-    setDriverPartner(DEFAULT_DRIVER);
+    const demoDriver = { ...DEFAULT_DRIVER, isDemo: true, id: getDeviceDriverId(DEFAULT_DRIVER) };
+    setDriverPartner(demoDriver);
     try {
-      localStorage.setItem('ridingo_driver_session', JSON.stringify(DEFAULT_DRIVER));
+      localStorage.setItem('ridingo_driver_session', JSON.stringify(demoDriver));
     } catch (e) {}
     setDTab('dash');
     scrollDriverToTop();
@@ -1233,7 +1260,12 @@ export function AppProvider({ children }) {
 
   const acceptTrip = (tripId) => {
     const driver = driverPartner || DEFAULT_DRIVER;
-    const driverId = String(driver.id || driver.phone || 'ravi_1');
+    const driverId = getDeviceDriverId(driver);
+    const driverObj = {
+      ...driver,
+      id: driverId,
+      deviceDriverId: driverId
+    };
     let targetOtp = '4821';
     setTrips(prev =>
       prev.map(t => {
@@ -1244,7 +1276,7 @@ export function AppProvider({ children }) {
             status: 'accepted',
             driver: driver.name,
             driver_id: driverId,
-            driverObj: driver
+            driverObj
           };
         }
         return t;
@@ -1263,7 +1295,7 @@ export function AppProvider({ children }) {
     addToast(`Trip confirmed. ${driver.name} accepted your ride.`, 'check');
 
     // Broadcast across realtime bus & update Supabase
-    realtime.acceptRide(tripId, driver);
+    realtime.acceptRide(tripId, driverObj);
     updateTripStatusInSupabase(tripId, 'accepted', {
       driver: driver.name,
       driver_id: driverId
@@ -1403,7 +1435,7 @@ export function AppProvider({ children }) {
 
   // Driver decline logic: Declining a trip locally does NOT affect other drivers
   const declineTrip = (tripId) => {
-    // 1. Remove from incoming popup & active alert sound
+    // 1. Remove from incoming popup & active alert sound locally
     setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
     stopActiveTone();
     dismissIncomingRideNotification(tripId);
@@ -1420,8 +1452,7 @@ export function AppProvider({ children }) {
     // 3. Remove locally from this driver's visible trips list
     setTrips(prev => prev.filter(t => t.id !== tripId));
 
-    // 4. Notify realtime bus of driver decline (leaves ride open in database for other drivers)
-    realtime.declineRide(tripId);
+    // Notice: Do NOT emit realtime.declineRide here so the trip remains active for other chauffeurs!
     addToast('Trip request declined and removed from your queue', 'info');
   };
 
