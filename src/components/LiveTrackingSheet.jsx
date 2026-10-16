@@ -41,6 +41,7 @@ export default function LiveTrackingSheet() {
   // Dynamic telemetry simulation - strictly running only when trip is in progress
   const [progress, setProgress] = useState(0.38);
   const [speed, setSpeed] = useState(38);
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
 
   const remaining = Math.max(0.05, 1 - progress);
   const etaMins = Math.max(1, Math.round(remaining * 16));
@@ -84,8 +85,6 @@ export default function LiveTrackingSheet() {
   if (!liveTrackingOpen || !activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip.status)) {
     return null;
   }
-
-  const [ticketModalOpen, setTicketModalOpen] = useState(false);
 
   const handleShareTrip = () => {
     if (!trip) return;
