@@ -299,12 +299,20 @@ export function AppProvider({ children }) {
   const notifiedAcceptedTripsRef = useRef(new Set());
   // Accepted trip tracking to eliminate incoming ride popup glitch on Driver App
   const acceptedTripIdsRef = useRef(new Set());
+  // Settled trip tracking to prevent duplicate payment settlement or loop
+  const settledTripIdsRef = useRef(new Set());
 
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
       if (Array.isArray(saved)) {
         saved.forEach(id => acceptedTripIdsRef.current.add(id));
+      }
+    } catch (_) {}
+    try {
+      const savedSettled = JSON.parse(localStorage.getItem('ridingo_settled_trips') || '[]');
+      if (Array.isArray(savedSettled)) {
+        savedSettled.forEach(id => settledTripIdsRef.current.add(id));
       }
     } catch (_) {}
   }, []);
@@ -321,6 +329,53 @@ export function AppProvider({ children }) {
       `${driverName} (${driverPhone}) is en route to your pickup. Your 4-digit Pickup OTP is ${targetOtp}.`,
       { extra: { tripId, driverName, driverPhone, otp: targetOtp } }
     );
+  };
+
+  // Monotonic Lifecycle Status Rank: Trip state must NEVER regress or rewind on network poll
+  const TRIP_STATUS_RANK = {
+    'requested': 1,
+    'accepted': 2,
+    'pickup_arrived': 3,
+    'ready_to_start': 4,
+    'inprogress': 5,
+    'ending_otp': 6,
+    'invoice_pending': 7,
+    'completed': 8,
+    'cancelled': 9
+  };
+
+  const mergeTripUpdates = (localTrip, remoteTrip) => {
+    if (!localTrip) return remoteTrip;
+    if (!remoteTrip) return localTrip;
+
+    // Terminal completed/cancelled states can NEVER be overwritten by earlier states
+    if (localTrip.status === 'completed' && remoteTrip.status !== 'completed') {
+      return localTrip;
+    }
+    if (localTrip.status === 'cancelled' && remoteTrip.status !== 'cancelled') {
+      return localTrip;
+    }
+
+    const localRank = TRIP_STATUS_RANK[localTrip.status] || 0;
+    const remoteRank = TRIP_STATUS_RANK[remoteTrip.status] || 0;
+
+    // Never downgrade local status to an older remote snapshot
+    const resolvedStatus = localRank >= remoteRank ? localTrip.status : remoteTrip.status;
+
+    return {
+      ...remoteTrip,
+      ...localTrip,
+      status: resolvedStatus,
+      vehicleDetails: localTrip.vehicleDetails || remoteTrip.vehicleDetails,
+      car_photos: localTrip.car_photos || remoteTrip.car_photos,
+      conditionPhotos: localTrip.conditionPhotos || remoteTrip.conditionPhotos,
+      driver: localTrip.driver || remoteTrip.driver,
+      driverObj: localTrip.driverObj || remoteTrip.driverObj,
+      startOtp: localTrip.startOtp || remoteTrip.startOtp,
+      finalSettlement: localTrip.finalSettlement || remoteTrip.finalSettlement,
+      completedAt: localTrip.completedAt || remoteTrip.completedAt,
+      startedAt: localTrip.startedAt || remoteTrip.startedAt
+    };
   };
 
   // Helper to map Supabase public.trips database row to App Trip Object
@@ -391,7 +446,8 @@ export function AppProvider({ children }) {
           prev.forEach(t => mapById.set(t.id, t));
           mapped.forEach(t => {
             if (mapById.has(t.id)) {
-              mapById.set(t.id, { ...mapById.get(t.id), ...t });
+              const localT = mapById.get(t.id);
+              mapById.set(t.id, mergeTripUpdates(localT, t));
             } else {
               mapById.set(t.id, t);
             }
@@ -399,17 +455,24 @@ export function AppProvider({ children }) {
           return Array.from(mapById.values());
         });
 
-        // Check for active 'requested' trips created within 15 minutes that have not been declined by this driver
+        // Check for active 'requested' trips created within 15 minutes that have not been declined or accepted
         let declinedTripIds = [];
+        let acceptedTripIds = [];
+        let settledTripIds = [];
         try {
           declinedTripIds = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+          acceptedTripIds = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
+          settledTripIds = JSON.parse(localStorage.getItem('ridingo_settled_trips') || '[]');
         } catch (_) {}
 
         const activeReqs = mapped.filter(t =>
           t.status === 'requested' &&
           Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000 &&
           !declinedTripIds.includes(t.id) &&
-          !acceptedTripIdsRef.current.has(t.id)
+          !acceptedTripIds.includes(t.id) &&
+          !acceptedTripIdsRef.current.has(t.id) &&
+          !settledTripIds.includes(t.id) &&
+          !settledTripIdsRef.current.has(t.id)
         );
         if (activeReqs.length > 0) {
           setIncomingTripRequest(activeReqs[0]);
@@ -487,11 +550,15 @@ export function AppProvider({ children }) {
                 const tripObj = mapSupabaseRowToTrip(payload.new);
                 if (tripObj) {
                   setTrips(prev => {
-                    const exists = prev.some(t => t.id === tripObj.id);
-                    if (exists) {
-                      return prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj } : t));
+                    const mapById = new Map();
+                    prev.forEach(t => mapById.set(t.id, t));
+                    if (mapById.has(tripObj.id)) {
+                      const localT = mapById.get(tripObj.id);
+                      mapById.set(tripObj.id, mergeTripUpdates(localT, tripObj));
+                    } else {
+                      mapById.set(tripObj.id, tripObj);
                     }
-                    return [tripObj, ...prev]; // Preserve all existing requests!
+                    return Array.from(mapById.values());
                   });
 
                   if (tripObj.status === 'requested') {
@@ -499,7 +566,7 @@ export function AppProvider({ children }) {
                     try {
                       declinedTripIds = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
                     } catch (_) {}
-                    if (!declinedTripIds.includes(tripObj.id) && !acceptedTripIdsRef.current.has(tripObj.id)) {
+                    if (!declinedTripIds.includes(tripObj.id) && !acceptedTripIdsRef.current.has(tripObj.id) && !settledTripIdsRef.current.has(tripObj.id)) {
                       setIncomingTripRequest(tripObj);
                     }
                   } else if (tripObj.status === 'accepted') {
@@ -509,9 +576,7 @@ export function AppProvider({ children }) {
                       setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                       dismissIncomingRideNotification(tripObj.id);
                       stopActiveTone();
-                      if (window.RIDINGO_TARGET === 'driver') {
-                        setTrips(prev => prev.filter(t => t.id !== tripObj.id));
-                      } else {
+                      if (window.RIDINGO_TARGET !== 'driver') {
                         // User App: Trigger system push notification with chauffeur details
                         const driverName = (typeof tripObj.driver === 'string' ? tripObj.driver : tripObj.driver?.name) || 'Ravi Kumar';
                         const driverPhone = tripObj.driverObj?.phone || '+91 94471 23456';
@@ -523,11 +588,17 @@ export function AppProvider({ children }) {
                       dismissIncomingRideNotification(tripObj.id);
                       stopActiveTone();
                     }
-                  } else if (['cancelled', 'completed'].includes(tripObj.status)) {
+                  } else if (tripObj.status === 'completed') {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                     dismissIncomingRideNotification(tripObj.id);
                     stopActiveTone();
-                    setTrips(prev => prev.filter(t => t.id !== tripObj.id));
+                    // Retain completed trips so History tab displays Completed!
+                    setTrips(prev => prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj, status: 'completed' } : t)));
+                  } else if (tripObj.status === 'cancelled') {
+                    setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
+                    dismissIncomingRideNotification(tripObj.id);
+                    stopActiveTone();
+                    setTrips(prev => prev.map(t => (t.id === tripObj.id ? { ...t, status: 'cancelled' } : t)));
                   }
                 }
               }
@@ -1356,6 +1427,9 @@ export function AppProvider({ children }) {
       }
     } catch (_) {}
 
+    // Immediately clear from active requests storage to prevent popup re-triggering
+    realtime.clearActiveTrip(tripId, 'accepted');
+
     const driver = driverPartner || DEFAULT_DRIVER;
     const driverId = getDeviceDriverId(driver);
     const driverObj = {
@@ -1381,7 +1455,7 @@ export function AppProvider({ children }) {
         return t;
       })
     );
-    setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
+    setIncomingTripRequest(null);
     dismissIncomingRideNotification(tripId);
     stopActiveTone();
 
@@ -1440,12 +1514,17 @@ export function AppProvider({ children }) {
     addToast('Car condition verified! You can now start the trip.', 'check');
   };
 
-  const startTrip = (tripId) => {
+  const startTrip = (tripId, extra = {}) => {
     setTrips(prev =>
-      prev.map(t => (t.id === tripId ? { ...t, status: 'inprogress', startedAt: Date.now() } : t))
+      prev.map(t => (t.id === tripId ? {
+        ...t,
+        status: 'inprogress',
+        startedAt: Date.now(),
+        ...extra
+      } : t))
     );
     realtime.startRide(tripId);
-    updateTripStatusInSupabase(tripId, 'inprogress');
+    updateTripStatusInSupabase(tripId, 'inprogress', extra);
     addToast('Trip started! Live GPS sharing activated.', 'check');
   };
 
@@ -1467,6 +1546,21 @@ export function AppProvider({ children }) {
   };
 
   const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false } = {}) => {
+    if (settledTripIdsRef.current.has(tripId)) {
+      console.info('[settleTripPayment] Trip already settled, preventing duplicate:', tripId);
+      return;
+    }
+    settledTripIdsRef.current.add(tripId);
+    try {
+      const existing = JSON.parse(localStorage.getItem('ridingo_settled_trips') || '[]');
+      if (!existing.includes(tripId)) {
+        existing.push(tripId);
+        localStorage.setItem('ridingo_settled_trips', JSON.stringify(existing));
+      }
+    } catch (_) {}
+
+    realtime.clearActiveTrip(tripId, 'completed');
+
     const tripFare = fare || 750;
     const companyCommission = Math.round(tripFare * 0.30); // 30% platform fee
     const driverEarnings = Math.round(tripFare * 0.70) + Number(tip || 0); // 70% driver payout + tip
@@ -1515,7 +1609,10 @@ export function AppProvider({ children }) {
     );
 
     realtime.completeRide(tripId, { amount, fare, tip, isCash });
-    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now() });
+    updateTripStatusInSupabase(tripId, 'completed', {
+      done_ts: Date.now(),
+      fare: amount || tripFare
+    });
 
     // Auto-redirect User App to home if currently viewing this completed trip
     setLiveTrackingOpen(false);

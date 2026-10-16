@@ -125,8 +125,16 @@ class RealtimeHub {
     // Automatically manage persistent active trip storage
     if (type === 'TRIP_REQUESTED' && payload) {
       this._persistActiveTrip(payload);
-    } else if (['TRIP_ACCEPTED', 'TRIP_DECLINED', 'TRIP_CANCELLED', 'TRIP_COMPLETED'].includes(type)) {
-      this._clearActiveTrip(payload?.tripId || payload?.id);
+    } else if (['TRIP_ACCEPTED', 'TRIP_DECLINED', 'TRIP_CANCELLED', 'TRIP_COMPLETED', 'RIDE_COMPLETED', 'RIDE_CANCELLED'].includes(type)) {
+      const statusMap = {
+        'TRIP_ACCEPTED': 'accepted',
+        'TRIP_DECLINED': 'declined',
+        'TRIP_CANCELLED': 'cancelled',
+        'RIDE_CANCELLED': 'cancelled',
+        'TRIP_COMPLETED': 'completed',
+        'RIDE_COMPLETED': 'completed'
+      };
+      this._clearActiveTrip(payload?.tripId || payload?.id, statusMap[type] || 'accepted');
     }
 
     const set = this.listeners.get(type);
@@ -237,7 +245,7 @@ class RealtimeHub {
     } catch (e) {}
   }
 
-  _clearActiveTrip(tripId) {
+  _clearActiveTrip(tripId, newStatus = 'accepted') {
     if (typeof localStorage === 'undefined') return;
     try {
       // 1. Clear or update active requests list
@@ -275,13 +283,17 @@ class RealtimeHub {
           try {
             let list = JSON.parse(rawShared);
             if (Array.isArray(list)) {
-              list = list.map(t => (t.id === tripId ? { ...t, status: 'accepted' } : t));
+              list = list.map(t => (t.id === tripId ? { ...t, status: newStatus } : t));
               localStorage.setItem(SHARED_TRIPS_KEY, JSON.stringify(list));
             }
           } catch (e) {}
         }
       }
     } catch (e) {}
+  }
+
+  clearActiveTrip(tripId, newStatus = 'accepted') {
+    this._clearActiveTrip(tripId, newStatus);
   }
 
   getActiveTripRequests() {
@@ -337,15 +349,19 @@ class RealtimeHub {
   }
 
   acceptRide(tripId, driver, startOtp) {
+    this._clearActiveTrip(tripId, 'accepted');
     this.emit('TRIP_ACCEPTED', { tripId, driver, startOtp, timestamp: Date.now() });
   }
 
   declineRide(tripId) {
+    this._clearActiveTrip(tripId, 'declined');
     this.emit('TRIP_DECLINED', { tripId, timestamp: Date.now() });
   }
 
   cancelRide(tripId) {
+    this._clearActiveTrip(tripId, 'cancelled');
     this.emit('TRIP_CANCELLED', { tripId, timestamp: Date.now() });
+    this.emit('RIDE_CANCELLED', { tripId, timestamp: Date.now() });
   }
 
   arrivedAtPickup(tripId) {
@@ -362,10 +378,12 @@ class RealtimeHub {
 
   startRide(tripId) {
     this.emit('TRIP_STARTED', { tripId, timestamp: Date.now() });
+    this.emit('RIDE_STARTED', { tripId, timestamp: Date.now() });
   }
 
   requestEndTrip(tripId, endOtp) {
     this.emit('END_OTP_REQUESTED', { tripId, endOtp, timestamp: Date.now() });
+    this.emit('RIDE_ENDED', { tripId, endOtp, timestamp: Date.now() });
   }
 
   // Live GPS Telemetry Stream (Driver App -> User App)
@@ -381,7 +399,9 @@ class RealtimeHub {
   }
 
   completeRide(tripId, details = {}) {
+    this._clearActiveTrip(tripId, 'completed');
     this.emit('TRIP_COMPLETED', { tripId, ...details, timestamp: Date.now() });
+    this.emit('RIDE_COMPLETED', { tripId, ...details, timestamp: Date.now() });
   }
 }
 

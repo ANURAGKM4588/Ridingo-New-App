@@ -1092,6 +1092,7 @@ export default function DriverApp() {
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
   const [driverCustomTune, setDriverCustomTune] = useState(getSelectedCustomTune());
+  const settlingTripIdsRef = useRef(new Set());
 
   useEffect(() => {
     // Proactively request initial device runtime permissions on launch:
@@ -1235,37 +1236,59 @@ export default function DriverApp() {
         ? realtime.getActiveTripRequests()
         : [realtime.getActiveTripRequest()].filter(Boolean);
 
-      if (Array.isArray(activeRequests) && activeRequests.length > 0) {
+      // Filter out any requests that are already handled (accepted, declined, settled, or in trips with status != requested)
+      let acceptedList = [];
+      let declinedList = [];
+      let settledList = [];
+      try {
+        acceptedList = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
+        declinedList = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+        settledList = JSON.parse(localStorage.getItem('ridingo_settled_trips') || '[]');
+      } catch (_) {}
+
+      const handledIds = new Set([
+        ...acceptedList,
+        ...declinedList,
+        ...settledList,
+        ...(trips || []).filter(t => t.status !== 'requested').map(t => t.id)
+      ]);
+
+      const unhandledActive = (activeRequests || []).filter(req =>
+        req && req.id && !handledIds.has(req.id) && !acceptedTripIdsRef.current.has(req.id)
+      );
+
+      if (unhandledActive.length > 0) {
         setTrips(prev => {
           const mapById = new Map();
           (prev || []).forEach(t => mapById.set(t.id, t));
           let changed = false;
-          activeRequests.forEach(req => {
+          unhandledActive.forEach(req => {
             if (!mapById.has(req.id)) {
               mapById.set(req.id, req);
               changed = true;
-            } else {
-              const existing = mapById.get(req.id);
-              if (existing.status === 'requested' && req.status === 'requested') {
-                mapById.set(req.id, { ...existing, ...req });
-              }
             }
           });
           return changed ? Array.from(mapById.values()) : prev;
         });
 
-        const latest = activeRequests[0];
+        const latest = unhandledActive[0];
         if (latest && (!incomingTripRequest || incomingTripRequest.id !== latest.id)) {
           if (minimizedRequestTripId !== latest.id) {
             setIncomingTripRequest(latest);
           }
+        }
+      } else {
+        if (incomingTripRequest && handledIds.has(incomingTripRequest.id)) {
+          setIncomingTripRequest(null);
+          dismissIncomingRideNotification(incomingTripRequest.id);
+          stopActiveTone();
         }
       }
     };
     syncActiveTrips();
     const interval = setInterval(syncActiveTrips, 2000);
     return () => clearInterval(interval);
-  }, [incomingTripRequest?.id, minimizedRequestTripId, syncTripsFromSupabase]);
+  }, [incomingTripRequest?.id, minimizedRequestTripId, syncTripsFromSupabase, trips]);
 
   const hasBankAccount = Boolean(driverPartner?.bankAccount && driverPartner?.bankName);
 
@@ -1675,15 +1698,36 @@ export default function DriverApp() {
   // Accept trip handler
   const handleAccept = (tripId) => {
     triggerTactileHaptic('success');
+    acceptedTripIdsRef.current.add(tripId);
+    try {
+      const existing = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
+      if (!existing.includes(tripId)) {
+        existing.push(tripId);
+        localStorage.setItem('ridingo_accepted_trips', JSON.stringify(existing));
+      }
+    } catch (_) {}
+
     if (selectedRequestDetails?.id === tripId) {
       setSelectedRequestDetails(null);
     }
-    if (incomingTripRequest?.id === tripId) {
-      setIncomingTripRequest(null);
-    }
+    setIncomingTripRequest(null);
     setMinimizedRequestTripId(null);
     stopActiveTone();
     dismissIncomingRideNotification(tripId);
+
+    // Optimistically update trip status to accepted immediately on single tap
+    const myDriver = driverPartner || DEFAULT_DRIVER;
+    const myDriverId = getDeviceDriverId(myDriver);
+    setTrips(prev =>
+      prev.map(t => (t.id === tripId ? {
+        ...t,
+        status: 'accepted',
+        driver: myDriver.name,
+        driver_id: myDriverId,
+        driverObj: { ...myDriver, id: myDriverId, deviceDriverId: myDriverId }
+      } : t))
+    );
+
     if (acceptTrip) {
       acceptTrip(tripId);
     }
@@ -1732,8 +1776,14 @@ export default function DriverApp() {
   const handleVerifyStartOtpSuccess = () => {
     triggerTactileHaptic('success');
     setShowStartOtpModal(false);
-    if (verifyStartOtp && activeTripAction) {
-      verifyStartOtp(activeTripAction.id);
+    if (activeTripAction) {
+      const tripId = activeTripAction.id;
+      setTrips(prev =>
+        prev.map(t => (t.id === tripId ? { ...t, status: 'ready_to_start' } : t))
+      );
+      if (verifyStartOtp) {
+        verifyStartOtp(tripId);
+      }
       if (driverPartner?.nativeNotifs !== false) {
         notifyStartOtpVerified(activeTripAction);
       }
@@ -1760,10 +1810,20 @@ export default function DriverApp() {
     if (activeVehicleTrip) {
       const tripId = activeVehicleTrip.id;
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, vehicleDetails: vehicleData } : t))
+        prev.map(t => (t.id === tripId ? {
+          ...t,
+          status: 'inprogress',
+          vehicleDetails: vehicleData,
+          startedAt: Date.now()
+        } : t))
       );
       if (startTrip) {
-        startTrip(tripId);
+        startTrip(tripId, {
+          vehicle_brand: vehicleData.brand,
+          vehicle_model: vehicleData.model,
+          vehicle_number: vehicleData.regNumber,
+          car_photos: vehicleData.photos
+        });
       }
       // Sync vehicle inspection details & photos directly to Supabase trips table
       if (supabase && typeof supabase.from === 'function') {
@@ -1772,6 +1832,7 @@ export default function DriverApp() {
           vehicle_model: vehicleData.model,
           vehicle_number: vehicleData.regNumber,
           car_photos: vehicleData.photos,
+          status: 'inprogress',
           updated_at: new Date().toISOString()
         }).eq('id', tripId).then(({ error }) => {
           if (error) console.warn('[Supabase] Vehicle photos sync notice:', error.message);
@@ -1799,23 +1860,46 @@ export default function DriverApp() {
   // 6. Settle Digital Payment (Company 30%, Driver 70% + Tip credited to wallet)
   // End of trip requires NO OTP verification, auto-redirects directly to Home/Dashboard
   const handleDigitalPaymentSuccess = (paymentDetails) => {
+    const tripToSettle = activeTripAction || paymentCompletionModal;
+    const tripId = tripToSettle?.id;
+    if (!tripId) return;
+
+    if (settlingTripIdsRef.current.has(tripId)) {
+      console.info('[handleDigitalPaymentSuccess] Trip already settling, preventing duplicate settlement:', tripId);
+      setShowInvoiceModal(false);
+      setPaymentCompletionModal(null);
+      setActiveTripAction(null);
+      return;
+    }
+    settlingTripIdsRef.current.add(tripId);
+
     setShowInvoiceModal(false);
-    const driverPayout = paymentDetails?.driverEarnings || Math.round((Number(activeTripAction?.fare) || 650) * 0.70);
-    if (settleTripPayment && activeTripAction) {
-      settleTripPayment(activeTripAction.id, {
+    setPaymentCompletionModal(null);
+
+    // Immediately mark trip as completed in local state to prevent any invoice reappearance
+    setTrips(prev =>
+      prev.map(t => (t.id === tripId ? {
+        ...t,
+        status: 'completed',
+        completedAt: Date.now()
+      } : t))
+    );
+
+    const driverPayout = paymentDetails?.driverEarnings || Math.round((Number(tripToSettle?.fare) || 650) * 0.70);
+    if (settleTripPayment) {
+      settleTripPayment(tripId, {
         ...paymentDetails,
         driverEarnings: driverPayout,
         isCash: false
       });
       if (driverPartner?.nativeNotifs !== false) {
-        notifyTripCompleted(activeTripAction, driverPayout);
+        notifyTripCompleted(tripToSettle, driverPayout);
       }
     }
     playApplePaymentChime();
     triggerTactileHaptic('success');
     addToast(`Trip completed! ₹${driverPayout} credited to wallet.`, 'check');
     setActiveTripAction(null);
-    setPaymentCompletionModal(null);
     setDTab('dash');
   };
 
