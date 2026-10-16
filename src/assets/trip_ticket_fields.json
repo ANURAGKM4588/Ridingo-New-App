@@ -1,0 +1,87 @@
+{
+  "canvas": {
+    "width": 960,
+    "height": 1270
+  },
+  "text_color": "#1C2130",
+  "label_color": "#8B8A85",
+  "fields": {
+    "from_location": {
+      "type": "text",
+      "x": 140,
+      "y": 208,
+      "width": 760,
+      "height": 76,
+      "baseline": 284,
+      "align": "left",
+      "suggested_font_px": 52,
+      "max_lines": 1
+    },
+    "to_location": {
+      "type": "text",
+      "x": 140,
+      "y": 420,
+      "width": 760,
+      "height": 76,
+      "baseline": 496,
+      "align": "left",
+      "suggested_font_px": 52,
+      "max_lines": 1
+    },
+    "driver_name": {
+      "type": "text",
+      "x": 60,
+      "y": 640,
+      "width": 440,
+      "height": 76,
+      "baseline": 716,
+      "align": "left",
+      "suggested_font_px": 52,
+      "max_lines": 1
+    },
+    "total_fare": {
+      "type": "text",
+      "x": 560,
+      "y": 640,
+      "width": 340,
+      "height": 76,
+      "baseline": 716,
+      "align": "left",
+      "suggested_font_px": 60,
+      "note": "include currency symbol in the value string"
+    },
+    "otp_text": {
+      "type": "digit_boxes",
+      "count": 4,
+      "boxes": [
+        {
+          "x": 60,
+          "y": 990,
+          "width": 180,
+          "height": 150
+        },
+        {
+          "x": 280,
+          "y": 990,
+          "width": 180,
+          "height": 150
+        },
+        {
+          "x": 500,
+          "y": 990,
+          "width": 180,
+          "height": 150
+        },
+        {
+          "x": 720,
+          "y": 990,
+          "width": 180,
+          "height": 150
+        }
+      ],
+      "align": "center",
+      "suggested_font_px": 84,
+      "note": "one digit per box; for 6-digit OTPs use boxes ~118x140 with 26px gap"
+    }
+  }
+}
