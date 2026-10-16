@@ -577,36 +577,75 @@ export async function dismissIncomingRideNotification(tripId = '') {
   }
 }
 
+// Global deduplication cache for user push notifications
+const sentUserNotificationsCache = new Set();
+try {
+  if (typeof localStorage !== 'undefined') {
+    const savedSent = JSON.parse(localStorage.getItem('ridingo_sent_user_notifications') || '[]');
+    if (Array.isArray(savedSent)) {
+      savedSent.forEach(k => sentUserNotificationsCache.add(k));
+    }
+  }
+} catch (_) {}
+
 /**
  * 7. Send Device Default Native Notification for User App upon Chauffeur Acceptance
+ * Enforces strict single-delivery deduplication so the user only receives one push notification.
  */
 export async function sendUserNativeNotification(title, body, options = {}) {
-  const {
-    id = Math.floor(Math.random() * 500000) + 10000,
-    tag = 'user_driver_assigned_' + Date.now(),
-    extra = {}
-  } = options;
+  const tripKey = String(options.extra?.tripId || options.tag || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^trp-/, '');
 
-  // 1. Play minimal gentle tone
+  // 1. Strict deduplication check: If this trip accepted notification was already delivered, suppress it
+  if (tripKey) {
+    const notifKey = `user_accepted_${tripKey}`;
+    if (sentUserNotificationsCache.has(notifKey)) {
+      console.info('[UserNotifications] Suppressed duplicate notification for trip:', tripKey);
+      return false;
+    }
+    sentUserNotificationsCache.add(notifKey);
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const list = JSON.parse(localStorage.getItem('ridingo_sent_user_notifications') || '[]');
+        if (!list.includes(notifKey)) {
+          list.push(notifKey);
+          if (list.length > 50) list.shift();
+          localStorage.setItem('ridingo_sent_user_notifications', JSON.stringify(list));
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Calculate stable deterministic notification ID so OS notification manager replaces rather than stacks
+  const numericId = tripKey ? parseInt(tripKey.replace(/\D/g, '') || '1001', 10) : 1001;
+  const stableId = options.id || (30000 + (numericId % 60000));
+  const stableTag = options.tag || (tripKey ? `user_trip_assigned_${tripKey}` : `user_driver_assigned_${Date.now()}`);
+
+  const { extra = {} } = options;
+
+  // 2. Play minimal gentle tone
   try {
     playCustomTone('soft_chime');
   } catch (e) {}
 
-  // 2. Vibration
+  // 3. Vibration
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     try {
       navigator.vibrate([100, 50, 150]);
     } catch (e) {}
   }
 
-  // 3. Native Device Notification (Capacitor iOS & Android)
+  // 4. Native Device Notification (Capacitor iOS & Android)
   if (Capacitor.isNativePlatform()) {
     try {
       await ensureNativeChannel();
       await LocalNotifications.schedule({
         notifications: [
           {
-            id,
+            id: stableId,
             title,
             body,
             channelId: 'user_trip_updates',
@@ -616,6 +655,7 @@ export async function sendUserNativeNotification(title, body, options = {}) {
             schedule: { at: new Date(Date.now() + 50) },
             extra: {
               ...extra,
+              tripId: tripKey || extra.tripId,
               timestamp: Date.now(),
               source: 'RidingoUser'
             }
@@ -628,7 +668,7 @@ export async function sendUserNativeNotification(title, body, options = {}) {
     }
   }
 
-  // 4. Web Browser Notification
+  // 5. Web Browser Notification with stable tag to prevent multiple browser toasts
   if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
       const appIconUrl = window.location?.origin ? `${window.location.origin}/App%20icon.png` : '/App icon.png';
@@ -637,7 +677,7 @@ export async function sendUserNativeNotification(title, body, options = {}) {
           body,
           icon: appIconUrl,
           badge: appIconUrl,
-          tag,
+          tag: stableTag,
           silent: false
         });
         return true;

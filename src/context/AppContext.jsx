@@ -256,6 +256,9 @@ export function AppProvider({ children }) {
   // Settled trip tracking to prevent duplicate payment settlement or loop
   const settledTripIdsRef = useRef(new Set());
 
+  // Normalization helper for consistent trip ID matching
+  const normalizeTripKey = (id) => String(id || '').trim().toLowerCase().replace(/^trp-/, '');
+
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
@@ -269,19 +272,61 @@ export function AppProvider({ children }) {
         savedSettled.forEach(id => settledTripIdsRef.current.add(id));
       }
     } catch (_) {}
+    try {
+      const savedNotified = JSON.parse(localStorage.getItem('ridingo_user_notified_accepted_trips') || '[]');
+      if (Array.isArray(savedNotified)) {
+        savedNotified.forEach(id => {
+          const k = normalizeTripKey(id);
+          if (k) notifiedAcceptedTripsRef.current.add(k);
+        });
+      }
+    } catch (_) {}
   }, []);
 
   const notifyUserTripAccepted = (tripId, driverName = 'Ravi Kumar', driverPhone = '+91 94471 23456', targetOtp = '4821') => {
-    if (!tripId || notifiedAcceptedTripsRef.current.has(tripId)) return;
-    notifiedAcceptedTripsRef.current.add(tripId);
+    const key = normalizeTripKey(tripId);
+    if (!key) return;
+
+    // Strict deduplication check 1: In-memory ref
+    if (notifiedAcceptedTripsRef.current.has(key)) return;
+
+    // Strict deduplication check 2: Persistent localStorage
+    let persisted = [];
+    try {
+      persisted = JSON.parse(localStorage.getItem('ridingo_user_notified_accepted_trips') || '[]');
+      if (!Array.isArray(persisted)) persisted = [];
+    } catch (_) {
+      persisted = [];
+    }
+
+    if (persisted.some(id => normalizeTripKey(id) === key)) {
+      notifiedAcceptedTripsRef.current.add(key);
+      return;
+    }
+
+    // Atomically register before firing to prevent any race condition
+    notifiedAcceptedTripsRef.current.add(key);
+    try {
+      persisted.push(key);
+      if (persisted.length > 50) persisted = persisted.slice(-50);
+      localStorage.setItem('ridingo_user_notified_accepted_trips', JSON.stringify(persisted));
+    } catch (_) {}
 
     const isUserDevice = typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver';
     if (!isUserDevice) return;
 
+    // Calculate deterministic notification ID from tripId to ensure OS-level deduplication
+    const numericPortion = parseInt(key.replace(/\D/g, '') || '1001', 10);
+    const stableNotificationId = 30000 + (numericPortion % 60000);
+
     sendUserNativeNotification(
       `Chauffeur Assigned: ${driverName}`,
       `${driverName} (${driverPhone}) is en route to your pickup. Your 4-digit Pickup OTP is ${targetOtp}.`,
-      { extra: { tripId, driverName, driverPhone, otp: targetOtp } }
+      {
+        id: stableNotificationId,
+        tag: `user_trip_assigned_${key}`,
+        extra: { tripId: key, driverName, driverPhone, otp: targetOtp }
+      }
     );
   };
 
@@ -649,15 +694,29 @@ export function AppProvider({ children }) {
       dismissIncomingRideNotification(tripId);
       stopActiveTone();
 
-      // 1. In-App Notification
-      addNotification(
-        'Chauffeur Assigned',
-        `${driverName} is on the way to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
-        'car'
-      );
+      // 1. In-App Notification (Deduplicated so user notification tray only has 1 entry)
+      const noteTag = `trip-acc-${tripId}`;
+      setUnotes(prev => {
+        if (prev.some(n => n.tag === noteTag || (n.extra?.tripId && normalizeTripKey(n.extra.tripId) === normalizeTripKey(tripId)))) {
+          return prev;
+        }
+        return [
+          {
+            id: 'notif-' + Date.now(),
+            ts: Date.now(),
+            title: 'Chauffeur Assigned',
+            body: `${driverName} is on the way to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
+            icon: 'car',
+            read: false,
+            tag: noteTag,
+            extra: { tripId, driverName, otp: targetOtp }
+          },
+          ...prev
+        ];
+      });
       addToast(`Chauffeur confirmed. ${driverName} accepted your ride.`, 'check');
 
-      // 2. Native Device Default System Notification for User App with driver details
+      // 2. Native Device Default System Push Notification for User App (Strictly Once)
       if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
         notifyUserTripAccepted(tripId, driverName, driverPhone, targetOtp);
       }
@@ -1490,15 +1549,10 @@ export function AppProvider({ children }) {
     dismissIncomingRideNotification(tripId);
     stopActiveTone();
 
-    // Notify User App in real time
-    addNotification(
-      'Chauffeur Assigned',
-      `${driver.name} (Rating ${driver.rating || '4.8'}) is en route to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
-      'car'
-    );
-    addToast(`Trip confirmed. ${driver.name} accepted your ride.`, 'check');
+    // Driver-specific confirmation feedback
+    addToast('Ride accepted. Proceeding to pickup location.', 'check');
 
-    // Broadcast across realtime bus & update Supabase
+    // Broadcast across realtime bus & update Supabase (User app will receive TRIP_ACCEPTED strictly once)
     realtime.acceptRide(tripId, driverObj, targetOtp);
     updateTripStatusInSupabase(tripId, 'accepted', {
       driver: driverObj
