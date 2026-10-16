@@ -26,7 +26,6 @@ export default function TripsTab() {
   } = useApp();
 
   const [filter, setFilter] = useState('all');
-  const [expandedId, setExpandedId] = useState(null);
 
   const handlePayRemaining = (trip) => {
     const rem = Math.max(0, trip.fare - (trip.advance || Math.round(trip.fare * 0.3)));
@@ -79,10 +78,6 @@ export default function TripsTab() {
   if (filter === 'cancel') {
     list = list.filter(t => t.status === 'cancelled');
   }
-
-  const toggleExpand = (id) => {
-    setExpandedId(prev => (prev === id ? null : id));
-  };
 
   const getStatusPill = (status) => {
     switch (status) {
@@ -178,42 +173,30 @@ export default function TripsTab() {
         <div className="trip-list">
           {list.map((t, idx) => {
             const c = CATS[t.cat] || CATS.hourly;
-            const isOpen = expandedId === t.id;
             const destName = t.drop_loc || t.pickup || `${c.name} trip`;
             const isAssigned = ['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status);
-            const isWaiting = t.status === 'requested';
-            const advancePaid = t.advance || Math.ceil(t.fare * 0.3);
-            const remainingDue = Math.max(0, t.fare - advancePaid);
 
             return (
               <div
                 key={t.id}
                 className={`trip-row stagger-${Math.min(6, 3 + idx)}`}
+                onClick={() => {
+                  if (['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status)) {
+                    if (setActiveTrackingTripId) setActiveTrackingTripId(t.id);
+                    if (setLiveTrackingOpen) setLiveTrackingOpen(true);
+                  }
+                }}
                 style={{
-                  background: isOpen ? 'var(--card, #FFFFFF)' : 'transparent',
-                  borderRadius: isOpen ? '20px' : '0px',
-                  border: isOpen ? '1.5px solid var(--line, #E2E8F0)' : 'none',
-                  borderBottom: !isOpen ? '1px solid var(--line, #E2E8F0)' : '1.5px solid var(--line, #E2E8F0)',
-                  padding: isOpen ? '16px' : '14px 4px',
-                  margin: isOpen ? '10px 0' : '0',
-                  boxShadow: isOpen ? '0 6px 24px rgba(0, 0, 0, 0.06)' : 'none',
-                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+                  cursor: isAssigned ? 'pointer' : 'default'
                 }}
               >
-                {/* Clickable Header */}
-                <button
-                  type="button"
-                  className="trip-row-head"
-                  onClick={() => toggleExpand(t.id)}
-                  aria-expanded={isOpen}
-                  style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
-                >
+                <div className="trip-row-head">
                   <span className="trip-row-ic">
                     <Icon name={c.icon || 'hourly'} size={22} />
                   </span>
                   <div className="trip-row-main">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <b className="trip-row-title ell" style={{ fontSize: '15px' }}>{destName}</b>
+                      <b className="trip-row-title ell">{destName}</b>
                       {isAssigned && (
                         <span
                           style={{
@@ -237,203 +220,9 @@ export default function TripsTab() {
                   </div>
                   <div className="trip-row-right">
                     <span className="trip-row-amt">₹{t.fare}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {getStatusPill(t.status)}
-                      <span
-                        style={{
-                          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                          color: 'var(--muted)',
-                          display: 'inline-flex',
-                          alignItems: 'center'
-                        }}
-                      >
-                        <Icon name="chevronDown" size={15} />
-                      </span>
-                    </div>
+                    {getStatusPill(t.status)}
                   </div>
-                </button>
-
-                {/* Expanded Full Details (Very Minimal UI) */}
-                {isOpen && (
-                  <div className="trip-row-body" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--line, #E2E8F0)' }}>
-                    
-                    {/* Minimal Trip OTP Section (Only title and digits, no extra text) */}
-                    <div
-                      style={{
-                        background: 'var(--field)',
-                        color: 'var(--ink)',
-                        border: '1px solid var(--line)',
-                        borderRadius: '13px',
-                        padding: '12px 16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '8px'
-                      }}
-                    >
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
-                        {['inprogress', 'ending_otp'].includes(t.status) ? 'Trip End OTP' : 'Trip OTP'}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '22px',
-                          fontWeight: 800,
-                          letterSpacing: '5px',
-                          color: 'var(--ink)',
-                          fontFamily: 'var(--font-mono, monospace)',
-                          lineHeight: 1
-                        }}
-                      >
-                        {['inprogress', 'ending_otp'].includes(t.status) ? (t.endOtp || '8392') : (t.startOtp || '4821')}
-                      </span>
-                    </div>
-
-                    {/* Minimal Route Details */}
-                    <div className="route" style={{ margin: '4px 0' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                        <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink)' }}>{t.pickup}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
-                        <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink)' }}>
-                          {t.drop_loc || 'City Route · Stays with you'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Minimal Chauffeur & Vehicle Info */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        background: 'var(--field, #F8FAFC)',
-                        borderRadius: '12px',
-                        margin: '4px 0'
-                      }}
-                    >
-                      <div>
-                        <b style={{ fontSize: '13px', color: 'var(--ink)' }}>
-                          {t.driver || (isWaiting ? 'Assigning Chauffeur...' : 'Ravi Kumar')}
-                        </b>
-                        <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--muted)', marginTop: '1px' }}>
-                          {t.trans || t.car?.trans || 'Automatic'} Transmission
-                        </span>
-                      </div>
-                      {isAssigned && (
-                        <a
-                          href="tel:+919876543210"
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            background: '#000000',
-                            color: '#FFFFFF',
-                            padding: '6px 12px',
-                            borderRadius: '8px',
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                            textDecoration: 'none',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <Icon name="phone" size={12} />
-                          <span>Call</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Minimal Fare Summary */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '8px 12px',
-                        background: 'var(--field, #F8FAFC)',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        color: 'var(--muted)',
-                        margin: '2px 0 6px'
-                      }}
-                    >
-                      <span>Fare: <b style={{ color: 'var(--ink)' }}>₹{t.fare}</b></span>
-                      <span>Paid: <b style={{ color: '#16A34A' }}>₹{advancePaid} (30%)</b></span>
-                      <span>Due: <b style={{ color: 'var(--ink)' }}>₹{remainingDue}</b></span>
-                    </div>
-
-                    {/* Single Track on Live Map Button if Active */}
-                    {['accepted', 'pickup_arrived', 'inprogress'].includes(t.status) && (
-                      <button
-                        type="button"
-                        className="btn primary"
-                        style={{
-                          width: '100%',
-                          height: '42px',
-                          borderRadius: '12px',
-                          background: 'var(--solid)',
-                          color: 'var(--on-solid)',
-                          border: '1.5px solid var(--solid)',
-                          fontWeight: 750,
-                          fontSize: '13.5px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          cursor: 'pointer'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (setActiveTrackingTripId) setActiveTrackingTripId(t.id);
-                          setLiveTrackingOpen(true);
-                        }}
-                      >
-                        <Icon name="navigation" size={14} />
-                        <span>Track Chauffeur on Live Map</span>
-                      </button>
-                    )}
-
-                    {/* Pay Remaining Balance via PhonePe */}
-                    {['inprogress', 'completed'].includes(t.status) && !t.balancePaid && remainingDue > 0 && (
-                      <button
-                        type="button"
-                        className="btn primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePayRemaining(t);
-                        }}
-                        style={{
-                          width: '100%',
-                          height: '42px',
-                          borderRadius: '12px',
-                          fontWeight: 750,
-                          fontSize: '13.5px',
-                          background: 'var(--solid)',
-                          color: 'var(--on-solid)',
-                          border: '1.5px solid var(--solid)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          marginTop: '4px'
-                        }}
-                      >
-                        <span>Pay Remaining ₹{remainingDue} via PhonePe</span>
-                      </button>
-                    )}
-
-                    {t.balancePaid && (
-                      <div style={{ padding: '6px 10px', borderRadius: '8px', background: 'rgba(34, 197, 94, 0.1)', color: '#16A34A', fontSize: '11.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Icon name="check" size={14} color="#16A34A" />
-                        <span>100% Settled via PhonePe</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                </div>
               </div>
             );
           })}

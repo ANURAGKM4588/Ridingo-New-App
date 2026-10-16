@@ -5,9 +5,11 @@ import { realtime } from '../utils/realtime';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
 import DriverOnboardingModal from './DriverOnboardingModal';
-import TripInvoiceModal, { generate4CharPaymentOtp } from './TripInvoiceModal';
+import TripInvoiceModal from './TripInvoiceModal';
 import TripOtpModal from './TripOtpModal';
 import VehicleConditionModal from './VehicleConditionModal';
+import ContactProfileCard from './ContactProfileCard';
+import CustomVideoPlayer from './CustomVideoPlayer';
 import { supabase } from '../lib/supabase';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
 import {
@@ -727,6 +729,7 @@ function FullScreenSuccessBloom({
  */
 function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
   const [countdown, setCountdown] = useState(30);
+  const [isAccepting, setIsAccepting] = useState(false);
 
   useEffect(() => {
     setCountdown(30);
@@ -1008,7 +1011,12 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
 
           <button
             type="button"
-            onClick={() => onAccept(trip.id)}
+            disabled={isAccepting}
+            onClick={() => {
+              if (isAccepting) return;
+              setIsAccepting(true);
+              onAccept(trip.id);
+            }}
             style={{
               height: '48px',
               borderRadius: '14px',
@@ -1017,7 +1025,8 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
               color: '#FFFFFF',
               fontWeight: 800,
               fontSize: '15px',
-              cursor: 'pointer',
+              cursor: isAccepting ? 'not-allowed' : 'pointer',
+              opacity: isAccepting ? 0.7 : 1,
               boxShadow: '0 4px 16px rgba(22, 163, 74, 0.35)',
               display: 'flex',
               alignItems: 'center',
@@ -1026,7 +1035,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
               boxSizing: 'border-box'
             }}
           >
-            <span>Accept Ride</span>
+            <span>{isAccepting ? 'Accepting...' : 'Accept Ride'}</span>
             <Icon name="check" size={16} color="#FFFFFF" />
           </button>
         </div>
@@ -1079,6 +1088,7 @@ export default function DriverApp() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [activeVehicleTrip, setActiveVehicleTrip] = useState(null);
   const [paymentCompletionModal, setPaymentCompletionModal] = useState(null);
+  const [expandedHistoryTripId, setExpandedHistoryTripId] = useState(null);
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
   const [driverCustomTune, setDriverCustomTune] = useState(getSelectedCustomTune());
@@ -1787,16 +1797,14 @@ export default function DriverApp() {
   };
 
   // 6. Settle Digital Payment (Company 30%, Driver 70% + Tip credited to wallet)
-  // Generates unique 4-character completion OTP upon successful payment
+  // End of trip requires NO OTP verification, auto-redirects directly to Home/Dashboard
   const handleDigitalPaymentSuccess = (paymentDetails) => {
     setShowInvoiceModal(false);
-    const completionOtp = paymentDetails?.paymentCompletionOtp || generate4CharPaymentOtp();
     const driverPayout = paymentDetails?.driverEarnings || Math.round((Number(activeTripAction?.fare) || 650) * 0.70);
     if (settleTripPayment && activeTripAction) {
       settleTripPayment(activeTripAction.id, {
         ...paymentDetails,
         driverEarnings: driverPayout,
-        paymentCompletionOtp: completionOtp,
         isCash: false
       });
       if (driverPartner?.nativeNotifs !== false) {
@@ -1805,12 +1813,10 @@ export default function DriverApp() {
     }
     playApplePaymentChime();
     triggerTactileHaptic('success');
-    // Display Unique 4-character Completion OTP Modal
-    setPaymentCompletionModal({
-      otp: completionOtp,
-      trip: activeTripAction,
-      amount: driverPayout
-    });
+    addToast(`Trip completed! ₹${driverPayout} credited to wallet.`, 'check');
+    setActiveTripAction(null);
+    setPaymentCompletionModal(null);
+    setDTab('dash');
   };
 
   // 9. Strict Cash Violation (Issue Black Mark & Record Penalty)
@@ -1823,6 +1829,9 @@ export default function DriverApp() {
       });
     }
     triggerTactileHaptic('warn');
+    setActiveTripAction(null);
+    setPaymentCompletionModal(null);
+    setDTab('dash');
   };
 
   // Dynamic earnings and trip calculations
@@ -2376,6 +2385,17 @@ export default function DriverApp() {
                           </span>
                         </div>
 
+                        {/* Passenger Profile Card with working Call & WhatsApp buttons */}
+                        <div style={{ marginTop: '10px', marginBottom: '8px' }}>
+                          <ContactProfileCard
+                            name={t.rider?.name || 'Customer'}
+                            role="Passenger / Car Owner"
+                            phone={t.rider?.phone || '+91 98470 12345'}
+                            rating="4.9"
+                            badge="Verified Rider"
+                          />
+                        </div>
+
                         {/* Workflow Action Buttons */}
                         {t.status === 'accepted' && (
                           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
@@ -2628,25 +2648,163 @@ export default function DriverApp() {
                 <div className="trip-list">
                   {filtered.map((t, idx) => {
                     const c = CATS[t.cat] || CATS.hourly;
+                    const isOpen = expandedHistoryTripId === t.id;
+                    const destName = t.drop_loc || t.pickup || `${c.name} trip`;
+                    const fare = Number(t.fare) || 600;
+                    const driverEarn = Math.round(fare * 0.70);
+                    const platformFee = fare - driverEarn;
+
                     return (
-                      <div key={t.id} className={`trip-row stagger-${Math.min(6, 3 + idx)}`}>
-                        <div className="trip-row-head">
+                      <div
+                        key={t.id}
+                        className={`trip-row stagger-${Math.min(6, 3 + idx)}`}
+                        style={{
+                          background: isOpen ? 'var(--card, #FFFFFF)' : 'transparent',
+                          borderRadius: isOpen ? '20px' : '0px',
+                          border: isOpen ? '1.5px solid var(--line, #E2E8F0)' : 'none',
+                          borderBottom: !isOpen ? '1px solid var(--line, #E2E8F0)' : '1.5px solid var(--line, #E2E8F0)',
+                          padding: isOpen ? '16px' : '14px 4px',
+                          margin: isOpen ? '10px 0' : '0',
+                          boxShadow: isOpen ? '0 6px 24px rgba(0, 0, 0, 0.06)' : 'none',
+                          transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                      >
+                        {/* Clickable Header with Auto-Collapse */}
+                        <button
+                          type="button"
+                          className="trip-row-head"
+                          onClick={() => setExpandedHistoryTripId(prev => (prev === t.id ? null : t.id))}
+                          aria-expanded={isOpen}
+                          style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+                        >
                           <span className="trip-row-ic">
-                            <Icon name={c.icon} size={22} />
+                            <Icon name={c.icon || 'hourly'} size={22} />
                           </span>
                           <div className="trip-row-main">
-                            <b className="trip-row-title ell">{t.drop_loc || t.pickup}</b>
+                            <b className="trip-row-title ell" style={{ fontSize: '15px' }}>{destName}</b>
                             <span className="trip-row-sub ell">
                               {c.name} · {t.rider?.name || 'Customer'}
                             </span>
                           </div>
                           <div className="trip-row-right">
                             <span className="trip-row-amt">₹{t.fare}</span>
-                            <span className={`pill ${t.status === 'completed' ? 'done' : 'good'}`}>
-                              {t.status === 'completed' ? 'Completed' : 'Active'}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className={`pill ${t.status === 'completed' ? 'done' : 'good'}`}>
+                                {t.status === 'completed' ? 'Completed' : 'Active'}
+                              </span>
+                              <span
+                                style={{
+                                  transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                  transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  color: 'var(--muted)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                <Icon name="chevronDown" size={15} />
+                              </span>
+                            </div>
                           </div>
-                        </div>
+                        </button>
+
+                        {/* Expanded Full Details */}
+                        {isOpen && (
+                          <div className="trip-row-body" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--line, #E2E8F0)' }}>
+                            {/* Passenger Profile Card (no call/WhatsApp buttons in history per requirement) */}
+                            <div style={{ marginBottom: '10px' }}>
+                              <ContactProfileCard
+                                name={t.rider?.name || 'Customer'}
+                                role="Passenger / Car Owner"
+                                phone={t.rider?.phone || '+91 98470 12345'}
+                                rating="4.9"
+                                badge="Verified Rider"
+                                showActions={false}
+                              />
+                            </div>
+
+                            {/* Complete Route & Telemetry Details */}
+                            <div className="route" style={{ margin: '8px 0', padding: '10px 12px', background: 'var(--field, #F8FAFC)', borderRadius: '14px', border: '1px solid var(--line, #E2E8F0)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
+                                <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 650 }}>{t.pickup}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
+                                <span className="ell" style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 650 }}>
+                                  {t.drop_loc || 'City Route · Stays with you'}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '16px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--line, #E2E8F0)', fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
+                                <span>Distance: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.distanceText || '12.4 km'}</b></span>
+                                <span>Estimated: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.durationText || '28 mins'}</b></span>
+                                <span>Car: <b style={{ color: 'var(--ink, #0F172A)' }}>{t.car?.model || 'Sedan'} ({t.trans || t.car?.trans || 'Automatic'})</b></span>
+                              </div>
+                            </div>
+
+                            {/* Pre-Trip Vehicle Condition Images Gallery */}
+                            <div style={{ margin: '10px 0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
+                                  Vehicle Inspection Photos (4-Angle)
+                                </b>
+                                <span style={{ fontSize: '10.5px', color: '#16A34A', fontWeight: 700 }}>
+                                  Verified Condition
+                                </span>
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                                {[
+                                  { label: 'Front', img: t.vehicleDetails?.photos?.front || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=400&auto=format&fit=crop&q=80' },
+                                  { label: 'Left Profile', img: t.vehicleDetails?.photos?.left || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&auto=format&fit=crop&q=80' },
+                                  { label: 'Rear', img: t.vehicleDetails?.photos?.back || 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&auto=format&fit=crop&q=80' },
+                                  { label: 'Dashboard', img: t.vehicleDetails?.photos?.top || 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=400&auto=format&fit=crop&q=80' }
+                                ].map((p, pIdx) => (
+                                  <div key={pIdx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '4/3', border: '1px solid var(--line, #E2E8F0)', background: '#000' }}>
+                                    <img src={p.img} alt={p.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <span style={{ position: 'absolute', bottom: 0, insetInline: 0, padding: '2px', background: 'rgba(0,0,0,0.65)', color: '#FFFFFF', fontSize: '9px', textAlign: 'center', fontWeight: 700 }}>
+                                      {p.label}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Custom Video Player with Play, Pause & Replay */}
+                            <div style={{ margin: '10px 0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
+                                  Walkaround Inspection Video
+                                </b>
+                                <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)' }}>
+                                  Controls: Play · Pause · Replay
+                                </span>
+                              </div>
+                              <CustomVideoPlayer
+                                src={t.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'}
+                                poster={t.vehicleDetails?.photos?.front || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=600&auto=format&fit=crop&q=80'}
+                                title={`${t.car?.model || 'Vehicle'} Walkaround Inspection`}
+                              />
+                            </div>
+
+                            {/* Driver Earnings & Fare Breakdown */}
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '10px 12px',
+                                background: 'var(--field, #F8FAFC)',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                color: 'var(--muted, #64748B)',
+                                margin: '6px 0 4px'
+                              }}
+                            >
+                              <span>Total Fare: <b style={{ color: 'var(--ink, #0F172A)' }}>₹{fare}</b></span>
+                              <span>Commission: <b style={{ color: 'var(--muted, #64748B)' }}>₹{platformFee} (30%)</b></span>
+                              <span>Your Earning: <b style={{ color: '#16A34A', fontWeight: 850 }}>₹{driverEarn} (70%)</b></span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -4155,7 +4313,7 @@ export default function DriverApp() {
       </nav>
 
       {/* Real-time incoming ride request pop-up on Driver App */}
-      {incomingTripRequest && (!minimizedRequestTripId || minimizedRequestTripId !== incomingTripRequest.id) && (
+      {incomingTripRequest && incomingTripRequest.status === 'requested' && (!minimizedRequestTripId || minimizedRequestTripId !== incomingTripRequest.id) && (
         <IncomingRideModal
           trip={incomingTripRequest}
           onAccept={handleAccept}
@@ -4279,6 +4437,17 @@ export default function DriverApp() {
               </div>
             </div>
 
+            {/* Customer Profile Card with working Call & WhatsApp buttons */}
+            <div style={{ marginBottom: '16px' }}>
+              <ContactProfileCard
+                name={selectedRequestDetails.rider?.name || 'Customer'}
+                role="Passenger / Car Owner"
+                phone={selectedRequestDetails.rider?.phone || '+91 98470 12345'}
+                rating="4.9"
+                badge="Verified Rider"
+              />
+            </div>
+
             {/* Additional Info: Transmission & Advance */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
               <div style={{ padding: '10px 12px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)' }}>
@@ -4352,128 +4521,7 @@ export default function DriverApp() {
         />
       )}
 
-      {/* 4-Character Unique Payment Completion OTP Modal */}
-      {paymentCompletionModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 10010,
-            background: 'rgba(15, 23, 42, 0.8)',
-            backdropFilter: 'blur(5px)',
-            WebkitBackdropFilter: 'blur(5px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: '24px',
-              padding: '24px',
-              maxWidth: '360px',
-              width: '100%',
-              textAlign: 'center',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-              animation: 'slideUp 0.25s ease-out'
-            }}
-          >
-            <div
-              style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                background: 'rgba(22, 163, 74, 0.12)',
-                color: '#16A34A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 12px',
-                fontSize: '28px'
-              }}
-            >
-              <Icon name="check" size={28} color="#16A34A" />
-            </div>
-            <h3 style={{ fontSize: '20px', fontWeight: 850, color: '#0F172A', margin: '0 0 4px' }}>
-              Payment Complete!
-            </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 16px', lineHeight: 1.4 }}>
-              Unique 4-Character Trip Completion OTP generated for trip <b>{paymentCompletionModal.trip?.id}</b>:
-            </p>
 
-            {/* 4-Character OTP Display */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '10px',
-                margin: '0 0 16px'
-              }}
-            >
-              {paymentCompletionModal.otp.split('').map((char, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '52px',
-                    height: '58px',
-                    borderRadius: '12px',
-                    background: '#F1F5F9',
-                    border: '2px solid #0F172A',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '28px',
-                    fontWeight: 900,
-                    color: '#0F172A',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.06)'
-                  }}
-                >
-                  {char}
-                </div>
-              ))}
-            </div>
-
-            <div
-              style={{
-                background: '#F8FAFC',
-                borderRadius: '12px',
-                padding: '10px',
-                marginBottom: '16px',
-                fontSize: '12.5px',
-                color: '#16A34A',
-                fontWeight: 750
-              }}
-            >
-              Driver Earnings Credited: ₹{paymentCompletionModal.amount}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentCompletionModal(null);
-                setActiveTripAction(null);
-                setDTab('history');
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '14px',
-                background: '#000000',
-                color: '#FFFFFF',
-                fontSize: '14px',
-                fontWeight: 800,
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.2)'
-              }}
-            >
-              Done & View Trip History
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Digital Invoice & Animated PhonePe UPI QR Modal */}
       {showInvoiceModal && (

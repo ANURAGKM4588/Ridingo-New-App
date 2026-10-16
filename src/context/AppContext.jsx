@@ -297,6 +297,17 @@ export function AppProvider({ children }) {
 
   // Push notification deduplication set for User App
   const notifiedAcceptedTripsRef = useRef(new Set());
+  // Accepted trip tracking to eliminate incoming ride popup glitch on Driver App
+  const acceptedTripIdsRef = useRef(new Set());
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
+      if (Array.isArray(saved)) {
+        saved.forEach(id => acceptedTripIdsRef.current.add(id));
+      }
+    } catch (_) {}
+  }, []);
 
   const notifyUserTripAccepted = (tripId, driverName = 'Ravi Kumar', driverPhone = '+91 94471 23456', targetOtp = '4821') => {
     if (!tripId || notifiedAcceptedTripsRef.current.has(tripId)) return;
@@ -397,7 +408,8 @@ export function AppProvider({ children }) {
         const activeReqs = mapped.filter(t =>
           t.status === 'requested' &&
           Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000 &&
-          !declinedTripIds.includes(t.id)
+          !declinedTripIds.includes(t.id) &&
+          !acceptedTripIdsRef.current.has(t.id)
         );
         if (activeReqs.length > 0) {
           setIncomingTripRequest(activeReqs[0]);
@@ -487,7 +499,7 @@ export function AppProvider({ children }) {
                     try {
                       declinedTripIds = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
                     } catch (_) {}
-                    if (!declinedTripIds.includes(tripObj.id)) {
+                    if (!declinedTripIds.includes(tripObj.id) && !acceptedTripIdsRef.current.has(tripObj.id)) {
                       setIncomingTripRequest(tripObj);
                     }
                   } else if (tripObj.status === 'accepted') {
@@ -672,6 +684,10 @@ export function AppProvider({ children }) {
         'Thank you for riding with Ridingo. Your digital invoice has been settled.',
         'check'
       );
+      // Automatic redirection to the home screen after trip completion and payment settlement
+      setLiveTrackingOpen(false);
+      setActiveTrackingTripId(null);
+      setUTab('home');
     });
 
     return () => {
@@ -1330,6 +1346,16 @@ export function AppProvider({ children }) {
   };
 
   const acceptTrip = (tripId) => {
+    // Record in persistent accepted tracking to prevent any popup glitch
+    acceptedTripIdsRef.current.add(tripId);
+    try {
+      const existing = JSON.parse(localStorage.getItem('ridingo_accepted_trips') || '[]');
+      if (!existing.includes(tripId)) {
+        existing.push(tripId);
+        localStorage.setItem('ridingo_accepted_trips', JSON.stringify(existing));
+      }
+    } catch (_) {}
+
     const driver = driverPartner || DEFAULT_DRIVER;
     const driverId = getDeviceDriverId(driver);
     const driverObj = {
@@ -1440,20 +1466,10 @@ export function AppProvider({ children }) {
     );
   };
 
-  const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false, paymentCompletionOtp } = {}) => {
+  const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false } = {}) => {
     const tripFare = fare || 750;
     const companyCommission = Math.round(tripFare * 0.30); // 30% platform fee
     const driverEarnings = Math.round(tripFare * 0.70) + Number(tip || 0); // 70% driver payout + tip
-
-    // Generate unique 4-character OTP upon payment completion
-    const completionOtp = paymentCompletionOtp || (() => {
-      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-      let otp = '';
-      for (let i = 0; i < 4; i++) {
-        otp += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return otp;
-    })();
 
     if (isCash) {
       // PENALTY: Increment Black Mark for accepting cash
@@ -1463,7 +1479,7 @@ export function AppProvider({ children }) {
       }));
       addToast('Violation: 1 Black Mark issued for cash transaction!', 'warn');
     } else {
-      addToast(`₹${driverEarnings} credited to Chauffeur Wallet! Completion OTP: ${completionOtp}`, 'check');
+      addToast(`₹${driverEarnings} credited to Chauffeur Wallet!`, 'check');
     }
 
     // Update driver partner wallet
@@ -1472,37 +1488,39 @@ export function AppProvider({ children }) {
       {
         id: 'tx-' + Date.now(),
         title: `Trip Earnings · ${method}`,
-        sub: `Net 70% (₹${Math.round(tripFare * 0.70)}) + Tip (₹${tip}) · OTP: ${completionOtp}`,
+        sub: `Net 70% (₹${Math.round(tripFare * 0.70)}) + Tip (₹${tip}) · Settled`,
         amount: driverEarnings,
         type: 'fare',
         gateway: 'PhonePe Escrow',
-        completionOtp,
         ts: Date.now()
       },
       ...prev
     ]);
 
-    // Mark trip complete with unique 4-character OTP
+    // Mark trip complete directly without any end OTP
     setTrips(prev =>
       prev.map(t => (t.id === tripId ? {
         ...t,
         status: 'completed',
         completedAt: Date.now(),
-        paymentCompletionOtp: completionOtp,
         finalSettlement: {
           total: amount || tripFare,
           driverEarnings,
           commission: companyCommission,
           tip,
           method,
-          isCash,
-          completionOtp
+          isCash
         }
       } : t))
     );
 
-    realtime.completeRide(tripId, { amount, fare, tip, isCash, completionOtp });
-    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now(), otp: completionOtp });
+    realtime.completeRide(tripId, { amount, fare, tip, isCash });
+    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now() });
+
+    // Auto-redirect User App to home if currently viewing this completed trip
+    setLiveTrackingOpen(false);
+    setActiveTrackingTripId(null);
+    setUTab('home');
   };
 
   // Driver decline logic: Declining a trip locally does NOT affect other drivers

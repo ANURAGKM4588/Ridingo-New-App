@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import GraphicLiveMap, { getRouteTelemetry } from './GraphicLiveMap';
 import { openInGoogleMaps } from '../services/googleMapsService';
+import ContactProfileCard from './ContactProfileCard';
 
 export default function LiveTrackingSheet() {
   const {
@@ -411,51 +412,17 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* Driver Contact Row */}
-              <div
-                className="card"
+              {/* Driver Contact Row with Consistent Call & WhatsApp Buttons */}
+              <ContactProfileCard
+                name={trip.driver || 'Ravi Kumar'}
+                role="Assigned Chauffeur"
+                phone={trip.driverObj?.phone || '+91 94471 23456'}
+                rating="4.9"
                 style={{
-                  padding: '14px',
-                  borderRadius: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
+                  background: 'var(--card)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
                 }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span className="av lg" style={{ width: '44px', height: '44px', fontWeight: 700, fontSize: '15px' }}>
-                    RK
-                  </span>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <b style={{ fontSize: '15px', color: 'var(--ink)' }}>{trip.driver || 'Ravi Kumar'}</b>
-                      <span style={{ background: 'rgba(255, 199, 10, 0.2)', color: 'var(--on-yellow-soft, var(--yellow))', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px' }}>
-                        Rating 4.9
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Assigned Chauffeur</span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    className="iconbtn"
-                    onClick={handleCall}
-                    title="Call Driver"
-                    style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)' }}
-                  >
-                    <Icon name="phone" size={17} />
-                  </button>
-                  <button
-                    className="iconbtn"
-                    onClick={handleChat}
-                    title="WhatsApp Driver"
-                    style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)', color: '#22C55E' }}
-                  >
-                    <Icon name="chat" size={17} />
-                  </button>
-                </div>
-              </div>
+              />
 
               {/* Trip Confirmed Lock Indicator - User cannot cancel once accepted */}
               <div
@@ -483,35 +450,7 @@ export default function LiveTrackingSheet() {
                3. ACTIVE IN-PROGRESS LIVE TRACKING VIEW (WITH LIVE MAP)
                ========================================================== */
             <>
-              {/* Payment Completion OTP Banner */}
-              {trip.paymentCompletionOtp && (
-                <div
-                  style={{
-                    background: '#000000',
-                    color: '#FFFFFF',
-                    borderRadius: '16px',
-                    padding: '14px 18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
-                    marginBottom: '12px',
-                    border: '1.5px solid #27272A'
-                  }}
-                >
-                  <div>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
-                      Payment Completion OTP
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginTop: '1px' }}>
-                      Verified trip payment settlement code
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '4px', color: '#10B981', fontFamily: 'monospace' }}>
-                    {trip.paymentCompletionOtp}
-                  </div>
-                </div>
-              )}
+
 
               {/* Quick Stats Grid */}
               <div
@@ -601,17 +540,42 @@ export default function LiveTrackingSheet() {
                     className="iconbtn"
                     onClick={handleCall}
                     title="Call Driver"
-                    style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)' }}
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: 'transparent',
+                      border: '1.5px solid var(--ink, #0F172A)',
+                      color: 'var(--ink, #0F172A)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0
+                    }}
                   >
-                    <Icon name="phone" size={17} />
+                    <Icon name="phone" size={16} />
                   </button>
                   <button
                     className="iconbtn"
                     onClick={handleChat}
                     title="WhatsApp Driver"
-                    style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)', color: '#22C55E' }}
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: '#25D366',
+                      border: 'none',
+                      color: '#FFFFFF',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: '0 3px 10px rgba(37, 211, 102, 0.35)'
+                    }}
                   >
-                    <Icon name="chat" size={17} />
+                    <Icon name="whatsapp" size={19} color="#FFFFFF" />
                   </button>
                 </div>
               </div>

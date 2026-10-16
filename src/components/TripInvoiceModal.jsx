@@ -2,18 +2,6 @@ import React, { useState } from 'react';
 import Icon from './Icon';
 import { generateLivePhonePeQrUrl } from '../utils/phonepe';
 
-/**
- * Generates a unique 4-character alphanumeric OTP upon payment completion
- */
-export const generate4CharPaymentOtp = () => {
-  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  let otp = '';
-  for (let i = 0; i < 4; i++) {
-    otp += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return otp;
-};
-
 export default function TripInvoiceModal({
   trip,
   onDigitalPaymentSuccess,
@@ -24,7 +12,6 @@ export default function TripInvoiceModal({
   const [customTip, setCustomTip] = useState('');
   const [showCashPenaltyDialog, setShowCashPenaltyDialog] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [completedOtp, setCompletedOtp] = useState(null);
 
   // Fare calculations: 30% Platform commission deducted -> Driver receives 70% earnings
   const baseFare = Number(trip?.fare) || 750;
@@ -41,10 +28,8 @@ export default function TripInvoiceModal({
 
   const handleSimulatePaymentSettlement = () => {
     setIsProcessingPayment(true);
-    const newOtp = generate4CharPaymentOtp();
     setTimeout(() => {
       setIsProcessingPayment(false);
-      setCompletedOtp(newOtp);
       if (onDigitalPaymentSuccess) {
         onDigitalPaymentSuccess({
           amount: totalDriverPayout,
@@ -52,11 +37,10 @@ export default function TripInvoiceModal({
           driverEarnings: driverEarningsNet,
           tip: tipAmount,
           method: 'PhonePe QR',
-          gateway: 'PhonePe Escrow',
-          paymentCompletionOtp: newOtp
+          gateway: 'PhonePe Escrow'
         });
       }
-    }, 1200);
+    }, 1000);
   };
 
   const handleConfirmCashViolation = () => {
