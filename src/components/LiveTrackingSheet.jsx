@@ -64,17 +64,16 @@ export default function LiveTrackingSheet() {
     return () => clearInterval(interval);
   }, [liveTrackingOpen, isStarted]);
 
-  // Auto-regenerate End OTP when nearing destination (around 1 km)
+  // Nearing destination alert (around 1 km)
   useEffect(() => {
     if (!liveTrackingOpen) return;
-    if (isStarted && parseFloat(distLeft) <= 1.0 && !trip.endOtpRegenerated) {
-      const freshOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    if (isStarted && parseFloat(distLeft) <= 1.0 && !trip.approachingNotified) {
       setTrips(prev =>
-        prev.map(t => (t.id === trip.id ? { ...t, endOtp: freshOtp, endOtpRegenerated: true } : t))
+        prev.map(t => (t.id === trip.id ? { ...t, approachingNotified: true } : t))
       );
-      addToast(`Nearing destination (around 1 km). Trip End OTP: ${freshOtp}`, 'info');
+      addToast('Approaching destination (around 1 km). Trip will complete shortly.', 'info');
     }
-  }, [liveTrackingOpen, isStarted, distLeft, trip.id, trip.endOtpRegenerated]);
+  }, [liveTrackingOpen, isStarted, distLeft, trip.id, trip.approachingNotified]);
 
   if (!liveTrackingOpen) return null;
 
@@ -444,8 +443,8 @@ export default function LiveTrackingSheet() {
                3. ACTIVE IN-PROGRESS LIVE TRACKING VIEW (WITH LIVE MAP)
                ========================================================== */
             <>
-              {/* Destination Drop OTP Banner */}
-              {(trip.status === 'ending_otp' || (isStarted && parseFloat(distLeft) <= 1.0)) && (
+              {/* Payment Completion OTP Banner */}
+              {trip.paymentCompletionOtp && (
                 <div
                   style={{
                     background: '#000000',
@@ -462,14 +461,14 @@ export default function LiveTrackingSheet() {
                 >
                   <div>
                     <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
-                      Trip End OTP
+                      Payment Completion OTP
                     </span>
                     <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginTop: '1px' }}>
-                      Share with chauffeur upon drop
+                      Verified trip payment settlement code
                     </span>
                   </div>
-                  <div style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '6px', color: '#FFFFFF', fontFamily: 'monospace' }}>
-                    {trip.endOtp || '8392'}
+                  <div style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '4px', color: '#10B981', fontFamily: 'monospace' }}>
+                    {trip.paymentCompletionOtp}
                   </div>
                 </div>
               )}

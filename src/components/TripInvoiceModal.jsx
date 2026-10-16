@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { generateLivePhonePeQrUrl } from '../utils/phonepe';
-import { MAJOR_UPI_APPS, triggerUpiDeepLink } from '../utils/upiDeepLink';
+
+/**
+ * Generates a unique 4-character alphanumeric OTP upon payment completion
+ */
+export const generate4CharPaymentOtp = () => {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let otp = '';
+  for (let i = 0; i < 4; i++) {
+    otp += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return otp;
+};
 
 export default function TripInvoiceModal({
   trip,
@@ -13,48 +24,47 @@ export default function TripInvoiceModal({
   const [customTip, setCustomTip] = useState('');
   const [showCashPenaltyDialog, setShowCashPenaltyDialog] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [completedOtp, setCompletedOtp] = useState(null);
 
-  const baseFare = trip?.fare || 750;
-  const advancePaid = trip?.advance || Math.round(baseFare * 0.3);
-  const balanceDue = Math.max(0, baseFare - advancePaid);
+  // Fare calculations: 30% Platform commission deducted -> Driver receives 70% earnings
+  const baseFare = Number(trip?.fare) || 750;
+  const driverEarningsNet = Math.round(baseFare * 0.70);
   const tipAmount = customTip !== '' ? (Number(customTip) || 0) : selectedTip;
-  const totalAmountToPay = balanceDue + tipAmount;
+  const totalDriverPayout = driverEarningsNet + tipAmount;
 
-  // Live PhonePe UPI QR Code
+  // Live PhonePe UPI QR Code for settlement
   const qrData = generateLivePhonePeQrUrl({
-    amount: totalAmountToPay,
+    amount: totalDriverPayout,
     transactionId: trip?.id,
-    note: `Ridingo Chauffeur Trip - ${trip?.id || 'TRP'}`
+    note: `Ridingo Chauffeur Settlement - ${trip?.id || 'TRP'}`
   });
 
-  const handleQuickUpiPay = (appId) => {
+  const handleSimulatePaymentSettlement = () => {
     setIsProcessingPayment(true);
-    triggerUpiDeepLink({
-      appId,
-      amount: totalAmountToPay,
-      orderId: trip?.id,
-      note: `Ridingo Trip Balance - ${trip?.id}`
-    });
-
+    const newOtp = generate4CharPaymentOtp();
     setTimeout(() => {
       setIsProcessingPayment(false);
-      onDigitalPaymentSuccess({
-        amount: totalAmountToPay,
-        fare: baseFare,
-        balance: balanceDue,
-        tip: tipAmount,
-        method: `${appId.toUpperCase()} UPI`,
-        gateway: 'PhonePe Escrow'
-      });
-    }, 1800);
+      setCompletedOtp(newOtp);
+      if (onDigitalPaymentSuccess) {
+        onDigitalPaymentSuccess({
+          amount: totalDriverPayout,
+          fare: baseFare,
+          driverEarnings: driverEarningsNet,
+          tip: tipAmount,
+          method: 'PhonePe QR',
+          gateway: 'PhonePe Escrow',
+          paymentCompletionOtp: newOtp
+        });
+      }
+    }, 1200);
   };
 
   const handleConfirmCashViolation = () => {
     setShowCashPenaltyDialog(false);
     onCashViolation({
-      amount: totalAmountToPay,
+      amount: totalDriverPayout,
       fare: baseFare,
-      balance: balanceDue,
+      driverEarnings: driverEarningsNet,
       tip: tipAmount
     });
   };
@@ -94,11 +104,11 @@ export default function TripInvoiceModal({
         {/* Header */}
         <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--line, #F1F5F9)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#2563EB', letterSpacing: '0.06em' }}>
-              TRIP COMPLETE · DIGITAL SETTLEMENT
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#16A34A', letterSpacing: '0.06em' }}>
+              TRIP COMPLETE · DRIVER SETTLEMENT
             </span>
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink, #0F172A)', margin: '2px 0 0' }}>
-              Final Invoice & Payment
+              Payment Receipt & Earnings
             </h2>
           </div>
           <button
@@ -123,30 +133,78 @@ export default function TripInvoiceModal({
 
         {/* Scrollable Body */}
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Fare Summary Card */}
-          <div style={{ background: 'var(--card, #F8FAFC)', borderRadius: '16px', padding: '16px', border: '1px solid var(--line, #E2E8F0)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13px' }}>
-              <span style={{ color: 'var(--muted, #64748B)' }}>Total Trip Fare</span>
-              <b style={{ color: 'var(--ink, #0F172A)' }}>₹{baseFare}</b>
+          
+          {/* Unique 4-Character Completion OTP Banner (when payment complete) */}
+          {completedOtp && (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #10B981, #059669)',
+                color: '#FFFFFF',
+                borderRadius: '18px',
+                padding: '16px',
+                textAlign: 'center',
+                boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
+                animation: 'pulse 1.5s infinite'
+              }}
+            >
+              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9 }}>
+                ✓ PAYMENT SETTLED · TRIP COMPLETION OTP
+              </span>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  margin: '10px 0 6px'
+                }}
+              >
+                {completedOtp.split('').map((ch, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      width: '42px',
+                      height: '48px',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 255, 255, 0.22)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.45)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      fontWeight: 900,
+                      letterSpacing: '1px'
+                    }}
+                  >
+                    {ch}
+                  </span>
+                ))}
+              </div>
+              <p style={{ fontSize: '11.5px', margin: 0, opacity: 0.95 }}>
+                Share this unique 4-character code to confirm payment completion.
+              </p>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13px' }}>
-              <span style={{ color: '#16A34A' }}>Advance Paid (30%)</span>
-              <span style={{ color: '#16A34A', fontWeight: 600 }}>- ₹{advancePaid}</span>
+          )}
+
+          {/* Driver Earnings Summary Card (Shows ONLY Driver's Earnings after 30% Commission) */}
+          <div style={{ background: 'var(--card, #F8FAFC)', borderRadius: '16px', padding: '16px', border: '1px solid var(--line, #E2E8F0)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13.5px' }}>
+              <span style={{ color: 'var(--muted, #64748B)', fontWeight: 600 }}>Driver Net Earnings (70%)</span>
+              <b style={{ color: '#16A34A', fontSize: '16px' }}>₹{driverEarningsNet}</b>
             </div>
             {tipAmount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13px' }}>
-                <span style={{ color: '#2563EB' }}>Driver Tip (100% to Driver)</span>
-                <span style={{ color: '#2563EB', fontWeight: 600 }}>+ ₹{tipAmount}</span>
+                <span style={{ color: '#2563EB', fontWeight: 600 }}>Driver Tip (100% to Driver)</span>
+                <span style={{ color: '#2563EB', fontWeight: 700 }}>+ ₹{tipAmount}</span>
               </div>
             )}
             <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '10px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <div>
-                <b style={{ fontSize: '15px', color: 'var(--ink, #0F172A)' }}>Total Payable Balance</b>
-                <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', display: 'block' }}>Includes 18% GST & Platform Escrow</span>
+                <b style={{ fontSize: '15px', color: 'var(--ink, #0F172A)' }}>Driver Payout</b>
+                <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', display: 'block' }}>30% platform commission deducted</span>
               </div>
-              <b style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink, #0F172A)' }}>
-                ₹{totalAmountToPay}
+              <b style={{ fontSize: '26px', fontWeight: 850, color: '#16A34A' }}>
+                ₹{totalDriverPayout}
               </b>
             </div>
           </div>
@@ -154,7 +212,7 @@ export default function TripInvoiceModal({
           {/* Add Tips Section */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Add Tip for Chauffeur</b>
+              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Chauffeur Tip</b>
               <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>100% credited to chauffeur</span>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -187,7 +245,7 @@ export default function TripInvoiceModal({
             </div>
           </div>
 
-          {/* Animated PhonePe Live UPI QR Code */}
+          {/* Live PhonePe QR Code for Settlement */}
           <div
             style={{
               background: 'var(--card, #FFFFFF)',
@@ -213,8 +271,11 @@ export default function TripInvoiceModal({
                 background: '#FFFFFF',
                 borderRadius: '16px',
                 border: '1.5px solid var(--line, #F1F5F9)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
+                boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                cursor: 'pointer'
               }}
+              onClick={handleSimulatePaymentSettlement}
+              title="Tap to verify/simulate PhonePe settlement"
             >
               <img
                 src={qrData.qrImageUrl}
@@ -224,42 +285,11 @@ export default function TripInvoiceModal({
             </div>
 
             <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)', marginTop: '10px' }}>
-              Scan with any UPI App: GPay, PhonePe, Paytm, CRED, Navi
+              Scan with GPay, PhonePe, Paytm, CRED or Navi
             </span>
           </div>
 
-          {/* Quick Pay with Installed UPI Apps */}
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted, #64748B)', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
-              Instant Pay with UPI Apps
-            </span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-              {MAJOR_UPI_APPS.slice(0, 6).map(app => (
-                <button
-                  key={app.id}
-                  type="button"
-                  onClick={() => handleQuickUpiPay(app.id)}
-                  style={{
-                    padding: '10px 4px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--line, #E2E8F0)',
-                    background: 'var(--card, #FFFFFF)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink, #0F172A)' }}>
-                    {app.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* STRICT NO-CASH WARNING & PENALTY SECTION */}
+          {/* STRICT NO-CASH WARNING SECTION */}
           <div
             style={{
               borderRadius: '16px',
@@ -273,7 +303,7 @@ export default function TripInvoiceModal({
               <b style={{ fontSize: '13px', color: 'var(--bad, #991B1B)' }}>Cash Payments Strictly Prohibited</b>
             </div>
             <p style={{ fontSize: '11.5px', color: 'var(--bad, #7F1D1D)', margin: '0 0 10px', lineHeight: 1.45 }}>
-              All Ridingo payments must be digital. If a chauffeur accepts cash from the customer, <b>1 Black Mark / Penalty Point</b> will be permanently added to the chauffeur profile.
+              All Ridingo payments must be digital. If a chauffeur accepts cash, <b>1 Black Mark</b> will be permanently added to your profile.
             </p>
 
             <button
@@ -296,26 +326,29 @@ export default function TripInvoiceModal({
           </div>
         </div>
 
-        {/* Footer Complete Button */}
+        {/* Footer Close Button (Center-aligned black text, replaces Confirm Payment) */}
         <div style={{ padding: '16px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))', borderTop: '1px solid var(--line, #F1F5F9)', background: 'var(--sheet, #FFFFFF)' }}>
           <button
             type="button"
-            onClick={() => handleQuickUpiPay('generic')}
-            disabled={isProcessingPayment}
+            onClick={onClose}
             style={{
               width: '100%',
               padding: '14px',
               borderRadius: '14px',
-              background: 'var(--solid, #000000)',
-              color: 'var(--on-solid, #FFFFFF)',
+              background: '#FFFFFF',
+              color: '#000000',
               fontSize: '15px',
               fontWeight: 800,
-              border: '1.5px solid var(--solid, #000000)',
+              border: '1.5px solid #000000',
               cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
             }}
           >
-            {isProcessingPayment ? 'Verifying PhonePe Settlement...' : `Confirm Payment of ₹${totalAmountToPay} ✓`}
+            Close
           </button>
         </div>
       </div>
@@ -353,7 +386,7 @@ export default function TripInvoiceModal({
               Confirm Cash Violation?
             </b>
             <p style={{ fontSize: '13px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: '0 0 20px' }}>
-              Accepting cash is a direct policy violation. You will receive <b>1 Black Mark</b> on your chauffeur profile and platform trust score will decrease.
+              Accepting cash is a direct policy violation. You will receive <b>1 Black Mark</b> on your chauffeur profile.
             </p>
 
             <div style={{ display: 'flex', gap: '10px' }}>

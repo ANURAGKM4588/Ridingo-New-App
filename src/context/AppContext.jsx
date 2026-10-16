@@ -1145,33 +1145,37 @@ export function AppProvider({ children }) {
     addToast('Trip started! Live GPS sharing activated.', 'check');
   };
 
-  const requestEndTrip = (tripId, overrideEndOtp) => {
-    let targetOtp = overrideEndOtp || Math.floor(1000 + Math.random() * 9000).toString();
-    setTrips(prev =>
-      prev.map(t => {
-        if (t.id === tripId) {
-          targetOtp = overrideEndOtp || t.endOtp || targetOtp;
-          return { ...t, status: 'ending_otp', endOtp: targetOtp, endOtpRegenerated: true };
-        }
-        return t;
-      })
-    );
-    realtime.requestEndTrip(tripId, targetOtp);
-    updateTripStatusInSupabase(tripId, 'ending_otp');
-    addToast(`Destination reached! Trip End OTP: ${targetOtp}`, 'info');
-  };
-
-  const verifyEndOtp = (tripId) => {
+  const requestEndTrip = (tripId) => {
+    // End trip directly without requiring customer OTP
     setTrips(prev =>
       prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending' } : t))
     );
-    addToast('Drop OTP verified! Displaying PhonePe Invoice.', 'check');
+    realtime.requestEndTrip(tripId, null);
+    updateTripStatusInSupabase(tripId, 'invoice_pending');
+    addToast('Destination reached! Trip ended. Please view invoice.', 'check');
   };
 
-  const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false } = {}) => {
+  const verifyEndOtp = (tripId) => {
+    // Retained for direct workflow transition
+    setTrips(prev =>
+      prev.map(t => (t.id === tripId ? { ...t, status: 'invoice_pending' } : t))
+    );
+  };
+
+  const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false, paymentCompletionOtp } = {}) => {
     const tripFare = fare || 750;
-    const companyCommission = Math.round(tripFare * 0.15); // 15% platform fee
-    const driverEarnings = Math.round(tripFare * 0.85) + Number(tip || 0); // 85% + 100% tip
+    const companyCommission = Math.round(tripFare * 0.30); // 30% platform fee
+    const driverEarnings = Math.round(tripFare * 0.70) + Number(tip || 0); // 70% driver payout + tip
+
+    // Generate unique 4-character OTP upon payment completion
+    const completionOtp = paymentCompletionOtp || (() => {
+      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      let otp = '';
+      for (let i = 0; i < 4; i++) {
+        otp += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return otp;
+    })();
 
     if (isCash) {
       // PENALTY: Increment Black Mark for accepting cash
@@ -1181,7 +1185,7 @@ export function AppProvider({ children }) {
       }));
       addToast('⚠️ Violation: 1 Black Mark issued for cash transaction!', 'warn');
     } else {
-      addToast(`₹${driverEarnings} credited to Chauffeur Wallet via PhonePe Escrow!`, 'check');
+      addToast(`₹${driverEarnings} credited to Chauffeur Wallet! Completion OTP: ${completionOtp}`, 'check');
     }
 
     // Update driver partner wallet
@@ -1190,34 +1194,37 @@ export function AppProvider({ children }) {
       {
         id: 'tx-' + Date.now(),
         title: `Trip Earnings · ${method}`,
-        sub: `Net 85% (₹${Math.round(tripFare * 0.85)}) + Tip (₹${tip})`,
+        sub: `Net 70% (₹${Math.round(tripFare * 0.70)}) + Tip (₹${tip}) · OTP: ${completionOtp}`,
         amount: driverEarnings,
         type: 'fare',
         gateway: 'PhonePe Escrow',
+        completionOtp,
         ts: Date.now()
       },
       ...prev
     ]);
 
-    // Mark trip complete
+    // Mark trip complete with unique 4-character OTP
     setTrips(prev =>
       prev.map(t => (t.id === tripId ? {
         ...t,
         status: 'completed',
         completedAt: Date.now(),
+        paymentCompletionOtp: completionOtp,
         finalSettlement: {
           total: amount || tripFare,
           driverEarnings,
           commission: companyCommission,
           tip,
           method,
-          isCash
+          isCash,
+          completionOtp
         }
       } : t))
     );
 
-    realtime.completeRide(tripId, { amount, fare, tip, isCash });
-    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now() });
+    realtime.completeRide(tripId, { amount, fare, tip, isCash, completionOtp });
+    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now(), completion_otp: completionOtp });
   };
 
   const declineTrip = (tripId) => {

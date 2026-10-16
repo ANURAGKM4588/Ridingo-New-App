@@ -4,8 +4,9 @@ import { realtime } from '../utils/realtime';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
 import DriverOnboardingModal from './DriverOnboardingModal';
-import TripInvoiceModal from './TripInvoiceModal';
+import TripInvoiceModal, { generate4CharPaymentOtp } from './TripInvoiceModal';
 import TripOtpModal from './TripOtpModal';
+import VehicleConditionModal from './VehicleConditionModal';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
 import {
   requestDriverNotificationPermission,
@@ -743,7 +744,8 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
   if (!trip) return null;
 
   const fare = Number(trip.fare) || 600;
-  const driverEarn = Math.round(fare * 0.85);
+  // 30% platform commission deducted -> Driver receives 70% earnings
+  const driverEarn = Math.round(fare * 0.70);
   const cat = CATS[trip.cat] || CATS.hourly;
   const progressRatio = Math.max(0, countdown / 30);
 
@@ -882,13 +884,10 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
         >
           <div>
             <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-              Net Earning (85%)
+              Driver Earnings
             </span>
-            <div style={{ fontSize: '25px', fontWeight: 850, color: '#16A34A', letterSpacing: '-0.02em', marginTop: '2px' }}>
+            <div style={{ fontSize: '26px', fontWeight: 850, color: '#16A34A', letterSpacing: '-0.02em', marginTop: '2px' }}>
               ₹{driverEarn}
-              <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--muted, #64748B)', marginLeft: '6px' }}>
-                (Fare ₹{fare})
-              </span>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -1064,6 +1063,9 @@ export default function DriverApp() {
   const [showStartOtpModal, setShowStartOtpModal] = useState(false);
   const [showEndOtpModal, setShowEndOtpModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [activeVehicleTrip, setActiveVehicleTrip] = useState(null);
+  const [paymentCompletionModal, setPaymentCompletionModal] = useState(null);
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
 
@@ -1531,6 +1533,31 @@ export default function DriverApp() {
     return true;
   });
 
+  // Helper to identify if a trip belongs to Today vs Future Upcoming
+  const getTodayISO = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const isTripToday = (t) => {
+    // If active / in progress / accepted / ready / invoice_pending, it's definitely today's active workflow
+    if (['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress', 'ending_otp', 'invoice_pending'].includes(t.status)) {
+      return true;
+    }
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    if (t.when_ts) {
+      return Number(t.when_ts) <= todayEnd.getTime();
+    }
+    if (t.date) {
+      return t.date <= getTodayISO();
+    }
+    return true;
+  };
+
+  const todayTrips = upcomingTrips.filter(t => isTripToday(t));
+  const futureUpcomingTrips = upcomingTrips.filter(t => !isTripToday(t));
+
   // Accept trip handler
   const handleAccept = (tripId) => {
     triggerTactileHaptic('success');
@@ -1579,7 +1606,7 @@ export default function DriverApp() {
     setShowStartOtpModal(true);
   };
 
-  // 3. Start OTP Verified -> Unlock Start Trip Directly (No Inspection)
+  // 3. Start OTP Verified -> Unlock Vehicle Details & Inspection
   const handleVerifyStartOtpSuccess = () => {
     triggerTactileHaptic('success');
     setShowStartOtpModal(false);
@@ -1591,50 +1618,73 @@ export default function DriverApp() {
     }
   };
 
-  // 5. Start Trip & Activate Live GPS Route Sharing
+  // 4. Start Trip -> Prompts for Vehicle Brand, Model, Registration & Camera Photos (stored for 5 days)
   const handleStartTripAction = (tripId) => {
     triggerTactileHaptic('success');
+    const targetTrip = trips.find(t => t.id === tripId) || activeTripAction;
+    if (targetTrip && !targetTrip.vehicleDetails) {
+      setActiveVehicleTrip(targetTrip);
+      setShowVehicleModal(true);
+      return;
+    }
     if (startTrip) {
       startTrip(tripId);
     }
   };
 
-  // 6. Destination Reached -> End Trip (Prompts for Customer Trip End OTP)
-  const handleEndTripClick = (t) => {
-    triggerTactileHaptic('snap');
-    const targetOtp = t.endOtp || Math.floor(1000 + Math.random() * 9000).toString();
-    const updated = { ...t, endOtp: targetOtp };
-    setActiveTripAction(updated);
-    if (requestEndTrip) {
-      requestEndTrip(t.id, targetOtp);
+  const handleVehicleDetailsComplete = (vehicleData) => {
+    setShowVehicleModal(false);
+    triggerTactileHaptic('success');
+    if (activeVehicleTrip) {
+      setTrips(prev =>
+        prev.map(t => (t.id === activeVehicleTrip.id ? { ...t, vehicleDetails: vehicleData } : t))
+      );
+      if (startTrip) {
+        startTrip(activeVehicleTrip.id);
+      }
+      addToast(`Vehicle ${vehicleData.brand} ${vehicleData.model} (${vehicleData.regNumber}) verified! Photos stored for 5 days.`, 'check');
+      setActiveVehicleTrip(null);
     }
-    setShowEndOtpModal(true);
   };
 
-  // 7. End OTP Verified -> Open Digital Invoice & Razorpay Live QR
-  const handleVerifyEndOtpSuccess = () => {
+  // 5. Destination Reached -> End Trip (No OTP required for ending a trip)
+  const handleEndTripClick = (t) => {
     triggerTactileHaptic('success');
-    setShowEndOtpModal(false);
-    if (verifyEndOtp && activeTripAction) {
-      verifyEndOtp(activeTripAction.id);
+    setActiveTripAction(t);
+    if (requestEndTrip) {
+      requestEndTrip(t.id);
+    } else if (verifyEndOtp) {
+      verifyEndOtp(t.id);
     }
+    // Directly open digital invoice & settlement QR without requiring any OTP
     setShowInvoiceModal(true);
   };
 
-  // 8. Settle Digital Payment (Company 15%, Driver 85% + Tip credited to wallet)
+  // 6. Settle Digital Payment (Company 30%, Driver 70% + Tip credited to wallet)
+  // Generates unique 4-character completion OTP upon successful payment
   const handleDigitalPaymentSuccess = (paymentDetails) => {
     setShowInvoiceModal(false);
+    const completionOtp = paymentDetails?.paymentCompletionOtp || generate4CharPaymentOtp();
+    const driverPayout = paymentDetails?.driverEarnings || Math.round((Number(activeTripAction?.fare) || 650) * 0.70);
     if (settleTripPayment && activeTripAction) {
       settleTripPayment(activeTripAction.id, {
         ...paymentDetails,
+        driverEarnings: driverPayout,
+        paymentCompletionOtp: completionOtp,
         isCash: false
       });
       if (driverPartner?.nativeNotifs !== false) {
-        notifyTripCompleted(activeTripAction, paymentDetails?.driverCut || activeTripAction?.fare || 650);
+        notifyTripCompleted(activeTripAction, driverPayout);
       }
     }
     playApplePaymentChime();
     triggerTactileHaptic('success');
+    // Display Unique 4-character Completion OTP Modal
+    setPaymentCompletionModal({
+      otp: completionOtp,
+      trip: activeTripAction,
+      amount: driverPayout
+    });
   };
 
   // 9. Strict Cash Violation (Issue Black Mark & Record Penalty)
@@ -1851,7 +1901,7 @@ export default function DriverApp() {
                           borderRadius: '999px'
                         }}
                       >
-                        +85% Net
+                        +70% Net
                       </span>
                     )}
                   </div>
@@ -1947,7 +1997,8 @@ export default function DriverApp() {
                 {requestedTrips.map(t => {
                   const c = CATS[t.cat] || CATS.hourly;
                   const fare = Number(t.fare) || 600;
-                  const driverEarn = Math.round(fare * 0.85);
+                  // 30% platform commission deducted -> Driver receives 70% earnings
+                  const driverEarn = Math.round(fare * 0.70);
 
                   return (
                     <article
@@ -2007,7 +2058,7 @@ export default function DriverApp() {
                         </div>
                       </div>
 
-                      {/* Net Earnings & Fare */}
+                      {/* Driver Earnings (Shows ONLY Driver's Earnings after 30% platform commission) */}
                       <div
                         style={{
                           display: 'flex',
@@ -2021,13 +2072,10 @@ export default function DriverApp() {
                       >
                         <div>
                           <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
-                            Your Earnings (85%)
+                            Driver Earnings
                           </span>
-                          <div style={{ fontSize: '22px', fontWeight: 850, color: '#16A34A', letterSpacing: '-0.02em', marginTop: '1px' }}>
+                          <div style={{ fontSize: '24px', fontWeight: 850, color: '#16A34A', letterSpacing: '-0.02em', marginTop: '1px' }}>
                             ₹{driverEarn}
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', marginLeft: '6px' }}>
-                              (Total ₹{fare})
-                            </span>
                           </div>
                         </div>
 
@@ -2142,17 +2190,24 @@ export default function DriverApp() {
               </div>
             )}
 
-            {/* Upcoming / Active Trips */}
-            <div className="sec stagger-3">
-              <h3>Upcoming trips</h3>
-              <span>{upcomingTrips.length} booked</span>
+            {/* Today Trips Section */}
+            <div className="sec stagger-3" style={{ marginTop: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>⚡</span>
+                <h3 style={{ margin: 0 }}>Today Trips</h3>
+              </div>
+              <span className="pill" style={{ background: todayTrips.length > 0 ? '#16A34A' : 'var(--field)', color: todayTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
+                {todayTrips.length} active
+              </span>
             </div>
 
-            {upcomingTrips.length > 0 ? (
+            {todayTrips.length > 0 ? (
               <div className="stack stagger-3">
-                {upcomingTrips.map(t => {
+                {todayTrips.map(t => {
                   const c = CATS[t.cat] || CATS.hourly;
-                  const isInProgress = t.status === 'inprogress';
+                  const fare = Number(t.fare) || 600;
+                  const driverEarn = Math.round(fare * 0.70); // 30% platform commission deducted
+
                   return (
                     <article key={t.id} className="card trip">
                       <div className="trip-head" style={{ paddingBottom: '10px' }}>
@@ -2163,9 +2218,14 @@ export default function DriverApp() {
                           <b>{c.name}</b> <span className="mut">· {t.qty || 1} {c.unit || 'hr'}</span>
                           <span className="sub">{t.id}</span>
                         </span>
-                        <span className="amt" style={{ fontSize: '16px', color: 'var(--ink)' }}>
-                          ₹{t.fare}
-                        </span>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block' }}>
+                            Driver Earnings
+                          </span>
+                          <span className="amt" style={{ fontSize: '17px', fontWeight: 850, color: '#16A34A' }}>
+                            ₹{driverEarn}
+                          </span>
+                        </div>
                       </div>
                       <div className="trip-body">
                         <div className="route">
@@ -2189,9 +2249,8 @@ export default function DriverApp() {
                              t.status === 'pickup_arrived' ? 'At Pickup · Enter OTP' :
                              t.status === 'ready_to_start' ? 'Ready to Start' :
                              t.status === 'inprogress' ? 'Trip in Progress' :
-                             t.status === 'ending_otp' ? 'At Drop · Enter End OTP' :
                              t.status === 'invoice_pending' ? 'Payment Pending' :
-                             'Scheduled'}
+                             'Active Today'}
                           </span>
                         </div>
 
@@ -2270,11 +2329,15 @@ export default function DriverApp() {
                               color: '#FFFFFF',
                               border: '1.5px solid #000000',
                               fontWeight: 800,
-                              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
+                              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px'
                             }}
                             onClick={() => handleStartTripAction(t.id)}
                           >
-                            Start Trip & Share Live GPS
+                            <span>📷 Vehicle Details & Start Trip ▶</span>
                           </button>
                         )}
 
@@ -2294,20 +2357,9 @@ export default function DriverApp() {
                               style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
                               onClick={() => handleEndTripClick(t)}
                             >
-                              End Trip & Verify OTP
+                              End Trip
                             </button>
                           </div>
-                        )}
-
-                        {t.status === 'ending_otp' && (
-                          <button
-                            type="button"
-                            className="btn primary sm block"
-                            style={{ marginTop: '12px', width: '100%', background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
-                            onClick={() => handleEndTripClick(t)}
-                          >
-                            Enter Customer Drop OTP
-                          </button>
                         )}
 
                         {t.status === 'invoice_pending' && (
@@ -2337,7 +2389,80 @@ export default function DriverApp() {
                 })}
               </div>
             ) : (
-              <div className="empty">Accepted and scheduled trips show up here.</div>
+              <div className="empty">No active trips for today. Accept new requests above.</div>
+            )}
+
+            {/* Upcoming Trips Section */}
+            <div className="sec stagger-3" style={{ marginTop: '22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>🗓️</span>
+                <h3 style={{ margin: 0 }}>Upcoming Trips</h3>
+              </div>
+              <span className="pill" style={{ background: futureUpcomingTrips.length > 0 ? '#2563EB' : 'var(--field)', color: futureUpcomingTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
+                {futureUpcomingTrips.length} scheduled
+              </span>
+            </div>
+
+            {futureUpcomingTrips.length > 0 ? (
+              <div className="stack stagger-3">
+                {futureUpcomingTrips.map(t => {
+                  const c = CATS[t.cat] || CATS.hourly;
+                  const fare = Number(t.fare) || 600;
+                  const driverEarn = Math.round(fare * 0.70); // 30% platform commission deducted
+
+                  return (
+                    <article key={t.id} className="card trip">
+                      <div className="trip-head" style={{ paddingBottom: '10px' }}>
+                        <span className="trip-ic">
+                          <Icon name={c.icon} size={22} />
+                        </span>
+                        <span className="grow">
+                          <b>{c.name}</b> <span className="mut">· {t.qty || 1} {c.unit || 'hr'}</span>
+                          <span className="sub">{t.id}</span>
+                        </span>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block' }}>
+                            Driver Earnings
+                          </span>
+                          <span className="amt" style={{ fontSize: '17px', fontWeight: 850, color: '#16A34A' }}>
+                            ₹{driverEarn}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="trip-body">
+                        {/* Scheduled Date badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', padding: '3px 8px', borderRadius: '6px' }}>
+                            📅 {t.date || 'Upcoming'} · {t.time || 'Scheduled'}
+                          </span>
+                        </div>
+                        <div className="route">
+                          <div className="ell">{t.pickup}</div>
+                          <div className="ell">{t.drop_loc || 'Stays with rider for trip'}</div>
+                        </div>
+                        <div className="row small" style={{ marginTop: '8px', alignItems: 'center' }}>
+                          <span className="mut grow ell">
+                            {t.rider?.name || 'Customer'} · ⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission
+                          </span>
+                          <span
+                            className="pill"
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: 'rgba(37, 99, 235, 0.12)',
+                              color: '#2563EB'
+                            }}
+                          >
+                            Scheduled
+                          </span>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty">No upcoming scheduled trips.</div>
             )}
           </div>
         )}
@@ -3908,11 +4033,8 @@ export default function DriverApp() {
                 <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em', display: 'block' }}>
                   Trip Details
                 </span>
-                <h3 style={{ fontSize: '20px', fontWeight: 800, margin: '2px 0 0', color: 'var(--ink)' }}>
-                  Total: ₹{Number(selectedRequestDetails.fare) || 600}{' '}
-                  <span style={{ fontSize: '13.5px', color: '#16A34A', fontWeight: 750 }}>
-                    (Earn ₹{Math.round((Number(selectedRequestDetails.fare) || 600) * 0.85)})
-                  </span>
+                <h3 style={{ fontSize: '22px', fontWeight: 850, margin: '2px 0 0', color: '#16A34A' }}>
+                  Driver Earnings: ₹{Math.round((Number(selectedRequestDetails.fare) || 600) * 0.70)}
                 </h3>
               </div>
               <button
@@ -4050,18 +4172,138 @@ export default function DriverApp() {
         />
       )}
 
-      {/* 4-Digit Drop OTP Verification Modal */}
-      {showEndOtpModal && (
-        <TripOtpModal
-          title="Enter Trip End OTP"
-          subtitle="Ask customer for the 4-digit Trip End OTP displayed on their Ridingo App to complete the journey."
-          correctOtp={activeTripAction?.endOtp || '8392'}
-          onVerified={handleVerifyEndOtpSuccess}
-          onCancel={() => setShowEndOtpModal(false)}
+      {/* Pre-Trip Vehicle Details & Inspection Modal (Brand, Model, Reg Plate & Camera Photos stored for 5 days) */}
+      {showVehicleModal && activeVehicleTrip && (
+        <VehicleConditionModal
+          trip={activeVehicleTrip}
+          onComplete={handleVehicleDetailsComplete}
+          onCancel={() => {
+            setShowVehicleModal(false);
+            setActiveVehicleTrip(null);
+          }}
         />
       )}
 
-      {/* Digital Invoice & Animated Razorpay UPI QR Modal */}
+      {/* 4-Character Unique Payment Completion OTP Modal */}
+      {paymentCompletionModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10010,
+            background: 'rgba(15, 23, 42, 0.8)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '24px',
+              padding: '24px',
+              maxWidth: '360px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+              animation: 'slideUp 0.25s ease-out'
+            }}
+          >
+            <div
+              style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: 'rgba(22, 163, 74, 0.12)',
+                color: '#16A34A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px',
+                fontSize: '28px'
+              }}
+            >
+              ✓
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: 850, color: '#0F172A', margin: '0 0 4px' }}>
+              Payment Complete!
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 16px', lineHeight: 1.4 }}>
+              Unique 4-Character Trip Completion OTP generated for trip <b>{paymentCompletionModal.trip?.id}</b>:
+            </p>
+
+            {/* 4-Character OTP Display */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '10px',
+                margin: '0 0 16px'
+              }}
+            >
+              {paymentCompletionModal.otp.split('').map((char, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: '52px',
+                    height: '58px',
+                    borderRadius: '12px',
+                    background: '#F1F5F9',
+                    border: '2px solid #0F172A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    fontWeight: 900,
+                    color: '#0F172A',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.06)'
+                  }}
+                >
+                  {char}
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                background: '#F8FAFC',
+                borderRadius: '12px',
+                padding: '10px',
+                marginBottom: '16px',
+                fontSize: '12.5px',
+                color: '#16A34A',
+                fontWeight: 750
+              }}
+            >
+              Driver Earnings Credited: ₹{paymentCompletionModal.amount}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPaymentCompletionModal(null)}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '14px',
+                background: '#000000',
+                color: '#FFFFFF',
+                fontSize: '14px',
+                fontWeight: 800,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.2)'
+              }}
+            >
+              Done & Back to Trips
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Digital Invoice & Animated PhonePe UPI QR Modal */}
       {showInvoiceModal && (
         <TripInvoiceModal
           trip={activeTripAction}
