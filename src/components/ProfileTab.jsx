@@ -2,6 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
+import {
+  AVAILABLE_TUNES,
+  getSelectedCustomTune,
+  setSelectedCustomTune,
+  playCustomTone
+} from '../utils/audioTones';
 
 export default function ProfileTab() {
   const { user, updateUserProfile, userTheme, setUserTheme, logout, addToast, openLegal, setView } = useApp();
@@ -23,6 +29,7 @@ export default function ProfileTab() {
   const [editPhone, setEditPhone] = useState(user?.phone || '+91 98401 23456');
   const [editEmail, setEditEmail] = useState(user?.email || 'arjun.menon@example.com');
   const [editAvatar, setEditAvatar] = useState(user?.avatar || '');
+  const [customTune, setCustomTune] = useState(getSelectedCustomTune());
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -399,6 +406,70 @@ export default function ProfileTab() {
           >
             <span className="ios-toggle-thumb" />
           </button>
+        </div>
+      </div>
+
+      {/* POP UP CUSTOM TUNE */}
+      <div className="prof-section-title stagger-5">Pop up Custom Tune</div>
+      <div className="card stagger-5" style={{ padding: '16px', borderRadius: '18px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <b className="prof-set-title" style={{ fontSize: '15px' }}>Pop up Alert Sound</b>
+            <div className="prof-set-sub" style={{ marginTop: '2px' }}>
+              Choose a minimal, copyright-free sound for booking alerts and pop-up notifications
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <select
+              value={customTune}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCustomTune(val);
+                setSelectedCustomTune(val);
+                playCustomTone(val);
+                addToast(`Pop up tune set to ${AVAILABLE_TUNES.find(t => t.id === val)?.name || val}`, 'check');
+              }}
+              style={{
+                flex: 1,
+                height: '44px',
+                padding: '0 12px',
+                borderRadius: '10px',
+                border: '1.5px solid var(--line)',
+                background: 'var(--field)',
+                color: 'var(--ink)',
+                fontSize: '14px',
+                fontWeight: 600,
+                outline: 'none'
+              }}
+            >
+              {AVAILABLE_TUNES.map(tune => (
+                <option key={tune.id} value={tune.id}>
+                  {tune.name} ({tune.description.split('(')[1]?.replace(')', '') || 'Minimal'})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => {
+                playCustomTone(customTune);
+              }}
+              style={{
+                height: '44px',
+                padding: '0 16px',
+                background: '#000000',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '13px',
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Play
+            </button>
+          </div>
         </div>
       </div>
 

@@ -15,7 +15,8 @@ export default function LiveTrackingSheet() {
     activeTrackingTripId,
     setActiveTrackingTripId,
     isUserTrip,
-    declineTrip
+    declineTrip,
+    cancelTripByUser
   } = useApp();
 
   const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && isUserTrip(t, user)) : null) ||
@@ -276,14 +277,15 @@ export default function LiveTrackingSheet() {
               <button
                 type="button"
                 onClick={() => {
-                  if (declineTrip) {
+                  if (cancelTripByUser) {
+                    cancelTripByUser(trip.id);
+                  } else if (declineTrip) {
                     declineTrip(trip.id);
                   } else {
                     setTrips(prev => prev.filter(t => t.id !== trip.id));
                   }
                   if (setActiveTrackingTripId) setActiveTrackingTripId(null);
                   setLiveTrackingOpen(false);
-                  addToast('Trip request cancelled', 'info');
                 }}
                 style={{
                   width: '100%',

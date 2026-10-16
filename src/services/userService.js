@@ -44,6 +44,20 @@ export function generateRidingoUserId() {
 }
 
 /**
+ * Generates a unique cryptographic session token for single active session enforcement
+ */
+export function generateSessionToken() {
+  return 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+}
+
+/**
+ * Creates compound login key combining mobile number and email
+ */
+export function getCompoundLoginKey(phone, email) {
+  return `${normalizePhone10(phone)}_${normalizeEmail(email)}`;
+}
+
+/**
  * Reads local cached user registry
  */
 export function getLocalUserRegistry() {
@@ -189,6 +203,9 @@ export async function registerUserProfile({ firstName, lastName, phone, email, e
   const formattedPhone = formatIndianPhone(cleanPhone);
   const fullName = `${(firstName || '').trim()} ${(lastName || '').trim()}`.trim() || 'Ridingo Member';
 
+  const sessionToken = generateSessionToken();
+  const compoundKey = getCompoundLoginKey(formattedPhone, cleanEmail);
+
   const userRecord = {
     id: ridingoId,
     userId: ridingoId,
@@ -198,6 +215,8 @@ export async function registerUserProfile({ firstName, lastName, phone, email, e
     phone: formattedPhone,
     email: cleanEmail,
     emergencyPhone: emergencyPhone ? formatIndianPhone(emergencyPhone) : '',
+    sessionToken,
+    compoundKey,
     createdAt: new Date().toISOString()
   };
 
@@ -212,7 +231,10 @@ export async function registerUserProfile({ firstName, lastName, phone, email, e
         userId: ridingoId,
         firstName: userRecord.firstName,
         lastName: userRecord.lastName,
-        emergencyPhone: userRecord.emergencyPhone
+        emergencyPhone: userRecord.emergencyPhone,
+        activeSessionToken: sessionToken,
+        activeCompoundKey: compoundKey,
+        lastLoginAt: Date.now()
       },
       updated_at: new Date().toISOString()
     }, { onConflict: 'phone' });
@@ -238,18 +260,46 @@ export async function getUserProfileByLogin({ identifier, name, emailFallback, p
   const queryPhone = !isEmail ? identifier : (phoneFallback || '');
   const queryEmail = isEmail ? identifier : (emailFallback || '');
 
+  const sessionToken = generateSessionToken();
   const check = await checkUserExists({ phone: queryPhone, email: queryEmail });
   if (check.exists && check.user) {
     const existing = check.user;
     const finalId = existing.id || existing.userId || generateRidingoUserId();
+    const finalPhone = existing.phone || (queryPhone ? formatIndianPhone(queryPhone) : '');
+    const finalEmail = existing.email || queryEmail || '';
+    const compoundKey = getCompoundLoginKey(finalPhone, finalEmail);
+
     const finalObj = {
       ...existing,
       id: finalId,
       userId: finalId,
       name: existing.name || name || 'Ridingo Member',
-      phone: existing.phone || (queryPhone ? formatIndianPhone(queryPhone) : ''),
-      email: existing.email || queryEmail || ''
+      phone: finalPhone,
+      email: finalEmail,
+      sessionToken,
+      compoundKey
     };
+
+    // Update activeSessionToken in Supabase to invalidate any prior session
+    try {
+      if (finalPhone) {
+        await supabase.from('profiles').upsert({
+          phone: finalPhone,
+          email: finalEmail,
+          name: finalObj.name,
+          preferences: {
+            ...(existing.preferences || {}),
+            ridingoId: finalId,
+            userId: finalId,
+            activeSessionToken: sessionToken,
+            activeCompoundKey: compoundKey,
+            lastLoginAt: Date.now()
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'phone' });
+      }
+    } catch (e) {}
+
     saveToLocalUserRegistry(finalObj);
     return finalObj;
   }
@@ -259,6 +309,7 @@ export async function getUserProfileByLogin({ identifier, name, emailFallback, p
   const phoneFormatted = queryPhone ? formatIndianPhone(queryPhone) : '+91 98401 23456';
   const cleanEmail = normalizeEmail(queryEmail);
   const fullName = name || (cleanEmail ? cleanEmail.split('@')[0] : 'Ridingo Member');
+  const compoundKey = getCompoundLoginKey(phoneFormatted, cleanEmail);
 
   const newRecord = {
     id: newRidingoId,
@@ -266,6 +317,8 @@ export async function getUserProfileByLogin({ identifier, name, emailFallback, p
     name: fullName,
     phone: phoneFormatted,
     email: cleanEmail,
+    sessionToken,
+    compoundKey,
     createdAt: new Date().toISOString()
   };
 
@@ -276,7 +329,10 @@ export async function getUserProfileByLogin({ identifier, name, emailFallback, p
       name: fullName,
       preferences: {
         ridingoId: newRidingoId,
-        userId: newRidingoId
+        userId: newRidingoId,
+        activeSessionToken: sessionToken,
+        activeCompoundKey: compoundKey,
+        lastLoginAt: Date.now()
       },
       updated_at: new Date().toISOString()
     }, { onConflict: 'phone' });

@@ -20,8 +20,16 @@ import {
   notifyDriverOnlineStatus,
   registerDriverAPNsPush,
   setupBackgroundNotificationHandler,
-  playNativeAlertChime
+  playNativeAlertChime,
+  dismissIncomingRideNotification
 } from '../services/driverNotificationService';
+import {
+  AVAILABLE_TUNES,
+  getSelectedCustomTune,
+  setSelectedCustomTune,
+  playCustomTone,
+  stopActiveTone
+} from '../utils/audioTones';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'clock', unit: 'hr', units: 'hours' },
@@ -740,7 +748,10 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      stopActiveTone();
+    };
   }, [trip?.id]);
 
   if (!trip) return null;
@@ -1070,6 +1081,7 @@ export default function DriverApp() {
   const [paymentCompletionModal, setPaymentCompletionModal] = useState(null);
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
+  const [driverCustomTune, setDriverCustomTune] = useState(getSelectedCustomTune());
 
   useEffect(() => {
     // Proactively request initial device runtime permissions on launch:
@@ -1128,6 +1140,15 @@ export default function DriverApp() {
 
   useEffect(() => {
     if (incomingTripRequest?.id) {
+      // If trip was already declined by this driver, do not trigger alerts
+      try {
+        const declined = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+        if (declined.includes(incomingTripRequest.id)) {
+          setIncomingTripRequest(null);
+          return;
+        }
+      } catch (_) {}
+
       // Native Device Push Alert: Bypasses in-app UI into the OS notification center
       // Includes options to Accept or View More
       if (driverPartner?.nativeNotifs !== false) {
@@ -1136,6 +1157,8 @@ export default function DriverApp() {
           onViewMore: (trip) => setSelectedRequestDetails(trip)
         });
       }
+    } else {
+      stopActiveTone();
     }
   }, [incomingTripRequest?.id]);
 
@@ -1155,17 +1178,38 @@ export default function DriverApp() {
       setActiveTripAction(prev => (prev?.id === cancelledId ? null : prev));
       // 5. Remove from trips list
       setTrips(prev => prev.filter(t => t.id !== cancelledId));
+      stopActiveTone();
+      dismissIncomingRideNotification(cancelledId);
       addToast('Trip request cancelled by customer', 'info');
     };
 
+    const handleTripAccepted = (data) => {
+      const acceptedId = data?.tripId || data?.id;
+      const acceptedDriver = data?.driver;
+      if (!acceptedId) return;
+
+      // If ANOTHER driver accepted this trip, remove the popup, banner, and notification for this driver
+      const currentDriverId = String(driverPartner?.id || driverPartner?.phone || 'ravi_1');
+      const assignedDriverId = String(acceptedDriver?.id || acceptedDriver?.phone || '');
+
+      if (assignedDriverId && assignedDriverId !== currentDriverId) {
+        setIncomingTripRequest(prev => (prev?.id === acceptedId ? null : prev));
+        setSelectedRequestDetails(prev => (prev?.id === acceptedId ? null : prev));
+        setMinimizedRequestTripId(prev => (prev === acceptedId ? null : prev));
+        setTrips(prev => prev.filter(t => t.id !== acceptedId));
+        stopActiveTone();
+        dismissIncomingRideNotification(acceptedId);
+      }
+    };
+
     const unsubCancelled = realtime.on('TRIP_CANCELLED', handleTripCancelled);
-    const unsubDeclined = realtime.on('TRIP_DECLINED', handleTripCancelled);
+    const unsubAccepted = realtime.on('TRIP_ACCEPTED', handleTripAccepted);
 
     return () => {
       if (typeof unsubCancelled === 'function') unsubCancelled();
-      if (typeof unsubDeclined === 'function') unsubDeclined();
+      if (typeof unsubAccepted === 'function') unsubAccepted();
     };
-  }, []);
+  }, [driverPartner?.id, driverPartner?.phone]);
 
   // Real-time synchronization check: ensure pending trip requests are captured immediately
   useEffect(() => {
@@ -2270,7 +2314,6 @@ export default function DriverApp() {
             {/* Today Trips Section */}
             <div className="sec stagger-3" style={{ marginTop: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon name="clock" size={18} color="var(--ink)" />
                 <h3 style={{ margin: 0 }}>Today Trips</h3>
               </div>
               <span className="pill" style={{ background: todayTrips.length > 0 ? '#16A34A' : 'var(--field)', color: todayTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
@@ -2288,9 +2331,6 @@ export default function DriverApp() {
                   return (
                     <article key={t.id} className="card trip">
                       <div className="trip-head" style={{ paddingBottom: '10px' }}>
-                        <span className="trip-ic">
-                          <Icon name={c.icon} size={22} />
-                        </span>
                         <span className="grow">
                           <b>{c.name}</b> <span className="mut">· {t.qty || 1} {c.unit || 'hr'}</span>
                           <span className="sub">{t.id}</span>
@@ -2350,7 +2390,6 @@ export default function DriverApp() {
                               }}
                               onClick={() => handleGetDirections(t.pickup)}
                             >
-                              <Icon name="navigation" size={14} />
                               <span>Get Directions</span>
                             </button>
                             <button
@@ -2472,7 +2511,6 @@ export default function DriverApp() {
             {/* Upcoming Trips Section */}
             <div className="sec stagger-3" style={{ marginTop: '22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon name="calendar" size={18} color="var(--ink)" />
                 <h3 style={{ margin: 0 }}>Upcoming Trips</h3>
               </div>
               <span className="pill" style={{ background: futureUpcomingTrips.length > 0 ? '#2563EB' : 'var(--field)', color: futureUpcomingTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
@@ -2490,9 +2528,6 @@ export default function DriverApp() {
                   return (
                     <article key={t.id} className="card trip">
                       <div className="trip-head" style={{ paddingBottom: '10px' }}>
-                        <span className="trip-ic">
-                          <Icon name={c.icon} size={22} />
-                        </span>
                         <span className="grow">
                           <b>{c.name}</b> <span className="mut">· {t.qty || 1} {c.unit || 'hr'}</span>
                           <span className="sub">{t.id}</span>
@@ -2862,6 +2897,70 @@ export default function DriverApp() {
                 >
                   <span className="ios-toggle-thumb" />
                 </button>
+              </div>
+            </div>
+
+            {/* Pop up Custom Tune */}
+            <div className="prof-section-title stagger-4">Pop up Custom Tune</div>
+            <div className="card stagger-4" style={{ padding: '16px', borderRadius: '18px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <b className="prof-set-title" style={{ fontSize: '15px' }}>Pop up Alert Sound</b>
+                  <div className="prof-set-sub" style={{ marginTop: '2px' }}>
+                    Choose a minimal, copyright-free sound for booking requests and pop-up alerts
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <select
+                    value={driverCustomTune}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDriverCustomTune(val);
+                      setSelectedCustomTune(val);
+                      playCustomTone(val);
+                      addToast(`Alert sound set to ${AVAILABLE_TUNES.find(t => t.id === val)?.name || val}`, 'check');
+                    }}
+                    style={{
+                      flex: 1,
+                      height: '44px',
+                      padding: '0 12px',
+                      borderRadius: '10px',
+                      border: '1.5px solid var(--line)',
+                      background: 'var(--field)',
+                      color: 'var(--ink)',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      outline: 'none'
+                    }}
+                  >
+                    {AVAILABLE_TUNES.map(tune => (
+                      <option key={tune.id} value={tune.id}>
+                        {tune.name} ({tune.description.split('(')[1]?.replace(')', '') || 'Minimal'})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn sm"
+                    onClick={() => {
+                      playCustomTone(driverCustomTune);
+                    }}
+                    style={{
+                      height: '44px',
+                      padding: '0 16px',
+                      background: '#000000',
+                      color: '#FFFFFF',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Play
+                  </button>
+                </div>
               </div>
             </div>
 

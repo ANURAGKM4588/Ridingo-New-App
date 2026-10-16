@@ -5,8 +5,13 @@ import { StatusBar } from '@capacitor/status-bar';
 import { getDeviceLocation } from '../lib/deviceLocation';
 import { processPhonePeCashbackTransfer } from '../utils/phonepe';
 import { realtime } from '../utils/realtime';
-import { notifyIncomingRideRequest } from '../services/driverNotificationService';
-import { isUserTrip, generateRidingoUserId } from '../services/userService';
+import {
+  notifyIncomingRideRequest,
+  sendUserNativeNotification,
+  dismissIncomingRideNotification,
+  stopActiveTone
+} from '../services/driverNotificationService';
+import { isUserTrip, generateRidingoUserId, generateSessionToken, getCompoundLoginKey } from '../services/userService';
 
 const AppContext = createContext(null);
 
@@ -335,14 +340,25 @@ export function AppProvider({ children }) {
           return Array.from(mapById.values());
         });
 
-        // Check for active 'requested' trips created within 15 minutes
-        const activeReqs = mapped.filter(t => t.status === 'requested' && Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000);
+        // Check for active 'requested' trips created within 15 minutes that have not been declined by this driver
+        let declinedTripIds = [];
+        try {
+          declinedTripIds = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+        } catch (_) {}
+
+        const activeReqs = mapped.filter(t =>
+          t.status === 'requested' &&
+          Math.abs(Date.now() - t.when_ts) < 15 * 60 * 1000 &&
+          !declinedTripIds.includes(t.id)
+        );
         if (activeReqs.length > 0) {
           setIncomingTripRequest(activeReqs[0]);
         } else {
           // If no active requests or previous request is no longer requested, clear it
           setIncomingTripRequest(prev => {
             if (prev && (!activeReqs.some(r => r.id === prev.id) || mapped.some(t => t.id === prev.id && t.status !== 'requested'))) {
+              dismissIncomingRideNotification(prev.id);
+              stopActiveTone();
               return null;
             }
             return prev;
@@ -374,12 +390,7 @@ export function AppProvider({ children }) {
       });
       setIncomingTripRequest(newTrip);
       setDriverOnline(true);
-      // Trigger native OS push notification for Driver App
-      if (typeof window !== 'undefined' && (window.RIDINGO_TARGET === 'driver' || view === 'driver')) {
-        try {
-          notifyIncomingRideRequest(newTrip);
-        } catch (e) {}
-      }
+      // Note: DriverApp.jsx is the single source for driver push/tones to guarantee minimal, deduplicated alerts
     });
 
     // 4. Instant push sync via Supabase Realtime publication on public.trips table
@@ -405,12 +416,17 @@ export function AppProvider({ children }) {
                   });
 
                   if (tripObj.status === 'requested') {
-                    setIncomingTripRequest(tripObj);
-                    if (typeof window !== 'undefined' && (window.RIDINGO_TARGET === 'driver' || view === 'driver')) {
-                      try { notifyIncomingRideRequest(tripObj); } catch (e) {}
+                    let declinedTripIds = [];
+                    try {
+                      declinedTripIds = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+                    } catch (_) {}
+                    if (!declinedTripIds.includes(tripObj.id)) {
+                      setIncomingTripRequest(tripObj);
                     }
                   } else if (['accepted', 'declined', 'cancelled', 'completed'].includes(tripObj.status)) {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
+                    dismissIncomingRideNotification(tripObj.id);
+                    stopActiveTone();
                   }
                 }
               }
@@ -444,23 +460,37 @@ export function AppProvider({ children }) {
 
     const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver }) => {
       const driverName = driver?.name || 'Ravi Kumar';
+      const driverPhone = driver?.phone || '+91 94471 23456';
       let targetOtp = '4821';
       setTrips(prev =>
         prev.map(t => {
           if (t.id === tripId) {
             targetOtp = t.startOtp || targetOtp;
-            return { ...t, status: 'accepted', driver: driverName };
+            return { ...t, status: 'accepted', driver: driverName, driverObj: driver };
           }
           return t;
         })
       );
       setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
+      dismissIncomingRideNotification(tripId);
+      stopActiveTone();
+
+      // 1. In-App Notification
       addNotification(
         'Chauffeur Assigned',
         `${driverName} is on the way to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
         'car'
       );
       addToast(`Chauffeur confirmed. ${driverName} accepted your ride.`, 'check');
+
+      // 2. Native Device Default System Notification for User App with driver details
+      if (typeof window !== 'undefined' && (window.RIDINGO_TARGET === 'user' || view === 'user')) {
+        sendUserNativeNotification(
+          `Chauffeur Assigned: ${driverName}`,
+          `${driverName} (${driverPhone}) is en route to your pickup. Your 4-digit Pickup OTP is ${targetOtp}.`,
+          { extra: { tripId, driverName, driverPhone, otp: targetOtp } }
+        );
+      }
     });
 
     const unbindArr = realtime.on('ARRIVED_PICKUP', ({ tripId }) => {
@@ -528,13 +558,17 @@ export function AppProvider({ children }) {
     });
 
     const unbindDec = realtime.on('TRIP_DECLINED', ({ tripId }) => {
+      // Driver declined: dismiss local incoming prompt and silence tone without cancelling ride for others
       setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
+      stopActiveTone();
     });
 
     const unbindCancel = realtime.on('TRIP_CANCELLED', ({ tripId }) => {
       setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
       setTrips(prev => prev.filter(t => t.id !== tripId));
       setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
+      dismissIncomingRideNotification(tripId);
+      stopActiveTone();
     });
 
     const unbindComp = realtime.on('TRIP_COMPLETED', ({ tripId }) => {
@@ -776,6 +810,13 @@ export function AppProvider({ children }) {
     const isGoogle = userData.provider === 'google' || !!userData.idToken;
     const computedName = userData.name || (userData.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : 'Ridingo Member');
     const ridingoId = userData.userId || userData.id || generateRidingoUserId();
+    const cleanPhone = userData.phone
+      ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`)
+      : '';
+    const cleanEmail = userData.email || '';
+    const compoundKey = getCompoundLoginKey(cleanPhone, cleanEmail);
+    const sessionToken = userData.sessionToken || generateSessionToken();
+
     const updated = {
       ...DEFAULT_USER,
       ...userData,
@@ -784,11 +825,11 @@ export function AppProvider({ children }) {
       name: computedName,
       firstName: userData.firstName || computedName.split(' ')[0],
       lastName: userData.lastName || (computedName.split(' ').slice(1).join(' ') || ''),
-      email: userData.email !== undefined ? userData.email : (isGoogle ? '' : ''),
+      email: cleanEmail,
       avatar: userData.avatar || DEFAULT_USER.avatar,
-      phone: userData.phone
-        ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`)
-        : (userData.authMethod === 'phone' ? '' : ''),
+      phone: cleanPhone,
+      sessionToken,
+      compoundKey,
       emergencyPhone: userData.emergencyPhone || '',
       isAuthenticated: true,
       isDemo: false,
@@ -799,11 +840,119 @@ export function AppProvider({ children }) {
       localStorage.setItem('ridingo_user_session', JSON.stringify(updated));
       localStorage.setItem('ridingo_has_onboarded', 'true');
     } catch (e) {}
+
+    // Enforce single active session in Supabase: invalidate any prior session on other devices
+    if (supabase && cleanPhone) {
+      supabase.from('profiles').upsert({
+        phone: cleanPhone,
+        email: cleanEmail,
+        name: computedName,
+        preferences: {
+          ridingoId,
+          userId: ridingoId,
+          activeSessionToken: sessionToken,
+          activeCompoundKey: compoundKey,
+          lastLoginAt: Date.now()
+        },
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'phone' }).then(() => {}).catch(() => {});
+    }
+
     setUTab('home');
     scrollUserToTop();
     setOnboardingOpen(false);
     addToast(`Welcome, ${updated.firstName || updated.name || 'User'}!`, 'check');
   };
+
+  // Single Active Session Verification: Checks if account was logged in from another device
+  useEffect(() => {
+    if (!user?.phone || !user?.sessionToken || user?.isDemo) return;
+    let isVerifying = false;
+
+    const verifySingleSession = async () => {
+      if (isVerifying || !supabase) return;
+      isVerifying = true;
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('preferences')
+          .eq('phone', user.phone)
+          .single();
+
+        if (!error && data?.preferences?.activeSessionToken) {
+          if (data.preferences.activeSessionToken !== user.sessionToken) {
+            console.warn('[Session] Session invalidated: Account logged in on another device.');
+            setUser(null);
+            try {
+              localStorage.removeItem('ridingo_user_session');
+            } catch (e) {}
+            addToast('Signed out: Your account was logged in on another device. Only 1 active session is allowed.', 'alert');
+          }
+        }
+      } catch (e) {
+      } finally {
+        isVerifying = false;
+      }
+    };
+
+    const sessionTimer = setInterval(verifySingleSession, 12000);
+    const handleVis = () => {
+      if (document.visibilityState === 'visible') {
+        verifySingleSession();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVis);
+
+    return () => {
+      clearInterval(sessionTimer);
+      document.removeEventListener('visibilitychange', handleVis);
+    };
+  }, [user?.phone, user?.sessionToken, user?.isDemo]);
+
+  // Single Active Session Verification for Driver Partner
+  useEffect(() => {
+    if (!driverPartner?.phone || !driverPartner?.sessionToken) return;
+    let isVerifying = false;
+
+    const verifyDriverSession = async () => {
+      if (isVerifying || !supabase) return;
+      isVerifying = true;
+      try {
+        const { data, error } = await supabase
+          .from('drivers')
+          .select('metadata')
+          .eq('phone', driverPartner.phone)
+          .single();
+
+        if (!error && data?.metadata?.activeSessionToken) {
+          if (data.metadata.activeSessionToken !== driverPartner.sessionToken) {
+            console.warn('[Driver Session] Session invalidated: Driver account logged in on another device.');
+            setDriverPartner(null);
+            try {
+              localStorage.removeItem('ridingo_driver_session');
+            } catch (e) {}
+            addToast('Signed out: Driver account logged in on another device. Only 1 active session allowed.', 'alert');
+          }
+        }
+      } catch (e) {
+      } finally {
+        isVerifying = false;
+      }
+    };
+
+    const driverSessionTimer = setInterval(verifyDriverSession, 12000);
+    const handleVis = () => {
+      if (document.visibilityState === 'visible') {
+        verifyDriverSession();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVis);
+
+    return () => {
+      clearInterval(driverSessionTimer);
+      document.removeEventListener('visibilitychange', handleVis);
+    };
+  }, [driverPartner?.phone, driverPartner?.sessionToken]);
 
   const updateUserProfile = (updates) => {
     setUser(prev => {
@@ -837,17 +986,40 @@ export function AppProvider({ children }) {
   };
 
   const loginDriverWithDetails = (driverData = {}) => {
+    const sessionToken = driverData.sessionToken || generateSessionToken();
+    const cleanPhone = driverData.phone
+      ? driverData.phone.startsWith('+91') ? driverData.phone : `+91 ${driverData.phone}`
+      : DEFAULT_DRIVER.phone;
+    const cleanEmail = driverData.email || DEFAULT_DRIVER.email;
+    const compoundKey = getCompoundLoginKey(cleanPhone, cleanEmail);
+
     const updated = {
       ...DEFAULT_DRIVER,
       ...driverData,
-      phone: driverData.phone
-        ? driverData.phone.startsWith('+91') ? driverData.phone : `+91 ${driverData.phone}`
-        : DEFAULT_DRIVER.phone
+      phone: cleanPhone,
+      email: cleanEmail,
+      sessionToken,
+      compoundKey
     };
     setDriverPartner(updated);
     try {
       localStorage.setItem('ridingo_driver_session', JSON.stringify(updated));
     } catch (e) {}
+
+    // Sync driver session token to Supabase drivers table
+    if (supabase && updated.id) {
+      supabase.from('drivers').update({
+        phone: cleanPhone,
+        email: cleanEmail,
+        metadata: {
+          activeSessionToken: sessionToken,
+          compoundKey,
+          lastLoginAt: Date.now()
+        },
+        updated_at: new Date().toISOString()
+      }).eq('id', updated.id).then(() => {}).catch(() => {});
+    }
+
     setDTab('dash');
     scrollDriverToTop();
     setDriverOnboardingOpen(false);
@@ -1079,6 +1251,8 @@ export function AppProvider({ children }) {
       })
     );
     setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
+    dismissIncomingRideNotification(tripId);
+    stopActiveTone();
 
     // Notify User App in real time
     addNotification(
@@ -1227,14 +1401,41 @@ export function AppProvider({ children }) {
     updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now(), completion_otp: completionOtp });
   };
 
+  // Driver decline logic: Declining a trip locally does NOT affect other drivers
   const declineTrip = (tripId) => {
+    // 1. Remove from incoming popup & active alert sound
+    setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
+    stopActiveTone();
+    dismissIncomingRideNotification(tripId);
+
+    // 2. Mark as declined in driver's local history so it won't pop up again for this driver
+    try {
+      const declined = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+      if (!declined.includes(tripId)) {
+        declined.push(tripId);
+        localStorage.setItem('ridingo_declined_trips', JSON.stringify(declined));
+      }
+    } catch (_) {}
+
+    // 3. Remove locally from this driver's visible trips list
+    setTrips(prev => prev.filter(t => t.id !== tripId));
+
+    // 4. Notify realtime bus of driver decline (leaves ride open in database for other drivers)
+    realtime.declineRide(tripId);
+    addToast('Trip request declined and removed from your queue', 'info');
+  };
+
+  // User/Customer cancel ride logic: Cancels the trip globally for all drivers
+  const cancelTripByUser = (tripId) => {
     setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
     setTrips(prev => prev.filter(t => t.id !== tripId));
     setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
+    stopActiveTone();
+    dismissIncomingRideNotification(tripId);
+
     realtime.cancelRide(tripId);
-    realtime.declineRide(tripId);
     updateTripStatusInSupabase(tripId, 'cancelled');
-    addToast('Trip request cancelled', 'info');
+    addToast('Ride booking cancelled', 'info');
   };
 
   const completeTrip = (tripId) => {
@@ -1305,6 +1506,7 @@ export function AppProvider({ children }) {
         isUserTrip,
         acceptTrip,
         declineTrip,
+        cancelTripByUser,
         arrivedAtPickup,
         verifyStartOtp,
         submitConditionCheck,

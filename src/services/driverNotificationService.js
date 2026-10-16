@@ -1,10 +1,11 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { playCustomTone, stopActiveTone, getSelectedCustomTune } from '../utils/audioTones';
 
 /**
- * Multi-Platform Native Device Push & System Notification Engine for Ridingo Driver App
+ * Multi-Platform Native Device Push & System Notification Engine for Ridingo Driver & User Apps
  * 
- * Bypasses in-app UI to deliver persistent alerts directly into the native OS Notification Center:
+ * Delivers alerts directly into the native OS Notification Center:
  * - Native iOS Notification Center (APNs / UNUserNotificationCenter)
  * - Native Android Notification Shade & Heads-Up Banner (NotificationManager Channels)
  * - Desktop & Mobile Web OS Notification Center (W3C Web Notifications & ServiceWorker API)
@@ -13,17 +14,18 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 let isChannelCreated = false;
 
 /**
- * Synthesizes a high-clarity transaction/alert chime using the Web Audio API
+ * Plays synthesized notification chime
+ * Uses selected custom tune (default minimal 'toom toom' sound, 1-2s)
  */
 export function playNativeAlertChime(type = 'alert') {
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
-
     if (type === 'payout') {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+      const now = ctx.currentTime;
+
       // 2-tone pleasant bank credit chime (F5 -> C6)
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
@@ -45,21 +47,13 @@ export function playNativeAlertChime(type = 'alert') {
       osc2.start(now + 0.08);
       osc2.stop(now + 0.6);
     } else {
-      // Urgent ride request / transaction bell alert (G5 -> E6)
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(783.99, now);
-      osc.frequency.setValueAtTime(1318.51, now + 0.09);
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.45);
+      // Plays chosen copyright-free tone (Defaults to minimal 'toom toom')
+      playCustomTone(getSelectedCustomTune());
     }
   } catch (e) {}
 }
+
+export { stopActiveTone };
 
 /**
  * Initializes notification channels on native devices (Android 8.0+)
@@ -489,3 +483,106 @@ export function notifyDriverOnlineStatus(isOnline) {
     }
   );
 }
+
+/**
+ * 6. Dismiss Incoming Ride Notification & Silence Tone
+ * Cancels active tone immediately and removes delivered/pending OS notifications
+ */
+export async function dismissIncomingRideNotification(tripId = '') {
+  try {
+    // 1. Immediately silence any active tone
+    stopActiveTone();
+
+    // 2. Remove native notification from notification shade/center
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const delivered = await LocalNotifications.getDeliveredNotifications();
+        if (delivered?.notifications?.length) {
+          const matched = delivered.notifications.filter(n => {
+            if (!tripId) return true;
+            return n.extra?.tripId === tripId || String(n.tag || '').includes(String(tripId));
+          });
+          if (matched.length > 0) {
+            await LocalNotifications.removeDeliveredNotifications({
+              notifications: matched.map(n => ({ id: n.id }))
+            });
+          }
+        }
+      } catch (nativeErr) {
+        console.warn('[DriverNotifications] Error removing delivered notifications:', nativeErr);
+      }
+    }
+  } catch (err) {
+    console.warn('[DriverNotifications] dismissIncomingRideNotification error:', err);
+  }
+}
+
+/**
+ * 7. Send Device Default Native Notification for User App upon Chauffeur Acceptance
+ */
+export async function sendUserNativeNotification(title, body, options = {}) {
+  const {
+    id = Math.floor(Math.random() * 500000) + 10000,
+    tag = 'user_driver_assigned_' + Date.now(),
+    extra = {}
+  } = options;
+
+  // 1. Play minimal gentle tone
+  try {
+    playCustomTone('soft_chime');
+  } catch (e) {}
+
+  // 2. Vibration
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    try {
+      navigator.vibrate([100, 50, 150]);
+    } catch (e) {}
+  }
+
+  // 3. Native Device Notification (Capacitor iOS & Android)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await ensureNativeChannel();
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id,
+            title,
+            body,
+            channelId: 'driver_dispatch_alerts',
+            smallIcon: 'ic_stat_icon_config_sample',
+            largeIcon: 'res://drawable/ic_launcher',
+            iconColor: '#FFC70A',
+            schedule: { at: new Date(Date.now() + 50) },
+            extra: {
+              ...extra,
+              timestamp: Date.now(),
+              source: 'RidingoUser'
+            }
+          }
+        ]
+      });
+      return true;
+    } catch (err) {
+      console.warn('[UserNotifications] LocalNotifications.schedule error:', err);
+    }
+  }
+
+  // 4. Web Browser Notification
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    try {
+      if (Notification.permission === 'granted') {
+        new Notification(title, {
+          body,
+          icon: '/App icon.png',
+          tag,
+          silent: false
+        });
+        return true;
+      }
+    } catch (e) {}
+  }
+
+  return false;
+}
+
