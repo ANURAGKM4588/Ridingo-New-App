@@ -40,6 +40,12 @@ export default function TripTicketModal({ trip, isOpen, onClose, addToast }) {
     (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) ||
     trip.driverObj?.name ||
     'Assigned Chauffeur';
+  const driverPhone =
+    trip.driverObj?.phone ||
+    (typeof trip.driver === 'object' ? trip.driver?.phone : null) ||
+    trip.driverPhone ||
+    trip.car?.driverPhone ||
+    '+91 94471 23456';
   const pickupLoc = trip.pickup || 'Pickup Location';
   const dropLoc = trip.drop_loc || 'City Destination';
   const fare = Number(trip.fare) || 750;
@@ -52,6 +58,7 @@ Trip ID: ${trip.id}
 📍 From (Pickup): ${pickupLoc}
 🏁 To (Destination): ${dropLoc}
 👤 Assigned Chauffeur: ${driverName}
+📞 Driver Mobile: ${driverPhone}
 💰 Total Fare: ₹${fare}
 🔑 Trip Pickup OTP: ${otp}
 ━━━━━━━━━━━━━━━━━━━━
@@ -78,7 +85,7 @@ Live GPS Tracking: ${trackUrl}`;
 
           await Share.share({
             title: `Ridingo Ticket · ${trip.id}`,
-            text: `Ridingo Chauffeur Ticket · ${trip.id} (OTP: ${otp})`,
+            text: `Ridingo Chauffeur Ticket · ${trip.id}\nDriver: ${driverName} (${driverPhone})\nOTP: ${otp}\nLive Track: ${trackUrl}`,
             files: [savedFile.uri],
             dialogTitle: 'Share Trip Ticket Image'
           });
@@ -90,7 +97,7 @@ Live GPS Tracking: ${trackUrl}`;
       }
 
       // B. Web Share API with File (Supported in Mobile Chrome, Safari, etc.)
-      // Note: Passing only the file ensures WhatsApp enters image-attachment mode rather than text mode
+      // Note: Passing the file with concise caption ensures WhatsApp enters image-attachment mode
       if (
         ticketData.file &&
         typeof navigator !== 'undefined' &&
@@ -100,7 +107,7 @@ Live GPS Tracking: ${trackUrl}`;
         await navigator.share({
           files: [ticketData.file],
           title: `Ridingo Ticket · ${trip.id}`,
-          text: `Ridingo Chauffeur Ticket · ${trip.id} (OTP: ${otp})`
+          text: `Ridingo Chauffeur Ticket · ${trip.id}\nDriver: ${driverName} (${driverPhone})\nOTP: ${otp}\nLive Track: ${trackUrl}`
         });
         if (addToast) addToast('Ticket shared successfully!', 'check');
         return;
