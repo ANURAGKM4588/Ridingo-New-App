@@ -1671,6 +1671,7 @@ export default function DriverApp() {
     if (incomingTripRequest?.id === tripId) {
       setIncomingTripRequest(null);
     }
+    setMinimizedRequestTripId(null);
     stopActiveTone();
     dismissIncomingRideNotification(tripId);
     if (acceptTrip) {

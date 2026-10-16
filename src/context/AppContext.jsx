@@ -316,6 +316,14 @@ export function AppProvider({ children }) {
   const mapSupabaseRowToTrip = (row) => {
     if (!row) return null;
     const carObj = row.car || {};
+    const driverObj = (typeof row.driver === 'object' && row.driver !== null)
+      ? row.driver
+      : (typeof row.driver === 'string' && row.driver.startsWith('{'))
+        ? (() => { try { return JSON.parse(row.driver); } catch (_) { return null; } })()
+        : (row.driver ? { name: row.driver } : null);
+    const driverName = driverObj?.name || (typeof row.driver === 'string' ? row.driver : null);
+    const driverId = driverObj?.deviceDriverId || driverObj?.id || null;
+
     return {
       id: row.id,
       cat: row.cat || 'hourly',
@@ -344,7 +352,9 @@ export function AppProvider({ children }) {
       conditionVerified: !!row.conditionVerified,
       paymentGateway: 'PhonePe',
       paymentId: row.paymentId || 'pay_ppe_' + row.id,
-      driver: row.driver || null,
+      driver: driverName,
+      driverObj: driverObj,
+      driver_id: driverId,
       rider: row.rider || { name: 'Customer', phone: '+91 98401 23456' },
       cashback: Number(row.cashback) || 20,
       cashbackStatus: row.status === 'completed' ? 'credited' : 'pending',
@@ -496,6 +506,10 @@ export function AppProvider({ children }) {
                         const otp = tripObj.startOtp || '4821';
                         notifyUserTripAccepted(tripObj.id, driverName, driverPhone, otp);
                       }
+                    } else {
+                      setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
+                      dismissIncomingRideNotification(tripObj.id);
+                      stopActiveTone();
                     }
                   } else if (['cancelled', 'completed'].includes(tripObj.status)) {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
@@ -1289,11 +1303,16 @@ export function AppProvider({ children }) {
   const updateTripStatusInSupabase = async (tripId, status, extra = {}) => {
     try {
       if (!supabase || typeof supabase.from !== 'function') return;
-      await supabase.from('trips').update({
+      const { data, error } = await supabase.from('trips').update({
         status,
         updated_at: new Date().toISOString(),
         ...extra
-      }).eq('id', tripId);
+      }).eq('id', tripId).select();
+      if (error) {
+        console.warn('[Supabase] Status update error:', error.message);
+      } else {
+        console.info('[Supabase] Status update success:', tripId, status);
+      }
     } catch (e) {
       console.warn('[Supabase] Status update error:', e);
     }
@@ -1338,8 +1357,7 @@ export function AppProvider({ children }) {
     // Broadcast across realtime bus & update Supabase
     realtime.acceptRide(tripId, driverObj);
     updateTripStatusInSupabase(tripId, 'accepted', {
-      driver: driver.name,
-      driver_id: driverId
+      driver: driverObj
     });
   };
 
@@ -1471,7 +1489,7 @@ export function AppProvider({ children }) {
     );
 
     realtime.completeRide(tripId, { amount, fare, tip, isCash, completionOtp });
-    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now(), completion_otp: completionOtp });
+    updateTripStatusInSupabase(tripId, 'completed', { done_ts: Date.now(), otp: completionOtp });
   };
 
   // Driver decline logic: Declining a trip locally does NOT affect other drivers
