@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
 function formatTimeAgo(ts) {
+  if (!ts) return 'Just now';
   const diffSec = Math.floor((Date.now() - ts) / 1000);
   if (diffSec < 60) return 'Just now';
   const diffMin = Math.floor(diffSec / 60);
@@ -14,365 +15,440 @@ function formatTimeAgo(ts) {
 }
 
 /**
- * Swipeable Notification Tile Component
- * - Right swipe (drag right > 70px): Mark as read with yellow icon & smooth animation
- * - Left swipe (drag left < -70px): Delete notification with red icon & smooth slide-out
- * - Auto-demo hint: For first-time users, the first notification card smoothly peeks right (Yellow Read),
- *   then across to left (Red Delete), and glides back to center automatically.
+ * Offer Details Banner Modal
+ * Displays offer criteria, terms and conditions, and a direct claim button.
  */
-function SwipeableNotifItem({
-  note,
-  index = 0,
-  isClearingAll = false,
-  onMarkRead,
-  onDelete,
-  isDemoHint,
-  onDemoHintComplete
-}) {
-  const [offsetX, setOffsetX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isReadFlash, setIsReadFlash] = useState(false);
+function OfferDetailsModal({ offer, onClose, onClaim }) {
+  if (!offer) return null;
 
-  const startXRef = useRef(0);
-  const currentXRef = useRef(0);
-  const SWIPE_THRESHOLD = 70; // px threshold to trigger action
+  const defaultTerms = [
+    'Offer valid on all Chauffeur bookings booked via the Ridingo mobile app.',
+    'Cashback of 20% (up to ₹250) is credited to your Ridingo Wallet immediately upon trip completion.',
+    'Applicable for both Manual and Automatic transmission personal vehicles.',
+    'Cannot be combined with any other promotional coupons or corporate discounts.',
+    'Platform terms and chauffeur service policies apply.'
+  ];
 
-  // Choreographed automatic demo animation for first-time users
-  useEffect(() => {
-    if (!isDemoHint) return;
-
-    let t1, t2, t3, t4;
-    // Delay 380ms after bottom sheet finishes sliding into view
-    t1 = setTimeout(() => {
-      // Step 1: Smoothly slide Right -> reveals Yellow "Mark Read" with soft bounce
-      setOffsetX(62);
-
-      t2 = setTimeout(() => {
-        // Step 2: Smoothly slide across to Left -> reveals Red "Delete"
-        setOffsetX(-62);
-
-        t3 = setTimeout(() => {
-          // Step 3: Return smoothly to resting center position
-          setOffsetX(0);
-
-          t4 = setTimeout(() => {
-            if (onDemoHintComplete) onDemoHintComplete();
-          }, 400);
-        }, 550);
-      }, 550);
-    }, 380);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
-  }, [isDemoHint]);
-
-  // --- Touch gesture handlers ---
-  const handleTouchStart = (e) => {
-    if (isDemoHint && onDemoHintComplete) onDemoHintComplete();
-    setIsDragging(true);
-    startXRef.current = e.touches[0].clientX;
-    currentXRef.current = e.touches[0].clientX;
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDragging) return;
-    const clientX = e.touches[0].clientX;
-    const diff = clientX - startXRef.current;
-    // Dampen drag resistance past threshold
-    const dampened = Math.sign(diff) * Math.min(Math.abs(diff), 130);
-    setOffsetX(dampened);
-    currentXRef.current = clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    if (offsetX > SWIPE_THRESHOLD) {
-      triggerMarkRead();
-    } else if (offsetX < -SWIPE_THRESHOLD) {
-      triggerDelete();
-    } else {
-      setOffsetX(0);
-    }
-  };
-
-  // --- Mouse drag handlers for desktop / testing ---
-  const handleMouseDown = (e) => {
-    if (isDemoHint && onDemoHintComplete) onDemoHintComplete();
-    setIsDragging(true);
-    startXRef.current = e.clientX;
-    currentXRef.current = e.clientX;
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    const diff = e.clientX - startXRef.current;
-    const dampened = Math.sign(diff) * Math.min(Math.abs(diff), 130);
-    setOffsetX(dampened);
-    currentXRef.current = e.clientX;
-  };
-
-  const handleMouseUp = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    if (offsetX > SWIPE_THRESHOLD) {
-      triggerMarkRead();
-    } else if (offsetX < -SWIPE_THRESHOLD) {
-      triggerDelete();
-    } else {
-      setOffsetX(0);
-    }
-  };
-
-  const triggerMarkRead = () => {
-    setOffsetX(80);
-    setIsReadFlash(true);
-    setTimeout(() => {
-      onMarkRead(note.id);
-      setOffsetX(0);
-      setTimeout(() => setIsReadFlash(false), 300);
-    }, 240);
-  };
-
-  const triggerDelete = () => {
-    setIsDeleting(true);
-    setOffsetX(-360);
-    if (navigator.vibrate) {
-      try { navigator.vibrate(30); } catch (e) {}
-    }
-    setTimeout(() => {
-      onDelete(note.id);
-    }, 380);
-  };
-
-  const isGift = note.icon === 'gift';
-  const isCar = note.icon === 'car';
-
-  // Calculate underlay opacity
-  const rightSwipeRatio = Math.max(0, Math.min(offsetX / SWIPE_THRESHOLD, 1));
-  const leftSwipeRatio = Math.max(0, Math.min(Math.abs(offsetX) / SWIPE_THRESHOLD, 1));
-
-  const staggerDelay = index * 45;
-  const isLeaving = isClearingAll || isDeleting;
+  const terms = offer.terms || defaultTerms;
+  const promoCode = offer.code || 'RIDE20';
+  const discountLabel = offer.discount || '20% Cashback';
+  const serviceCat = offer.category || 'hourly';
 
   return (
     <div
+      className="layer on"
       style={{
-        position: 'relative',
-        borderRadius: '18px',
-        overflow: 'hidden',
-        userSelect: 'none',
-        transform: isClearingAll
-          ? 'translateX(-115%) scale(0.93)'
-          : isDeleting
-          ? 'translateX(-115%) scale(0.93)'
-          : 'none',
-        opacity: isLeaving ? 0 : 1,
-        maxHeight: isLeaving ? '0px' : '180px',
-        marginBottom: isLeaving ? '0px' : '8px',
-        pointerEvents: isLeaving ? 'none' : 'auto',
-        transition: isClearingAll
-          ? `transform 0.44s cubic-bezier(0.16, 1, 0.3, 1) ${staggerDelay}ms, opacity 0.36s ease ${staggerDelay}ms, max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${staggerDelay + 70}ms, margin-bottom 0.4s ease ${staggerDelay + 70}ms`
-          : isDeleting
-          ? 'transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.32s ease, max-height 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.05s, margin-bottom 0.36s ease 0.05s'
-          : 'none',
-        willChange: 'transform, opacity, max-height'
+        zIndex: 10020,
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        padding: 0
       }}
-      onMouseLeave={() => {
-        if (isDragging) {
-          setIsDragging(false);
-          setOffsetX(0);
-        }
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="scrim" onClick={onClose} />
+
+      <div
+        className="sheet"
+        style={{
+          width: '100%',
+          maxWidth: '460px',
+          background: 'var(--card, #FFFFFF)',
+          borderTopLeftRadius: '26px',
+          borderTopRightRadius: '26px',
+          padding: '20px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+          boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
+          position: 'relative',
+          boxSizing: 'border-box',
+          animation: 'slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ width: '40px', height: '4px', borderRadius: '999px', background: 'var(--line, #E2E8F0)', margin: '0 auto 16px' }} />
+
+        {/* Modal Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '12px',
+                background: 'rgba(250, 204, 21, 0.16)',
+                color: '#D97706',
+                display: 'grid',
+                placeItems: 'center'
+              }}
+            >
+              <Icon name="star" size={20} />
+            </span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: 'var(--ink, #0F172A)' }}>
+                Offer Details
+              </h3>
+              <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)' }}>
+                Exclusive Chauffeur Promotion
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="iconbtn"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '50%',
+              background: 'var(--field, #F1F5F9)',
+              border: '1px solid var(--line, #E2E8F0)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--ink, #0F172A)',
+              cursor: 'pointer'
+            }}
+          >
+            <Icon name="x" size={17} />
+          </button>
+        </div>
+
+        {/* Promo Graphic Banner */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+            color: '#FFFFFF',
+            borderRadius: '18px',
+            padding: '18px 20px',
+            marginBottom: '16px',
+            position: 'relative',
+            overflow: 'hidden',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <div style={{ display: 'inline-block', background: 'rgba(250, 204, 21, 0.22)', border: '1px solid #FACC15', color: '#FACC15', borderRadius: '999px', padding: '3px 10px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+            {discountLabel}
+          </div>
+          <h4 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>
+            {offer.title || 'Special Chauffeur Offer'}
+          </h4>
+          <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#94A3B8', lineHeight: 1.45 }}>
+            {offer.body || 'Enjoy professional chauffeurs at exceptional discounts.'}
+          </p>
+
+          {/* Coupon Code Pill */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px dashed #FACC15',
+              padding: '6px 14px',
+              borderRadius: '12px'
+            }}
+          >
+            <span style={{ fontSize: '11.5px', color: '#CBD5E1', fontWeight: 600 }}>Promo Code:</span>
+            <b style={{ fontSize: '14px', color: '#FACC15', letterSpacing: '0.05em' }}>{promoCode}</b>
+          </div>
+        </div>
+
+        {/* Criteria & Terms Section */}
+        <div style={{ maxHeight: '230px', overflowY: 'auto', marginBottom: '18px', paddingRight: '4px' }}>
+          <h5 style={{ margin: '0 0 8px', fontSize: '12.5px', fontWeight: 800, color: 'var(--ink, #0F172A)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Criteria & Eligibility
+          </h5>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+            <div style={{ background: 'var(--field, #F8FAFC)', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--line, #E2E8F0)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', display: 'block' }}>Applicable Service</span>
+              <b style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', textTransform: 'capitalize' }}>{serviceCat} Driver</b>
+            </div>
+            <div style={{ background: 'var(--field, #F8FAFC)', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--line, #E2E8F0)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', display: 'block' }}>Min Booking</span>
+              <b style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)' }}>3+ Hours</b>
+            </div>
+          </div>
+
+          <h5 style={{ margin: '0 0 8px', fontSize: '12.5px', fontWeight: 800, color: 'var(--ink, #0F172A)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Terms & Conditions
+          </h5>
+          <ul style={{ margin: 0, paddingLeft: '18px', color: 'var(--muted, #64748B)', fontSize: '12px', lineHeight: 1.6 }}>
+            {terms.map((t, idx) => (
+              <li key={idx} style={{ marginBottom: '4px' }}>{t}</li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            className="btn"
+            style={{
+              flex: 1,
+              height: '46px',
+              borderRadius: '14px',
+              border: '1.5px solid var(--line, #E2E8F0)',
+              background: 'var(--field, #F1F5F9)',
+              color: 'var(--ink, #0F172A)',
+              fontWeight: 700,
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+            onClick={onClose}
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            style={{
+              flex: 1.6,
+              height: '46px',
+              borderRadius: '14px',
+              background: '#000000',
+              color: '#FFFFFF',
+              fontWeight: 750,
+              fontSize: '14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+            onClick={() => onClaim(offer)}
+          >
+            <span>Claim & Book Now</span>
+            <Icon name="chevron-right" size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Expandable Notification Card
+ * - Main content only (title + time) by default
+ * - Tap expands the body content & automatically marks notification as read
+ * - When read, unread dot/badge is removed
+ * - Unread style: light white theme (#FFFFFF)
+ * - Read style: light gray theme (#F1F5F9 / var(--field))
+ * - If offer notification: shows "Claim Now" & "View More" action buttons
+ */
+function ExpandableNotifCard({
+  note,
+  isExpanded,
+  onToggleExpand,
+  onDelete,
+  onClaimOffer,
+  onViewOfferDetails,
+  isClearingAll = false
+}) {
+  const isRead = !!note.read;
+  const isOffer = note.isOffer ||
+    note.category === 'promo' ||
+    note.category === 'offer' ||
+    (note.title && /offer|cashback|pass|discount|promo/i.test(note.title));
+
+  const isGift = note.icon === 'gift' || note.icon === 'star';
+  const isCar = note.icon === 'car';
+
+  const handleClick = (e) => {
+    // If clicking on interactive action buttons inside expanded view, don't collapse
+    if (e.target.closest('button')) return;
+    onToggleExpand(note.id);
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      style={{
+        borderRadius: '18px',
+        padding: '13px 14px',
+        marginBottom: isClearingAll ? '0px' : '8px',
+        cursor: 'pointer',
+        userSelect: 'none',
+        // Unread = Light White theme (#FFFFFF), Read = Light Gray theme (#F1F5F9)
+        background: isRead ? 'var(--field, #F1F5F9)' : '#FFFFFF',
+        border: isRead ? '1px solid var(--line, #E2E8F0)' : '1px solid rgba(0, 0, 0, 0.12)',
+        boxShadow: isRead ? 'none' : '0 2px 10px rgba(0, 0, 0, 0.05)',
+        transition: 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+        opacity: isClearingAll ? 0 : 1,
+        transform: isClearingAll ? 'translateY(18px) scale(0.95)' : 'none',
+        maxHeight: isClearingAll ? '0px' : '400px',
+        overflow: 'hidden'
       }}
     >
-      {/* 1. LEFT UNDERLAY (Visible when swiping RIGHT: Mark As Read with Yellow Theme) */}
-      <div
-        onClick={triggerMarkRead}
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: 0,
-          width: '50%',
-          background: 'linear-gradient(90deg, #FACC15 0%, #EAB308 100%)',
-          color: '#111827',
-          display: 'flex',
-          alignItems: 'center',
-          paddingLeft: '20px',
-          gap: '8px',
-          cursor: 'pointer',
-          opacity: offsetX > 0 ? Math.min(rightSwipeRatio * 1.25, 1) : 0,
-          transform: `scale(${0.85 + rightSwipeRatio * 0.15})`,
-          transformOrigin: 'left center',
-          transition: isDragging ? 'none' : 'opacity 0.24s ease, transform 0.24s ease'
-        }}
-      >
+      {/* Main Content (Always Visible) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Leading Icon */}
         <span
           style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: '#111827',
-            color: '#FACC15',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-          }}
-        >
-          <Icon name="checkCircle" size={17} />
-        </span>
-        <b style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.02em', color: '#111827' }}>
-          Mark Read
-        </b>
-      </div>
-
-      {/* 2. RIGHT UNDERLAY (Visible when swiping LEFT: Delete with Red Theme) */}
-      <div
-        onClick={triggerDelete}
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          right: 0,
-          width: '50%',
-          background: 'linear-gradient(90deg, #EF4444 0%, #DC2626 100%)',
-          color: '#FFFFFF',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          paddingRight: '20px',
-          gap: '8px',
-          cursor: 'pointer',
-          opacity: offsetX < 0 ? Math.min(leftSwipeRatio * 1.25, 1) : 0,
-          transform: `scale(${0.85 + leftSwipeRatio * 0.15})`,
-          transformOrigin: 'right center',
-          transition: isDragging ? 'none' : 'opacity 0.24s ease, transform 0.24s ease'
-        }}
-      >
-        <b style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.02em', color: '#FFFFFF' }}>
-          Delete
-        </b>
-        <span
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: '#FFFFFF',
-            color: '#DC2626',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.18)'
-          }}
-        >
-          <Icon name="trash" size={16} />
-        </span>
-      </div>
-
-      {/* 3. FOREGROUND NOTIFICATION CARD */}
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '12px',
-          padding: '14px',
-          borderRadius: '18px',
-          background: isReadFlash ? 'rgba(250, 204, 21, 0.12)' : 'var(--card)',
-          border: isReadFlash ? '1.5px solid var(--yellow)' : '1px solid var(--line)',
-          position: 'relative',
-          transform: `translateX(${offsetX}px)`,
-          transition: isDragging
-            ? 'none'
-            : 'transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1), background 0.25s ease, border-color 0.25s ease',
-          boxShadow: Math.abs(offsetX) > 5 ? '0 8px 24px rgba(0, 0, 0, 0.12)' : 'none',
-          cursor: isDragging ? 'grabbing' : 'grab'
-        }}
-      >
-        <span
-          style={{
-            width: '38px',
-            height: '38px',
+            width: '36px',
+            height: '36px',
             borderRadius: '12px',
-            background: isGift
-              ? 'rgba(52, 199, 89, 0.15)'
+            background: isOffer
+              ? 'rgba(250, 204, 21, 0.2)'
+              : isGift
+              ? 'rgba(34, 197, 94, 0.16)'
               : isCar
-              ? 'var(--yellow-soft)'
-              : 'var(--field)',
-            color: isGift
-              ? 'var(--good)'
+              ? 'var(--yellow-soft, #FEF3C7)'
+              : isRead
+              ? '#E2E8F0'
+              : 'var(--field, #F1F5F9)',
+            color: isOffer
+              ? '#D97706'
+              : isGift
+              ? '#16A34A'
               : isCar
-              ? 'var(--on-yellow-soft, var(--yellow))'
-              : 'var(--ink)',
+              ? '#B45309'
+              : 'var(--ink, #0F172A)',
             display: 'grid',
             placeItems: 'center',
             flexShrink: 0
           }}
         >
-          <Icon name={note.icon || 'bell'} size={18} />
+          <Icon name={note.icon || (isOffer ? 'star' : 'bell')} size={18} />
         </span>
 
+        {/* Title & Timestamp */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-            <b style={{ fontSize: '14px', color: 'var(--ink)', fontWeight: note.read ? 600 : 750 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+            <span
+              style={{
+                fontSize: '13.5px',
+                fontWeight: isRead ? 600 : 750,
+                color: isRead ? '#475569' : '#0F172A',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                lineHeight: 1.3
+              }}
+            >
               {note.title}
-            </b>
-            <span style={{ fontSize: '11px', color: 'var(--muted)', flexShrink: 0, marginLeft: '6px' }}>
+            </span>
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#94A3B8',
+                fontWeight: 500,
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
+              }}
+            >
               {formatTimeAgo(note.ts)}
             </span>
           </div>
-          <p
-            style={{
-              margin: '2px 0 0',
-              fontSize: '12.8px',
-              color: 'var(--ink)',
-              opacity: note.read ? 0.65 : 0.88,
-              lineHeight: 1.35
-            }}
-          >
-            {note.body}
-          </p>
         </div>
 
-        {/* Unread Indicator Badge */}
-        {!note.read ? (
+        {/* Unread indicator ONLY if unread. Tapping removes it! */}
+        {!isRead && (
           <span
             style={{
-              width: '8px',
-              height: '8px',
+              width: '7px',
+              height: '7px',
               borderRadius: '50%',
-              background: 'var(--yellow)',
+              background: '#EAB308',
               flexShrink: 0,
-              marginTop: '6px',
-              boxShadow: '0 0 0 3px rgba(250, 204, 21, 0.22)'
+              boxShadow: '0 0 0 3px rgba(234, 179, 8, 0.25)'
             }}
             title="Unread"
           />
-        ) : (
-          <span
+        )}
+
+        {/* Expand / Collapse Chevron */}
+        <span
+          style={{
+            color: '#94A3B8',
+            display: 'flex',
+            alignItems: 'center',
+            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.22s ease',
+            flexShrink: 0
+          }}
+        >
+          <Icon name="chevron-down" size={16} />
+        </span>
+      </div>
+
+      {/* Expandable Body Content */}
+      <div
+        style={{
+          maxHeight: isExpanded ? '300px' : '0px',
+          opacity: isExpanded ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease',
+          paddingTop: isExpanded ? '10px' : '0px'
+        }}
+      >
+        <div style={{ height: '1px', background: isRead ? '#E2E8F0' : 'rgba(0,0,0,0.06)', margin: '4px 0 10px' }} />
+        <p
+          style={{
+            margin: 0,
+            fontSize: '12.8px',
+            color: isRead ? '#475569' : '#1E293B',
+            lineHeight: 1.5,
+            paddingLeft: '48px'
+          }}
+        >
+          {note.body}
+        </p>
+
+        {/* Offer Actions: "Claim Now" & "View More" */}
+        {isOffer && (
+          <div
             style={{
-              color: '#16A34A',
               display: 'flex',
               alignItems: 'center',
-              flexShrink: 0,
-              marginTop: '4px',
-              opacity: 0.7
+              gap: '8px',
+              marginTop: '12px',
+              paddingLeft: '48px'
             }}
-            title="Read"
           >
-            <Icon name="check" size={14} />
-          </span>
+            <button
+              type="button"
+              className="btn primary"
+              style={{
+                height: '34px',
+                padding: '0 14px',
+                borderRadius: '10px',
+                fontSize: '12.5px',
+                fontWeight: 750,
+                background: '#000000',
+                color: '#FFFFFF',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              onClick={() => onClaimOffer(note)}
+            >
+              <span>Claim Now</span>
+              <Icon name="chevron-right" size={13} />
+            </button>
+
+            <button
+              type="button"
+              className="btn"
+              style={{
+                height: '34px',
+                padding: '0 12px',
+                borderRadius: '10px',
+                fontSize: '12px',
+                fontWeight: 700,
+                background: 'var(--field, #F1F5F9)',
+                color: 'var(--ink, #0F172A)',
+                border: '1px solid var(--line, #E2E8F0)',
+                cursor: 'pointer'
+              }}
+              onClick={() => onViewOfferDetails(note)}
+            >
+              View More
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -384,29 +460,15 @@ export default function NotificationsSheet() {
     notifsOpen,
     setNotifsOpen,
     unotes,
-    markAllNotifsRead,
     markNotifRead,
-    deleteNotif,
     clearAllNotifs,
-    addToast
+    addToast,
+    setBookingCategory,
+    setBookingOpen
   } = useApp();
 
-  // Check if first-time user for swipe demo hint animation
-  const [shouldPlayDemoHint, setShouldPlayDemoHint] = useState(() => {
-    try {
-      return !localStorage.getItem('ridingo_notif_swipe_hint_seen');
-    } catch (e) {
-      return false;
-    }
-  });
-
-  const handleDemoHintComplete = () => {
-    try {
-      localStorage.setItem('ridingo_notif_swipe_hint_seen', 'true');
-    } catch (e) {}
-    setShouldPlayDemoHint(false);
-  };
-
+  const [expandedId, setExpandedId] = useState(null);
+  const [selectedOffer, setSelectedOffer] = useState(null);
   const [isClearingAll, setIsClearingAll] = useState(false);
 
   if (!notifsOpen) return null;
@@ -415,197 +477,194 @@ export default function NotificationsSheet() {
     setNotifsOpen(false);
   };
 
-  const handleClearAll = () => {
-    if (!unotes || unotes.length === 0 || isClearingAll) {
-      handleClose();
-      return;
+  const handleToggleExpand = (id) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+      // Auto mark as read on tap
+      markNotifRead(id);
     }
+  };
+
+  // Smooth clean collapse animation into bottom without opening any new modal!
+  const handleClearAll = () => {
+    if (!unotes || unotes.length === 0 || isClearingAll) return;
     setIsClearingAll(true);
     if (navigator.vibrate) {
-      try { navigator.vibrate([25, 45, 25]); } catch (e) {}
+      try { navigator.vibrate([20, 35, 20]); } catch (e) {}
     }
-    const cleanDuration = 440 + Math.min(unotes.length * 45, 300);
+    // Smooth transition delay so items smoothly collapse to bottom
     setTimeout(() => {
       clearAllNotifs();
+      setExpandedId(null);
       setIsClearingAll(false);
       addToast('All notifications cleared', 'info');
-    }, cleanDuration);
+    }, 320);
   };
 
-  const handleItemMarkRead = (id) => {
-    markNotifRead(id);
-    addToast('Marked as read', 'check');
+  const handleClaimOffer = (note) => {
+    const offerCat = note.category === 'airport' ? 'airport' : note.category === 'outstation' ? 'outstation' : 'hourly';
+    setBookingCategory(offerCat);
+    setNotifsOpen(false);
+    setBookingOpen(true);
+    addToast(`Offer activated! Book your ${offerCat} chauffeur now.`, 'check');
   };
 
-  const handleItemDelete = (id) => {
-    deleteNotif(id);
-    addToast('Notification deleted', 'info');
+  const handleViewOfferDetails = (note) => {
+    setSelectedOffer({
+      title: note.title,
+      body: note.body,
+      code: note.offerCode || 'RIDE20',
+      discount: note.offerDiscount || '20% Cashback',
+      category: note.category || 'hourly',
+      terms: note.terms
+    });
   };
 
-  const unreadCount = (unotes || []).filter(n => !n.read).length;
+  const hasNotes = unotes && unotes.length > 0;
 
   return (
-    <div className="layer on" id="u-notifs-layer" style={{ zIndex: 90 }}>
-      <div className="scrim" onClick={handleClose} />
+    <>
+      <div className="layer on" id="u-notifs-layer" style={{ zIndex: 90 }}>
+        <div className="scrim" onClick={handleClose} />
 
-      <div className="sheet" role="dialog" aria-modal="true">
-        {/* Sticky Header: Small bar (grab) + Title + Close icon */}
-        <div className="sheet-sticky-top">
-          <div className="grab" />
-          <div className="sheet-h">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Notifications</h3>
-              {unreadCount > 0 && (
-                <span
-                  style={{
-                    background: 'var(--yellow)',
-                    color: 'var(--on-yellow)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: '10px'
-                  }}
-                >
-                  {unreadCount} new
-                </span>
-              )}
+        <div className="sheet" role="dialog" aria-modal="true">
+          {/* Header without total count */}
+          <div className="sheet-sticky-top">
+            <div className="grab" />
+            <div className="sheet-h" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>
+                Notifications
+              </h3>
+              <button
+                className="iconbtn"
+                onClick={handleClose}
+                aria-label="Close"
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '50%',
+                  background: 'var(--field)',
+                  border: '1px solid var(--line)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--ink)'
+                }}
+              >
+                <Icon name="x" size={18} />
+              </button>
             </div>
-            <button className="iconbtn" onClick={handleClose} aria-label="Close">
-              <Icon name="x" size={18} />
-            </button>
           </div>
-        </div>
 
-        {/* Scrollable Body */}
-        <div className="sheet-scroll-body">
-          {unotes && unotes.length > 0 ? (
-            <>
-              {/* Header Action Row */}
+          {/* Scrollable Body */}
+          <div className="sheet-scroll-body" style={{ padding: '16px 18px 24px' }}>
+            {hasNotes ? (
               <div
                 style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '10px',
-                  padding: '0 2px'
+                  flexDirection: 'column',
+                  transition: 'all 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}
               >
-                <span style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>
-                  Recent Updates ({unotes.length})
-                </span>
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      markAllNotifsRead();
-                      addToast('All notifications marked as read', 'check');
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--ink)',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: 0
-                    }}
-                  >
-                    Mark all read
-                  </button>
-                )}
-              </div>
-
-              {/* Swipeable Notification Cards with Smooth Staggered Cleaning */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {unotes.map((n, idx) => (
-                  <SwipeableNotifItem
+                {unotes.map((n) => (
+                  <ExpandableNotifCard
                     key={n.id}
-                    index={idx}
-                    isClearingAll={isClearingAll}
                     note={n}
-                    onMarkRead={handleItemMarkRead}
-                    onDelete={handleItemDelete}
-                    isDemoHint={idx === 0 && shouldPlayDemoHint}
-                    onDemoHintComplete={handleDemoHintComplete}
+                    isExpanded={expandedId === n.id}
+                    onToggleExpand={handleToggleExpand}
+                    onClaimOffer={handleClaimOffer}
+                    onViewOfferDetails={handleViewOfferDetails}
+                    isClearingAll={isClearingAll}
                   />
                 ))}
               </div>
-            </>
-          ) : (
-            <div className="empty" style={{ padding: '40px 16px', textAlign: 'center', animation: 'fade 0.35s ease' }}>
-              <span
+            ) : (
+              /* Appealing Empty State Message */
+              <div
+                className="empty"
                 style={{
-                  width: '54px',
-                  height: '54px',
-                  borderRadius: '50%',
-                  background: 'var(--field)',
-                  color: 'var(--muted)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  margin: '0 auto 12px',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
+                  padding: '42px 18px',
+                  textAlign: 'center',
+                  animation: 'fadeIn 0.3s ease'
                 }}
               >
-                <Icon name="bell" size={24} />
-              </span>
-              <h4 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 700, color: 'var(--ink)' }}>
-                No notifications
-              </h4>
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.4 }}>
-                All clear! Live trip arrivals, cashback rewards, and driver alerts will appear here.
-              </p>
-            </div>
-          )}
+                <span
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    background: 'var(--field, #F1F5F9)',
+                    color: '#94A3B8',
+                    display: 'grid',
+                    placeItems: 'center',
+                    margin: '0 auto 14px',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
+                  }}
+                >
+                  <Icon name="bell" size={24} />
+                </span>
+                <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 750, color: 'var(--ink)' }}>
+                  No notifications
+                </h4>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.45, maxWidth: '280px', marginInline: 'auto' }}>
+                  You're all caught up! Live trip updates, chauffeur arrivals, and special rewards will appear here.
+                </p>
+              </div>
+            )}
 
-          {/* Bottom Button: Clear All with Smooth Cleaning State */}
-          {unotes && unotes.length > 0 ? (
-            <button
-              type="button"
-              className="btn"
-              disabled={isClearingAll}
+            {/* Clear All Button: Visible only when notifications exist. Smoothly collapses when clicked. */}
+            <div
               style={{
-                width: '100%',
-                height: '50px',
-                borderRadius: '16px',
-                marginTop: '16px',
-                background: isClearingAll ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.1)',
-                color: '#EF4444',
-                border: '1.5px solid rgba(239, 68, 68, 0.25)',
-                fontWeight: 700,
-                fontSize: '14.5px',
-                cursor: isClearingAll ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                opacity: isClearingAll ? 0.75 : 1,
-                transform: isClearingAll ? 'scale(0.98)' : 'scale(1)',
-                transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+                overflow: 'hidden',
+                maxHeight: hasNotes ? '70px' : '0px',
+                opacity: hasNotes ? 1 : 0,
+                transition: 'max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease',
+                marginTop: hasNotes ? '14px' : '0px'
               }}
-              onClick={handleClearAll}
             >
-              <Icon name="trash" size={17} />
-              <span>{isClearingAll ? 'Cleaning notifications...' : `Clear All Notifications (${unotes.length})`}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn solid block"
-              style={{
-                marginTop: '16px',
-                borderRadius: '16px',
-                height: '48px',
-                fontWeight: 700,
-                fontSize: '15px',
-                cursor: 'pointer'
-              }}
-              onClick={handleClose}
-            >
-              Close
-            </button>
-          )}
+              <button
+                type="button"
+                className="btn"
+                disabled={isClearingAll}
+                style={{
+                  width: '100%',
+                  height: '46px',
+                  borderRadius: '14px',
+                  background: isClearingAll ? 'rgba(239, 68, 68, 0.16)' : 'rgba(239, 68, 68, 0.08)',
+                  color: '#EF4444',
+                  border: '1px solid rgba(239, 68, 68, 0.22)',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: isClearingAll ? 'default' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.22s ease'
+                }}
+                onClick={handleClearAll}
+              >
+                <Icon name="trash" size={16} />
+                <span>{isClearingAll ? 'Clearing notifications...' : 'Clear All'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Offer Details Modal */}
+      {selectedOffer && (
+        <OfferDetailsModal
+          offer={selectedOffer}
+          onClose={() => setSelectedOffer(null)}
+          onClaim={(offer) => {
+            setSelectedOffer(null);
+            handleClaimOffer(offer);
+          }}
+        />
+      )}
+    </>
   );
 }

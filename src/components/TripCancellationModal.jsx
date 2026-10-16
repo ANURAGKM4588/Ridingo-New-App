@@ -190,27 +190,47 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
           </div>
         </div>
 
-        {/* Cancellation Notice */}
-        <p style={{ fontSize: '11px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: '0 0 16px' }}>
-          * Platform policy: A cancellation charge of ₹{cancelFee} is deducted to cover dispatch and operational platform costs. Any remaining advance is instantly returned to your wallet.
-        </p>
+        {/* Cancellation Notice Card */}
+        <div
+          style={{
+            background: 'rgba(239, 68, 68, 0.04)',
+            border: '1px solid rgba(239, 68, 68, 0.16)',
+            borderRadius: '14px',
+            padding: '11px 14px',
+            margin: '0 0 16px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '9px'
+          }}
+        >
+          <div style={{ marginTop: '2px', flexShrink: 0 }}>
+            <Icon name="info" size={14} color="#EF4444" />
+          </div>
+          <p style={{ fontSize: '11px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: 0 }}>
+            <b style={{ color: 'var(--ink, #0F172A)' }}>Platform Policy:</b> A cancellation charge of ₹{cancelFee} is deducted to cover dispatch & operational costs. Any remaining advance of ₹{refundAmount} is instantly credited to your wallet.
+          </p>
+        </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           <button
             type="button"
             onClick={onClose}
             className="btn"
             style={{
-              height: '46px',
-              borderRadius: '12px',
-              background: 'var(--card, #FFFFFF)',
-              border: '1.5px solid var(--line, #E2E8F0)',
+              height: '48px',
+              borderRadius: '999px',
+              background: 'var(--field, #F1F5F9)',
+              border: '1px solid var(--line, #E2E8F0)',
               color: 'var(--ink, #0F172A)',
-              fontSize: '13.5px',
-              fontWeight: 700,
+              fontSize: '13px',
+              fontWeight: 750,
               cursor: 'pointer',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 12px'
             }}
           >
             Keep Booking
@@ -220,16 +240,20 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
             onClick={() => onConfirm(trip.id)}
             className="btn"
             style={{
-              height: '46px',
-              borderRadius: '12px',
+              height: '48px',
+              borderRadius: '999px',
               background: '#DC2626',
-              border: '1.5px solid #DC2626',
+              border: 'none',
               color: '#FFFFFF',
-              fontSize: '13.5px',
+              fontSize: '13px',
               fontWeight: 800,
               cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)',
-              whiteSpace: 'nowrap'
+              boxShadow: '0 4px 14px rgba(220, 38, 38, 0.28)',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 12px'
             }}
           >
             Confirm & Cancel

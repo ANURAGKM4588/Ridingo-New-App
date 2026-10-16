@@ -26,28 +26,13 @@ export default function LiveTrackingSheet() {
                      trips.find(t => isUserTrip(t, user) && ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) ||
                      trips.find(t => isUserTrip(t, user) && t.status === 'requested');
 
-  // Auto-close and remove tracking popup immediately if the trip ended, completed, or cancelled
-  useEffect(() => {
-    if (!activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip.status)) {
-      if (liveTrackingOpen) {
-        setLiveTrackingOpen(false);
-        if (setActiveTrackingTripId) setActiveTrackingTripId(null);
-      }
-    }
-  }, [activeTrip, activeTrip?.status, liveTrackingOpen, setLiveTrackingOpen, setActiveTrackingTripId]);
-
-  if (!liveTrackingOpen || !activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip.status)) {
-    return null;
-  }
-
   const trip = activeTrip;
-
-  const isStarted = trip.status === 'inprogress';
-  const isDriverAssigned = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip.status);
-  const isArrived = trip.status === 'pickup_arrived';
-  const isReady = trip.status === 'ready_to_start';
-  const isAccepted = trip.status === 'accepted';
-  const isWaiting = trip.status === 'requested';
+  const isStarted = trip?.status === 'inprogress';
+  const isDriverAssigned = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
+  const isArrived = trip?.status === 'pickup_arrived';
+  const isReady = trip?.status === 'ready_to_start';
+  const isAccepted = trip?.status === 'accepted';
+  const isWaiting = trip?.status === 'requested';
 
   // Dynamic telemetry simulation - strictly running only when trip is in progress
   const [progress, setProgress] = useState(0.38);
@@ -56,6 +41,16 @@ export default function LiveTrackingSheet() {
   const remaining = Math.max(0.05, 1 - progress);
   const etaMins = Math.max(1, Math.round(remaining * 16));
   const distLeft = (remaining * 5.2).toFixed(1);
+
+  // Auto-close and remove tracking popup immediately if the trip ended, completed, or cancelled
+  useEffect(() => {
+    if (!activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip?.status)) {
+      if (liveTrackingOpen) {
+        setLiveTrackingOpen(false);
+        if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+      }
+    }
+  }, [activeTrip, activeTrip?.status, liveTrackingOpen, setLiveTrackingOpen, setActiveTrackingTripId]);
 
   useEffect(() => {
     if (!liveTrackingOpen || !isStarted) return;
@@ -73,16 +68,18 @@ export default function LiveTrackingSheet() {
 
   // Nearing destination alert (around 1 km)
   useEffect(() => {
-    if (!liveTrackingOpen) return;
+    if (!liveTrackingOpen || !trip) return;
     if (isStarted && parseFloat(distLeft) <= 1.0 && !trip.approachingNotified) {
       setTrips(prev =>
         prev.map(t => (t.id === trip.id ? { ...t, approachingNotified: true } : t))
       );
       addToast('Approaching destination (around 1 km). Trip will complete shortly.', 'info');
     }
-  }, [liveTrackingOpen, isStarted, distLeft, trip.id, trip.approachingNotified]);
+  }, [liveTrackingOpen, isStarted, distLeft, trip?.id, trip?.approachingNotified]);
 
-  if (!liveTrackingOpen) return null;
+  if (!liveTrackingOpen || !activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip.status)) {
+    return null;
+  }
 
   const handleShareTrip = () => {
     navigator.clipboard?.writeText?.(`https://ridingo.app/track/${trip.id}`);

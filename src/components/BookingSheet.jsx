@@ -487,38 +487,64 @@ export default function BookingSheet() {
     setQty(c.def || 1);
   };
 
-  const handleMapSelect = (addr) => {
+  const handleMapSelect = (addr, details) => {
     if (mapPickerTarget === 'pickup') {
       setPickup(addr);
-      geocodeAddress(addr).then(coords => {
-        if (coords) {
-          const cObj = {
-            ...coords,
-            name: addr.split(',')[0].trim(),
-            formatted: addr,
-            city: addr.split(',')[0].trim(),
-            state: 'Kerala'
-          };
-          setPickupCoords(cObj);
-          setPickupDetails(cObj);
-        }
-      });
+      if (details && details.lat && details.lng) {
+        const cObj = {
+          lat: details.lat,
+          lng: details.lng,
+          name: details.name || addr.split(',')[0].trim(),
+          formatted: addr,
+          city: details.city || addr.split(',')[0].trim(),
+          state: details.state || 'Kerala'
+        };
+        setPickupCoords(cObj);
+        setPickupDetails(cObj);
+      } else {
+        geocodeAddress(addr).then(coords => {
+          if (coords) {
+            const cObj = {
+              ...coords,
+              name: addr.split(',')[0].trim(),
+              formatted: addr,
+              city: addr.split(',')[0].trim(),
+              state: 'Kerala'
+            };
+            setPickupCoords(cObj);
+            setPickupDetails(cObj);
+          }
+        });
+      }
       addToast(`Pickup set: ${addr.split(',')[0]}`, 'check');
     } else {
       setDrop(addr);
-      geocodeAddress(addr).then(coords => {
-        if (coords) {
-          const cObj = {
-            ...coords,
-            name: addr.split(',')[0].trim(),
-            formatted: addr,
-            city: addr.split(',')[0].trim(),
-            state: 'Kerala'
-          };
-          setDropCoords(cObj);
-          setDropDetails(cObj);
-        }
-      });
+      if (details && details.lat && details.lng) {
+        const cObj = {
+          lat: details.lat,
+          lng: details.lng,
+          name: details.name || addr.split(',')[0].trim(),
+          formatted: addr,
+          city: details.city || addr.split(',')[0].trim(),
+          state: details.state || 'Kerala'
+        };
+        setDropCoords(cObj);
+        setDropDetails(cObj);
+      } else {
+        geocodeAddress(addr).then(coords => {
+          if (coords) {
+            const cObj = {
+              ...coords,
+              name: addr.split(',')[0].trim(),
+              formatted: addr,
+              city: addr.split(',')[0].trim(),
+              state: 'Kerala'
+            };
+            setDropCoords(cObj);
+            setDropDetails(cObj);
+          }
+        });
+      }
       addToast(`Destination set: ${addr.split(',')[0]}`, 'check');
     }
     setMapPickerOpen(false);
@@ -629,89 +655,7 @@ export default function BookingSheet() {
   return (
     <div className="booking-fullscreen-view" id="u-layer" role="dialog" aria-modal="true">
       <div className="sheet booking-fullscreen-inner" role="region">
-        {activeOngoingTrip ? (
-          /* ---------- Blocked View: Active Trip in Progress ---------- */
-          <>
-            <div className="sheet-sticky-top" style={{ borderBottom: '1px solid var(--line)', padding: 'max(14px, env(safe-area-inset-top, 0px)) 20px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <button
-                    type="button"
-                    className="iconbtn"
-                    onClick={handleClose}
-                    aria-label="Back"
-                    style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)' }}
-                  >
-                    <Icon name="arrow-left" size={18} />
-                  </button>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>Booking Status</h3>
-                </div>
-                <button
-                  type="button"
-                  className="iconbtn"
-                  onClick={handleClose}
-                  aria-label="Close"
-                  style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)' }}
-                >
-                  <Icon name="x" size={18} />
-                </button>
-              </div>
-            </div>
-
-            <div className="sheet-scroll-body" style={{ padding: '28px 20px 36px', textAlign: 'center' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.12)', color: '#DC2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: '14px auto 16px' }}>
-                <Icon name="alert-triangle" size={30} />
-              </div>
-              <h3 style={{ fontSize: '19px', fontWeight: 800, color: 'var(--ink)', marginBottom: '8px' }}>Active Trip in Progress</h3>
-              <p style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: 1.5, margin: '0 auto 20px', maxWidth: '320px' }}>
-                Only one trip booking is permitted at a time. Please complete your current ride before booking a new chauffeur.
-              </p>
-
-              <div style={{ background: 'var(--field)', borderRadius: '16px', padding: '14px 16px', textAlign: 'left', marginBottom: '22px', border: '1px solid var(--line)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em' }}>
-                    Current Ride
-                  </span>
-                  <span style={{ fontSize: '11.5px', fontWeight: 750, color: '#16A34A', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A' }} />
-                    {activeOngoingTrip.status.replace('_', ' ').toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  Pickup: {activeOngoingTrip.pickup || 'Pickup'}
-                </div>
-                {activeOngoingTrip.drop_loc && (
-                  <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    Destination: {activeOngoingTrip.drop_loc}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ flex: 1, height: '46px', borderRadius: '14px', border: '1.5px solid var(--line)', background: 'var(--field)', fontWeight: 700 }}
-                  onClick={handleClose}
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  className="btn primary"
-                  style={{ flex: 1.6, height: '46px', borderRadius: '14px', background: '#000000', color: '#FFFFFF', fontWeight: 750 }}
-                  onClick={() => {
-                    handleClose();
-                    if (setActiveTrackingTripId) setActiveTrackingTripId(activeOngoingTrip.id);
-                    if (setLiveTrackingOpen) setLiveTrackingOpen(true);
-                  }}
-                >
-                  View Live Trip
-                </button>
-              </div>
-            </div>
-          </>
-        ) : isSuccess && confirmedTrip ? (
+        {isSuccess && confirmedTrip ? (
           /* ---------- Request Sent Confirmation View ---------- */
           <>
             <div className="sheet-sticky-top" style={{ borderBottom: '1px solid var(--line)', padding: 'max(14px, env(safe-area-inset-top, 0px)) 20px 14px' }}>
@@ -721,10 +665,10 @@ export default function BookingSheet() {
                   type="button"
                   className="iconbtn"
                   onClick={handleClose}
-                  aria-label="Close"
+                  aria-label="Back"
                   style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)' }}
                 >
-                  <Icon name="x" size={18} />
+                  <Icon name="arrow-left" size={18} />
                 </button>
               </div>
             </div>
@@ -769,9 +713,9 @@ export default function BookingSheet() {
         ) : (
           /* ---------- Booking Details Form (Full-Page Design) ---------- */
           <>
-            {/* Full-Page App Bar Header */}
+            {/* Full-Page App Bar Header with Back Button Only */}
             <div className="sheet-sticky-top" style={{ borderBottom: '1px solid var(--line)', padding: 'max(14px, env(safe-area-inset-top, 0px)) 18px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <button
                     type="button"
@@ -787,15 +731,6 @@ export default function BookingSheet() {
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>Professional driver on demand</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="iconbtn"
-                  onClick={handleClose}
-                  aria-label="Close"
-                  style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)' }}
-                >
-                  <Icon name="x" size={18} />
-                </button>
               </div>
             </div>
 
@@ -1254,22 +1189,24 @@ export default function BookingSheet() {
               </span>
             </div>
 
-            {/* Quick Date & Time Presets Inline */}
+            {/* Quick Date & Time Presets Inline (Strictly Single-Line Horizontal Scroll) */}
             <div
-              className="chips"
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                flexWrap: 'nowrap',
                 gap: '8px',
                 overflowX: 'auto',
                 scrollbarWidth: 'none',
                 WebkitOverflowScrolling: 'touch',
-                paddingBottom: '2px'
+                paddingBottom: '4px',
+                width: '100%'
               }}
             >
               <button
                 type="button"
                 className={`chip ${isToday ? 'on' : ''}`}
+                style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
                 onClick={() => setSelectedDate(todayISO)}
               >
                 Today
@@ -1277,6 +1214,7 @@ export default function BookingSheet() {
               <button
                 type="button"
                 className={`chip ${isTomorrow ? 'on' : ''}`}
+                style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
                 onClick={() => setSelectedDate(tomorrowISO)}
               >
                 Tomorrow
@@ -1284,7 +1222,7 @@ export default function BookingSheet() {
               <button
                 type="button"
                 className="chip"
-                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
                 onClick={() => addMinutesToTime(10)}
               >
                 Now
@@ -1292,7 +1230,7 @@ export default function BookingSheet() {
               <button
                 type="button"
                 className="chip"
-                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
                 onClick={() => addMinutesToTime(30)}
               >
                 +30m
@@ -1300,7 +1238,7 @@ export default function BookingSheet() {
               <button
                 type="button"
                 className="chip"
-                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
                 onClick={() => addMinutesToTime(60)}
               >
                 +1h
@@ -1308,7 +1246,7 @@ export default function BookingSheet() {
               <button
                 type="button"
                 className="chip"
-                style={{ fontSize: '12px', padding: '5px 12px', flexShrink: 0 }}
+                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
                 onClick={() => addMinutesToTime(120)}
               >
                 +2h
