@@ -17,7 +17,8 @@ export default function LiveTrackingSheet() {
     setActiveTrackingTripId,
     isUserTrip,
     declineTrip,
-    cancelTripByUser
+    cancelTripByUser,
+    setTripToCancel
   } = useApp();
 
   const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && isUserTrip(t, user) && !['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(t.status)) : null) ||
@@ -680,6 +681,35 @@ export default function LiveTrackingSheet() {
                   <span>Emergency SOS</span>
                 </button>
               </div>
+
+              {!isStarted && (
+                <div style={{ marginTop: '14px', marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (setTripToCancel) setTripToCancel(trip);
+                    }}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.28)',
+                      color: '#EF4444',
+                      padding: '10px 22px',
+                      borderRadius: '999px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Icon name="x" size={14} color="#EF4444" />
+                    <span>Cancel Booking</span>
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

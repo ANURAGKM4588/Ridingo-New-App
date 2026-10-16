@@ -67,7 +67,8 @@ export default function HomeTab() {
     isUserTrip,
     onboardingOpen,
     declineTrip,
-    cancelTripByUser
+    cancelTripByUser,
+    setTripToCancel
   } = useApp();
 
   const unreadCount = (unotes || []).filter(n => !n.read).length;
@@ -96,8 +97,6 @@ export default function HomeTab() {
     }
   }, []);
 
-  
-
   const requestedTrip = (trips || []).find(t => {
     if (t.status !== 'requested') return false;
     if (!isUserTrip(t, user)) return false;
@@ -119,17 +118,12 @@ export default function HomeTab() {
     return age >= 0 && age < 24 * 60 * 60 * 1000;
   });
 
-  const handleCancelRequest = (tripId) => {
-    if (window.confirm('Are you sure you want to cancel this chauffeur request?')) {
-      if (cancelTripByUser) {
-        cancelTripByUser(tripId);
-      } else if (declineTrip) {
-        declineTrip(tripId);
-      } else {
-        setTrips(prev => prev.filter(t => t.id !== tripId));
-        realtime.cancelRide(tripId);
-        if (addToast) addToast('Ride request cancelled', 'info');
-      }
+  const handleCancelRequest = (tripOrId) => {
+    const tripObj = typeof tripOrId === 'object' ? tripOrId : (trips || []).find(t => t.id === tripOrId);
+    if (tripObj && setTripToCancel) {
+      setTripToCancel(tripObj);
+    } else if (cancelTripByUser) {
+      cancelTripByUser(tripOrId?.id || tripOrId);
     }
   };
   const rawFirst = user?.firstName || (user?.name ? user.name.trim().split(' ')[0] : 'there');
@@ -514,7 +508,7 @@ export default function HomeTab() {
 
             <button
               type="button"
-              onClick={() => handleCancelRequest(requestedTrip.id)}
+              onClick={() => handleCancelRequest(requestedTrip)}
               style={{
                 flexShrink: 0,
                 padding: '0 14px',
@@ -595,37 +589,60 @@ export default function HomeTab() {
             Pickup: {isAccepted.pickup}
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (setActiveTrackingTripId) setActiveTrackingTripId(isAccepted.id);
-              setLiveTrackingOpen(true);
-            }}
-            style={{
-              width: '100%',
-              height: '44px',
-              borderRadius: '12px',
-              background: 'var(--solid)',
-              color: 'var(--on-solid)',
-              border: 'none',
-              fontSize: '13.5px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              padding: '0 12px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden'
-            }}
-          >
-            <Icon name="navigation" size={14} />
-            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Track Chauffeur Live
-            </span>
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (setActiveTrackingTripId) setActiveTrackingTripId(isAccepted.id);
+                setLiveTrackingOpen(true);
+              }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: '44px',
+                borderRadius: '12px',
+                background: 'var(--solid)',
+                color: 'var(--on-solid)',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '0 10px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden'
+              }}
+            >
+              <Icon name="navigation" size={14} />
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Track Chauffeur Live
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCancelRequest(isAccepted)}
+              style={{
+                flexShrink: 0,
+                padding: '0 14px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'var(--field)',
+                border: '1px solid var(--line)',
+                color: '#EF4444',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 

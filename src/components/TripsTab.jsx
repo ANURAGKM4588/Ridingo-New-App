@@ -22,7 +22,8 @@ export default function TripsTab() {
     setBookingOpen,
     setBookingCategory,
     setLiveTrackingOpen,
-    setActiveTrackingTripId
+    setActiveTrackingTripId,
+    setTripToCancel
   } = useApp();
 
   const [filter, setFilter] = useState('all');
@@ -223,6 +224,66 @@ export default function TripsTab() {
                     {getStatusPill(t.status)}
                   </div>
                 </div>
+
+                {['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'scheduled'].includes(t.status) && (
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      paddingTop: '9px',
+                      borderTop: '1px solid var(--line)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>
+                      {['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)
+                        ? 'Chauffeur assigned · ₹100 fee applies'
+                        : 'Searching chauffeur · ₹50 fee applies'}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (setTripToCancel) setTripToCancel(t);
+                      }}
+                      style={{
+                        padding: '4px 12px',
+                        fontSize: '11.5px',
+                        fontWeight: 750,
+                        color: '#EF4444',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.28)',
+                        borderRadius: '999px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Cancel Ride
+                    </button>
+                  </div>
+                )}
+
+                {t.status === 'cancelled' && (t.cancellationFee || t.cancelFee) && (
+                  <div
+                    style={{
+                      marginTop: '8px',
+                      paddingTop: '8px',
+                      borderTop: '1px solid var(--line)',
+                      fontSize: '11.5px',
+                      color: '#EF4444',
+                      fontWeight: 650,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <span>Cancellation fee charged</span>
+                    <b>₹{t.cancellationFee || t.cancelFee}</b>
+                  </div>
+                )}
               </div>
             );
           })}

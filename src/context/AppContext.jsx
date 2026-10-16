@@ -294,6 +294,7 @@ export function AppProvider({ children }) {
   const [driverBalance, setDriverBalance] = useState(0);
   const [driverTx, setDriverTx] = useState([]);
   const [toasts, setToasts] = useState([]);
+  const [tripToCancel, setTripToCancel] = useState(null);
 
   // Push notification deduplication set for User App
   const notifiedAcceptedTripsRef = useRef(new Set());
@@ -1701,17 +1702,88 @@ export function AppProvider({ children }) {
     addToast('Trip request declined and removed from your queue', 'info');
   };
 
-  // User/Customer cancel ride logic: Cancels the trip globally for all drivers
-  const cancelTripByUser = (tripId) => {
+  // User/Customer cancel ride logic: Cancels the trip globally for all drivers with platform cancellation fee deduction
+  const cancelTripByUser = (tripId, { feeOverride } = {}) => {
+    const targetTrip = (trips || []).find(t => t.id === tripId);
+    const isDriverAssigned = targetTrip && ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled'].includes(targetTrip.status);
+
+    // Platform cancellation fee: ₹100 if chauffeur already dispatched/assigned, ₹50 nominal platform fee if searching/unassigned
+    const cancelFee = typeof feeOverride === 'number' ? feeOverride : (isDriverAssigned ? 100 : 50);
+    const advancePaid = Number(targetTrip?.advance) || 0;
+    const refundAmount = Math.max(0, advancePaid - cancelFee);
+
+    // Update wallet transactions (utx) with cancellation fee & refund
+    if (advancePaid > 0) {
+      if (refundAmount > 0) {
+        setUtx(prev => [
+          {
+            id: 'tx-ref-' + Date.now(),
+            ts: Date.now(),
+            type: 'refund',
+            amount: refundAmount,
+            title: `Trip Refund · ${tripId}`,
+            sub: `₹${advancePaid} advance minus ₹${cancelFee} platform fee`,
+            gateway: 'PhonePe Escrow'
+          },
+          ...prev
+        ]);
+      } else {
+        const shortfall = cancelFee - advancePaid;
+        if (shortfall > 0) {
+          setUtx(prev => [
+            {
+              id: 'tx-fee-' + Date.now(),
+              ts: Date.now(),
+              type: 'fee',
+              amount: -shortfall,
+              title: `Cancellation Fee · ${tripId}`,
+              sub: `Platform cancellation fee (exceeded advance)`,
+              gateway: 'Ridingo Platform'
+            },
+            ...prev
+          ]);
+        }
+      }
+    } else {
+      setUtx(prev => [
+        {
+          id: 'tx-fee-' + Date.now(),
+          ts: Date.now(),
+          type: 'fee',
+          amount: -cancelFee,
+          title: `Cancellation Fee · ${tripId}`,
+          sub: isDriverAssigned ? 'Platform fee (chauffeur dispatched)' : 'Platform cancellation fee',
+          gateway: 'Ridingo Platform'
+        },
+        ...prev
+      ]);
+    }
+
     setIncomingTripRequest(prev => (prev?.id === tripId ? null : prev));
-    setTrips(prev => prev.filter(t => t.id !== tripId));
-    setActiveTrackingTripId(prev => (prev === tripId ? null : prev));
+    setTrips(prev => prev.map(t => (t.id === tripId ? {
+      ...t,
+      status: 'cancelled',
+      cancelledBy: 'user',
+      cancellationFee: cancelFee,
+      refundAmount,
+      cancelledAt: Date.now()
+    } : t)));
+    setActiveTrackingTripId(null);
+    setLiveTrackingOpen(false);
     stopActiveTone();
     dismissIncomingRideNotification(tripId);
 
-    realtime.cancelRide(tripId);
-    updateTripStatusInSupabase(tripId, 'cancelled');
-    addToast('Ride booking cancelled', 'info');
+    realtime.cancelRide(tripId, { cancellationFee: cancelFee, refundAmount });
+    updateTripStatusInSupabase(tripId, 'cancelled', {
+      done_ts: Date.now()
+    });
+
+    addToast(
+      refundAmount > 0
+        ? `Booking cancelled. ₹${cancelFee} cancellation fee deducted, ₹${refundAmount} refunded.`
+        : `Booking cancelled. ₹${cancelFee} cancellation fee applied.`,
+      'info'
+    );
   };
 
   const completeTrip = (tripId) => {
@@ -1815,7 +1887,9 @@ export function AppProvider({ children }) {
         closeLegal,
         syncTripsFromSupabase,
         acceptedTripIdsRef,
-        settledTripIdsRef
+        settledTripIdsRef,
+        tripToCancel,
+        setTripToCancel
       }}
     >
       {children}

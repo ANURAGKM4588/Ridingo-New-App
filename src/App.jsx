@@ -11,6 +11,7 @@ import LiveTrackingSheet from './components/LiveTrackingSheet';
 import OnboardingModal from './components/OnboardingModal';
 import LegalModal from './components/LegalModal';
 import PhonePePgCheckout from './components/PhonePePgCheckout';
+import TripCancellationModal from './components/TripCancellationModal';
 import DriverApp from './components/DriverApp';
 import AdminPanel from './components/admin/AdminPanel';
 import Icon from './components/Icon';
@@ -86,7 +87,10 @@ function MainApp() {
     onboardingOpen,
     user,
     setBookingOpen,
-    setLiveTrackingOpen
+    setLiveTrackingOpen,
+    tripToCancel,
+    setTripToCancel,
+    cancelTripByUser
   } = useApp();
 
   const handleUserPhoneRecovery = () => {
@@ -156,6 +160,16 @@ function MainApp() {
                   <OnboardingModal />
                   <LegalModal />
                   <PhonePePgCheckout />
+                  {tripToCancel && (
+                    <TripCancellationModal
+                      trip={tripToCancel}
+                      onConfirm={(tripId) => {
+                        cancelTripByUser(tripId);
+                        setTripToCancel(null);
+                      }}
+                      onClose={() => setTripToCancel(null)}
+                    />
+                  )}
 
                   <div className="toasts" id="u-toasts" aria-live="polite">
                     {toasts.map(t => (

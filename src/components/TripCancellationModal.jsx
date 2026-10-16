@@ -1,0 +1,241 @@
+import React from 'react';
+import Icon from './Icon';
+
+export default function TripCancellationModal({ trip, onConfirm, onClose }) {
+  if (!trip) return null;
+
+  const isDriverAssigned = ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled'].includes(trip.status);
+  const cancelFee = isDriverAssigned ? 100 : 50;
+  const advancePaid = Number(trip.advance) || 0;
+  const refundAmount = Math.max(0, advancePaid - cancelFee);
+  const driverName = (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) || trip.driverObj?.name || 'Assigned Chauffeur';
+
+  return (
+    <div
+      className="layer on"
+      style={{
+        zIndex: 10005,
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        padding: 0
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="scrim" onClick={onClose} />
+
+      <div
+        className="sheet"
+        style={{
+          width: '100%',
+          maxWidth: '440px',
+          background: 'var(--card, #FFFFFF)',
+          borderTopLeftRadius: '26px',
+          borderTopRightRadius: '26px',
+          padding: '20px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+          boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
+          borderTop: '2px solid #EF4444',
+          position: 'relative',
+          boxSizing: 'border-box',
+          animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ width: '40px', height: '4px', borderRadius: '999px', background: 'var(--line, #E2E8F0)', margin: '0 auto 16px' }} />
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: '#FEF2F2',
+                color: '#DC2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Icon name="alert-triangle" size={20} color="#DC2626" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink, #0F172A)', whiteSpace: 'nowrap' }}>
+                Cancel Upcoming Trip?
+              </h3>
+              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', fontWeight: 600 }}>
+                Booking ID: {trip.id}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: 'var(--field, #F1F5F9)',
+              border: '1px solid var(--line, #E2E8F0)',
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+              color: 'var(--ink, #0F172A)'
+            }}
+            aria-label="Close"
+          >
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+
+        {/* Chauffeur & Route Status Badge */}
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: '12px',
+            background: isDriverAssigned ? 'rgba(34, 197, 94, 0.08)' : 'rgba(245, 158, 11, 0.1)',
+            border: isDriverAssigned ? '1px solid rgba(34, 197, 94, 0.25)' : '1px solid rgba(245, 158, 11, 0.25)',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isDriverAssigned ? '#16A34A' : '#F59E0B',
+                flexShrink: 0
+              }}
+            />
+            <span style={{ fontSize: '12px', fontWeight: 750, color: isDriverAssigned ? '#16A34A' : '#D97706', whiteSpace: 'nowrap' }}>
+              {isDriverAssigned ? `Chauffeur Dispatched · ${driverName}` : 'Chauffeur Not Assigned Yet'}
+            </span>
+          </div>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #64748B)', whiteSpace: 'nowrap' }}>
+            {trip.scheduleDisplay || 'Scheduled'}
+          </span>
+        </div>
+
+        {/* Route Details Box */}
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: '12px',
+            background: 'var(--field, #F8FAFC)',
+            border: '1px solid var(--line, #E2E8F0)',
+            marginBottom: '14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
+            <span style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <b>Pickup:</b> {trip.pickup}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#EF4444', flexShrink: 0 }} />
+            <span style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <b>Drop:</b> {trip.drop_loc || 'City Destination'}
+            </span>
+          </div>
+        </div>
+
+        {/* Cancellation Fee & Refund Breakdown Card */}
+        <div
+          style={{
+            padding: '12px 14px',
+            borderRadius: '14px',
+            background: 'var(--field, #F8FAFC)',
+            border: '1.5px solid var(--line, #E2E8F0)',
+            marginBottom: '14px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12.5px' }}>
+            <span style={{ color: 'var(--muted, #64748B)', fontWeight: 600 }}>Total Booking Fare</span>
+            <span style={{ fontWeight: 700, color: 'var(--ink, #0F172A)' }}>₹{trip.fare}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12.5px' }}>
+            <span style={{ color: 'var(--muted, #64748B)', fontWeight: 600 }}>Advance Paid Online</span>
+            <span style={{ fontWeight: 700, color: 'var(--ink, #0F172A)' }}>₹{advancePaid}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12.5px' }}>
+            <span style={{ color: '#DC2626', fontWeight: 750 }}>
+              Platform Cancellation Fee ({isDriverAssigned ? 'Chauffeur Assigned' : 'Unassigned'})
+            </span>
+            <span style={{ fontWeight: 800, color: '#DC2626' }}>-₹{cancelFee}</span>
+          </div>
+
+          <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '8px 0' }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div>
+              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Refund to Wallet</b>
+              <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', display: 'block' }}>
+                Instant credit to your balance
+              </span>
+            </div>
+            <b style={{ fontSize: '18px', fontWeight: 850, color: refundAmount > 0 ? '#16A34A' : 'var(--ink, #0F172A)' }}>
+              ₹{refundAmount}
+            </b>
+          </div>
+        </div>
+
+        {/* Cancellation Notice */}
+        <p style={{ fontSize: '11px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: '0 0 16px' }}>
+          * Platform policy: A cancellation charge of ₹{cancelFee} is deducted to cover dispatch and operational platform costs. Any remaining advance is instantly returned to your wallet.
+        </p>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn"
+            style={{
+              height: '46px',
+              borderRadius: '12px',
+              background: 'var(--card, #FFFFFF)',
+              border: '1.5px solid var(--line, #E2E8F0)',
+              color: 'var(--ink, #0F172A)',
+              fontSize: '13.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Keep Booking
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(trip.id)}
+            className="btn"
+            style={{
+              height: '46px',
+              borderRadius: '12px',
+              background: '#DC2626',
+              border: '1.5px solid #DC2626',
+              color: '#FFFFFF',
+              fontSize: '13.5px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Confirm & Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
