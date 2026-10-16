@@ -118,56 +118,7 @@ export default function TripInvoiceModal({
         {/* Scrollable Body */}
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          {/* Unique 4-Character Completion OTP Banner (when payment complete) */}
-          {completedOtp && (
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                color: '#FFFFFF',
-                borderRadius: '18px',
-                padding: '16px',
-                textAlign: 'center',
-                boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
-                animation: 'pulse 1.5s infinite'
-              }}
-            >
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9 }}>
-                PAYMENT SETTLED · TRIP COMPLETION OTP
-              </span>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  margin: '10px 0 6px'
-                }}
-              >
-                {completedOtp.split('').map((ch, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      width: '42px',
-                      height: '48px',
-                      borderRadius: '10px',
-                      background: 'rgba(255, 255, 255, 0.22)',
-                      border: '1.5px solid rgba(255, 255, 255, 0.45)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '24px',
-                      fontWeight: 900,
-                      letterSpacing: '1px'
-                    }}
-                  >
-                    {ch}
-                  </span>
-                ))}
-              </div>
-              <p style={{ fontSize: '11.5px', margin: 0, opacity: 0.95 }}>
-                Share this unique 4-character code to confirm payment completion.
-              </p>
-            </div>
-          )}
+
 
           {/* Driver Earnings Summary Card (Shows ONLY Driver's Earnings after 30% Commission) */}
           <div style={{ background: 'var(--card, #F8FAFC)', borderRadius: '16px', padding: '16px', border: '1px solid var(--line, #E2E8F0)' }}>
