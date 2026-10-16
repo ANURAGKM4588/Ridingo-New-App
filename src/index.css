@@ -6428,4 +6428,73 @@ body[data-theme="dark"] .onboarding-continue-btn {
   font-size: 12px !important;
   color: var(--muted, #64748b) !important;
 }
+
+/* ========================================================
+   Clean Map Picker: Ensure zero clutter, labels, or buttons
+   ======================================================== */
+.map-picker-container .gm-style-cc,
+.map-picker-container a[href^="https://maps.google.com/maps"],
+.map-picker-container a[href^="https://www.google.com/maps"],
+.map-picker-container .gmnoprint,
+.map-picker-container .leaflet-control-attribution,
+.map-picker-container .leaflet-control-zoom {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ========================================================
+   Booking Page: Full-Page UI Design (No Popup / Sheet style)
+   ======================================================== */
+.booking-fullscreen-view {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  z-index: 99999 !important;
+  background: var(--sheet, #FFFFFF) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  touch-action: pan-y !important;
+}
+
+.booking-fullscreen-view .sheet.booking-fullscreen-inner {
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  animation: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 100% !important;
+  background: var(--sheet, #FFFFFF) !important;
+  padding: 0 !important;
+}
+
+.booking-fullscreen-view .sheet-sticky-top {
+  border-radius: 0 !important;
+  background: var(--sheet, #FFFFFF) !important;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+.booking-fullscreen-view .sheet-scroll-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
 

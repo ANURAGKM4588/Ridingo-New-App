@@ -65,7 +65,8 @@ export default function HomeTab() {
     setUTab,
     addToast,
     isUserTrip,
-    onboardingOpen
+    onboardingOpen,
+    declineTrip
   } = useApp();
 
   const unreadCount = (unotes || []).filter(n => !n.read).length;
@@ -119,9 +120,14 @@ export default function HomeTab() {
 
   const handleCancelRequest = (tripId) => {
     if (window.confirm('Are you sure you want to cancel this chauffeur request?')) {
-      setTrips(prev => prev.filter(t => t.id !== tripId));
-      if (addToast) addToast('Trip request cancelled', 'info');
-      realtime.declineRide(tripId);
+      if (declineTrip) {
+        declineTrip(tripId);
+      } else {
+        setTrips(prev => prev.filter(t => t.id !== tripId));
+        realtime.cancelRide(tripId);
+        realtime.declineRide(tripId);
+        if (addToast) addToast('Trip request cancelled', 'info');
+      }
     }
   };
   const rawFirst = user?.firstName || (user?.name ? user.name.trim().split(' ')[0] : 'there');

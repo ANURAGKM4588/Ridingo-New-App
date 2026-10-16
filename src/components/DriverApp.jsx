@@ -1138,6 +1138,34 @@ export default function DriverApp() {
     }
   }, [incomingTripRequest?.id]);
 
+  // Listen for Customer Trip Cancellation: immediately vanish all popups, banners & list entries
+  useEffect(() => {
+    const handleTripCancelled = (data) => {
+      const cancelledId = data?.tripId || data?.id;
+      if (!cancelledId) return;
+
+      // 1. Immediately vanish incoming request popup
+      setIncomingTripRequest(prev => (prev?.id === cancelledId ? null : prev));
+      // 2. Immediately vanish selected request details modal
+      setSelectedRequestDetails(prev => (prev?.id === cancelledId ? null : prev));
+      // 3. Immediately vanish minimized banner
+      setMinimizedRequestTripId(prev => (prev === cancelledId ? null : prev));
+      // 4. Vanish active action if for this cancelled trip
+      setActiveTripAction(prev => (prev?.id === cancelledId ? null : prev));
+      // 5. Remove from trips list
+      setTrips(prev => prev.filter(t => t.id !== cancelledId));
+      addToast('Trip request cancelled by customer', 'info');
+    };
+
+    const unsubCancelled = realtime.on('TRIP_CANCELLED', handleTripCancelled);
+    const unsubDeclined = realtime.on('TRIP_DECLINED', handleTripCancelled);
+
+    return () => {
+      if (typeof unsubCancelled === 'function') unsubCancelled();
+      if (typeof unsubDeclined === 'function') unsubDeclined();
+    };
+  }, []);
+
   // Real-time synchronization check: ensure pending trip requests are captured immediately
   useEffect(() => {
     const syncActiveTrips = () => {
@@ -1150,6 +1178,13 @@ export default function DriverApp() {
       const activeRequests = typeof realtime.getActiveTripRequests === 'function'
         ? realtime.getActiveTripRequests()
         : [realtime.getActiveTripRequest()].filter(Boolean);
+
+      // If incoming trip request is no longer active (cancelled by user), immediately vanish all popups
+      if (incomingTripRequest && !activeRequests.some(r => r.id === incomingTripRequest.id)) {
+        setIncomingTripRequest(null);
+        setSelectedRequestDetails(null);
+        setMinimizedRequestTripId(null);
+      }
 
       if (Array.isArray(activeRequests) && activeRequests.length > 0) {
         setTrips(prev => {
