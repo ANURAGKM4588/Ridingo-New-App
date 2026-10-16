@@ -65,7 +65,7 @@ export function configureGoogleSignIn({
         scopes,
         forceCodeForRefreshToken: true
       });
-      console.log('✅ Google Sign-In initialized successfully');
+      console.log('[NativeAuth] Google Sign-In initialized successfully');
     } catch (err) {
       console.error('Google Sign-In configuration error:', err);
     }

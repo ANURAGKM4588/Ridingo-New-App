@@ -344,13 +344,13 @@ function SwipeFaceIdWithdrawal({
                     background: 'none',
                     border: 'none',
                     color: 'var(--muted)',
-                    fontSize: '14px',
-                    fontWeight: 700,
                     cursor: 'pointer',
-                    padding: '4px'
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center'
                   }}
                 >
-                  ✕
+                  <Icon name="x" size={14} />
                 </button>
               )}
             </div>
@@ -531,7 +531,7 @@ function SwipeFaceIdWithdrawal({
             border: '1px solid var(--line)'
           }}
         >
-          <span style={{ color: '#16A34A', fontSize: '15px' }}>✓</span>
+          <Icon name="check" size={15} color="#16A34A" />
           <span>All Earnings Withdrawn · ₹0 Available</span>
         </div>
       )}
@@ -831,7 +831,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
               {countdown}s remaining
             </span>
 
-            {/* Minimize / Close (✕) Button */}
+            {/* Minimize / Close Button */}
             <button
               type="button"
               onClick={onMinimize}
@@ -955,10 +955,10 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             <span style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'var(--solid, #0F172A)', color: 'var(--on-solid, #FFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
               {trip.rider?.name?.slice(0, 2).toUpperCase() || 'AM'}
             </span>
-            <span>{trip.rider?.name || 'Customer'} · ★ 4.9</span>
+            <span>{trip.rider?.name || 'Customer'} · Rating: 4.9</span>
           </div>
           <span style={{ color: 'var(--muted, #64748B)' }}>
-            ⚙️ {trip.trans || trip.car?.trans || 'Automatic'} Transmission
+            {trip.trans || trip.car?.trans || 'Automatic'} Transmission
           </span>
         </div>
 
@@ -1015,7 +1015,7 @@ function IncomingRideModal({ trip, onAccept, onDecline, onMinimize }) {
             }}
           >
             <span>Accept Ride</span>
-            <span style={{ fontSize: '16px', color: '#FFFFFF' }}>✓</span>
+            <Icon name="check" size={16} color="#FFFFFF" />
           </button>
         </div>
       </div>
@@ -1812,7 +1812,7 @@ export default function DriverApp() {
                           borderRadius: '6px'
                         }}
                       >
-                        ★ {driverPartner?.rating || '4.8'}
+                        Rating: {driverPartner?.rating || '4.8'}
                       </span>
                     </div>
                     <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>
@@ -1976,7 +1976,7 @@ export default function DriverApp() {
                     Rating
                   </span>
                   <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)', marginTop: '2px', display: 'block' }}>
-                    ★ {driverPartner?.rating || '5.0'}
+                    {driverPartner?.rating || '5.0'} Rating
                   </b>
                   <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 500 }}>
                     Pro Partner
@@ -2001,7 +2001,7 @@ export default function DriverApp() {
                   gap: '10px'
                 }}
               >
-                <span style={{ fontSize: '20px' }}>⚠️</span>
+                <Icon name="alert-circle" size={20} color="#DC2626" />
                 <div style={{ fontSize: '12.5px', color: '#991B1B', lineHeight: 1.4 }}>
                   <b>{driverPartner.blackMarks} Black Mark(s) on Chauffeur Record</b>
                   <span style={{ display: 'block', color: '#B91C1C', fontSize: '11px' }}>
@@ -2141,13 +2141,13 @@ export default function DriverApp() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '13px' }}>📍</span>
+                          <Icon name="map-pin" size={13} color="var(--ink)" />
                           <span style={{ fontSize: '12px', fontWeight: 750, color: 'var(--ink)' }}>
                             Distance: <b>{t.distanceText || '12.4 km'}</b>
                           </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '13px' }}>⏱️</span>
+                          <Icon name="clock" size={13} color="#16A34A" />
                           <span style={{ fontSize: '12px', fontWeight: 750, color: '#16A34A' }}>
                             Est. Time: <b>~{t.durationText || '28 mins'}</b>
                           </span>
@@ -2156,9 +2156,9 @@ export default function DriverApp() {
 
                       {/* Rider & Transmission info */}
                       <div style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 600, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>👤 {t.rider?.name || 'Customer'} (★ 4.9)</span>
+                        <span>{t.rider?.name || 'Customer'} (4.9 Rating)</span>
                         <span>·</span>
-                        <span>⚙️ {t.trans || t.car?.trans || 'Manual'} Transmission</span>
+                        <span>{t.trans || t.car?.trans || 'Manual'} Transmission</span>
                       </div>
 
                       {/* Action Buttons: Decline and Accept Ride */}
@@ -2204,7 +2204,7 @@ export default function DriverApp() {
                           onClick={() => handleAccept(t.id)}
                         >
                           <span>Accept Ride</span>
-                          <span style={{ color: '#FFFFFF', fontSize: '15px' }}>✓</span>
+                          <Icon name="check" size={15} color="#FFFFFF" />
                         </button>
                       </div>
                     </article>
@@ -2220,7 +2220,7 @@ export default function DriverApp() {
             {/* Today Trips Section */}
             <div className="sec stagger-3" style={{ marginTop: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>⚡</span>
+                <Icon name="clock" size={18} color="var(--ink)" />
                 <h3 style={{ margin: 0 }}>Today Trips</h3>
               </div>
               <span className="pill" style={{ background: todayTrips.length > 0 ? '#16A34A' : 'var(--field)', color: todayTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
@@ -2261,7 +2261,7 @@ export default function DriverApp() {
                         </div>
                         <div className="row small" style={{ marginTop: '8px', alignItems: 'center' }}>
                           <span className="mut grow ell">
-                            {t.rider?.name || 'Customer'} · ⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission
+                            {t.rider?.name || 'Customer'} · {t.trans || t.car?.trans || 'Automatic'} Transmission
                           </span>
                           <span
                             className="pill good"
@@ -2364,7 +2364,7 @@ export default function DriverApp() {
                             }}
                             onClick={() => handleStartTripAction(t.id)}
                           >
-                            <span>📷 Vehicle Details & Start Trip ▶</span>
+                            <span>Vehicle Details & Start Trip</span>
                           </button>
                         )}
 
@@ -2422,7 +2422,7 @@ export default function DriverApp() {
             {/* Upcoming Trips Section */}
             <div className="sec stagger-3" style={{ marginTop: '22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>🗓️</span>
+                <Icon name="calendar" size={18} color="var(--ink)" />
                 <h3 style={{ margin: 0 }}>Upcoming Trips</h3>
               </div>
               <span className="pill" style={{ background: futureUpcomingTrips.length > 0 ? '#2563EB' : 'var(--field)', color: futureUpcomingTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
@@ -2460,7 +2460,7 @@ export default function DriverApp() {
                         {/* Scheduled Date badge */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                           <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', padding: '3px 8px', borderRadius: '6px' }}>
-                            📅 {t.date || 'Upcoming'} · {t.time || 'Scheduled'}
+                            {t.date || 'Upcoming'} · {t.time || 'Scheduled'}
                           </span>
                         </div>
                         <div className="route">
@@ -2469,7 +2469,7 @@ export default function DriverApp() {
                         </div>
                         <div className="row small" style={{ marginTop: '8px', alignItems: 'center' }}>
                           <span className="mut grow ell">
-                            {t.rider?.name || 'Customer'} · ⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission
+                            {t.rider?.name || 'Customer'} · {t.trans || t.car?.trans || 'Automatic'} Transmission
                           </span>
                           <span
                             className="pill"
@@ -2730,7 +2730,7 @@ export default function DriverApp() {
                       {driverPartner?.name || 'Ravi Kumar'}
                     </b>
                     <span style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '3px', display: 'block' }}>
-                      ★ {driverPartner?.rating || '4.8'} · {driverPartner?.tripsCount || 142} trips on Ridingo
+                      Rating: {driverPartner?.rating || '4.8'} · {driverPartner?.tripsCount || 142} trips on Ridingo
                     </span>
                   </div>
                 </div>
@@ -2774,7 +2774,7 @@ export default function DriverApp() {
                   </span>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
-                  🎖️ {driverPartner?.experienceYears || 8} Yrs Experience
+                  {driverPartner?.experienceYears || 8} Yrs Experience
                 </span>
               </div>
             </div>
@@ -3067,7 +3067,7 @@ export default function DriverApp() {
                   onClick={async () => {
                     await requestDriverNotificationPermission();
                     sendDriverNativeNotification(
-                      '🔔 Ridingo Driver OS Alert',
+                      'Ridingo Driver OS Alert',
                       'Device-level native push notification working directly in your OS notification center.',
                       { type: 'alert' }
                     );
@@ -3157,7 +3157,7 @@ export default function DriverApp() {
                   marginBottom: '16px'
                 }}
               >
-                <span>🛠️</span>
+                <Icon name="settings" size={16} />
                 <span>Admin CRM Portal (ridingo.in/admin)</span>
               </button>
 
@@ -3239,8 +3239,8 @@ export default function DriverApp() {
                     <form onSubmit={handleSaveBankLink} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       {/* Modal Header */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px' }}>
-                        <div style={{ width: '42px', height: '42px', borderRadius: '13px', background: 'rgba(255, 199, 10, 0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-                          🏦
+                        <div style={{ width: '42px', height: '42px', borderRadius: '13px', background: 'rgba(255, 199, 10, 0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Icon name="credit-card" size={20} color="var(--ink)" />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <h3 style={{ fontSize: '17.5px', fontWeight: 800, margin: 0, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
@@ -3251,7 +3251,7 @@ export default function DriverApp() {
                           </p>
                         </div>
                         <span style={{ fontSize: '11px', fontWeight: 750, color: '#16A34A', background: 'rgba(34, 197, 94, 0.12)', padding: '4px 8px', borderRadius: '8px', flexShrink: 0 }}>
-                          ⚡ Instant IMPS
+                          Instant IMPS
                         </span>
                       </div>
 
@@ -3262,14 +3262,14 @@ export default function DriverApp() {
                           className={`ios-seg-btn ${linkMode === 'upi' ? 'on' : ''}`}
                           onClick={() => setLinkMode('upi')}
                         >
-                          ⚡ Instant UPI
+                          Instant UPI
                         </button>
                         <button
                           type="button"
                           className={`ios-seg-btn ${linkMode === 'bank' ? 'on' : ''}`}
                           onClick={() => setLinkMode('bank')}
                         >
-                          🏛️ Bank & IFSC
+                          Bank & IFSC
                         </button>
                       </div>
 
@@ -3305,8 +3305,8 @@ export default function DriverApp() {
                                   boxSizing: 'border-box'
                                 }}
                               />
-                              <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '16px', opacity: 0.6, pointerEvents: 'none' }}>
-                                ⚡
+                              <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6, pointerEvents: 'none' }}>
+                                <Icon name="zap" size={16} color="var(--yellow)" />
                               </span>
                             </div>
                           </div>
@@ -3343,7 +3343,7 @@ export default function DriverApp() {
                           </div>
 
                           <div style={{ padding: '10px 14px', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#16A34A', fontWeight: 600 }}>
-                            <span style={{ fontSize: '14px' }}>🛡️</span>
+                            <Icon name="shield" size={15} color="#16A34A" />
                             <span>NPCI verified direct instant IMPS transfer with zero fees.</span>
                           </div>
                         </>
@@ -3416,8 +3416,8 @@ export default function DriverApp() {
 
                           {/* Live Detected Bank Card */}
                           <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--field)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-                              🏛️
+                            <span style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--field)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Icon name="credit-card" size={20} color="var(--ink)" />
                             </span>
                             <div style={{ minWidth: 0, flex: 1 }}>
                               <b style={{ fontSize: '14px', color: 'var(--ink)', display: 'block', lineHeight: 1.25 }}>
@@ -3428,7 +3428,7 @@ export default function DriverApp() {
                               </span>
                             </div>
                             <span style={{ fontSize: '11px', fontWeight: 750, color: '#16A34A', background: 'rgba(34, 197, 94, 0.12)', padding: '4px 8px', borderRadius: '8px', flexShrink: 0 }}>
-                              ✓ Verified
+                              Verified
                             </span>
                           </div>
                         </>
@@ -3701,8 +3701,8 @@ export default function DriverApp() {
                   {activeDriverModal === 'payout' && (
                     <form onSubmit={handleSavePayout} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px' }}>
-                        <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(255, 199, 10, 0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-                          💳
+                        <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(255, 199, 10, 0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Icon name="credit-card" size={20} color="var(--ink)" />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <h3 style={{ fontSize: '17.5px', fontWeight: 800, margin: 0, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
@@ -3802,7 +3802,7 @@ export default function DriverApp() {
                             </div>
                             <div style={{ textAlign: 'right' }}>
                               <b style={{ fontSize: '14.5px', color: '#16A34A', display: 'block' }}>{s.amt}</b>
-                              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>✓ {s.status}</span>
+                              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{s.status}</span>
                             </div>
                           </div>
                         ))}
@@ -3842,7 +3842,7 @@ export default function DriverApp() {
                               <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block' }}>{d.id} · {d.valid}</span>
                             </div>
                             <span style={{ fontSize: '12px', fontWeight: 700, color: '#16A34A', background: 'rgba(34, 197, 94, 0.12)', padding: '4px 8px', borderRadius: '6px' }}>
-                              ✓ {d.status}
+                              {d.status}
                             </span>
                           </div>
                         ))}
@@ -3875,8 +3875,8 @@ export default function DriverApp() {
                       {/* Helpline Phone Number Card */}
                       <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-                            📞
+                          <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon name="phone" size={18} color="#16A34A" />
                           </span>
                           <div>
                             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
@@ -3902,8 +3902,8 @@ export default function DriverApp() {
                       {/* Email Support Card */}
                       <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                          <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                            ✉️
+                          <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Icon name="mail" size={18} color="#2563EB" />
                           </span>
                           <div style={{ minWidth: 0 }}>
                             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
@@ -3935,7 +3935,7 @@ export default function DriverApp() {
                         }}
                         style={{ height: '42px', borderRadius: '12px', background: '#25D366', color: '#FFFFFF', border: 'none', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       >
-                        <span>💬 WhatsApp Chat (8156938843)</span>
+                        <span>WhatsApp Chat (8156938843)</span>
                       </button>
                     </div>
                   )}
@@ -4067,10 +4067,10 @@ export default function DriverApp() {
               <button
                 type="button"
                 onClick={() => setSelectedRequestDetails(null)}
-                style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--ink)', fontSize: '14px' }}
+                style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--ink)' }}
                 aria-label="Close"
               >
-                ✕
+                <Icon name="x" size={16} />
               </button>
             </div>
 
@@ -4088,7 +4088,7 @@ export default function DriverApp() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '15px' }}>📍</span>
+                <Icon name="map-pin" size={15} color="var(--ink)" />
                 <div>
                   <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
                     Total Distance
@@ -4100,7 +4100,7 @@ export default function DriverApp() {
               </div>
               <div style={{ width: '1px', height: '26px', background: 'var(--line)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '15px' }}>⏱️</span>
+                <Icon name="clock" size={15} color="#16A34A" />
                 <div>
                   <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
                     Estimated Time (ETA)
@@ -4181,7 +4181,7 @@ export default function DriverApp() {
                 }}
               >
                 <span>Accept Trip</span>
-                <span>✓</span>
+                <Icon name="check" size={14} color="#FFFFFF" />
               </button>
             </div>
           </div>
@@ -4253,7 +4253,7 @@ export default function DriverApp() {
                 fontSize: '28px'
               }}
             >
-              ✓
+              <Icon name="check" size={28} color="#16A34A" />
             </div>
             <h3 style={{ fontSize: '20px', fontWeight: 850, color: '#0F172A', margin: '0 0 4px' }}>
               Payment Complete!

@@ -190,7 +190,7 @@ export default function GraphicLiveMap({
     const carIcon = L.divIcon({
       className: 'gmap-car-marker',
       html: `<div style="transform: rotate(${geom.angle || 0}deg); width:28px; height:28px; background:#000000; border:2px solid #FFC70A; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.45);">
-        <span style="font-size:14px;">🚗</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFC70A"><polygon points="12 2 19 21 12 17 5 21 12 2"/></svg>
       </div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14]
@@ -338,7 +338,6 @@ export default function GraphicLiveMap({
           }}
         >
           <span>Live Tracking</span>
-          <span>➔</span>
         </div>
       )}
     </div>

@@ -368,7 +368,7 @@ export default function CreateAccountScreen({
         onSuccess(payload);
       } else {
         Alert.alert(
-          'Account Created! 🎉',
+          'Account Created',
           `Welcome to Ridingo, ${payload.name}! A verification OTP has been sent to ${payload.mobile}.`,
           [{ text: 'Continue', onPress: onNavigateToSignIn }]
         );
@@ -411,12 +411,12 @@ export default function CreateAccountScreen({
                   <Text style={styles.avatarInitials}>
                     {firstName && lastName
                       ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-                      : '📷'}
+                      : 'U'}
                   </Text>
                 </View>
               )}
               <View style={styles.cameraBadge}>
-                <Text style={styles.cameraIcon}>📷</Text>
+                <Text style={styles.cameraIcon}>+</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSelectProfilePhoto} style={styles.uploadTextBtn}>
@@ -435,7 +435,6 @@ export default function CreateAccountScreen({
               locationGranted ? styles.locationChipGranted : styles.locationChipPending
             ]}
           >
-            <Text style={styles.locationChipIcon}>📍</Text>
             <View style={styles.locationChipTextCol}>
               <Text style={styles.locationChipTitle}>
                 {locationGranted
@@ -449,7 +448,7 @@ export default function CreateAccountScreen({
               </Text>
             </View>
             <Text style={styles.locationChipArrow}>
-              {locationGranted ? '✓' : '→'}
+              {locationGranted ? 'Active' : 'Enable'}
             </Text>
           </TouchableOpacity>
 

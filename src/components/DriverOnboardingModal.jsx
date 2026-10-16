@@ -796,7 +796,7 @@ export default function DriverOnboardingModal() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: isKeyboardVisible ? '18px' : '20px' }}>{otpMethod === 'phone' ? '📱' : '✉️'}</span>
+                <Icon name={otpMethod === 'phone' ? 'phone' : 'mail'} size={18} />
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     {otpMethod === 'phone' ? 'SMS Code Sent To' : 'Email Code Sent To'}
@@ -857,7 +857,7 @@ export default function DriverOnboardingModal() {
             {/* Error Message */}
             {otpError && (
               <div className="otp-error-banner">
-                <span>⚠️</span>
+                <Icon name="alert-circle" size={14} color="#EF4444" />
                 <span>{otpError}</span>
               </div>
             )}
@@ -1105,7 +1105,6 @@ export default function DriverOnboardingModal() {
                   gap: '8px'
                 }}
               >
-                <span>⚠️</span>
                 <span>{otpError}</span>
               </div>
             )}
@@ -1155,7 +1154,7 @@ export default function DriverOnboardingModal() {
                 gap: '8px'
               }}
             >
-              <span style={{ color: 'var(--yellow)' }}>⚡</span>
+              <Icon name="zap" size={15} color="var(--yellow)" />
               <span>Instant Demo Access (Ravi)</span>
             </button>
           </form>
@@ -1285,8 +1284,8 @@ export default function DriverOnboardingModal() {
                       style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--line)' }}
                     />
                   ) : (
-                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--field)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-                      📄
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--field)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="file-text" size={18} color="var(--ink)" />
                     </div>
                   )}
                   <div style={{ minWidth: 0 }}>
@@ -1299,7 +1298,7 @@ export default function DriverOnboardingModal() {
                   </div>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: dlPhoto ? '#16A34A' : 'var(--ink)' }}>
-                  {dlPhoto ? '✓ Change' : 'Upload'}
+                  {dlPhoto ? 'Change' : 'Upload'}
                 </span>
               </div>
             </div>
@@ -1346,8 +1345,8 @@ export default function DriverOnboardingModal() {
                       style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--line)' }}
                     />
                   ) : (
-                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--field)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-                      🪪
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--field)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="shield" size={18} color="var(--ink)" />
                     </div>
                   )}
                   <div style={{ minWidth: 0 }}>
@@ -1360,7 +1359,7 @@ export default function DriverOnboardingModal() {
                   </div>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: aadharPhoto ? '#16A34A' : 'var(--ink)' }}>
-                  {aadharPhoto ? '✓ Change' : 'Upload'}
+                  {aadharPhoto ? 'Change' : 'Upload'}
                 </span>
               </div>
             </div>
@@ -1628,9 +1627,9 @@ export default function DriverOnboardingModal() {
               <button
                 type="button"
                 onClick={() => setShowGooglePicker(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '18px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >
-                ✕
+                <Icon name="x" size={18} />
               </button>
             </div>
 
@@ -1711,29 +1710,28 @@ export default function DriverOnboardingModal() {
             onClick={e => e.stopPropagation()}
           >
             {/* Close Button */}
-            <button
-              type="button"
-              onClick={() => setShowKycEmailOtpModal(false)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: isDarkTheme ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                border: 'none',
-                color: 'var(--muted)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-              aria-label="Close"
-            >
-              ✕
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowKycEmailOtpModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: isDarkTheme ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+                aria-label="Close"
+              >
+                <Icon name="x" size={14} />
+              </button>
 
             {/* Shield / Mail Header Icon */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1817,7 +1815,7 @@ export default function DriverOnboardingModal() {
                   gap: '6px'
                 }}
               >
-                <span>⚠️</span>
+                <Icon name="alert-circle" size={14} color="#EF4444" />
                 <span>{kycOtpError}</span>
               </div>
             )}

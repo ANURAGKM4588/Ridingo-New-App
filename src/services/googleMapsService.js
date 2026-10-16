@@ -239,6 +239,56 @@ export const MOCK_PLACES_DATABASE = [
     type: 'tourist',
     rating: 4.7
   },
+  {
+    place_id: 'mock_place_aluva_metro',
+    title: 'Aluva Metro Station & KSRTC Stand',
+    sub: 'Aluva, Kochi, Kerala 683101',
+    aliases: ['aluva', 'alwaye', 'alva', 'metro', 'aluvaa', 'aluvha'],
+    lat: 10.1076,
+    lng: 76.3533,
+    type: 'metro',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_vytilla_hub',
+    title: 'Vyttila Mobility Hub & Metro Station',
+    sub: 'Vyttila, Kochi, Kerala 682019',
+    aliases: ['vyttila', 'vytilla', 'hub', 'vytila', 'metro', 'mobility hub'],
+    lat: 9.9678,
+    lng: 76.3217,
+    type: 'transit',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_palarivattom',
+    title: 'Palarivattom Junction & Pipeline',
+    sub: 'Palarivattom, Kochi, Kerala 682025',
+    aliases: ['palarivattom', 'palrivatom', 'pipeline', 'palarivattam', 'palari'],
+    lat: 10.0033,
+    lng: 76.3073,
+    type: 'hub',
+    rating: 4.4
+  },
+  {
+    place_id: 'mock_place_ernakulam_south',
+    title: 'Ernakulam South Railway Station (ERS / Junction)',
+    sub: 'South Railway Station Rd, Ernakulam, Kochi, Kerala 682016',
+    aliases: ['ernakulam', 'ernaklam', 'ers', 'south station', 'railway', 'junction', 'ernaklm'],
+    lat: 9.9676,
+    lng: 76.2891,
+    type: 'transit',
+    rating: 4.5
+  },
+  {
+    place_id: 'mock_place_ernakulam_north',
+    title: 'Ernakulam North Railway Station (Town / ERN)',
+    sub: 'North Railway Station Rd, Kaloor, Kochi, Kerala 682018',
+    aliases: ['ernakulam', 'ernaklam', 'ern', 'north station', 'kaloor', 'town', 'ernaklm'],
+    lat: 9.9932,
+    lng: 76.2872,
+    type: 'transit',
+    rating: 4.5
+  },
 
   // Kozhikode (Calicut) & Malabar
   {
@@ -986,10 +1036,54 @@ export function initGooglePlacesAutocomplete(inputElement, onPlaceSelected, opti
 let placesApiAbortController = null;
 
 /**
+ * Levenshtein distance calculation for typo-tolerant matching
+ */
+export function levenshteinDistance(s1, s2) {
+  if (s1 === s2) return 0;
+  if (!s1 || !s1.length) return s2 ? s2.length : 0;
+  if (!s2 || !s2.length) return s1.length;
+
+  const a = s1.toLowerCase();
+  const b = s2.toLowerCase();
+  const row = [];
+  for (let i = 0; i <= b.length; i++) row[i] = i;
+
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i;
+    for (let j = 1; j <= b.length; j++) {
+      let val;
+      if (a[i - 1] === b[j - 1]) {
+        val = row[j - 1];
+      } else {
+        val = Math.min(row[j - 1] + 1, prev + 1, row[j] + 1);
+      }
+      row[j - 1] = prev;
+      prev = val;
+    }
+    row[b.length] = prev;
+  }
+  return row[b.length];
+}
+
+export function wordSimilarity(w1, w2) {
+  if (!w1 || !w2) return 0;
+  const a = w1.toLowerCase().trim();
+  const b = w2.toLowerCase().trim();
+  if (a === b) return 1.0;
+  if (a.startsWith(b) || b.startsWith(a)) return 0.9;
+  if (a.includes(b) || b.includes(a)) return 0.85;
+
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1.0;
+  const dist = levenshteinDistance(a, b);
+  return Math.max(0, 1 - (dist / maxLen));
+}
+
+/**
  * Prioritizes place results:
  * 1. Exact full name match at the VERY TOP (#1).
  * 2. Prefix match (starts with the query).
- * 3. Related keyword matches only at the bottom (all unrelated places filtered out).
+ * 3. Typo-tolerant and fuzzy matching so imperfect spellings still surface the right places.
  */
 export function rankAndFilterPlaces(items, rawQuery) {
   if (!Array.isArray(items) || items.length === 0 || !rawQuery) return [];
@@ -998,8 +1092,8 @@ export function rankAndFilterPlaces(items, rawQuery) {
 
   const qTokens = q.split(/[\s,]+/).filter(Boolean);
 
-  // 1. Strict Keyword Filter: Keep ONLY items that relate to the entered keyword
-  const filtered = items.filter(item => {
+  // 1. Strict match check
+  const strictMatches = items.filter(item => {
     const title = (item.title || '').toLowerCase();
     const sub = (item.sub || '').toLowerCase();
     const full = (item.full || '').toLowerCase();
@@ -1009,48 +1103,58 @@ export function rankAndFilterPlaces(items, rawQuery) {
     return qTokens.length > 0 && qTokens.every(tok => combined.includes(tok));
   });
 
-  // 2. Ranking Algorithm:
-  return filtered.sort((a, b) => {
-    const aTitle = (a.title || '').toLowerCase().trim();
-    const bTitle = (b.title || '').toLowerCase().trim();
-    const aFull = (a.full || '').toLowerCase().trim();
-    const bFull = (b.full || '').toLowerCase().trim();
+  if (strictMatches.length > 0) {
+    return strictMatches.sort((a, b) => {
+      const aTitle = (a.title || '').toLowerCase().trim();
+      const bTitle = (b.title || '').toLowerCase().trim();
+      const aFull = (a.full || '').toLowerCase().trim();
+      const bFull = (b.full || '').toLowerCase().trim();
 
-    const getRank = (title, full) => {
-      // 1. Exact match with user's full typed place name (e.g. title === "kallachi")
-      if (title === q) return 1;
-      // 2. Exact match with full address
-      if (full === q) return 2;
-      // 3. Title starts with exact query word (e.g. "kallachi," or "kallachi ")
-      if (title.startsWith(q + ',') || title.startsWith(q + ' ')) return 3;
-      // 4. Full starts with exact query word
-      if (full.startsWith(q + ',') || full.startsWith(q + ' ')) return 4;
-      // 5. Title starts with query
-      if (title.startsWith(q)) return 5;
-      // 6. Full starts with query
-      if (full.startsWith(q)) return 6;
-      // 7. Title contains query anywhere
-      if (title.includes(q)) return 7;
-      // 8. Secondary text or full address contains query
-      if (full.includes(q)) return 8;
-      return 10;
-    };
+      const getRank = (title, full) => {
+        if (title === q) return 1;
+        if (full === q) return 2;
+        if (title.startsWith(q + ',') || title.startsWith(q + ' ')) return 3;
+        if (full.startsWith(q + ',') || full.startsWith(q + ' ')) return 4;
+        if (title.startsWith(q)) return 5;
+        if (full.startsWith(q)) return 6;
+        if (title.includes(q)) return 7;
+        if (full.includes(q)) return 8;
+        return 10;
+      };
 
-    const rankA = getRank(aTitle, aFull);
-    const rankB = getRank(bTitle, bFull);
+      const rankA = getRank(aTitle, aFull);
+      const rankB = getRank(bTitle, bFull);
+      if (rankA !== rankB) return rankA - rankB;
+      if (aTitle.length !== bTitle.length) return aTitle.length - bTitle.length;
+      return aFull.length - bFull.length;
+    });
+  }
 
-    if (rankA !== rankB) {
-      return rankA - rankB;
+  // 2. Typo-tolerant Fuzzy Search: Score each item for misspellings and phonetic similarities
+  const scored = items.map(item => {
+    const title = (item.title || '').toLowerCase();
+    const sub = (item.sub || '').toLowerCase();
+    const fullWords = [...title.split(/[\s,.-]+/), ...sub.split(/[\s,.-]+/)].filter(w => w.length >= 2);
+
+    let maxWordScore = 0;
+    for (const tok of qTokens) {
+      for (const w of fullWords) {
+        const sim = wordSimilarity(tok, w);
+        if (sim > maxWordScore) maxWordScore = sim;
+      }
     }
 
-    // Secondary sort: Shorter title / primary place name first (e.g. "Kallachi" before "Kallachi Court Road")
-    if (aTitle.length !== bTitle.length) {
-      return aTitle.length - bTitle.length;
-    }
+    // Direct whole-query similarity to title
+    const titleSim = wordSimilarity(q, title);
+    const overallScore = Math.max(maxWordScore, titleSim);
 
-    // Tertiary sort: Shorter full address first (e.g. "Kallachi, Keralam, India" before "Kallachi, Nadapuram, Keralam, India")
-    return aFull.length - bFull.length;
+    return { item, score: overallScore };
   });
+
+  return scored
+    .filter(s => s.score >= 0.5)
+    .sort((a, b) => b.score - a.score)
+    .map(s => s.item);
 }
 
 // In-memory LRU-style cache for high-speed instant 0ms autocomplete responses
@@ -1192,14 +1296,11 @@ export async function searchGooglePlaces(query, callback, options = {}) {
     }
   }
 
-  // 4. Fallback search via Nominatim & Local Database
+  // 4. Fallback search via Nominatim & Local Database with typo tolerance
   function fallbackSearch() {
     fetchNominatimPlaces(clean, (nomResults) => {
-      let combined = nomResults && nomResults.length > 0 ? [...nomResults] : [];
-      if (combined.length === 0) {
-        const rawLocal = getFilteredMockPlaces(lower);
-        combined = rankAndFilterPlaces(rawLocal, clean);
-      }
+      const rawLocal = getFilteredMockPlaces(lower);
+      const combined = [...(nomResults || []), ...rawLocal];
       const ranked = rankAndFilterPlaces(combined, clean).slice(0, 15);
       placesMemoryCache.set(lower, ranked);
       callback(ranked);
@@ -1209,29 +1310,74 @@ export async function searchGooglePlaces(query, callback, options = {}) {
   fallbackSearch();
 }
 
-function getFilteredMockPlaces(cleanQuery) {
+export function getFilteredMockPlaces(cleanQuery) {
   if (!cleanQuery) return [];
-  const q = cleanQuery.toLowerCase();
-  const matches = MOCK_PLACES_DATABASE.filter(p => {
+  const q = cleanQuery.toLowerCase().trim();
+  const qTokens = q.split(/[\s,]+/).filter(Boolean);
+
+  const scored = MOCK_PLACES_DATABASE.map(p => {
     const title = (p.title || '').toLowerCase();
     const sub = (p.sub || '').toLowerCase();
-    const titleMatch = title.includes(q);
-    const subMatch = sub.includes(q);
-    const aliasMatch = p.aliases && p.aliases.some(a => a.toLowerCase().includes(q) || q.includes(a.toLowerCase()));
-    return titleMatch || subMatch || aliasMatch;
+    const full = `${title} ${sub}`;
+    const aliases = (p.aliases || []).map(a => a.toLowerCase());
+    const words = [...title.split(/[\s,.-]+/), ...sub.split(/[\s,.-]+/), ...aliases].filter(w => w.length >= 2);
+
+    let score = 0;
+
+    // Direct match scoring
+    if (title === q) score += 100;
+    else if (title.startsWith(q)) score += 80;
+    else if (title.includes(q)) score += 60;
+    else if (full.includes(q)) score += 40;
+
+    // Alias matches
+    for (const a of aliases) {
+      if (a === q) score += 95;
+      else if (a.startsWith(q)) score += 75;
+      else if (a.includes(q)) score += 55;
+    }
+
+    // Token & fuzzy typo similarity
+    for (const tok of qTokens) {
+      if (tok.length < 2) continue;
+      let bestTokScore = 0;
+      for (const w of words) {
+        if (w === tok) {
+          bestTokScore = Math.max(bestTokScore, 50);
+        } else if (w.startsWith(tok)) {
+          bestTokScore = Math.max(bestTokScore, 40);
+        } else if (w.includes(tok)) {
+          bestTokScore = Math.max(bestTokScore, 30);
+        } else {
+          const sim = wordSimilarity(tok, w);
+          if (sim >= 0.72) {
+            bestTokScore = Math.max(bestTokScore, Math.round(sim * 35));
+          } else if (tok.length >= 4 && levenshteinDistance(tok, w) <= 2) {
+            bestTokScore = Math.max(bestTokScore, 22);
+          }
+        }
+      }
+      score += bestTokScore;
+    }
+
+    return {
+      id: p.place_id,
+      place_id: p.place_id,
+      title: p.title,
+      sub: p.sub,
+      full: `${p.title}, ${p.sub}`,
+      lat: p.lat,
+      lng: p.lng,
+      type: p.type,
+      isMock: true,
+      _score: score
+    };
   });
 
-  return matches.map(p => ({
-    id: p.place_id,
-    place_id: p.place_id,
-    title: p.title,
-    sub: p.sub,
-    full: `${p.title}, ${p.sub}`,
-    lat: p.lat,
-    lng: p.lng,
-    type: p.type,
-    isMock: true
-  }));
+  return scored
+    .filter(p => p._score > 15)
+    .sort((a, b) => b._score - a._score)
+    .map(({ _score, ...rest }) => rest);
 }
 
 /**

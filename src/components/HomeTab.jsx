@@ -462,7 +462,7 @@ export default function HomeTab() {
               gap: '6px'
             }}
           >
-            <span>📡</span>
+            <Icon name="navigation" size={14} />
             <span>Request broadcasted to nearby verified chauffeurs. Waiting for acceptance...</span>
           </div>
 
@@ -612,7 +612,7 @@ export default function HomeTab() {
           >
             <Icon name="navigation" size={14} />
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Track Chauffeur Live ➔
+              Track Chauffeur Live
             </span>
           </button>
         </div>
@@ -665,7 +665,7 @@ export default function HomeTab() {
               <span style={{ fontSize: '13px', fontWeight: 700 }}>RK</span>
             </span>
             <div className="live-driver-info grow">
-              <b>{inProg.driver || 'Ravi Kumar'} <span style={{ fontWeight: 400, color: 'var(--muted)' }}>★ 4.8</span></b>
+              <b>{inProg.driver || 'Ravi Kumar'} <span style={{ fontWeight: 400, color: 'var(--muted)' }}>Rating: 4.8</span></b>
               <span>Driving your {user?.car?.model || inProg.car?.model} ({user?.car?.plate || inProg.car?.plate})</span>
             </div>
             <button
@@ -820,7 +820,7 @@ export default function HomeTab() {
             gap: '3px'
           }}
         >
-          4.9 ★
+          4.9 Rating
         </span>
       </div>
 

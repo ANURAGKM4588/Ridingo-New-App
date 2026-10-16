@@ -148,7 +148,7 @@ export default function TripInvoiceModal({
               }}
             >
               <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9 }}>
-                ✓ PAYMENT SETTLED · TRIP COMPLETION OTP
+                PAYMENT SETTLED · TRIP COMPLETION OTP
               </span>
               <div
                 style={{
@@ -299,7 +299,7 @@ export default function TripInvoiceModal({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '16px' }}>⚠️</span>
+              <Icon name="alert" size={16} color="var(--bad, #991B1B)" />
               <b style={{ fontSize: '13px', color: 'var(--bad, #991B1B)' }}>Cash Payments Strictly Prohibited</b>
             </div>
             <p style={{ fontSize: '11.5px', color: 'var(--bad, #7F1D1D)', margin: '0 0 10px', lineHeight: 1.45 }}>
@@ -379,8 +379,8 @@ export default function TripInvoiceModal({
               border: '1px solid var(--line, rgba(255,255,255,0.1))'
             }}
           >
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--bad-soft, #FEE2E2)', color: 'var(--bad, #DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '24px' }}>
-              ⚠️
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--bad-soft, #FEE2E2)', color: 'var(--bad, #DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <Icon name="alert" size={24} color="var(--bad, #DC2626)" />
             </div>
             <b style={{ fontSize: '17px', color: 'var(--ink, #0F172A)', display: 'block', marginBottom: '8px' }}>
               Confirm Cash Violation?

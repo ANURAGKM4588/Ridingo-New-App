@@ -249,14 +249,44 @@ export default function GooglePlacesSearchInput({
         }
       }
 
-      // Offline / Testing Mock Database Fallback (Instant, Zero Latency)
+      // Offline / Testing Mock Database Fallback (Instant, Zero Latency with Typo Tolerance)
       const q = clean.toLowerCase();
-      const matched = MOCK_LOCATIONS.filter(
-        (loc) =>
-          loc.title.toLowerCase().includes(q) ||
-          loc.subtitle.toLowerCase().includes(q) ||
-          loc.address.toLowerCase().includes(q)
-      );
+      const qTokens = q.split(/[\s,]+/).filter(Boolean);
+      
+      const scored = MOCK_LOCATIONS.map((loc) => {
+        const title = loc.title.toLowerCase();
+        const sub = (loc.subtitle || '').toLowerCase();
+        const full = `${title} ${sub}`;
+        const words = [...title.split(/[\s,.-]+/), ...sub.split(/[\s,.-]+/)].filter(w => w.length >= 2);
+
+        let score = 0;
+        if (title.includes(q)) score += 60;
+        if (sub.includes(q)) score += 40;
+
+        for (const tok of qTokens) {
+          for (const w of words) {
+            if (w === tok) score += 40;
+            else if (w.startsWith(tok)) score += 25;
+            else if (w.includes(tok)) score += 15;
+            else if (tok.length >= 3) {
+              // Simple char overlap score for typos
+              let matchCount = 0;
+              for (const ch of tok) {
+                if (w.includes(ch)) matchCount++;
+              }
+              if (matchCount / Math.max(tok.length, w.length) > 0.65) {
+                score += 15;
+              }
+            }
+          }
+        }
+        return { loc, score };
+      });
+
+      const matched = scored
+        .filter((s) => s.score > 10)
+        .sort((a, b) => b.score - a.score)
+        .map((s) => s.loc);
 
       setSuggestions(matched);
       setIsOpen(matched.length > 0);
@@ -411,7 +441,7 @@ export default function GooglePlacesSearchInput({
             accessibilityLabel="Clear location search"
           >
             <View style={[styles.clearCircle, { backgroundColor: themeColors.border }]}>
-              <Text style={[styles.clearText, { color: themeColors.subText }]}>✕</Text>
+              <Text style={[styles.clearText, { color: themeColors.subText, fontSize: 13, fontWeight: '700' }]}>x</Text>
             </View>
           </TouchableOpacity>
         )}

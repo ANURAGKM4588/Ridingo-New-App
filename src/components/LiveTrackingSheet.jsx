@@ -260,15 +260,15 @@ export default function LiveTrackingSheet() {
                   </div>
                   {trip?.distanceText && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '12px', color: 'var(--muted)' }}>
-                      <span style={{ fontWeight: 600 }}>🗺️ Route: {trip.distanceText}</span>
+                      <span style={{ fontWeight: 600 }}>Route: {trip.distanceText}</span>
                       <span>·</span>
-                      <span style={{ fontWeight: 600 }}>⏱️ ETA: ~{trip.durationText || '25 mins'}</span>
+                      <span style={{ fontWeight: 600 }}>ETA: ~{trip.durationText || '25 mins'}</span>
                     </div>
                   )}
                 </div>
 
                 <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line)' }}>
-                  Gearbox: ⚙️ {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
+                  Gearbox: {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
                 </div>
               </div>
 
@@ -320,8 +320,8 @@ export default function LiveTrackingSheet() {
                   textAlign: 'center'
                 }}
               >
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '26px' }}>
-                  ✓
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <Icon name="check" size={26} color="#16A34A" />
                 </div>
                 <b style={{ fontSize: '17px', color: 'var(--ink)', display: 'block' }}>
                   Chauffeur Confirmed!
@@ -383,7 +383,7 @@ export default function LiveTrackingSheet() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <b style={{ fontSize: '15px', color: 'var(--ink)' }}>{trip.driver || 'Ravi Kumar'}</b>
                       <span style={{ background: 'rgba(255, 199, 10, 0.2)', color: 'var(--on-yellow-soft, var(--yellow))', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px' }}>
-                        ★ 4.9
+                        Rating 4.9
                       </span>
                     </div>
                     <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Assigned Chauffeur</span>
@@ -410,33 +410,26 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* Cancel Request Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setTrips(prev => prev.filter(t => t.id !== trip.id));
-                  setLiveTrackingOpen(false);
-                  addToast('Trip request cancelled', 'info');
-                }}
+              {/* Trip Confirmed Lock Indicator - User cannot cancel once accepted */}
+              <div
                 style={{
                   width: '100%',
-                  height: '46px',
+                  padding: '12px 14px',
                   borderRadius: '14px',
                   background: 'var(--field)',
                   border: '1px solid var(--line)',
-                  color: '#DC2626',
-                  fontSize: '13.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px'
+                  gap: '8px',
+                  color: 'var(--muted)',
+                  fontSize: '12.5px',
+                  fontWeight: 650
                 }}
               >
-                <Icon name="x" size={15} />
-                <span>Cancel Booking</span>
-              </button>
+                <Icon name="shield" size={15} />
+                <span>Trip confirmed. Cancellation is locked as chauffeur is en route.</span>
+              </div>
             </div>
           ) : (
             /* ==========================================================
@@ -531,7 +524,7 @@ export default function LiveTrackingSheet() {
                       }}
                       title="Verified Professional Chauffeur"
                     >
-                      ✓
+                      <Icon name="check" size={10} color="#FFFFFF" />
                     </span>
                   </div>
                   <div>
@@ -547,11 +540,11 @@ export default function LiveTrackingSheet() {
                           borderRadius: '6px'
                         }}
                       >
-                        ★ 4.8
+                        Rating 4.8
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-                      Certified Chauffeur · ⚙️ {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
+                      Certified Chauffeur · {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
                     </div>
                   </div>
                 </div>
@@ -579,7 +572,7 @@ export default function LiveTrackingSheet() {
               {/* PhonePe Escrow & Cashback Pill */}
               <div style={{ padding: '8px 12px', borderRadius: '12px', background: 'var(--field)', border: '1px solid var(--line)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '13px' }}>🛡️</span>
+                  <Icon name="shield" size={14} />
                   <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--ink)' }}>PhonePe Escrow Protected</span>
                 </div>
                 <span style={{ fontSize: '11px', fontWeight: 750, color: '#16A34A', background: 'rgba(34, 197, 94, 0.1)', padding: '2px 8px', borderRadius: '6px' }}>

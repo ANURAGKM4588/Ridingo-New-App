@@ -179,7 +179,7 @@ export default function LegalModal() {
                   gap: '10px'
                 }}
               >
-                <span style={{ fontSize: '18px', lineHeight: 1 }}>🛡️</span>
+                <Icon name="shield" size={18} />
                 <span style={{ fontSize: '12.5px', color: 'var(--ink)', lineHeight: 1.4, fontWeight: 500 }}>
                   <b>Ridingo is a driver-providing service platform.</b> You provide the vehicle; we provide verified, professional chauffeurs on demand.
                 </span>
@@ -279,7 +279,7 @@ export default function LegalModal() {
                   gap: '10px'
                 }}
               >
-                <span style={{ fontSize: '18px', lineHeight: 1 }}>🔒</span>
+                <Icon name="shield" size={18} />
                 <span style={{ fontSize: '12.5px', color: 'var(--ink)', lineHeight: 1.4, fontWeight: 500 }}>
                   <b>Your privacy is safeguarded.</b> We strictly use end-to-end phone number masking and do not sell your personal or location data to advertising brokers.
                 </span>

@@ -1,16 +1,31 @@
 import { Capacitor } from '@capacitor/core';
 
-// Cache the last known real device location in memory
-let cachedDeviceCoords = null;
-let cachedAddress = null;
+// Cache the last known real device location in memory and localStorage for 0ms startup
+const STORAGE_KEY = 'ridingo_cached_device_coords';
+
+let cachedDeviceCoords = (() => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+})();
+
+let cachedAddress = cachedDeviceCoords?.address || null;
 let isLocatingPromise = null;
+const geocodeCache = new Map();
 
 /**
- * Reverse geocode latitude and longitude using OpenStreetMap Nominatim
- * Returns a clean, human-readable address based on real device coordinates
+ * Reverse geocode latitude and longitude using Google Maps or OpenStreetMap Nominatim
+ * Includes fast in-memory caching and 2.5s network timeout to prevent UI freezes
  */
 export async function reverseGeocode(lat, lng) {
-  // 1. Official Google Maps Geocoder
+  const cacheKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
+  if (geocodeCache.has(cacheKey)) {
+    return geocodeCache.get(cacheKey);
+  }
+
+  // 1. Official Google Maps Geocoder if loaded
   try {
     if (typeof window !== 'undefined' && window.google?.maps?.Geocoder) {
       const geocoder = new window.google.maps.Geocoder();
@@ -24,58 +39,73 @@ export async function reverseGeocode(lat, lng) {
         });
       });
       if (googleResult) {
+        geocodeCache.set(cacheKey, googleResult);
         return googleResult;
       }
     }
   } catch (e) {}
 
-  // 2. OpenStreetMap Nominatim fallback
+  // 2. OpenStreetMap Nominatim with strict 2.5s timeout
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
     const res = await fetch(url, {
+      signal: controller.signal,
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'RidingoApp/1.0'
       }
     });
-    if (!res.ok) throw new Error('Geocoding network error');
-    const data = await res.json();
-    
-    if (data && data.address) {
-      const a = data.address;
-      const primary = a.amenity || a.building || a.road || a.pedestrian || a.suburb || a.neighbourhood || a.commercial || a.isolated_dwelling;
-      const secondary = a.neighbourhood || a.suburb || a.residential || a.city_district || a.quarter || a.subdistrict;
-      const city = a.city || a.town || a.village || a.municipality || a.county || a.state_district;
-      const state = a.state;
+    clearTimeout(timer);
 
-      const parts = [];
-      if (primary) parts.push(primary);
-      if (secondary && secondary !== primary) parts.push(secondary);
-      if (city && city !== secondary && city !== primary) parts.push(city);
-      if (state && parts.length < 3) parts.push(state);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.address) {
+        const a = data.address;
+        const primary = a.amenity || a.building || a.road || a.pedestrian || a.suburb || a.neighbourhood || a.commercial || a.isolated_dwelling;
+        const secondary = a.neighbourhood || a.suburb || a.residential || a.city_district || a.quarter || a.subdistrict;
+        const city = a.city || a.town || a.village || a.municipality || a.county || a.state_district;
+        const state = a.state;
 
-      if (parts.length > 0) {
-        return parts.join(', ');
+        const parts = [];
+        if (primary) parts.push(primary);
+        if (secondary && secondary !== primary) parts.push(secondary);
+        if (city && city !== secondary && city !== primary) parts.push(city);
+        if (state && parts.length < 3) parts.push(state);
+
+        if (parts.length > 0) {
+          const finalAddr = parts.join(', ');
+          geocodeCache.set(cacheKey, finalAddr);
+          return finalAddr;
+        }
+      }
+
+      if (data && data.display_name) {
+        const fallbackStr = data.display_name.split(',').slice(0, 3).join(', ').trim();
+        geocodeCache.set(cacheKey, fallbackStr);
+        return fallbackStr;
       }
     }
-
-    if (data && data.display_name) {
-      return data.display_name.split(',').slice(0, 3).join(', ').trim();
-    }
   } catch (err) {
-    console.warn('Reverse geocoding warning:', err);
+    // Timeout or network drop - fallback to clean coordinates without blocking UI
   }
 
-  // Pure coordinate fallback strictly indicating device GPS coordinates
-  return `Location (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})`;
+  const fallbackCoord = `Location (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})`;
+  geocodeCache.set(cacheKey, fallbackCoord);
+  return fallbackCoord;
 }
 
 /**
- * IP-based fallback if user's browser/device denies hardware GPS permissions
+ * IP-based fallback with fast 2s timeout
  */
 async function getIPFallbackLocation() {
   try {
-    const res = await fetch('https://ipapi.co/json/');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+    clearTimeout(timer);
     if (!res.ok) throw new Error('IP Geo failed');
     const d = await res.json();
     if (d.latitude && d.longitude) {
@@ -89,31 +119,26 @@ async function getIPFallbackLocation() {
       return {
         lat,
         lng,
-        accuracy: 5000,
+        accuracy: 3000,
         address: addr || `Near ${city} (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
         isIPFallback: true
       };
     }
-  } catch (e) {
-    console.warn('IP fallback failed:', e);
-  }
+  } catch (e) {}
   return null;
 }
 
 /**
- * Strictly obtain the actual device GPS location.
- * Checks Capacitor native Geolocation first, then navigator.geolocation with enableHighAccuracy.
- * 
- * @param {boolean} forceRefresh - If true, bypasses in-memory cache and re-queries hardware
- * @returns {Promise<{lat: number, lng: number, accuracy: number, address: string}>}
+ * Fast & Responsive Device GPS Query:
+ * Uses fast 4s timeout and immediate cached return so the map is never blocked.
  */
 export async function getDeviceLocation(forceRefresh = false) {
-  if (!forceRefresh && cachedDeviceCoords && cachedAddress) {
+  if (!forceRefresh && cachedDeviceCoords) {
     return {
       lat: cachedDeviceCoords.lat,
       lng: cachedDeviceCoords.lng,
-      accuracy: cachedDeviceCoords.accuracy,
-      address: cachedAddress
+      accuracy: cachedDeviceCoords.accuracy || 25,
+      address: cachedAddress || `Location (${cachedDeviceCoords.lat.toFixed(4)}, ${cachedDeviceCoords.lng.toFixed(4)})`
     };
   }
 
@@ -126,7 +151,7 @@ export async function getDeviceLocation(forceRefresh = false) {
     let lng = null;
     let accuracy = null;
 
-    // 1. Try Native Capacitor Geolocation on native platforms (iOS/Android)
+    // 1. Native Capacitor Geolocation with fast timeout
     try {
       const { Geolocation } = await import('@capacitor/geolocation');
       if (Geolocation && typeof Geolocation.getCurrentPosition === 'function') {
@@ -136,8 +161,8 @@ export async function getDeviceLocation(forceRefresh = false) {
         }
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: forceRefresh ? 0 : 30000
+          timeout: 4000,
+          maximumAge: forceRefresh ? 5000 : 60000
         });
         if (pos && pos.coords) {
           lat = pos.coords.latitude;
@@ -146,10 +171,10 @@ export async function getDeviceLocation(forceRefresh = false) {
         }
       }
     } catch (nativeErr) {
-      console.warn('Native geolocation check:', nativeErr);
+      console.warn('Fast native geolocation note:', nativeErr);
     }
 
-    // 2. Try HTML5 Geolocation API ONLY in regular desktop browser (NEVER in native apps to prevent "localhost" popup)
+    // 2. HTML5 Geolocation API in regular desktop browser
     if (lat === null && !Capacitor.isNativePlatform() && typeof navigator !== 'undefined' && navigator.geolocation) {
       try {
         const pos = await new Promise((resolve, reject) => {
@@ -158,8 +183,8 @@ export async function getDeviceLocation(forceRefresh = false) {
             reject,
             {
               enableHighAccuracy: true,
-              timeout: 12000,
-              maximumAge: forceRefresh ? 0 : 30000
+              timeout: 4500,
+              maximumAge: forceRefresh ? 5000 : 60000
             }
           );
         });
@@ -168,36 +193,51 @@ export async function getDeviceLocation(forceRefresh = false) {
           lng = pos.coords.longitude;
           accuracy = pos.coords.accuracy;
         }
-      } catch (geoErr) {
-        console.warn('Browser geolocation error:', geoErr);
-      }
+      } catch (geoErr) {}
     }
 
-    // 3. If hardware GPS is denied/failed, try IP geocoding so it's still near user's real location
+    // 3. Fallback to existing cache if hardware GPS took too long
+    if (lat === null && cachedDeviceCoords) {
+      return {
+        lat: cachedDeviceCoords.lat,
+        lng: cachedDeviceCoords.lng,
+        accuracy: cachedDeviceCoords.accuracy || 25,
+        address: cachedAddress || `Location (${cachedDeviceCoords.lat.toFixed(4)}, ${cachedDeviceCoords.lng.toFixed(4)})`
+      };
+    }
+
+    // 4. IP-based fallback
     if (lat === null) {
       const ipLoc = await getIPFallbackLocation();
       if (ipLoc) {
         cachedDeviceCoords = { lat: ipLoc.lat, lng: ipLoc.lng, accuracy: ipLoc.accuracy };
         cachedAddress = ipLoc.address;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...cachedDeviceCoords, address: cachedAddress }));
+        } catch (e) {}
         return ipLoc;
       }
-      // If everything fails (offline and no GPS), return a sensible center with coordinates label
-      lat = 12.9716;
-      lng = 77.5946;
-      accuracy = 10000;
+      // Ultimate default: Cochin / Bangalore hub
+      lat = 10.0245;
+      lng = 76.3075;
+      accuracy = 1000;
     }
 
     cachedDeviceCoords = { lat, lng, accuracy };
 
-    // Resolve real street address
-    const resolvedAddress = await reverseGeocode(lat, lng);
-    cachedAddress = resolvedAddress;
+    // Resolve street address in parallel / non-blocking
+    reverseGeocode(lat, lng).then(addr => {
+      cachedAddress = addr;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ lat, lng, accuracy, address: addr }));
+      } catch (e) {}
+    }).catch(() => {});
 
     return {
       lat,
       lng,
-      accuracy: accuracy || 50,
-      address: resolvedAddress
+      accuracy: accuracy || 25,
+      address: cachedAddress || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`
     };
   })();
 
@@ -210,15 +250,15 @@ export async function getDeviceLocation(forceRefresh = false) {
 }
 
 /**
- * Returns cached coordinates if available
+ * Returns cached coordinates immediately for instant 0ms map rendering
  */
 export function getCachedDeviceLocation() {
-  if (cachedDeviceCoords && cachedAddress) {
+  if (cachedDeviceCoords) {
     return {
       lat: cachedDeviceCoords.lat,
       lng: cachedDeviceCoords.lng,
-      accuracy: cachedDeviceCoords.accuracy,
-      address: cachedAddress
+      accuracy: cachedDeviceCoords.accuracy || 25,
+      address: cachedAddress || `Location (${cachedDeviceCoords.lat.toFixed(4)}, ${cachedDeviceCoords.lng.toFixed(4)})`
     };
   }
   return null;

@@ -1183,7 +1183,7 @@ export function AppProvider({ children }) {
         ...prev,
         blackMarks: (prev?.blackMarks || 0) + 1
       }));
-      addToast('⚠️ Violation: 1 Black Mark issued for cash transaction!', 'warn');
+      addToast('Violation: 1 Black Mark issued for cash transaction!', 'warn');
     } else {
       addToast(`₹${driverEarnings} credited to Chauffeur Wallet! Completion OTP: ${completionOtp}`, 'check');
     }

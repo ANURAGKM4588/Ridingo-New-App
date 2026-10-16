@@ -1488,7 +1488,7 @@ export default function AdminPanel() {
 
                         <div style={{ borderLeft: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB' }}>
                           <div style={{ fontFamily: T.fontDisplay, fontSize: '17px', fontWeight: 800, color: '#121316', letterSpacing: '-0.02em' }}>
-                            {selectedDriver.rating ? `${selectedDriver.rating}★` : '5.0★'}
+                            {selectedDriver.rating ? `${selectedDriver.rating}` : '5.0'}
                           </div>
                           <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, marginTop: '2px' }}>
                             Rating

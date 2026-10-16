@@ -539,7 +539,7 @@ export default function ProfileTab() {
               gap: '8px'
             }}
           >
-            <span>🛠️</span>
+            <Icon name="settings" size={16} />
             <span>Admin CRM Portal (ridingo.in/admin)</span>
           </button>
         </div>
@@ -655,7 +655,7 @@ export default function ProfileTab() {
                 }}
                 aria-label="Close"
               >
-                ✕
+                <Icon name="x" size={14} />
               </button>
             </div>
 
@@ -807,7 +807,7 @@ export default function ProfileTab() {
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '13px' }}>👤</span>
+                        <Icon name="user" size={14} color="var(--ink)" />
                         <div>
                           <b style={{ fontSize: '12.5px', color: 'var(--ink)' }}>{c.name}</b>
                           <span style={{ fontSize: '11px', color: 'var(--muted)', marginLeft: '6px' }}>({c.relation} · {c.phone})</span>
@@ -816,9 +816,9 @@ export default function ProfileTab() {
                       <button
                         type="button"
                         onClick={() => handleDeleteSos(idx)}
-                        style={{ color: '#EF4444', fontSize: '11px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+                        style={{ color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center' }}
                       >
-                        ✕
+                        <Icon name="x" size={12} />
                       </button>
                     </div>
                   ))}
@@ -993,7 +993,7 @@ export default function ProfileTab() {
                         }}
                       >
                         <span>{lang}</span>
-                        {active && <span style={{ color: 'var(--on-yellow)', fontWeight: 800 }}>✓</span>}
+                        {active && <Icon name="check" size={14} color="var(--on-yellow)" />}
                       </button>
                     );
                   })}
@@ -1055,7 +1055,7 @@ export default function ProfileTab() {
                 </p>
 
                 <div style={{ fontSize: '12.5px', color: 'var(--ink)', padding: '10px 12px', borderRadius: '12px', background: 'rgba(37, 211, 102, 0.12)', border: '1px solid rgba(37, 211, 102, 0.3)' }}>
-                  📱 Linked WhatsApp: <b>{user?.phone || '+91 98401 23456'}</b>
+                  Linked WhatsApp: <b>{user?.phone || '+91 98401 23456'}</b>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
@@ -1166,7 +1166,7 @@ export default function ProfileTab() {
                     if (navigator.vibrate) {
                       try { navigator.vibrate([40, 50, 40]); } catch (e) {}
                     }
-                    addToast('📳 Haptic pulse tested', 'check');
+                    addToast('Haptic pulse tested', 'check');
                   }}
                   style={{
                     height: '40px',
@@ -1179,7 +1179,7 @@ export default function ProfileTab() {
                     cursor: 'pointer'
                   }}
                 >
-                  Test Vibration 📳
+                  Test Vibration
                 </button>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
@@ -1219,8 +1219,8 @@ export default function ProfileTab() {
                 {/* Helpline Phone Number Card */}
                 <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-                      📞
+                    <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="phone" size={18} color="#16A34A" />
                     </span>
                     <div>
                       <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
@@ -1246,8 +1246,8 @@ export default function ProfileTab() {
                 {/* Email Support Card */}
                 <div style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                    <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                      ✉️
+                    <span style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name="mail" size={18} color="#2563EB" />
                     </span>
                     <div style={{ minWidth: 0 }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
@@ -1279,7 +1279,7 @@ export default function ProfileTab() {
                   }}
                   style={{ height: '42px', borderRadius: '12px', background: '#25D366', color: '#FFFFFF', border: 'none', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <span>💬 WhatsApp Chat (8156938843)</span>
+                  <span>WhatsApp Chat (8156938843)</span>
                 </button>
               </div>
             )}

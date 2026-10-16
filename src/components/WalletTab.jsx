@@ -82,7 +82,7 @@ export default function WalletTab() {
         <div className="card stagger-3" style={{ padding: '16px', marginBottom: '18px', background: 'var(--field)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <b style={{ fontSize: '14px' }}>Top-up Wallet (PhonePe Gateway)</b>
-            <button onClick={() => setShowAddMoney(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+            <button onClick={() => setShowAddMoney(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)' }} aria-label="Close"><Icon name="x" size={16} /></button>
           </div>
           <div className="chips" style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             {[500, 1000, 2000, 5000].map(v => (

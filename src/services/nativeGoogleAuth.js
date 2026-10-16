@@ -37,7 +37,7 @@ export async function initGoogleAuth() {
       grantOfflineAccess: true
     });
     initialized = true;
-    console.log('✅ GoogleAuth initialized successfully with clientId:', activeClientId);
+    console.log('[GoogleAuth] Initialized successfully with clientId:', activeClientId);
   } catch (err) {
     console.warn('GoogleAuth.initialize notice:', err);
   }

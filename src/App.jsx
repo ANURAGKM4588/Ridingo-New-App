@@ -13,6 +13,7 @@ import LegalModal from './components/LegalModal';
 import PhonePePgCheckout from './components/PhonePePgCheckout';
 import DriverApp from './components/DriverApp';
 import AdminPanel from './components/admin/AdminPanel';
+import Icon from './components/Icon';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -41,8 +42,8 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: '24px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '260px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.14)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>
-            ⚠️
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.14)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+            <Icon name="alert" size={24} color="#EF4444" />
           </div>
           <b style={{ fontSize: '15.5px', color: 'var(--ink)' }}>Display Issue Recovered</b>
           <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '8px 0 14px', maxWidth: '280px', lineHeight: 1.4 }}>
@@ -159,7 +160,7 @@ function MainApp() {
                   <div className="toasts" id="u-toasts" aria-live="polite">
                     {toasts.map(t => (
                       <div key={t.id} className="toast" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>{t.icon === 'check' ? '✓' : 'ℹ'}</span>
+                        <Icon name={t.icon === 'check' ? 'check' : 'info'} size={14} />
                         <span>{t.msg}</span>
                       </div>
                     ))}

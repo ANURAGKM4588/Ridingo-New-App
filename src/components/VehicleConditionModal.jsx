@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
 
-// Default realistic sample vehicle angle images for simulator/fallback
-const SAMPLE_VEHICLE_IMAGES = {
-  front: 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=600&auto=format&fit=crop&q=80',
-  left: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=80',
-  back: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600&auto=format&fit=crop&q=80',
-  right: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=600&auto=format&fit=crop&q=80'
-};
+// Default realistic sample vehicle images for simulator/fallback
+const SAMPLE_VEHICLE_IMAGES = [
+  'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=600&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=600&auto=format&fit=crop&q=80'
+];
 
 const POPULAR_BRANDS = [
   'Maruti Suzuki',
@@ -18,13 +18,6 @@ const POPULAR_BRANDS = [
   'Honda',
   'Kia',
   'Volkswagen'
-];
-
-const VEHICLE_ANGLES = [
-  { id: 'front', label: 'Front View', desc: 'Hood, Plate & Bumper', icon: 'camera' },
-  { id: 'back', label: 'Rear View', desc: 'Boot, Taillights & Bumper', icon: 'camera' },
-  { id: 'left', label: 'Left Side', desc: 'Driver Doors & Wheels', icon: 'camera' },
-  { id: 'right', label: 'Right Side', desc: 'Passenger Doors & Windows', icon: 'camera' }
 ];
 
 const STORAGE_KEY = 'ridingo_vehicle_inspections';
@@ -83,26 +76,17 @@ export default function VehicleConditionModal({
   const [brand, setBrand] = useState(trip?.car?.brand || trip?.vehicle?.brand || '');
   const [model, setModel] = useState(trip?.car?.model || trip?.vehicle?.model || '');
   const [regNumber, setRegNumber] = useState(trip?.car?.plate || trip?.vehicle?.plateNumber || '');
-  const [photos, setPhotos] = useState({
-    front: null,
-    back: null,
-    left: null,
-    right: null
-  });
-  const [activeAngle, setActiveAngle] = useState(null);
+  const [photos, setPhotos] = useState([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
   const [notes, setNotes] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const fileInputsRef = useRef({});
+  const fileInputRef = useRef(null);
 
   // Auto clean expired records when modal mounts
   useEffect(() => {
     purgeExpiredVehiclePhotos();
   }, []);
-
-  const capturedCount = Object.values(photos).filter(Boolean).length;
-  const isFormValid = brand.trim() && model.trim() && regNumber.trim() && capturedCount >= 2;
 
   /**
    * Defer Camera Permission:
@@ -113,11 +97,9 @@ export default function VehicleConditionModal({
 
     try {
       if (typeof navigator !== 'undefined' && navigator?.mediaDevices?.getUserMedia) {
-        // Triggers Android native runtime dialog ("While using the app" / "Only this time")
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' }
         });
-        // Permission was granted by user: immediately stop all tracks so camera hardware is free
         stream.getTracks().forEach(track => track.stop());
         setCameraPermissionGranted(true);
         return true;
@@ -130,67 +112,67 @@ export default function VehicleConditionModal({
       }
     }
 
-    // Fallback for environments where getUserMedia is restricted
     setCameraPermissionGranted(true);
     return true;
   };
 
   /**
-   * User taps to open camera for an angle:
+   * User taps to open camera:
    * 1. Dynamically prompts runtime camera permission on first tap only
-   * 2. Programmatically opens the camera capture file input
+   * 2. Programmatically opens camera input
    */
-  const handleTapCameraBox = async (angleId) => {
+  const handleTapCaptureSection = async () => {
     setErrorMsg('');
-    setActiveAngle(angleId);
     setIsCapturing(true);
 
     try {
       const isAllowed = await requestCameraPermissionDynamically();
       if (!isAllowed) {
         setIsCapturing(false);
-        setActiveAngle(null);
         return;
       }
 
-      const inputEl = fileInputsRef.current[angleId];
-      if (inputEl) {
-        inputEl.click();
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
       } else {
-        handleCaptureAngle(angleId);
+        // Fallback simulation
+        handleCaptureFallback();
       }
     } catch (e) {
       console.warn('[Camera] Open error:', e);
     } finally {
       setIsCapturing(false);
-      setActiveAngle(null);
     }
   };
 
-  const handleCaptureAngle = (angleId) => {
+  const handleCaptureFallback = () => {
     setIsCapturing(true);
-    setActiveAngle(angleId);
     setTimeout(() => {
-      setPhotos(prev => ({
-        ...prev,
-        [angleId]: SAMPLE_VEHICLE_IMAGES[angleId]
-      }));
+      const sampleImg = SAMPLE_VEHICLE_IMAGES[photos.length % SAMPLE_VEHICLE_IMAGES.length];
+      setPhotos(prev => [...prev, sampleImg]);
       setIsCapturing(false);
-      setActiveAngle(null);
       setErrorMsg('');
     }, 400);
   };
 
-  const handleNativePhotoUpload = (angleId, e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPhotos(prev => ({ ...prev, [angleId]: reader.result }));
-        setErrorMsg('');
-      };
-      reader.readAsDataURL(file);
+  const handleNativePhotoUpload = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setPhotos(prev => [...prev, reader.result]);
+          setErrorMsg('');
+        };
+        reader.readAsDataURL(file);
+      });
+      // Reset input value so same file can be captured again if needed
+      e.target.value = '';
     }
+  };
+
+  const handleRemovePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = () => {
@@ -206,8 +188,8 @@ export default function VehicleConditionModal({
       setErrorMsg('Please enter the vehicle registration number.');
       return;
     }
-    if (capturedCount < 2) {
-      setErrorMsg('Please capture at least 2 vehicle photos using the camera.');
+    if (photos.length === 0) {
+      setErrorMsg('Please capture at least 1 vehicle photo using the camera.');
       return;
     }
 
@@ -225,22 +207,18 @@ export default function VehicleConditionModal({
       regNumber: regNumber.trim().toUpperCase(),
       photos,
       notes: notes.trim(),
-      inspectionRecord,
-      verifiedAt: Date.now(),
-      expiresAt: Date.now() + RETENTION_PERIOD_MS
+      inspectionRecord
     });
   };
 
   return (
     <div
-      className="vehicle-details-modal"
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 10005,
-        background: 'rgba(15, 23, 42, 0.78)',
-        backdropFilter: 'blur(5px)',
-        WebkitBackdropFilter: 'blur(5px)',
+        zIndex: 99999,
+        background: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'center',
@@ -250,29 +228,51 @@ export default function VehicleConditionModal({
       <div
         style={{
           width: '100%',
-          maxWidth: '430px',
+          maxWidth: '560px',
+          maxHeight: '92vh',
           background: 'var(--sheet, #FFFFFF)',
-          borderTopLeftRadius: '24px',
-          borderTopRightRadius: '24px',
-          maxHeight: '94vh',
+          borderRadius: '24px 24px 0 0',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
-          animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          overflow: 'hidden',
+          boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.35)',
+          animation: 'slideUp 0.25s ease-out'
         }}
       >
-        {/* Grab bar */}
-        <div style={{ width: '36px', height: '4px', background: 'var(--line-strong, #E2E8F0)', borderRadius: '999px', margin: '10px auto 4px' }} />
-
-        {/* Header */}
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--line, #F1F5F9)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#16A34A', letterSpacing: '0.06em' }}>
-              PRE-TRIP VERIFICATION · REQUIRED
-            </span>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink, #0F172A)', margin: '2px 0 0' }}>
-              Vehicle Details & Camera Check
-            </h2>
+        {/* Modal Header */}
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--line, #F1F5F9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--sheet, #FFFFFF)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: '#000000',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Icon name="car" size={18} color="#FFFFFF" />
+            </div>
+            <div>
+              <b style={{ fontSize: '16px', color: 'var(--ink, #0F172A)', display: 'block' }}>
+                Pre-Trip Vehicle Inspection
+              </b>
+              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
+                Photograph vehicle condition before starting trip
+              </span>
+            </div>
           </div>
           <button
             type="button"
@@ -287,16 +287,25 @@ export default function VehicleConditionModal({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--muted, #64748B)'
+              color: 'var(--ink, #0F172A)'
             }}
+            aria-label="Close"
           >
             <Icon name="x" size={16} />
           </button>
         </div>
 
-        {/* Scrollable Body */}
-        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* 5-Day Database Retention Security Notice */}
+        {/* Scrollable Content */}
+        <div
+          style={{
+            padding: '18px 20px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}
+        >
+          {/* 5-Day Retention Notice */}
           <div
             style={{
               background: 'rgba(37, 99, 235, 0.08)',
@@ -308,16 +317,17 @@ export default function VehicleConditionModal({
               alignItems: 'flex-start'
             }}
           >
-            <span style={{ fontSize: '18px', lineHeight: 1 }}>🔒</span>
+            <Icon name="shield" size={18} color="#1E40AF" />
             <div style={{ fontSize: '12px', color: '#1E40AF', lineHeight: 1.45 }}>
-              <b>Stored for 5 Days in Database:</b> Vehicle details & photos are securely logged for <b>5 days</b> for insurance & dispute protection, and will be automatically erased afterwards.
+              <b>Stored for 5 Days in Database:</b> Vehicle details and photos are securely logged for <b>5 days</b> for insurance and dispute protection, and will be automatically erased afterwards.
             </div>
           </div>
 
           {/* Error Message if any */}
           {errorMsg && (
-            <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', padding: '10px 14px', borderRadius: '12px', fontSize: '12.5px', fontWeight: 600 }}>
-              ⚠️ {errorMsg}
+            <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', padding: '10px 14px', borderRadius: '12px', fontSize: '12.5px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="alert" size={15} color="#991B1B" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
@@ -419,108 +429,159 @@ export default function VehicleConditionModal({
             />
           </div>
 
-          {/* 4. Vehicle Photos with Camera Function */}
+          {/* 4. Single Image Capturing Section in UI with Multiple Capture Capability */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <label style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink, #0F172A)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Vehicle Photos (Camera) <span style={{ color: '#EF4444' }}>*</span>
               </label>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: capturedCount >= 2 ? '#16A34A' : '#64748B' }}>
-                {capturedCount} of 4 captured
+              <span style={{ fontSize: '11px', fontWeight: 700, color: photos.length > 0 ? '#16A34A' : '#64748B' }}>
+                {photos.length} Photo{photos.length !== 1 ? 's' : ''} Added
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-              {VEHICLE_ANGLES.map(ang => {
-                const photo = photos[ang.id];
-                const isBusy = isCapturing && activeAngle === ang.id;
+            {/* Single Prominent Capture Section */}
+            <div
+              onClick={handleTapCaptureSection}
+              style={{
+                borderRadius: '16px',
+                border: '2px dashed var(--line, #CBD5E1)',
+                background: 'var(--field, #F8FAFC)',
+                padding: '24px 16px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              title="Tap to photograph vehicle with camera"
+            >
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: '#000000',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                }}
+              >
+                <Icon name="camera" size={24} color="#FFFFFF" />
+              </div>
+              <div>
+                <b style={{ fontSize: '14px', color: 'var(--ink, #0F172A)', display: 'block' }}>
+                  {isCapturing ? 'Opening Camera...' : 'Take Vehicle Photo'}
+                </b>
+                <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)' }}>
+                  Tap here to capture multiple photos of the vehicle (front, back, sides, odometer)
+                </span>
+              </div>
+              <button
+                type="button"
+                style={{
+                  marginTop: '4px',
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  background: '#000000',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                + Add Photo
+              </button>
 
-                return (
-                  <div
-                    key={ang.id}
-                    style={{
-                      borderRadius: '16px',
-                      border: photo ? '1.5px solid #16A34A' : '1.5px dashed #CBD5E1',
-                      background: photo ? 'rgba(22, 163, 74, 0.08)' : 'var(--field, #F8FAFC)',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative'
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: '100px',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        background: '#F1F5F9'
-                      }}
-                      onClick={() => handleTapCameraBox(ang.id)}
-                      title={photo ? 'Tap to retake photo with camera' : 'Tap to open camera and take photo'}
-                    >
-                      {photo ? (
-                        <img
-                          src={photo}
-                          alt={ang.label}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div style={{ textAlign: 'center', padding: '6px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-                            <Icon name="camera" size={16} color="#0F172A" />
-                          </div>
-                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
-                            {isBusy ? 'Opening Camera...' : 'Tap for Camera'}
-                          </span>
-                        </div>
-                      )}
-
-                      {photo && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            top: '6px',
-                            right: '6px',
-                            background: '#16A34A',
-                            color: '#FFFFFF',
-                            fontSize: '9.5px',
-                            fontWeight: 800,
-                            padding: '2px 6px',
-                            borderRadius: '6px',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
-                          }}
-                        >
-                          ✓ Photo Saved
-                        </span>
-                      )}
-
-                      {/* Native Camera File Input triggered dynamically after runtime permission check */}
-                      <input
-                        ref={el => { fileInputsRef.current[ang.id] = el; }}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={e => handleNativePhotoUpload(ang.id, e)}
-                        style={{ display: 'none' }}
-                        title={`Capture ${ang.label} with device camera`}
-                      />
-                    </div>
-
-                    <div style={{ padding: '6px 10px' }}>
-                      <b style={{ fontSize: '11.5px', color: 'var(--ink, #0F172A)', display: 'block' }}>
-                        {ang.label}
-                      </b>
-                      <span style={{ fontSize: '10px', color: 'var(--muted, #64748B)' }}>
-                        {ang.desc}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Native Hidden Camera Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                onChange={handleNativePhotoUpload}
+                style={{ display: 'none' }}
+                title="Capture photos with device camera"
+              />
             </div>
+
+            {/* Photos Preview Gallery */}
+            {photos.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #64748B)', display: 'block', marginBottom: '8px' }}>
+                  Captured Photos ({photos.length}):
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {photos.map((imgUrl, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        position: 'relative',
+                        height: '90px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        border: '1.5px solid #16A34A',
+                        background: '#000000'
+                      }}
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`Vehicle photo ${idx + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <span
+                        style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          left: '4px',
+                          background: 'rgba(0,0,0,0.7)',
+                          color: '#FFFFFF',
+                          fontSize: '9.5px',
+                          fontWeight: 700,
+                          padding: '2px 5px',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        Photo {idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemovePhoto(idx);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          background: 'rgba(239, 68, 68, 0.9)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        title="Remove photo"
+                        aria-label="Remove photo"
+                      >
+                        <Icon name="x" size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Notes */}
@@ -572,7 +633,7 @@ export default function VehicleConditionModal({
               gap: '8px'
             }}
           >
-            <span>Save Vehicle Details & Start Trip ▶</span>
+            <span>Save Vehicle Details & Start Trip</span>
           </button>
         </div>
       </div>

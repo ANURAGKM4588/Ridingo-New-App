@@ -658,11 +658,11 @@ export default function BookingSheet() {
                 </span>
               </div>
               <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                📍 {activeOngoingTrip.pickup || 'Pickup'}
+                Pickup: {activeOngoingTrip.pickup || 'Pickup'}
               </div>
               {activeOngoingTrip.drop_loc && (
                 <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  🏁 {activeOngoingTrip.drop_loc}
+                  Destination: {activeOngoingTrip.drop_loc}
                 </div>
               )}
             </div>
@@ -1562,7 +1562,7 @@ export default function BookingSheet() {
                   onClick={handleSubmit}
                 >
                   <span>Pay Advance</span>
-                  <span style={{ color: 'var(--on-solid, #FFFFFF)', fontSize: '15px' }}>➔</span>
+                  <Icon name="chevron-right" size={16} />
                 </button>
               </div>
             </div>

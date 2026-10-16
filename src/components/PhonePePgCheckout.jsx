@@ -494,7 +494,7 @@ export default function PhonePePgCheckout() {
             transition: 'all 0.15s ease'
           }}
         >
-          <span>✕</span>
+          <Icon name="x" size={14} />
           <span>Cancel</span>
         </button>
 
@@ -580,7 +580,7 @@ export default function PhonePePgCheckout() {
                 fontSize: '15px'
               }}
             >
-              ✓
+              <Icon name="check" size={16} color={theme.spinnerIconColor} />
             </div>
           </div>
 
@@ -627,7 +627,7 @@ export default function PhonePePgCheckout() {
               boxShadow: theme.successIconShadow
             }}
           >
-            ✓
+            <Icon name="check" size={38} color={theme.successIconColor} />
           </div>
           <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.02em', color: theme.textPrimary }}>
             Payment Approved
@@ -740,7 +740,7 @@ export default function PhonePePgCheckout() {
                       fontWeight: 800
                     }}
                   >
-                    💳
+                    <Icon name="card" size={20} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -803,7 +803,7 @@ export default function PhonePePgCheckout() {
                   }}
                 >
                   <span>Pay with Ridingo Wallet</span>
-                  <span style={{ fontSize: '15px' }}>➔</span>
+                  <Icon name="chevron-right" size={15} />
                 </button>
               ) : (
                 <div
@@ -981,7 +981,7 @@ export default function PhonePePgCheckout() {
                       flexShrink: 0
                     }}
                   >
-                    ➔
+                    <Icon name="chevron-right" size={14} />
                   </div>
                 </button>
 
@@ -1056,7 +1056,7 @@ export default function PhonePePgCheckout() {
                       flexShrink: 0
                     }}
                   >
-                    ➔
+                    <Icon name="chevron-right" size={14} />
                   </div>
                 </button>
 
@@ -1137,7 +1137,7 @@ export default function PhonePePgCheckout() {
                       flexShrink: 0
                     }}
                   >
-                    ➔
+                    <Icon name="chevron-right" size={14} />
                   </div>
                 </button>
 
@@ -1218,7 +1218,7 @@ export default function PhonePePgCheckout() {
                       flexShrink: 0
                     }}
                   >
-                    ➔
+                    <Icon name="chevron-right" size={14} />
                   </div>
                 </button>
 
@@ -1273,7 +1273,7 @@ export default function PhonePePgCheckout() {
                         justifyContent: 'center'
                       }}
                     >
-                      Pay ➔
+                      Pay Now
                     </button>
                   </div>
 
@@ -1367,7 +1367,7 @@ export default function PhonePePgCheckout() {
                     justifyContent: 'center'
                   }}
                 >
-                  Simulate QR Scan Complete ✓
+                  Simulate QR Scan Complete
                 </button>
               </div>
             )}
@@ -1510,7 +1510,7 @@ export default function PhonePePgCheckout() {
                     justifyContent: 'center'
                   }}
                 >
-                  Pay ₹{amount} with Card ➔
+                  Pay ₹{amount} with Card
                 </button>
               </form>
             )}
@@ -1551,7 +1551,7 @@ export default function PhonePePgCheckout() {
                       }}
                     >
                       <b style={{ fontSize: '13px', color: theme.textPrimary }}>{bank.name}</b>
-                      <span style={{ fontSize: '14px', color: theme.textMuted }}>➔</span>
+                      <Icon name="chevron-right" size={14} />
                     </button>
                   ))}
                 </div>

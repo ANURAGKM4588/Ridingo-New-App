@@ -1243,7 +1243,7 @@ export default function PaymentSheet() {
                     cursor: 'pointer'
                   }}
                 >
-                  ✓ Test Success
+                  Simulate Success
                 </button>
                 <button
                   type="button"
@@ -1259,7 +1259,7 @@ export default function PaymentSheet() {
                     cursor: 'pointer'
                   }}
                 >
-                  ✕ Test Failure
+                  Simulate Failure
                 </button>
               </div>
             </div>
@@ -1575,7 +1575,7 @@ export default function PaymentSheet() {
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '11.5px', color: mutedColor }}>
               <span>Resend OTP in {otpTimer}s</span>
-              <span style={{ color: '#10B981', fontWeight: 600 }}>SMS Sent ✓</span>
+              <span style={{ color: '#10B981', fontWeight: 600 }}>SMS Sent</span>
             </div>
           </div>
 
@@ -1647,8 +1647,8 @@ export default function PaymentSheet() {
             </div>
           ) : netbankingStatus === 'success' ? (
             <div style={{ padding: '30px 10px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#F0FDF4', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', border: isDark ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid #DCFCE7' }}>
-                ✓
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#F0FDF4', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', border: isDark ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid #DCFCE7' }}>
+                <Icon name="check" size={20} color="#10B981" />
               </div>
               <b style={{ fontSize: '15.5px', color: inkColor }}>Bank Transfer Approved!</b>
               <span style={{ fontSize: '12px', color: mutedColor }}>Redirecting to confirmation...</span>
@@ -1789,7 +1789,7 @@ export default function PaymentSheet() {
               marginTop: '4px'
             }}
           >
-            Payment Completed ✓
+            Payment Completed
           </button>
         </div>
       )}

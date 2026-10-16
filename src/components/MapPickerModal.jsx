@@ -7,14 +7,20 @@ import { GOOGLE_MAP_TILES, openInGoogleMaps, isMockMode } from '../services/goog
 export default function MapPickerModal({ isOpen, onClose, onSelect, targetField = 'pickup' }) {
   const label = targetField === 'pickup' ? 'Pickup Location' : 'Destination';
   
-  const [selectedAddr, setSelectedAddr] = useState('Detecting device location...');
-  const [coordsInfo, setCoordsInfo] = useState({ lat: null, lng: null, accuracy: null });
+  const [selectedAddr, setSelectedAddr] = useState(() => {
+    const cached = getCachedDeviceLocation();
+    return cached?.address || 'Current Location';
+  });
+  const [coordsInfo, setCoordsInfo] = useState(() => {
+    const cached = getCachedDeviceLocation();
+    return { lat: cached?.lat || null, lng: cached?.lng || null, accuracy: cached?.accuracy || null };
+  });
   const [isLocating, setIsLocating] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [activeChip, setActiveChip] = useState('current');
   const [gpsError, setGpsError] = useState(null);
-  const [mapType, setMapType] = useState('roadmap'); // 'roadmap' | 'hybrid' | 'terrain'
+  const [mapType, setMapType] = useState('roadmap'); // Always clean roadmap view
 
   // Dynamic Theme Detection (Reacts automatically when theme switches between light and dark)
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
@@ -64,114 +70,123 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
     }
   }, []);
 
-  // Initialize Leaflet Map Centered STRICTLY on Device Location
+  // Initialize Leaflet Map Instantly & Refine with GPS in Background
   useEffect(() => {
     if (!isOpen) return;
     let isCancelled = false;
 
-    async function initMapWithDeviceLocation() {
-      setIsLocating(true);
-      setGpsError(null);
+    // 1. Immediately read cached device coordinates for instant 0ms map rendering
+    const cachedLoc = getCachedDeviceLocation() || {
+      lat: 10.0245,
+      lng: 76.3075,
+      accuracy: 25,
+      address: 'Current Location'
+    };
 
-      // 1. Strictly query device hardware GPS for high-accuracy coordinates
-      let loc = null;
-      try {
-        loc = await getDeviceLocation(true);
-      } catch (err) {
-        console.warn('Strict GPS detection fallback note:', err);
-        loc = getCachedDeviceLocation() || {
-          lat: 10.0245,
-          lng: 76.3075,
-          accuracy: 25,
-          address: 'Device Location'
-        };
-      }
+    const initialLat = cachedLoc.lat;
+    const initialLng = cachedLoc.lng;
 
-      if (isCancelled || !containerRef.current) return;
+    setCoordsInfo({ lat: initialLat, lng: initialLng, accuracy: cachedLoc.accuracy });
+    setSelectedAddr(cachedLoc.address || 'Pin location');
 
-      const initialLat = loc.lat;
-      const initialLng = loc.lng;
+    // 2. Initialize Leaflet instantly without waiting for network or GPS hardware lock
+    if (!mapInstanceRef.current && containerRef.current) {
+      const map = L.map(containerRef.current, {
+        center: [initialLat, initialLng],
+        zoom: 16.5,
+        zoomControl: false,
+        attributionControl: false
+      });
 
-      setCoordsInfo({ lat: initialLat, lng: initialLng, accuracy: loc.accuracy });
-      setSelectedAddr(loc.address || 'Locating current place...');
+      const googleCfg = GOOGLE_MAP_TILES[mapType] || GOOGLE_MAP_TILES.roadmap;
+      const gLayer = L.tileLayer(googleCfg.url, {
+        subdomains: googleCfg.subdomains,
+        maxZoom: googleCfg.maxZoom,
+        attribution: googleCfg.attribution
+      }).addTo(map);
+      tileLayerRef.current = gLayer;
 
-      // 2. Initialize Leaflet if not yet created
-      if (!mapInstanceRef.current && containerRef.current) {
-        const map = L.map(containerRef.current, {
-          center: [initialLat, initialLng],
-          zoom: 16.5,
-          zoomControl: false,
-          attributionControl: false
-        });
+      const circle = L.circle([initialLat, initialLng], {
+        radius: Math.min(cachedLoc.accuracy || 25, 90),
+        color: '#1A73E8',
+        fillColor: '#1A73E8',
+        fillOpacity: 0.14,
+        weight: 1.5
+      }).addTo(map);
+      deviceCircleRef.current = circle;
 
-        // Crisp Google Maps high-resolution tile layer
-        const googleCfg = GOOGLE_MAP_TILES[mapType] || GOOGLE_MAP_TILES.roadmap;
-        const gLayer = L.tileLayer(googleCfg.url, {
-          subdomains: googleCfg.subdomains,
-          maxZoom: googleCfg.maxZoom,
-          attribution: googleCfg.attribution
-        }).addTo(map);
-        tileLayerRef.current = gLayer;
+      const gpsPulseIcon = L.divIcon({
+        className: 'device-gps-pulse-marker',
+        html: '<div class="gps-pulse-dot"><div class="gps-pulse-ring"></div></div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+      const marker = L.marker([initialLat, initialLng], { icon: gpsPulseIcon }).addTo(map);
+      deviceMarkerRef.current = marker;
 
-        // Add GPS accuracy circle for device position
-        const circle = L.circle([initialLat, initialLng], {
-          radius: Math.min(loc.accuracy || 25, 90),
-          color: '#1A73E8',
-          fillColor: '#1A73E8',
-          fillOpacity: 0.14,
-          weight: 1.5
-        }).addTo(map);
-        deviceCircleRef.current = circle;
+      map.on('movestart', () => {
+        setIsDragging(true);
+        setActiveChip(null);
+      });
 
-        // Custom pulsing GPS device marker
-        const gpsPulseIcon = L.divIcon({
-          className: 'device-gps-pulse-marker',
-          html: '<div class="gps-pulse-dot"><div class="gps-pulse-ring"></div></div>',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        });
-        const marker = L.marker([initialLat, initialLng], { icon: gpsPulseIcon }).addTo(map);
-        deviceMarkerRef.current = marker;
+      map.on('moveend', () => {
+        setIsDragging(false);
+        const center = map.getCenter();
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          geocodeCenter(center.lat, center.lng);
+        }, 200);
+      });
 
-        // Panning / Dragging events
-        map.on('movestart', () => {
-          setIsDragging(true);
-          setActiveChip(null);
-        });
+      mapInstanceRef.current = map;
+      isInitializedRef.current = true;
 
-        map.on('moveend', () => {
-          setIsDragging(false);
-          const center = map.getCenter();
-          clearTimeout(debounceTimerRef.current);
-          debounceTimerRef.current = setTimeout(() => {
-            geocodeCenter(center.lat, center.lng);
-          }, 250);
-        });
-
-        mapInstanceRef.current = map;
-        isInitializedRef.current = true;
-
-        // Ensure container dimensions are recognized
-        setTimeout(() => {
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.invalidateSize();
-          }
-        }, 180);
-      } else if (mapInstanceRef.current) {
-        mapInstanceRef.current.setView([initialLat, initialLng], 16.5);
-        if (deviceCircleRef.current) {
-          deviceCircleRef.current.setLatLng([initialLat, initialLng]);
-          deviceCircleRef.current.setRadius(Math.min(loc.accuracy || 25, 90));
+      // Ensure crisp map tiles render immediately
+      requestAnimationFrame(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
         }
-        if (deviceMarkerRef.current) {
-          deviceMarkerRef.current.setLatLng([initialLat, initialLng]);
+      });
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
         }
+      }, 100);
+    } else if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([initialLat, initialLng], 16.5);
+      if (deviceCircleRef.current) {
+        deviceCircleRef.current.setLatLng([initialLat, initialLng]);
       }
-
-      setIsLocating(false);
+      if (deviceMarkerRef.current) {
+        deviceMarkerRef.current.setLatLng([initialLat, initialLng]);
+      }
     }
 
-    initMapWithDeviceLocation();
+    // 3. Fast non-blocking GPS background refinement
+    setIsLocating(true);
+    getDeviceLocation(true).then((freshLoc) => {
+      if (isCancelled || !freshLoc || !freshLoc.lat) return;
+
+      setCoordsInfo({ lat: freshLoc.lat, lng: freshLoc.lng, accuracy: freshLoc.accuracy });
+      if (freshLoc.address) {
+        setSelectedAddr(freshLoc.address);
+      }
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.panTo([freshLoc.lat, freshLoc.lng], { animate: true, duration: 0.5 });
+        if (deviceCircleRef.current) {
+          deviceCircleRef.current.setLatLng([freshLoc.lat, freshLoc.lng]);
+          deviceCircleRef.current.setRadius(Math.min(freshLoc.accuracy || 20, 80));
+        }
+        if (deviceMarkerRef.current) {
+          deviceMarkerRef.current.setLatLng([freshLoc.lat, freshLoc.lng]);
+        }
+      }
+    }).catch((err) => {
+      console.warn('Background GPS refinement note:', err);
+    }).finally(() => {
+      if (!isCancelled) setIsLocating(false);
+    });
 
     return () => {
       isCancelled = true;
@@ -333,41 +348,14 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
           <div className="map-center-pin-shadow" />
         </div>
 
-        {/* Stock Google Maps [Map | Satellite] Switcher */}
-        <div className="gmap-stock-type-ctrl">
-          <button
-            type="button"
-            className={`gmap-stock-type-btn ${mapType === 'roadmap' ? 'active' : ''}`}
-            onClick={() => setMapType('roadmap')}
-          >
-            Map
-          </button>
-          <button
-            type="button"
-            className={`gmap-stock-type-btn ${mapType === 'hybrid' ? 'active' : ''}`}
-            onClick={() => setMapType('hybrid')}
-          >
-            Satellite
-          </button>
-        </div>
-
-        {/* Stock Google Maps Watermark Logo */}
-        <div className="gmap-stock-logo">
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#4285F4' }}>G</span>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#EA4335' }}>o</span>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#FBBC05' }}>o</span>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#4285F4' }}>g</span>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#34A853' }}>l</span>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#EA4335' }}>e</span>
-        </div>
-
-        {/* Stock Google Maps Recenter Button */}
+        {/* Stock Recenter Button */}
         <button
           className="gmap-stock-loc-btn"
           type="button"
           onClick={handleDetectCurrentLocation}
           title="Recenter on My Location"
           aria-label="Recenter on My Location"
+          style={{ bottom: '20px', right: '16px' }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="7" />
@@ -378,29 +366,6 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
             <circle cx="12" cy="12" r="2" fill="currentColor" />
           </svg>
         </button>
-
-        {/* Stock Google Maps Zoom Controls (+ / -) */}
-        <div className="gmap-stock-zoom-ctrl">
-          <button
-            type="button"
-            className="gmap-stock-zoom-btn"
-            onClick={() => mapInstanceRef.current?.zoomIn()}
-            title="Zoom in"
-            aria-label="Zoom in"
-          >
-            +
-          </button>
-          <div className="gmap-stock-zoom-divider" />
-          <button
-            type="button"
-            className="gmap-stock-zoom-btn"
-            onClick={() => mapInstanceRef.current?.zoomOut()}
-            title="Zoom out"
-            aria-label="Zoom out"
-          >
-            −
-          </button>
-        </div>
       </div>
 
       {/* Footer with Reverse-Geocoded Address */}
@@ -438,7 +403,6 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
             className="btn primary block"
             style={{ width: '100%', height: '48px', margin: 0, fontWeight: 700, borderRadius: '14px', fontSize: '15px' }}
             onClick={handleConfirm}
-            disabled={isLocating}
           >
             Confirm {label}
           </button>

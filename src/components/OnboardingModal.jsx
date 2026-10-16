@@ -552,9 +552,9 @@ export default function OnboardingModal() {
         </div>
       ),
       highlights: [
-        '🛡️ Police & Background Verified Drivers',
-        '👔 Professional Uniform & Protocol',
-        '🚗 Automatic & Manual Transmission Experts'
+        'Police & Background Verified Drivers',
+        'Professional Uniform & Protocol',
+        'Automatic & Manual Transmission Experts'
       ]
     },
     {
@@ -571,9 +571,9 @@ export default function OnboardingModal() {
         </div>
       ),
       highlights: [
-        '📸 Mandatory 4-Angle Pre-Trip Photos',
-        '📍 Live Trip Tracking & Family Sharing',
-        '🚨 24/7 Ridingo Concierge & SOS Support'
+        'Mandatory 4-Angle Pre-Trip Photos',
+        'Live Trip Tracking & Family Sharing',
+        '24/7 Ridingo Concierge & SOS Support'
       ]
     },
     {
@@ -592,9 +592,9 @@ export default function OnboardingModal() {
         </div>
       ),
       highlights: [
-        '⚡ Instant Chauffeur Arrival in 15 Minutes',
-        '🔑 4-Digit Pickup & Drop OTP Protection',
-        '💳 Cashless UPI, Cards & Wallet Cashbacks'
+        'Instant Chauffeur Arrival in 15 Minutes',
+        '4-Digit Pickup & Drop OTP Protection',
+        'Cashless UPI, Cards & Wallet Cashbacks'
       ]
     }
   ];
@@ -967,7 +967,7 @@ export default function OnboardingModal() {
             }}
           >
             {step === 'welcome'
-              ? `Welcome, ${firstName || 'there'}! 🎉`
+              ? `Welcome, ${firstName || 'there'}!`
               : step === 'profile'
               ? 'Complete Your Profile'
               : step === 'otp'
@@ -1197,7 +1197,7 @@ export default function OnboardingModal() {
                     flexShrink: 0
                   }}
                 >
-                  🇮🇳 +91
+                  +91
                 </span>
                 <input
                   type="tel"
@@ -1252,7 +1252,7 @@ export default function OnboardingModal() {
                     flexShrink: 0
                   }}
                 >
-                  🇮🇳 +91
+                  +91
                 </span>
                 <input
                   type="tel"
@@ -1325,7 +1325,7 @@ export default function OnboardingModal() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: isKeyboardVisible ? '18px' : '20px' }}>{otpMethod === 'phone' ? '📱' : '✉️'}</span>
+                <Icon name={otpMethod === 'phone' ? 'phone' : 'mail'} size={18} />
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     {otpMethod === 'phone' ? 'Code Sent To Mobile' : 'Code Sent To Email'}
@@ -1386,7 +1386,7 @@ export default function OnboardingModal() {
             {/* Error Message with Correct English */}
             {otpError && (
               <div className="otp-error-banner">
-                <span>⚠️</span>
+                <Icon name="alert-circle" size={14} color="#EF4444" />
                 <span>{otpError}</span>
               </div>
             )}
@@ -1544,7 +1544,7 @@ export default function OnboardingModal() {
                         flexShrink: 0
                       }}
                     >
-                      🇮🇳 +91
+                      +91
                     </span>
                     <input
                       type="tel"
@@ -1723,7 +1723,6 @@ export default function OnboardingModal() {
                   gap: '8px'
                 }}
               >
-                <span>⚠️</span>
                 <span>{otpError}</span>
               </div>
             )}
@@ -1772,7 +1771,7 @@ export default function OnboardingModal() {
                 gap: '8px'
               }}
             >
-              <span style={{ color: 'var(--yellow)' }}>⚡</span>
+              <Icon name="zap" size={15} color="var(--yellow)" />
               <span>Instant Demo Access (Arjun)</span>
             </button>
           </form>
@@ -1837,7 +1836,7 @@ export default function OnboardingModal() {
                     flexShrink: 0
                   }}
                 >
-                  🇮🇳 +91
+                  +91
                 </span>
                 <input
                   type="tel"
@@ -1994,7 +1993,6 @@ export default function OnboardingModal() {
                   gap: '8px'
                 }}
               >
-                <span>⚠️</span>
                 <span>{otpError}</span>
               </div>
             )}
@@ -2116,9 +2114,9 @@ export default function OnboardingModal() {
             <button
               type="button"
               onClick={() => setShowGooglePicker(false)}
-              style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '18px' }}
+              style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             >
-              ✕
+              <Icon name="x" size={18} />
             </button>
           </div>
 

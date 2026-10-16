@@ -320,7 +320,7 @@ export default function TripsTab() {
                           {t.driver || (isWaiting ? 'Assigning Chauffeur...' : 'Ravi Kumar')}
                         </b>
                         <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--muted)', marginTop: '1px' }}>
-                          ⚙️ {t.trans || t.car?.trans || 'Automatic'} Transmission
+                          {t.trans || t.car?.trans || 'Automatic'} Transmission
                         </span>
                       </div>
                       {isAssigned && (
@@ -393,7 +393,6 @@ export default function TripsTab() {
                       >
                         <Icon name="navigation" size={14} />
                         <span>Track Chauffeur on Live Map</span>
-                        <span>➔</span>
                       </button>
                     )}
 
@@ -429,7 +428,7 @@ export default function TripsTab() {
 
                     {t.balancePaid && (
                       <div style={{ padding: '6px 10px', borderRadius: '8px', background: 'rgba(34, 197, 94, 0.1)', color: '#16A34A', fontSize: '11.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>✓</span>
+                        <Icon name="check" size={14} color="#16A34A" />
                         <span>100% Settled via PhonePe</span>
                       </div>
                     )}

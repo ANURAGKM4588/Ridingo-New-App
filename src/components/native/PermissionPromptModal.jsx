@@ -37,7 +37,7 @@ const { width } = Dimensions.get('window');
  */
 const PERMISSION_CONFIGS = {
   [PERMISSION_TYPES.LOCATION_FOREGROUND]: {
-    icon: '📍',
+    icon: 'GPS',
     name: 'Device Location',
     title: 'Enable Location Services',
     description:
@@ -46,7 +46,7 @@ const PERMISSION_CONFIGS = {
       'Location access is currently blocked in device settings. To select your pickup spot or navigate, please enable Location in Settings.'
   },
   [PERMISSION_TYPES.CAMERA]: {
-    icon: '📷',
+    icon: 'CAM',
     name: 'Camera Access',
     title: 'Camera Access Required',
     description:
@@ -55,7 +55,7 @@ const PERMISSION_CONFIGS = {
       'Camera access is currently blocked. To capture documents or vehicle condition photos, please enable Camera in Settings.'
   },
   [PERMISSION_TYPES.PHOTO_LIBRARY]: {
-    icon: '🖼️',
+    icon: 'DOC',
     name: 'Photos & Gallery',
     title: 'Allow Photo Gallery Access',
     description:
