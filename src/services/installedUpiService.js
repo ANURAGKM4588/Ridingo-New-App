@@ -482,3 +482,21 @@ export async function launchUpiApp(appId, paymentParams) {
   const deepLinkUrl = buildUpiPaymentUrl(appId, paymentParams);
   return launchDeepLink(deepLinkUrl);
 }
+
+/**
+ * Native image + caption sharer targeting WhatsApp directly
+ * (ensures text is populated as the image caption, NOT a separate message)
+ */
+export async function shareTicketImageWithCaption({ base64Data, caption, targetApp = 'whatsapp' }) {
+  if (typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || Capacitor?.isNativePlatform?.())) {
+    try {
+      if (typeof UpiAppDetector?.shareImageWithCaption === 'function') {
+        await UpiAppDetector.shareImageWithCaption({ base64Data, caption, targetApp });
+        return true;
+      }
+    } catch (e) {
+      console.warn('[shareTicketImageWithCaption] Native plugin note:', e);
+    }
+  }
+  return false;
+}

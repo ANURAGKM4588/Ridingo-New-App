@@ -5,6 +5,7 @@
  */
 import ticketConfig from '../assets/trip_ticket_fields.json';
 import templateBgSrc from '../assets/trip_ticket_template.png';
+import { cleanLocationName, getLocationUpToFirstComma } from './locationCleaner';
 
 const DEFAULT_CONFIG = {
   canvas: { width: 960, height: 1270 },
@@ -86,8 +87,8 @@ export async function generateTripTicketImage(trip) {
     (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) ||
     trip.driverObj?.name ||
     'Assigned Chauffeur';
-  const pickup = trip.pickup || 'Pickup Location';
-  const drop = trip.drop_loc || 'City Destination';
+  const pickup = getLocationUpToFirstComma(trip.pickup, 'Pickup Location');
+  const drop = getLocationUpToFirstComma(trip.drop_loc, 'City Destination');
   const fare = Number(trip.fare) || 750;
   const otp = String(trip.startOtp || trip.otp || '4821').trim();
   const tripId = trip.id || 'TRP-1001';

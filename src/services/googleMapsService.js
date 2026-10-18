@@ -43,15 +43,8 @@ export function setMockMode(enabled) {
   console.info(`[GoogleMaps] Mock mode set to: ${enabled}`);
 }
 
-/**
- * Strips Google Plus Codes (e.g. "378M+Q3R, ") so only the clean location name is displayed
- */
-export function cleanPlusCode(str) {
-  if (!str || typeof str !== 'string') return '';
-  let cleaned = str.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}[,\s]*/i, '').trim();
-  cleaned = cleaned.replace(/^[,-\s]+/, '').trim();
-  return cleaned || str;
-}
+import { cleanLocationName, cleanPlusCode, isLocationCode } from '../utils/locationCleaner';
+export { cleanLocationName, cleanPlusCode, isLocationCode };
 
 // ============================================================================
 // Google Maps Stock Tile Endpoints
@@ -733,15 +726,16 @@ async function fetchNominatimPlaces(query, callback) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         const results = data.map(item => {
-          const parts = (item.display_name || '').split(',').map(s => s.trim());
-          const title = parts[0] || query;
-          const sub = parts.slice(1, 4).join(', ');
+          const cleanFull = cleanLocationName(item.display_name || '');
+          const parts = cleanFull.split(',').map(s => s.trim()).filter(Boolean);
+          const title = cleanLocationName(parts[0] || query);
+          const sub = cleanLocationName(parts.slice(1, 4).join(', '));
           return {
             id: 'nom_' + item.place_id,
             place_id: String(item.place_id),
             title,
             sub,
-            full: item.display_name,
+            full: cleanFull,
             lat: Number(item.lat),
             lng: Number(item.lon),
             isMock: false
@@ -1442,6 +1436,178 @@ export async function reverseGeocodeGoogle(lat, lng) {
   // 3. Fallback to coordinate label
   return `Location (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})`;
 }
+
+function getHaversineDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const p1 = (lat1 * Math.PI) / 180;
+  const p2 = (lat2 * Math.PI) / 180;
+  const dp = ((lat2 - lat1) * Math.PI) / 180;
+  const dl = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dp / 2) * Math.sin(dp / 2) +
+    Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+/**
+ * Resolves the geographic place location details when a marker is placed on the map.
+ * 
+ * Extracts the real place name (locality / sublocality / town / area) instead of
+ * arbitrary registered commercial building or store names.
+ * Completely strips Plus Codes and location codes from text display.
+ * Accurately collects exact coordinates and Place ID for driver tracking and route maps.
+ * 
+ * @param {{ lat: number, lng: number } | number} latOrCoords
+ * @param {number} [optionalLng]
+ * @returns {Promise<{
+ *   placeId: string,
+ *   name: string,
+ *   displayName: string,
+ *   formattedAddress: string,
+ *   location: { lat: number, lng: number },
+ *   city: string,
+ *   state: string,
+ *   postalCode: string
+ * } | null>}
+ */
+export async function fetchNearestLandmarkByCoordinates(latOrCoords, optionalLng) {
+  let lat = typeof latOrCoords === 'object' && latOrCoords !== null ? latOrCoords.lat : latOrCoords;
+  let lng = typeof latOrCoords === 'object' && latOrCoords !== null ? latOrCoords.lng : optionalLng;
+
+  lat = Number(lat);
+  lng = Number(lng);
+
+  if (isNaN(lat) || isNaN(lng)) {
+    console.warn('[GoogleMaps] Invalid coordinates provided to fetchNearestLandmarkByCoordinates:', latOrCoords, optionalLng);
+    return null;
+  }
+
+  // 1. Ensure Google Maps SDK is loaded
+  await loadGoogleMapsSdk();
+
+  // 2. Use Google Maps Geocoding API to resolve place location name
+  if (typeof window !== 'undefined' && window.google?.maps?.Geocoder) {
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+      const geocodeResults = await new Promise((resolve) => {
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === 'OK' && Array.isArray(results) && results.length > 0) {
+            resolve(results);
+          } else {
+            resolve([]);
+          }
+        });
+      });
+
+      if (geocodeResults.length > 0) {
+        const primary = geocodeResults[0];
+        let sublocality = '';
+        let neighborhood = '';
+        let locality = '';
+        let adminArea2 = '';
+        let state = 'Kerala';
+        let postalCode = '';
+
+        // Scan address components for place name (sublocality, locality, area)
+        for (const res of geocodeResults) {
+          for (const comp of res.address_components || []) {
+            const types = comp.types || [];
+            if (!sublocality && (types.includes('sublocality_level_1') || types.includes('sublocality'))) {
+              sublocality = comp.long_name;
+            }
+            if (!neighborhood && types.includes('neighborhood')) {
+              neighborhood = comp.long_name;
+            }
+            if (!locality && types.includes('locality')) {
+              locality = comp.long_name;
+            }
+            if (!adminArea2 && types.includes('administrative_area_level_2')) {
+              adminArea2 = comp.long_name;
+            }
+            if (types.includes('administrative_area_level_1')) {
+              state = comp.long_name;
+            }
+            if (!postalCode && types.includes('postal_code')) {
+              postalCode = comp.long_name;
+            }
+          }
+          if (sublocality && locality) break;
+        }
+
+        const areaName = sublocality || neighborhood || adminArea2;
+        let placeName = '';
+        if (areaName && locality && areaName.toLowerCase() !== locality.toLowerCase()) {
+          placeName = `${areaName}, ${locality}`;
+        } else if (areaName) {
+          placeName = areaName;
+        } else if (locality) {
+          placeName = locality;
+        } else {
+          placeName = cleanPlusCode(primary.formatted_address).split(',')[0].trim() || 'Selected Location';
+        }
+
+        const cleanAddress = cleanPlusCode(primary.formatted_address) || `${placeName}, ${state}`;
+
+        return {
+          placeId: primary.place_id || `place_${lat.toFixed(4)}_${lng.toFixed(4)}`,
+          name: cleanPlusCode(placeName),
+          displayName: cleanPlusCode(placeName),
+          formattedAddress: cleanAddress,
+          location: { lat, lng }, // Exact coordinates for driver tracking & route map
+          city: locality || areaName || 'Kochi',
+          state: state || 'Kerala',
+          postalCode
+        };
+      }
+    } catch (apiErr) {
+      console.warn('[GoogleMaps] Geocoder error, checking fallback:', apiErr);
+    }
+  }
+
+  // 3. Fallback when offline or running in mock testing mode
+  const mockMatches = MOCK_PLACES_DATABASE.filter((p) => p.lat && p.lng);
+  let nearestMock = null;
+  let minDistance = Infinity;
+
+  for (const p of mockMatches) {
+    const d = getHaversineDistanceMeters(lat, lng, p.lat, p.lng);
+    if (d < minDistance) {
+      minDistance = d;
+      nearestMock = p;
+    }
+  }
+
+  if (nearestMock && minDistance <= 800) {
+    const cleanName = cleanPlusCode(nearestMock.title || nearestMock.name);
+    return {
+      placeId: nearestMock.id || `mock_place_${Date.now()}`,
+      name: cleanName,
+      displayName: cleanName,
+      formattedAddress: cleanPlusCode(nearestMock.sub || `${cleanName}, Kerala`),
+      location: { lat, lng }, // Exact marker coordinates for routing
+      city: nearestMock.city || cleanName,
+      state: 'Kerala',
+      postalCode: ''
+    };
+  }
+
+  return {
+    placeId: `pin_${lat.toFixed(4)}_${lng.toFixed(4)}`,
+    name: 'Selected Location',
+    displayName: 'Selected Location',
+    formattedAddress: 'Selected Location',
+    location: { lat, lng },
+    city: 'Kochi',
+    state: 'Kerala',
+    postalCode: ''
+  };
+}
+
+// Convenient alias for marker placement on the booking page map
+export const getPlaceDetailsOnMarkerPlaced = fetchNearestLandmarkByCoordinates;
 
 /**
  * Generates an official Google Maps turn-by-turn Navigation URL

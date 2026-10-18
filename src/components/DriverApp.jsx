@@ -41,15 +41,8 @@ const CATS = {
   event: { name: 'Night & events', icon: 'moon', unit: 'hr', units: 'hours' }
 };
 
-/**
- * Strips Google Plus Codes (e.g. "378M+Q3R, ") so only the clean location name is displayed
- */
-export const cleanLocationName = (loc) => {
-  if (!loc || typeof loc !== 'string') return '';
-  let cleaned = loc.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}[,\s]*/i, '').trim();
-  cleaned = cleaned.replace(/^[,-\s]+/, '').trim();
-  return cleaned || loc;
-};
+import { cleanLocationName } from '../utils/locationCleaner';
+export { cleanLocationName };
 
 /**
  * Formats trip date and time for clean display on popups and cards
@@ -1989,14 +1982,15 @@ export default function DriverApp() {
     setShowStartOtpModal(true);
   };
 
-  // 3. Start OTP Verified -> Unlock Vehicle Details & Inspection
+  // 3. Start OTP Verified -> Prompts Vehicle Details & Inspection Window
   const handleVerifyStartOtpSuccess = () => {
     triggerTactileHaptic('success');
     setShowStartOtpModal(false);
     if (activeTripAction) {
       const tripId = activeTripAction.id;
+      const updatedTrip = { ...activeTripAction, status: 'ready_to_start' };
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'ready_to_start' } : t))
+        prev.map(t => (t.id === tripId ? updatedTrip : t))
       );
       if (verifyStartOtp) {
         verifyStartOtp(tripId);
@@ -2004,16 +1998,27 @@ export default function DriverApp() {
       if (driverPartner?.nativeNotifs !== false) {
         notifyStartOtpVerified(activeTripAction);
       }
+      // Immediately open Vehicle Condition Inspection window for this trip request
+      setActiveVehicleTrip(updatedTrip);
+      setShowVehicleModal(true);
     }
   };
 
-  // 4. Start Trip -> Prompts for Vehicle Brand, Model, Registration & Camera Photos (stored for 5 days)
+  // 4. Start Trip -> Strictly requires Vehicle Brand, Model, Registration & Camera Photos before starting
   const handleStartTripAction = (tripId) => {
     triggerTactileHaptic('success');
     const targetTrip = trips.find(t => t.id === tripId) || activeTripAction;
-    if (targetTrip && !targetTrip.vehicleDetails) {
+    const hasValidInspection = Boolean(
+      targetTrip?.vehicleDetails?.brand &&
+      targetTrip?.vehicleDetails?.model &&
+      targetTrip?.vehicleDetails?.regNumber &&
+      targetTrip?.vehicleDetails?.photos?.length > 0
+    );
+
+    if (!hasValidInspection) {
       setActiveVehicleTrip(targetTrip);
       setShowVehicleModal(true);
+      addToast('Vehicle inspection required before starting trip', 'alert');
       return;
     }
     if (startTrip) {
@@ -2033,7 +2038,7 @@ export default function DriverApp() {
           vehicleDetails: vehicleData,
           car_photos: vehicleData.photos,
           videoUrl: vehicleData.videoUrl || null,
-          startedAt: Date.now()
+          startedAt: t.startedAt || Date.now()
         } : t))
       );
       if (startTrip) {
@@ -2062,9 +2067,9 @@ export default function DriverApp() {
           else console.info('[Supabase] Vehicle photos synced for trip:', tripId);
         }).catch(() => {});
       }
-      addToast(`Vehicle ${vehicleData.brand} ${vehicleData.model} (${vehicleData.regNumber}) verified! Photos stored for 5 days.`, 'check');
-      setActiveVehicleTrip(null);
+      addToast(`Vehicle inspection verified: ${vehicleData.brand} ${vehicleData.model} (${vehicleData.regNumber}). Trip started!`, 'check');
     }
+    setActiveVehicleTrip(null);
   };
 
   // 5. Destination Reached -> End Trip (No OTP required for ending a trip)
@@ -2740,7 +2745,7 @@ export default function DriverApp() {
                               }}
                               onClick={() => handleGetDirections(t.pickup)}
                             >
-                              <span>Get Directions</span>
+                              <span>Directions</span>
                             </button>
                             <button
                               type="button"
@@ -2764,67 +2769,123 @@ export default function DriverApp() {
                         )}
 
                         {t.status === 'pickup_arrived' && (
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                className="btn sm"
+                                style={{ flex: 1, background: '#FFFFFF', border: '1.5px solid #000000', color: '#000000', fontWeight: 700 }}
+                                onClick={() => handleGetDirections(t.pickup)}
+                              >
+                                Directions
+                              </button>
+                              <button
+                                type="button"
+                                className="btn primary sm"
+                                style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
+                                onClick={() => handleArriveAtPickup(t)}
+                              >
+                                Enter Pickup OTP
+                              </button>
+                            </div>
                             <button
                               type="button"
                               className="btn sm"
-                              style={{ flex: 1, background: '#FFFFFF', border: '1.5px solid #000000', color: '#000000', fontWeight: 700 }}
-                              onClick={() => handleGetDirections(t.pickup)}
+                              style={{
+                                width: '100%',
+                                background: 'var(--field)',
+                                border: '1.5px solid var(--line)',
+                                color: 'var(--ink)',
+                                fontWeight: 750,
+                                fontSize: '12.5px',
+                                padding: '10px 12px',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
+                              }}
+                              onClick={() => {
+                                setActiveVehicleTrip(t);
+                                setShowVehicleModal(true);
+                              }}
                             >
-                              Directions
-                            </button>
-                            <button
-                              type="button"
-                              className="btn primary sm"
-                              style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
-                              onClick={() => handleArriveAtPickup(t)}
-                            >
-                              Enter Pickup OTP
+                              <span>{t.car_photos?.length > 0 || t.vehicleDetails ? `Vehicle Inspected (${(t.car_photos || t.vehicleDetails?.photos || []).length} Photos)` : 'Vehicle Inspection'}</span>
                             </button>
                           </div>
                         )}
 
                         {t.status === 'ready_to_start' && (
-                          <button
-                            type="button"
-                            className="btn primary sm block"
-                            style={{
-                              marginTop: '12px',
-                              width: '100%',
-                              background: '#000000',
-                              color: '#FFFFFF',
-                              border: '1.5px solid #000000',
-                              fontWeight: 800,
-                              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px'
-                            }}
-                            onClick={() => handleStartTripAction(t.id)}
-                          >
-                            <span>Vehicle Details & Start Trip</span>
-                          </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '7px',
+                                padding: '8px 12px',
+                                borderRadius: '10px',
+                                background: 'rgba(22, 163, 74, 0.08)',
+                                border: '1px solid rgba(22, 163, 74, 0.2)',
+                                fontSize: '11.5px',
+                                color: '#15803D',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                OTP Verified · Vehicle Inspection Required
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn primary sm block"
+                              style={{
+                                width: '100%',
+                                background: '#000000',
+                                color: '#FFFFFF',
+                                border: '1.5px solid #000000',
+                                fontWeight: 850,
+                                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '13px 16px',
+                                borderRadius: '14px',
+                                fontSize: '14px'
+                              }}
+                              onClick={() => {
+                                setActiveVehicleTrip(t);
+                                setShowVehicleModal(true);
+                              }}
+                            >
+                              <span>Vehicle Inspection & Start Trip</span>
+                            </button>
+                          </div>
                         )}
 
                         {t.status === 'inprogress' && (
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                            <button
-                              type="button"
-                              className="btn sm"
-                              style={{ flex: 1, background: '#FFFFFF', border: '1.5px solid #000000', color: '#000000', fontWeight: 700 }}
-                              onClick={() => handleGetDirections(t.drop_loc || 'Destination')}
-                            >
-                              Route Map
-                            </button>
-                            <button
-                              type="button"
-                              className="btn primary sm"
-                              style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
-                              onClick={() => handleEndTripClick(t)}
-                            >
-                              End Trip
-                            </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                className="btn sm"
+                                style={{ flex: 1, background: '#FFFFFF', border: '1.5px solid #000000', color: '#000000', fontWeight: 750 }}
+                                onClick={() => handleGetDirections(t.drop_loc || 'Destination')}
+                              >
+                                Route Map
+                              </button>
+                              <button
+                                type="button"
+                                className="btn primary sm"
+                                style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
+                                onClick={() => handleEndTripClick(t)}
+                              >
+                                End Trip
+                              </button>
+                            </div>
                           </div>
                         )}
 
@@ -4899,9 +4960,13 @@ export default function DriverApp() {
       )}
 
       {/* Pre-Trip Vehicle Details & Inspection Modal (Brand, Model, Reg Plate & Camera Photos stored for 5 days) */}
-      {showVehicleModal && activeVehicleTrip && (
+      {showVehicleModal && (
         <VehicleConditionModal
-          trip={activeVehicleTrip}
+          trip={activeVehicleTrip || trips.find(t => ['inprogress', 'ready_to_start', 'pickup_arrived', 'accepted'].includes(t.status)) || trips[0] || {
+            id: 'INSP-' + Date.now().toString().slice(-4),
+            rider: { name: 'Customer Car' },
+            car: { brand: 'Hyundai', model: 'Creta', plate: 'KL-07-CD-4821' }
+          }}
           onComplete={handleVehicleDetailsComplete}
           onCancel={() => {
             setShowVehicleModal(false);

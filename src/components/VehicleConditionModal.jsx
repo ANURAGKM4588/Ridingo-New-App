@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
-
-// Default realistic sample vehicle images for simulator/fallback
-const SAMPLE_VEHICLE_IMAGES = [
-  'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=600&auto=format&fit=crop&q=80'
-];
-
-const POPULAR_BRANDS = [
-  'Maruti Suzuki',
-  'Hyundai',
-  'Tata',
-  'Toyota',
-  'Mahindra',
-  'Honda',
-  'Kia',
-  'Volkswagen'
-];
+import { searchBrands, getModelsForBrand, searchAllModels, ALL_BRANDS, INDIAN_VEHICLE_DATABASE } from '../utils/indianVehicles';
 
 const STORAGE_KEY = 'ridingo_vehicle_inspections';
 const RETENTION_PERIOD_MS = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
@@ -74,11 +56,11 @@ export default function VehicleConditionModal({
   onComplete,
   onCancel
 }) {
-  const [brand, setBrand] = useState(trip?.car?.brand || trip?.vehicle?.brand || '');
-  const [model, setModel] = useState(trip?.car?.model || trip?.vehicle?.model || '');
-  const [regNumber, setRegNumber] = useState(trip?.car?.plate || trip?.vehicle?.plateNumber || '');
-  const [photos, setPhotos] = useState([]);
-  const [videoUrl, setVideoUrl] = useState(trip?.videoUrl || trip?.vehicleDetails?.videoUrl || null);
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [regNumber, setRegNumber] = useState('');
+  const [photos, setPhotos] = useState(trip?.car_photos || trip?.vehicleDetails?.photos || []);
+  const [videoUrl, setVideoUrl] = useState(trip?.videoUrl || trip?.vehicle_video || trip?.vehicleDetails?.videoUrl || null);
   const [isCustomCameraOpen, setIsCustomCameraOpen] = useState(false);
   const [sessionPhotos, setSessionPhotos] = useState([]);
   const [sessionVideoUrl, setSessionVideoUrl] = useState(null);
@@ -93,6 +75,16 @@ export default function VehicleConditionModal({
   const [notes, setNotes] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Brand & Model Suggestion Dropdown States
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [isTypingBrand, setIsTypingBrand] = useState(false);
+  const [isTypingModel, setIsTypingModel] = useState(false);
+  const brandContainerRef = useRef(null);
+  const modelContainerRef = useRef(null);
+  const brandInputRef = useRef(null);
+  const modelInputRef = useRef(null);
+
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -100,6 +92,65 @@ export default function VehicleConditionModal({
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const recordTimerRef = useRef(null);
+
+  // Outside click listener to dismiss floating dropdowns
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (brandContainerRef.current && !brandContainerRef.current.contains(e.target)) {
+        setShowBrandDropdown(false);
+        setIsTypingBrand(false);
+      }
+      if (modelContainerRef.current && !modelContainerRef.current.contains(e.target)) {
+        setShowModelDropdown(false);
+        setIsTypingModel(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
+
+  // Compute matched brand and model suggestions dynamically
+  const isBrandSelected = Boolean(brand && brand.trim());
+
+  // Show full list on tap/focus to allow changing brand easily; filter when actively typing
+  const brandSuggestions = (isTypingBrand && brand.trim())
+    ? searchBrands(brand)
+    : ALL_BRANDS;
+
+  // Show all models for the selected brand on tap/focus; filter when actively typing
+  const allBrandModels = isBrandSelected ? getModelsForBrand(brand) : [];
+  const modelSuggestions = (isTypingModel && model.trim())
+    ? getModelsForBrand(brand, model)
+    : allBrandModels;
+
+  const handleSelectBrand = (brandName) => {
+    setBrand(brandName);
+    setIsTypingBrand(false);
+    setShowBrandDropdown(false);
+    // If the currently entered model doesn't match this brand, clear it
+    if (model) {
+      const brandModels = getModelsForBrand(brandName);
+      if (!brandModels.some(m => m.toLowerCase() === model.toLowerCase())) {
+        setModel('');
+      }
+    }
+    // Automatically open model dropdown showing all models of the selected brand
+    setIsTypingModel(false);
+    setTimeout(() => {
+      setShowModelDropdown(true);
+      if (modelInputRef.current) modelInputRef.current.focus();
+    }, 60);
+  };
+
+  const handleSelectModel = (modelName) => {
+    setModel(modelName);
+    setIsTypingModel(false);
+    setShowModelDropdown(false);
+  };
 
   // Auto clean expired records when modal mounts
   useEffect(() => {
@@ -127,28 +178,41 @@ export default function VehicleConditionModal({
   const startCameraStream = async (targetFacing = facingMode) => {
     stopCameraStream();
     setCameraError('');
-    try {
-      if (typeof navigator !== 'undefined' && navigator?.mediaDevices?.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: targetFacing },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          audio: false
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-          setCameraReady(true);
-        }
-      } else {
-        setCameraError('Camera stream not supported in this browser. Tap shutter to take sample photos.');
+    if (typeof navigator === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
+      setCameraError('Camera access is not supported on this browser.');
+      return;
+    }
+
+    const constraintTiers = [
+      { video: { facingMode: { ideal: targetFacing }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+      { video: { facingMode: targetFacing }, audio: false },
+      { video: { facingMode: { ideal: targetFacing } }, audio: false },
+      { video: true, audio: false }
+    ];
+
+    let activeStream = null;
+    for (const constraints of constraintTiers) {
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (activeStream) break;
+      } catch (err) {
+        // try next tier
       }
-    } catch (err) {
-      console.warn('[Camera] getUserMedia note:', err);
-      setCameraError('Live camera unavailable or blocked. Tap shutter to take inspection photos.');
+    }
+
+    if (activeStream) {
+      streamRef.current = activeStream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = activeStream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(() => {});
+          setCameraReady(true);
+        };
+        // Fallback play
+        videoRef.current.play().then(() => setCameraReady(true)).catch(() => {});
+      }
+    } else {
+      setCameraError('Camera permission required. Please allow camera access in your device settings.');
     }
   };
 
@@ -164,13 +228,13 @@ export default function VehicleConditionModal({
    */
   const handleOpenCustomCamera = () => {
     setErrorMsg('');
+    setCameraError('');
     setSessionPhotos([...photos]); // initialize with existing saved photos
     setSessionVideoUrl(videoUrl);
     setShowGallerySheet(false);
     setIsCustomCameraOpen(true);
-    setTimeout(() => {
-      startCameraStream(facingMode);
-    }, 100);
+    // Start camera stream immediately
+    startCameraStream(facingMode);
   };
 
   /**
@@ -213,16 +277,23 @@ export default function VehicleConditionModal({
   };
 
   /**
-   * Minimal Capture Button clicked in PHOTO mode:
-   * Takes snapshot back-to-back, collects in the small box on the left of the shutter
+   * Capture Button clicked in PHOTO mode:
+   * Strictly takes snapshots from the live camera stream. NO file uploading allowed.
    */
   const handleSnapPhoto = () => {
+    // If camera stream is not delivering frames yet, inform the user without opening any file dialog
+    if (!videoRef.current || !cameraReady || videoRef.current.videoWidth === 0) {
+      setCameraError('Camera is starting up, please wait a moment...');
+      setTimeout(() => setCameraError(''), 2500);
+      return;
+    }
+
     setFlashActive(true);
     setTimeout(() => setFlashActive(false), 120);
 
     let photoData = null;
 
-    if (videoRef.current && videoRef.current.videoWidth > 0 && canvasRef.current) {
+    if (canvasRef.current && videoRef.current) {
       try {
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -236,12 +307,13 @@ export default function VehicleConditionModal({
       }
     }
 
-    if (!photoData) {
-      const sample = SAMPLE_VEHICLE_IMAGES[sessionPhotos.length % SAMPLE_VEHICLE_IMAGES.length];
-      photoData = sample;
+    if (photoData) {
+      setSessionPhotos(prev => [...prev, photoData]);
+      setCameraError('');
+    } else {
+      setCameraError('Could not capture frame. Please ensure camera is active and try again.');
+      setTimeout(() => setCameraError(''), 2500);
     }
-
-    setSessionPhotos(prev => [...prev, photoData]);
   };
 
   /**
@@ -284,7 +356,9 @@ export default function VehicleConditionModal({
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
                 const thumb = canvas.toDataURL('image/jpeg', 0.8);
-                setSessionPhotos(prev => [...prev, thumb]);
+                if (thumb) {
+                  setSessionPhotos(prev => [...prev, thumb]);
+                }
               } catch (_) {}
             }
           };
@@ -301,11 +375,6 @@ export default function VehicleConditionModal({
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try { mediaRecorderRef.current.stop(); } catch (_) {}
-      } else {
-        // Fallback simulated video URL
-        const sampleVid = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
-        setSessionVideoUrl(sampleVid);
-        setSessionPhotos(prev => [...prev, SAMPLE_VEHICLE_IMAGES[0]]);
       }
     }
   };
@@ -320,19 +389,19 @@ export default function VehicleConditionModal({
 
   const handleSubmit = () => {
     if (!brand.trim()) {
-      setErrorMsg('Please enter or select the vehicle brand.');
+      setErrorMsg('Vehicle Brand is required. Please enter or select the vehicle brand.');
       return;
     }
     if (!model.trim()) {
-      setErrorMsg('Please enter the vehicle model.');
+      setErrorMsg('Vehicle Model is required. Please enter the vehicle model.');
       return;
     }
     if (!regNumber.trim()) {
-      setErrorMsg('Please enter the vehicle registration number.');
+      setErrorMsg('Vehicle Registration Number is required. Please enter the plate number.');
       return;
     }
-    if (photos.length === 0) {
-      setErrorMsg('Vehicle photos are required. Please capture at least 1 vehicle photo using the camera before starting the trip.');
+    if (!photos || photos.length === 0) {
+      setErrorMsg('Vehicle Camera Inspection is required. Please capture at least 1 photo using the camera before starting the trip.');
       return;
     }
 
@@ -363,8 +432,9 @@ export default function VehicleConditionModal({
           position: 'fixed',
           inset: 0,
           zIndex: 99999,
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(6px)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',
@@ -374,58 +444,52 @@ export default function VehicleConditionModal({
         <div
           style={{
             width: '100%',
-            maxWidth: '560px',
-            maxHeight: '92vh',
+            maxWidth: '520px',
+            maxHeight: '90vh',
             background: 'var(--sheet, #FFFFFF)',
-            borderRadius: '24px 24px 0 0',
+            borderRadius: '28px 28px 0 0',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.35)',
-            animation: 'slideUp 0.25s ease-out'
+            boxShadow: '0 -20px 50px rgba(0, 0, 0, 0.3)',
+            animation: 'slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
-          {/* Modal Header */}
+          {/* Subtle Top Drag Indicator */}
+          <div style={{ padding: '10px 0 2px', display: 'flex', justifyContent: 'center', background: 'var(--sheet, #FFFFFF)' }}>
+            <div style={{ width: '38px', height: '4px', borderRadius: '999px', background: 'var(--line, #E2E8F0)' }} />
+          </div>
+
+          {/* Minimalist Header */}
           <div
             style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--line, #F1F5F9)',
+              padding: '10px 20px 14px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               background: 'var(--sheet, #FFFFFF)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  background: '#000000',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Icon name="car" size={18} color="#FFFFFF" />
-              </div>
-              <div>
-                <b style={{ fontSize: '16px', color: 'var(--ink, #0F172A)', display: 'block' }}>
-                  Pre-Trip Vehicle Inspection
-                </b>
-                <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
-                  Photograph vehicle condition before starting trip
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 850, color: 'var(--ink, #0F172A)', letterSpacing: '-0.02em' }}>
+                  Vehicle Verification
+                </h3>
+                <span style={{ fontSize: '11px', fontWeight: 750, padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,0,0,0.06)', color: 'var(--ink, #0F172A)' }}>
+                  {trip?.id ? `#${trip.id}` : 'Pre-Trip'}
                 </span>
               </div>
+              <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)', marginTop: '2px', display: 'block' }}>
+                Verify vehicle & capture photos to unlock trip start
+              </span>
             </div>
+
             <button
               type="button"
               onClick={onCancel}
               style={{
-                width: '32px',
-                height: '32px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 background: 'var(--field, #F1F5F9)',
                 border: 'none',
@@ -433,7 +497,8 @@ export default function VehicleConditionModal({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--ink, #0F172A)'
+                color: 'var(--ink, #0F172A)',
+                transition: 'background 0.15s ease'
               }}
               aria-label="Close"
             >
@@ -444,224 +509,616 @@ export default function VehicleConditionModal({
           {/* Scrollable Content */}
           <div
             style={{
-              padding: '18px 20px',
+              padding: '4px 20px 20px',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: '16px'
+              gap: '14px'
             }}
           >
-            {/* 5-Day Retention Notice */}
-            <div
-              style={{
-                background: 'rgba(37, 99, 235, 0.08)',
-                border: '1.5px solid rgba(37, 99, 235, 0.25)',
-                borderRadius: '14px',
-                padding: '12px 14px',
-                display: 'flex',
-                gap: '10px',
-                alignItems: 'flex-start'
-              }}
-            >
-              <Icon name="shield" size={18} color="#1E40AF" />
-              <div style={{ fontSize: '12px', color: '#1E40AF', lineHeight: 1.45 }}>
-                <b>Stored for 5 Days in Database:</b> Vehicle details and photos are securely logged for <b>5 days</b> for insurance and dispute protection, and will be automatically erased afterwards.
-              </div>
-            </div>
-
             {/* Error Message if any */}
             {errorMsg && (
-              <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', padding: '10px 14px', borderRadius: '12px', fontSize: '12.5px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon name="alert" size={15} color="#991B1B" />
+              <div style={{ background: 'var(--field, #F1F5F9)', border: '1px solid var(--line, #CBD5E1)', color: 'var(--ink, #0F172A)', padding: '10px 14px', borderRadius: '14px', fontSize: '12.5px', fontWeight: 650, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon name="alert" size={15} color="var(--ink, #0F172A)" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
-            {/* 1. Vehicle Brand */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: 'var(--ink, #0F172A)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-                Vehicle Brand <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={brand}
-                onChange={e => setBrand(e.target.value)}
-                placeholder="e.g. Maruti Suzuki, Hyundai, Toyota"
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  border: '1.5px solid var(--line, #CBD5E1)',
-                  background: 'var(--card, #FFFFFF)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: 'var(--ink, #0F172A)',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-              {/* Quick Brand Pills */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                {POPULAR_BRANDS.map(b => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setBrand(b)}
-                    style={{
-                      padding: '5px 10px',
-                      borderRadius: '8px',
-                      border: brand === b ? '1.5px solid #000000' : '1px solid var(--line, #E2E8F0)',
-                      background: brand === b ? '#000000' : 'var(--field, #F8FAFC)',
-                      color: brand === b ? '#FFFFFF' : 'var(--muted, #475569)',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
+            {/* 1. Unified Vehicle Spec Card (Brand + Model + License Plate) */}
+            <div
+              style={{
+                background: 'var(--field, #F8FAFC)',
+                border: '1.5px solid var(--line, #E2E8F0)',
+                borderRadius: '20px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}
+            >
+              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Vehicle Details
+              </div>
+
+              {/* 2-Column: Brand & Model with Suggestion Dropdowns */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {/* Brand Column */}
+                <div ref={brandContainerRef} style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: 750, color: 'var(--muted, #64748B)' }}>
+                      Brand
+                    </label>
+                    {brand && (
+                      <span style={{ fontSize: '10px', color: 'var(--muted, #94A3B8)', fontWeight: 600 }}>
+                        {INDIAN_VEHICLE_DATABASE[brand]?.length ? `${INDIAN_VEHICLE_DATABASE[brand].length} models` : ''}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      ref={brandInputRef}
+                      type="text"
+                      value={brand}
+                      onChange={e => {
+                        setBrand(e.target.value);
+                        setIsTypingBrand(true);
+                        setShowBrandDropdown(true);
+                      }}
+                      onFocus={() => {
+                        setIsTypingBrand(false);
+                        setShowBrandDropdown(true);
+                        setShowModelDropdown(false);
+                      }}
+                      onClick={() => {
+                        setIsTypingBrand(false);
+                        setShowBrandDropdown(true);
+                      }}
+                      placeholder="e.g. Maruti, Tata"
+                      style={{
+                        width: '100%',
+                        padding: brand ? '11px 54px 11px 12px' : '11px 34px 11px 12px',
+                        borderRadius: '12px',
+                        border: showBrandDropdown ? '1.5px solid var(--ink, #0F172A)' : '1px solid var(--line, #CBD5E1)',
+                        background: 'var(--card, #FFFFFF)',
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        color: 'var(--ink, #0F172A)',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        transition: 'border 0.15s ease'
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '6px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}
+                    >
+                      {brand && (
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setBrand('');
+                            setModel('');
+                            setIsTypingBrand(false);
+                            setShowBrandDropdown(true);
+                            if (brandInputRef.current) brandInputRef.current.focus();
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--muted, #94A3B8)',
+                            borderRadius: '50%'
+                          }}
+                          title="Clear brand"
+                          aria-label="Clear brand"
+                        >
+                          <Icon name="x" size={13} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsTypingBrand(false);
+                          setShowBrandDropdown(prev => !prev);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--muted, #64748B)',
+                          transform: `rotate(${showBrandDropdown ? '180deg' : '0deg'})`,
+                          transition: 'transform 0.18s ease'
+                        }}
+                      >
+                        <Icon name="chevronDown" size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Floating Brand Dropdown Menu */}
+                  {showBrandDropdown && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 5px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 120,
+                        background: 'var(--card, #FFFFFF)',
+                        border: '1.5px solid var(--line, #CBD5E1)',
+                        borderRadius: '14px',
+                        boxShadow: '0 12px 30px -4px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(0,0,0,0.06)',
+                        maxHeight: '210px',
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        padding: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <div style={{ padding: '6px 8px 4px', fontSize: '10px', fontWeight: 800, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isTypingBrand && brand.trim() ? `Matching Brands (${brandSuggestions.length})` : `All Indian Brands (${brandSuggestions.length})`}
+                      </div>
+                      {brandSuggestions.length > 0 ? (
+                        brandSuggestions.map((b) => {
+                          const isSelected = brand.toLowerCase() === b.toLowerCase();
+                          return (
+                            <div
+                              key={b}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectBrand(b);
+                              }}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: isSelected ? 'var(--field, #F1F5F9)' : 'transparent',
+                                transition: 'background 0.12s ease',
+                                boxSizing: 'border-box',
+                                width: '100%',
+                                minWidth: 0
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) e.currentTarget.style.background = 'var(--field, #F8FAFC)';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              <span style={{ fontSize: '13px', fontWeight: isSelected ? 800 : 650, color: 'var(--ink, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {b}
+                              </span>
+                              {isSelected && (
+                                <Icon name="check" size={13} color="var(--ink, #0F172A)" />
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div style={{ padding: '10px', textAlign: 'center' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)', display: 'block', marginBottom: '6px' }}>
+                            Brand not in list
+                          </span>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectBrand(brand);
+                            }}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '8px',
+                              background: 'var(--field, #F1F5F9)',
+                              border: '1px solid var(--line, #CBD5E1)',
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              color: 'var(--ink, #0F172A)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Use "{brand}"
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Model Column - Only enabled after Brand is selected */}
+                <div ref={modelContainerRef} style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: 750, color: 'var(--muted, #64748B)' }}>
+                      Model
+                    </label>
+                    {isBrandSelected && (
+                      <span style={{ fontSize: '10px', color: 'var(--muted, #64748B)', fontWeight: 600 }}>
+                        {brand}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    style={{ position: 'relative' }}
+                    onClick={() => {
+                      if (!isBrandSelected) {
+                        setIsTypingBrand(false);
+                        setShowBrandDropdown(true);
+                      }
                     }}
                   >
-                    {b}
-                  </button>
-                ))}
+                    <input
+                      ref={modelInputRef}
+                      type="text"
+                      disabled={!isBrandSelected}
+                      value={model}
+                      onChange={e => {
+                        setModel(e.target.value);
+                        setIsTypingModel(true);
+                        setShowModelDropdown(true);
+                      }}
+                      onFocus={() => {
+                        if (isBrandSelected) {
+                          setIsTypingModel(false);
+                          setShowModelDropdown(true);
+                          setShowBrandDropdown(false);
+                        }
+                      }}
+                      onClick={() => {
+                        if (isBrandSelected) {
+                          setIsTypingModel(false);
+                          setShowModelDropdown(true);
+                        }
+                      }}
+                      placeholder={isBrandSelected ? `e.g. ${INDIAN_VEHICLE_DATABASE[brand]?.[0] || 'Swift'}` : 'Select brand first'}
+                      style={{
+                        width: '100%',
+                        padding: (model && isBrandSelected) ? '11px 54px 11px 12px' : '11px 34px 11px 12px',
+                        borderRadius: '12px',
+                        border: showModelDropdown ? '1.5px solid var(--ink, #0F172A)' : '1px solid var(--line, #CBD5E1)',
+                        background: isBrandSelected ? 'var(--card, #FFFFFF)' : 'var(--field, #F1F5F9)',
+                        opacity: isBrandSelected ? 1 : 0.75,
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        color: 'var(--ink, #0F172A)',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        cursor: isBrandSelected ? 'text' : 'not-allowed',
+                        transition: 'border 0.15s ease'
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '6px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}
+                    >
+                      {model && isBrandSelected && (
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModel('');
+                            setIsTypingModel(false);
+                            setShowModelDropdown(true);
+                            if (modelInputRef.current) modelInputRef.current.focus();
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--muted, #94A3B8)',
+                            borderRadius: '50%'
+                          }}
+                          title="Clear model"
+                          aria-label="Clear model"
+                        >
+                          <Icon name="x" size={13} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={!isBrandSelected}
+                        tabIndex={-1}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isBrandSelected) {
+                            setIsTypingModel(false);
+                            setShowModelDropdown(prev => !prev);
+                          } else {
+                            setIsTypingBrand(false);
+                            setShowBrandDropdown(true);
+                          }
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '4px',
+                          cursor: isBrandSelected ? 'pointer' : 'not-allowed',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--muted, #64748B)',
+                          opacity: isBrandSelected ? 1 : 0.5,
+                          transform: `rotate(${showModelDropdown ? '180deg' : '0deg'})`,
+                          transition: 'transform 0.18s ease'
+                        }}
+                      >
+                        <Icon name="chevronDown" size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Floating Model Dropdown Menu - Vertical Scroll Only & No Car Icon */}
+                  {showModelDropdown && isBrandSelected && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 5px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 120,
+                        background: 'var(--card, #FFFFFF)',
+                        border: '1.5px solid var(--line, #CBD5E1)',
+                        borderRadius: '14px',
+                        boxShadow: '0 12px 30px -4px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(0,0,0,0.06)',
+                        maxHeight: '210px',
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        padding: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <div style={{ padding: '6px 8px 4px', fontSize: '10px', fontWeight: 800, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isTypingModel && model.trim() ? `Matching Models (${modelSuggestions.length})` : `${brand} Models (${modelSuggestions.length})`}
+                      </div>
+
+                      {modelSuggestions.length > 0 ? (
+                        modelSuggestions.map((m, idx) => {
+                          const isSelected = model.toLowerCase() === m.toLowerCase();
+
+                          return (
+                            <div
+                              key={`${m}-${idx}`}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectModel(m);
+                              }}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: isSelected ? 'var(--field, #F1F5F9)' : 'transparent',
+                                transition: 'background 0.12s ease',
+                                boxSizing: 'border-box',
+                                width: '100%',
+                                minWidth: 0
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) e.currentTarget.style.background = 'var(--field, #F8FAFC)';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              <span style={{ fontSize: '13px', fontWeight: isSelected ? 800 : 650, color: 'var(--ink, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {m}
+                              </span>
+                              {isSelected && (
+                                <Icon name="check" size={13} color="var(--ink, #0F172A)" />
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div style={{ padding: '10px', textAlign: 'center' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)', display: 'block', marginBottom: '6px' }}>
+                            Model not in {brand} list
+                          </span>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectModel(model);
+                            }}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '8px',
+                              background: 'var(--field, #F1F5F9)',
+                              border: '1px solid var(--line, #CBD5E1)',
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              color: 'var(--ink, #0F172A)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Use "{model}"
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Registration Number - Standard Clean Filling Style Box */}
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 750, color: 'var(--muted, #64748B)', marginBottom: '5px' }}>
+                  Registration Number
+                </label>
+                <input
+                  type="text"
+                  value={regNumber}
+                  onChange={e => setRegNumber(e.target.value.toUpperCase())}
+                  placeholder="e.g. KL 07 CD 1234"
+                  style={{
+                    width: '100%',
+                    padding: '11px 12px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--line, #CBD5E1)',
+                    background: 'var(--card, #FFFFFF)',
+                    fontSize: '13.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    color: 'var(--ink, #0F172A)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    textTransform: 'uppercase'
+                  }}
+                />
               </div>
             </div>
 
-            {/* 2. Vehicle Model */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: 'var(--ink, #0F172A)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-                Vehicle Model <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                placeholder="e.g. Swift, Creta, Innova Crysta, City"
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  border: '1.5px solid var(--line, #CBD5E1)',
-                  background: 'var(--card, #FFFFFF)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: 'var(--ink, #0F172A)',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {/* 3. Registration Number */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: 'var(--ink, #0F172A)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-                Registration Plate Number <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={regNumber}
-                onChange={e => setRegNumber(e.target.value.toUpperCase())}
-                placeholder="e.g. KL 07 CD 1234 / MH 02 AB 1234"
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  border: '1.5px solid var(--line, #CBD5E1)',
-                  background: 'var(--card, #FFFFFF)',
-                  fontSize: '15px',
-                  fontWeight: 800,
-                  letterSpacing: '0.05em',
-                  color: 'var(--ink, #0F172A)',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {/* 4. Single Image Capturing Section in UI */}
+            {/* 2. Visual Camera Inspection Card */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink, #0F172A)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Vehicle Photos (Camera) <span style={{ color: '#EF4444' }}>*</span>
-                </label>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: photos.length > 0 ? '#16A34A' : '#EF4444' }}>
-                  {photos.length > 0 ? `${photos.length} Photo${photos.length !== 1 ? 's' : ''} Saved` : 'Required to Start Trip'}
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Camera Photos
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 750,
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    background: photos.length > 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(0, 0, 0, 0.05)',
+                    color: photos.length > 0 ? '#15803D' : 'var(--muted, #64748B)'
+                  }}
+                >
+                  {photos.length > 0 ? `✓ ${photos.length} Photo${photos.length !== 1 ? 's' : ''}` : 'Required'}
                 </span>
               </div>
 
-              {/* Single Prominent Capture Section */}
-              <div
-                onClick={handleOpenCustomCamera}
-                style={{
-                  borderRadius: '16px',
-                  border: photos.length > 0 ? '1.5px solid #16A34A' : '2px dashed var(--line, #CBD5E1)',
-                  background: photos.length > 0 ? 'rgba(22, 163, 74, 0.04)' : 'var(--field, #F8FAFC)',
-                  padding: '22px 16px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-                title="Tap to open custom camera and capture vehicle photos"
-              >
+              {photos.length === 0 ? (
+                /* Ultra-clean Minimalist Camera Action Card */
                 <div
+                  onClick={handleOpenCustomCamera}
                   style={{
-                    width: '46px',
-                    height: '46px',
-                    borderRadius: '50%',
-                    background: '#000000',
+                    background: '#0B0F19',
+                    borderRadius: '20px',
+                    padding: '24px 20px',
                     color: '#FFFFFF',
+                    textAlign: 'center',
+                    cursor: 'pointer',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                    gap: '12px',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                    transition: 'transform 0.15s ease'
                   }}
                 >
-                  <Icon name="camera" size={22} color="#FFFFFF" />
+                  <div>
+                    <b style={{ fontSize: '15px', fontWeight: 800, display: 'block', letterSpacing: '-0.01em' }}>
+                      Take Vehicle Photos
+                    </b>
+                    <span style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px', display: 'block' }}>
+                      Snap exterior angles & odometer with live camera
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '8px 24px',
+                      borderRadius: '999px',
+                      background: '#FFFFFF',
+                      color: '#000000',
+                      border: 'none',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Open Camera
+                  </button>
                 </div>
-                <div>
-                  <b style={{ fontSize: '14px', color: 'var(--ink, #0F172A)', display: 'block' }}>
-                    {photos.length > 0 ? 'Take More Vehicle Photos' : 'Take Vehicle Photos'}
-                  </b>
-                  <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)' }}>
-                    Opens custom camera with multi-capture. Snap back-to-back photos of car.
-                  </span>
-                </div>
-                <button
-                  type="button"
+              ) : (
+                /* Minimalist Filmstrip Gallery + Snap More button */
+                <div
                   style={{
-                    marginTop: '4px',
-                    padding: '7px 16px',
-                    borderRadius: '8px',
-                    background: '#000000',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
+                    background: 'var(--field, #F8FAFC)',
+                    border: '1.5px solid var(--line, #E2E8F0)',
+                    borderRadius: '20px',
+                    padding: '14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
                   }}
                 >
-                  Open Camera
-                </button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 750, color: 'var(--ink, #0F172A)' }}>
+                      Captured Photos ({photos.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleOpenCustomCamera}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        background: '#000000',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '11.5px',
+                        fontWeight: 750,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      + Take More
+                    </button>
+                  </div>
 
-              {/* Photos Preview Gallery on Main Modal */}
-              {photos.length > 0 && (
-                <div style={{ marginTop: '12px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #64748B)', display: 'block', marginBottom: '8px' }}>
-                    Saved Inspection Photos ({photos.length}):
-                  </span>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                     {photos.map((imgUrl, idx) => (
                       <div
                         key={idx}
                         style={{
                           position: 'relative',
-                          height: '84px',
+                          width: '74px',
+                          height: '74px',
                           borderRadius: '12px',
                           overflow: 'hidden',
-                          border: '1.5px solid #16A34A',
+                          flexShrink: 0,
+                          border: '1px solid var(--line, #CBD5E1)',
                           background: '#000000'
                         }}
                       >
@@ -670,21 +1127,6 @@ export default function VehicleConditionModal({
                           alt={`Vehicle photo ${idx + 1}`}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
-                        <span
-                          style={{
-                            position: 'absolute',
-                            bottom: '4px',
-                            left: '4px',
-                            background: 'rgba(0,0,0,0.7)',
-                            color: '#FFFFFF',
-                            fontSize: '9px',
-                            fontWeight: 700,
-                            padding: '2px 5px',
-                            borderRadius: '4px'
-                          }}
-                        >
-                          Photo {idx + 1}
-                        </span>
                         <button
                           type="button"
                           onClick={(e) => {
@@ -693,12 +1135,12 @@ export default function VehicleConditionModal({
                           }}
                           style={{
                             position: 'absolute',
-                            top: '4px',
-                            right: '4px',
-                            width: '22px',
-                            height: '22px',
+                            top: '3px',
+                            right: '3px',
+                            width: '20px',
+                            height: '20px',
                             borderRadius: '50%',
-                            background: 'rgba(239, 68, 68, 0.9)',
+                            background: 'rgba(0, 0, 0, 0.75)',
                             color: '#FFFFFF',
                             border: 'none',
                             display: 'flex',
@@ -706,10 +1148,9 @@ export default function VehicleConditionModal({
                             justifyContent: 'center',
                             cursor: 'pointer'
                           }}
-                          title="Remove photo"
                           aria-label="Remove photo"
                         >
-                          <Icon name="x" size={12} />
+                          <Icon name="x" size={10} color="#FFFFFF" />
                         </button>
                       </div>
                     ))}
@@ -718,58 +1159,86 @@ export default function VehicleConditionModal({
               )}
             </div>
 
-            {/* Notes */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--muted, #64748B)', marginBottom: '6px' }}>
-                Condition Notes / Pre-existing Marks (Optional)
-              </label>
-              <textarea
-                rows={2}
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="e.g. Clean car, minor scratch on rear bumper..."
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  border: '1px solid var(--line, #CBD5E1)',
-                  background: 'var(--card, #FFFFFF)',
-                  fontSize: '12.5px',
-                  color: 'var(--ink, #0F172A)',
-                  outline: 'none',
-                  resize: 'none',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Footer Submit Button */}
-          <div style={{ padding: '16px 20px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px))', borderTop: '1px solid var(--line, #F1F5F9)', background: 'var(--sheet, #FFFFFF)' }}>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={photos.length === 0}
+            {/* 3. Minimal Notes Row */}
+            <div
               style={{
-                width: '100%',
-                padding: '14px',
+                background: 'var(--field, #F8FAFC)',
+                border: '1px solid var(--line, #E2E8F0)',
                 borderRadius: '14px',
-                background: photos.length > 0 ? '#000000' : '#94A3B8',
-                color: '#FFFFFF',
-                fontSize: '15px',
-                fontWeight: 800,
-                border: 'none',
-                cursor: photos.length > 0 ? 'pointer' : 'not-allowed',
-                boxShadow: photos.length > 0 ? '0 4px 14px rgba(0, 0, 0, 0.25)' : 'none',
+                padding: '10px 12px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
                 gap: '8px'
               }}
             >
-              <span>{photos.length > 0 ? 'Start Trip' : 'Capture Photos to Start Trip'}</span>
-            </button>
+              <Icon name="edit" size={15} color="var(--muted, #64748B)" />
+              <input
+                type="text"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Pre-existing scratch or note (optional)"
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '12.5px',
+                  color: 'var(--ink, #0F172A)',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* 4. Elegant Micro Security Tag */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '11px', color: 'var(--muted, #64748B)' }}>
+              <Icon name="shield" size={13} color="#2563EB" />
+              <span>Records auto-erased in 5 days · Protected for insurance & disputes</span>
+            </div>
+          </div>
+
+          {/* Footer Sticky Start Trip Action */}
+          <div
+            style={{
+              padding: '14px 20px max(20px, calc(env(safe-area-inset-bottom, 0px) + 14px))',
+              borderTop: '1px solid var(--line, #F1F5F9)',
+              background: 'var(--sheet, #FFFFFF)'
+            }}
+          >
+            {(() => {
+              const isReady = Boolean(brand.trim() && model.trim() && regNumber.trim() && photos.length > 0);
+              let btnLabel = 'Complete Inspection & Start Trip';
+              if (!brand.trim()) btnLabel = 'Enter Vehicle Brand';
+              else if (!model.trim()) btnLabel = 'Enter Vehicle Model';
+              else if (!regNumber.trim()) btnLabel = 'Enter Registration Number';
+              else if (photos.length === 0) btnLabel = 'Capture Photos (Camera Required)';
+
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!isReady}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      borderRadius: '16px',
+                      background: isReady ? '#000000' : '#94A3B8',
+                      color: '#FFFFFF',
+                      fontSize: '15px',
+                      fontWeight: 850,
+                      border: 'none',
+                      cursor: isReady ? 'pointer' : 'not-allowed',
+                      boxShadow: isReady ? '0 4px 16px rgba(0, 0, 0, 0.25)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <span>{btnLabel}</span>
+                  </button>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -930,28 +1399,6 @@ export default function VehicleConditionModal({
                 Done
               </button>
             </div>
-
-            {/* Camera Status Note if Hardware Stream Unavailable */}
-            {cameraError && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '80px',
-                  left: '20px',
-                  right: '20px',
-                  background: 'rgba(0,0,0,0.75)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: '10px',
-                  padding: '8px 12px',
-                  color: '#FFFFFF',
-                  fontSize: '11px',
-                  textAlign: 'center',
-                  zIndex: 15
-                }}
-              >
-                {cameraError}
-              </div>
-            )}
           </div>
 
           {/* Quick Drawer for Collected Files (Opens when tapping the collected stack) */}
@@ -1166,7 +1613,7 @@ export default function VehicleConditionModal({
                         }}
                       >
                         <img
-                          src={sessionPhotos[sessionPhotos.length - 1] || SAMPLE_VEHICLE_IMAGES[0]}
+                          src={sessionPhotos[sessionPhotos.length - 1] || ''}
                           alt="Collected Preview"
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />

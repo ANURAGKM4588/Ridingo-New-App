@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { playCustomTone, stopActiveTone, getSelectedCustomTune } from '../utils/audioTones';
+import { cleanLocationName } from '../utils/locationCleaner';
 
 /**
  * Multi-Platform Native Device Push & System Notification Engine for Ridingo Driver & User Apps
@@ -12,6 +13,92 @@ import { playCustomTone, stopActiveTone, getSelectedCustomTune } from '../utils/
  */
 
 let isChannelCreated = false;
+let isLocalNotificationListenerAttached = false;
+
+/**
+ * Strict authentication & registration guard checks
+ * As requested: Notifications are strictly NOT allowed without login or registration complete.
+ * If login/registration is complete, all background push notifications are allowed to run.
+ */
+export function isDriverLoginComplete() {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    const raw = localStorage.getItem('ridingo_driver_session');
+    if (!raw) return false;
+    const session = JSON.parse(raw);
+    if (!session || typeof session !== 'object') return false;
+    // Check if driver has completed login or registration
+    const hasIdentifier = Boolean(session.phone || session.email || session.id || session.name);
+    const notLoggedOut = session.loggedOut !== true && session.status !== 'logged_out';
+    return hasIdentifier && notLoggedOut;
+  } catch (e) {
+    return false;
+  }
+}
+
+export function isUserLoginComplete() {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    const raw = localStorage.getItem('ridingo_user_session');
+    if (!raw) return false;
+    const session = JSON.parse(raw);
+    if (!session || typeof session !== 'object') return false;
+    // Check if user has completed login or registration
+    const hasIdentifier = Boolean(session.phone || session.email || session.userId || session.id);
+    const notLoggedOut = session.loggedOut !== true;
+    return hasIdentifier && notLoggedOut;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Setup notification action listener for Capacitor and Web ServiceWorker
+ * When driver taps on a push notification, switches directly to the Driver App (?view=driver)
+ */
+export function setupNotificationActionListeners() {
+  if (isLocalNotificationListenerAttached) return;
+  isLocalNotificationListenerAttached = true;
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+        console.info('[LocalNotifications] User tapped notification action:', action);
+        const extra = action?.notification?.extra || {};
+        const isDriver = extra.source === 'RidingoDriver' || extra.tripId || action?.notification?.channelId === 'driver_dispatch_alerts';
+        if (isDriver) {
+          if (typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
+            window.__ridingoSetView('driver', extra);
+          } else if (typeof window !== 'undefined') {
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.set('view', 'driver');
+              window.location.href = url.toString();
+            } catch (e) {}
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[LocalNotifications] Listener error:', e);
+    }
+  }
+
+  // Also listen for messages from Service Worker notification clicks
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    try {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'NOTIFICATION_ACTION_CLICK') {
+          const extra = event.data.data || {};
+          const isDriver = extra.source === 'RidingoDriver' || extra.tripId;
+          if (isDriver && typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
+            window.__ridingoSetView('driver', extra);
+          }
+        }
+      });
+    } catch (e) {}
+  }
+}
+
 
 /**
  * Plays synthesized notification chime
@@ -231,6 +318,12 @@ export function setupBackgroundNotificationHandler(onWakeupCheck) {
  * Ensures heads-up channel on Android and safely requests runtime permission.
  */
 export async function requestDriverNotificationPermission() {
+  // STRICT GUARD: Driver must have completed login or registration
+  if (!isDriverLoginComplete()) {
+    console.info('[DriverNotifications] Permission request skipped: Driver login/registration incomplete.');
+    return false;
+  }
+
   try {
     if (Capacitor.isNativePlatform()) {
       await ensureNativeChannel();
@@ -268,6 +361,12 @@ export async function requestDriverNotificationPermission() {
  * Request OS-level notification permissions for User App
  */
 export async function requestUserNotificationPermission() {
+  // STRICT GUARD: User must have completed login or registration
+  if (!isUserLoginComplete()) {
+    console.info('[UserNotifications] Permission request skipped: User login/registration incomplete.');
+    return false;
+  }
+
   try {
     if (Capacitor.isNativePlatform()) {
       await ensureNativeChannel();
@@ -317,6 +416,12 @@ export async function getDriverNotificationPermission() {
  * Bypasses in-app UI and delivers notification directly to the native OS Notification Center
  */
 export async function sendDriverNativeNotification(title, body, options = {}) {
+  // STRICT GUARD: Driver must have completed login or registration
+  if (!isDriverLoginComplete()) {
+    console.info('[DriverNotifications] Suppressed notification: Driver login or registration is not complete.');
+    return false;
+  }
+
   const {
     id = Math.floor(Math.random() * 900000) + 100000,
     tag = 'driver_alert_' + Date.now(),
@@ -355,7 +460,9 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
             extra: {
               ...extra,
               timestamp: Date.now(),
-              source: 'RidingoDriver'
+              source: 'RidingoDriver',
+              type: type || 'request',
+              targetView: 'driver'
             }
           }
         ]
@@ -383,7 +490,13 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
               renotify: true,
               requireInteraction: true,
               vibrate: [200, 100, 200, 100, 200],
-              data: { ...extra, timestamp: Date.now() }
+              data: {
+                ...extra,
+                timestamp: Date.now(),
+                source: 'RidingoDriver',
+                type: type || 'request',
+                url: '/?view=driver'
+              }
             });
             return true;
           }
@@ -394,10 +507,20 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
           body,
           icon: appIconUrl,
           tag,
-          silent: false
+          silent: false,
+          data: { ...extra, timestamp: Date.now(), source: 'RidingoDriver' }
         });
         n.onclick = () => {
-          window.focus();
+          try {
+            window.focus();
+            if (typeof window.__ridingoSetView === 'function') {
+              window.__ridingoSetView('driver', extra);
+            } else {
+              const url = new URL(window.location.href);
+              url.searchParams.set('view', 'driver');
+              window.location.href = url.toString();
+            }
+          } catch (e) {}
           n.close();
         };
         return true;
@@ -405,7 +528,20 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
         // Request on the fly if user hasn't explicitly denied
         const perm = await Notification.requestPermission();
         if (perm === 'granted') {
-          new Notification(title, { body, icon: appIconUrl, tag });
+          const n = new Notification(title, { body, icon: appIconUrl, tag });
+          n.onclick = () => {
+            try {
+              window.focus();
+              if (typeof window.__ridingoSetView === 'function') {
+                window.__ridingoSetView('driver', extra);
+              } else {
+                const url = new URL(window.location.href);
+                url.searchParams.set('view', 'driver');
+                window.location.href = url.toString();
+              }
+            } catch (e) {}
+            n.close();
+          };
           return true;
         }
       }
@@ -427,6 +563,12 @@ const notifiedIncomingTripIds = new Set();
 
 // 1. Incoming Ride Request Alert (Device Native System Notification)
 export function notifyIncomingRideRequest(trip, callbacks = {}) {
+  // STRICT GUARD: Driver must have completed login or registration
+  if (!isDriverLoginComplete()) {
+    console.info('[DriverNotifications] Suppressed incoming trip alert: Driver login/registration incomplete.');
+    return false;
+  }
+
   const tripId = trip?.id;
   if (!tripId) return false;
 
@@ -436,8 +578,8 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
   }
   notifiedIncomingTripIds.add(tripId);
 
-  const pickup = trip?.pickup || trip?.from || 'Customer Pickup';
-  const drop = trip?.drop_loc || trip?.drop || trip?.to || 'City Route';
+  const pickup = cleanLocationName(trip?.pickup || trip?.from) || 'Customer Pickup';
+  const drop = cleanLocationName(trip?.drop_loc || trip?.drop || trip?.to) || 'City Route';
   const fare = Number(trip?.fare) || 600;
   const advance = Number(trip?.advance) || Math.round(fare * 0.3);
   const distance = trip?.distanceText || '12.4 km';
@@ -593,6 +735,12 @@ try {
  * Enforces strict single-delivery deduplication so the user only receives one push notification.
  */
 export async function sendUserNativeNotification(title, body, options = {}) {
+  // STRICT GUARD: User must have completed login or registration
+  if (!isUserLoginComplete()) {
+    console.info('[UserNotifications] Suppressed notification: User login or registration is not complete.');
+    return false;
+  }
+
   const tripKey = String(options.extra?.tripId || options.tag || '')
     .trim()
     .toLowerCase()
@@ -657,7 +805,8 @@ export async function sendUserNativeNotification(title, body, options = {}) {
               ...extra,
               tripId: tripKey || extra.tripId,
               timestamp: Date.now(),
-              source: 'RidingoUser'
+              source: 'RidingoUser',
+              targetView: 'user'
             }
           }
         ]
@@ -673,13 +822,50 @@ export async function sendUserNativeNotification(title, body, options = {}) {
     try {
       const appIconUrl = window.location?.origin ? `${window.location.origin}/App%20icon.png` : '/App icon.png';
       if (Notification.permission === 'granted') {
-        new Notification(title, {
+        // If Service Worker registration is available, use showNotification
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.showNotification) {
+            await reg.showNotification(title, {
+              body,
+              icon: appIconUrl,
+              badge: appIconUrl,
+              tag: stableTag,
+              renotify: true,
+              vibrate: [100, 50, 150],
+              data: {
+                ...extra,
+                tripId: tripKey || extra.tripId,
+                timestamp: Date.now(),
+                source: 'RidingoUser',
+                url: '/'
+              }
+            });
+            return true;
+          }
+        }
+
+        const n = new Notification(title, {
           body,
           icon: appIconUrl,
           badge: appIconUrl,
           tag: stableTag,
-          silent: false
+          silent: false,
+          data: { ...extra, source: 'RidingoUser' }
         });
+        n.onclick = () => {
+          try {
+            window.focus();
+            if (typeof window.__ridingoSetView === 'function') {
+              window.__ridingoSetView('user', extra);
+            } else {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('view');
+              window.location.href = url.toString();
+            }
+          } catch (e) {}
+          n.close();
+        };
         return true;
       }
     } catch (e) {}

@@ -4,7 +4,7 @@ import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
-import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement, cleanPlusCode } from '../services/googleMapsService';
+import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement, cleanPlusCode, fetchNearestLandmarkByCoordinates, getPlaceDetailsOnMarkerPlaced } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 
 const highlightMatchGoogleStock = (text, query) => {
@@ -492,12 +492,15 @@ export default function BookingSheet() {
       setPickup(addr);
       if (details && details.lat && details.lng) {
         const cObj = {
-          lat: details.lat,
-          lng: details.lng,
+          lat: Number(details.lat),
+          lng: Number(details.lng),
           name: details.name || addr.split(',')[0].trim(),
-          formatted: addr,
+          formatted: details.address || addr,
           city: details.city || addr.split(',')[0].trim(),
-          state: details.state || 'Kerala'
+          state: details.state || 'Kerala',
+          placeId: details.placeId || null,
+          isPoi: !!details.isPoi,
+          isLandmark: !!details.isLandmark
         };
         setPickupCoords(cObj);
         setPickupDetails(cObj);
@@ -516,17 +519,19 @@ export default function BookingSheet() {
           }
         });
       }
-      addToast(`Pickup set: ${addr.split(',')[0]}`, 'check');
+      const labelName = details?.name || addr.split(',')[0].trim();
+      addToast(`Pickup set: ${labelName}`, 'check');
     } else {
       setDrop(addr);
       if (details && details.lat && details.lng) {
         const cObj = {
-          lat: details.lat,
-          lng: details.lng,
+          lat: Number(details.lat),
+          lng: Number(details.lng),
           name: details.name || addr.split(',')[0].trim(),
-          formatted: addr,
+          formatted: details.address || addr,
           city: details.city || addr.split(',')[0].trim(),
-          state: details.state || 'Kerala'
+          state: details.state || 'Kerala',
+          placeId: details.placeId || null
         };
         setDropCoords(cObj);
         setDropDetails(cObj);
@@ -545,7 +550,8 @@ export default function BookingSheet() {
           }
         });
       }
-      addToast(`Destination set: ${addr.split(',')[0]}`, 'check');
+      const labelName = details?.name || addr.split(',')[0].trim();
+      addToast(`Destination set: ${labelName}`, 'check');
     }
     setMapPickerOpen(false);
   };

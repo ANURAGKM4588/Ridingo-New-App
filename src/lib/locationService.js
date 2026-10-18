@@ -1,4 +1,5 @@
 // Location database and autocomplete search service for Ridingo
+import { cleanLocationName } from '../utils/locationCleaner';
 
 export const INDIAN_LANDMARKS = [
   // Airports
@@ -117,10 +118,11 @@ export function searchPlaces(q, callback) {
       .then(data => {
         if (!Array.isArray(data)) return;
         const osm = data.map(item => {
-          const parts = item.display_name.split(',');
+          const cleanFull = cleanLocationName(item.display_name || '');
+          const parts = cleanFull.split(',').map(s => s.trim()).filter(Boolean);
           return {
-            title: parts[0].trim(),
-            sub: parts.slice(1, 4).join(',').trim(),
+            title: cleanLocationName(parts[0] || cleanFull),
+            sub: cleanLocationName(parts.slice(1, 4).join(', ')),
             type: item.type === 'aeroway' ? 'airport' : 'hub',
             lat: parseFloat(item.lat),
             lng: parseFloat(item.lon)

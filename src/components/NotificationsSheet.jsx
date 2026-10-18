@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 
@@ -237,11 +238,17 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
  * - Read style: light gray theme (#F1F5F9 / var(--field))
  * - If offer notification: shows "Claim Now" & "View More" action buttons
  */
+/**
+ * Expandable Notification Card (Minimal Modern Aesthetic)
+ * - Ultra-clean card geometry, delicate borders, crisp typography
+ * - Tap smoothly expands details and automatically marks as read
+ * - Smooth staggered exit on clear with cleaning animation
+ */
 function ExpandableNotifCard({
   note,
+  index = 0,
   isExpanded,
   onToggleExpand,
-  onDelete,
   onClaimOffer,
   onViewOfferDetails,
   isClearingAll = false
@@ -256,75 +263,91 @@ function ExpandableNotifCard({
   const isCar = note.icon === 'car';
 
   const handleClick = (e) => {
-    // If clicking on interactive action buttons inside expanded view, don't collapse
     if (e.target.closest('button')) return;
     onToggleExpand(note.id);
   };
 
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{
+        opacity: isClearingAll ? 0 : 1,
+        x: isClearingAll ? -36 : 0,
+        scale: isClearingAll ? 0.94 : 1,
+        y: 0,
+        transition: {
+          duration: isClearingAll ? 0.28 : 0.24,
+          delay: isClearingAll ? index * 0.04 : 0,
+          ease: [0.16, 1, 0.3, 1]
+        }
+      }}
+      exit={{
+        opacity: 0,
+        x: -40,
+        scale: 0.92,
+        transition: { duration: 0.22, ease: 'easeIn' }
+      }}
       onClick={handleClick}
       style={{
-        borderRadius: '18px',
-        padding: '13px 14px',
-        marginBottom: isClearingAll ? '0px' : '8px',
+        borderRadius: '16px',
+        padding: '13px 15px',
+        marginBottom: '8px',
         cursor: 'pointer',
         userSelect: 'none',
-        // Unread = Light White theme (#FFFFFF), Read = Light Gray theme (#F1F5F9)
-        background: isRead ? 'var(--field, #F1F5F9)' : '#FFFFFF',
-        border: isRead ? '1px solid var(--line, #E2E8F0)' : '1px solid rgba(0, 0, 0, 0.12)',
-        boxShadow: isRead ? 'none' : '0 2px 10px rgba(0, 0, 0, 0.05)',
-        transition: 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
-        opacity: isClearingAll ? 0 : 1,
-        transform: isClearingAll ? 'translateY(18px) scale(0.95)' : 'none',
-        maxHeight: isClearingAll ? '0px' : '400px',
+        background: isRead ? 'var(--field, #F8FAFC)' : 'var(--card, #FFFFFF)',
+        border: isRead ? '1px solid var(--line, #E2E8F0)' : '1px solid rgba(0, 0, 0, 0.08)',
+        boxShadow: isRead ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.03)',
+        transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+        position: 'relative',
         overflow: 'hidden'
       }}
     >
-      {/* Main Content (Always Visible) */}
+      {/* Main Bar (Always Visible) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {/* Leading Icon */}
+        {/* Minimal Rounded Icon */}
         <span
           style={{
             width: '36px',
             height: '36px',
-            borderRadius: '12px',
+            borderRadius: '11px',
             background: isOffer
-              ? 'rgba(250, 204, 21, 0.2)'
+              ? 'rgba(245, 158, 11, 0.12)'
               : isGift
-              ? 'rgba(34, 197, 94, 0.16)'
+              ? 'rgba(16, 185, 129, 0.12)'
               : isCar
-              ? 'var(--yellow-soft, #FEF3C7)'
+              ? 'rgba(59, 130, 246, 0.12)'
               : isRead
-              ? '#E2E8F0'
-              : 'var(--field, #F1F5F9)',
+              ? 'var(--line, #E2E8F0)'
+              : 'rgba(15, 23, 42, 0.06)',
             color: isOffer
               ? '#D97706'
               : isGift
-              ? '#16A34A'
+              ? '#059669'
               : isCar
-              ? '#B45309'
+              ? '#2563EB'
               : 'var(--ink, #0F172A)',
             display: 'grid',
             placeItems: 'center',
             flexShrink: 0
           }}
         >
-          <Icon name={note.icon || (isOffer ? 'star' : 'bell')} size={18} />
+          <Icon name={note.icon || (isOffer ? 'star' : 'bell')} size={17} />
         </span>
 
         {/* Title & Timestamp */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <span
               style={{
                 fontSize: '13.5px',
-                fontWeight: isRead ? 600 : 750,
-                color: isRead ? '#475569' : '#0F172A',
+                fontWeight: isRead ? 550 : 650,
+                color: isRead ? 'var(--muted, #64748B)' : 'var(--ink, #0F172A)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: isExpanded ? 'normal' : 'nowrap',
-                lineHeight: 1.3
+                lineHeight: 1.35,
+                letterSpacing: '-0.01em'
               }}
             >
               {note.title}
@@ -343,115 +366,117 @@ function ExpandableNotifCard({
           </div>
         </div>
 
-        {/* Unread indicator ONLY if unread. Tapping removes it! */}
+        {/* Minimal Unread Dot */}
         {!isRead && (
           <span
             style={{
-              width: '7px',
-              height: '7px',
+              width: '6px',
+              height: '6px',
               borderRadius: '50%',
-              background: '#EAB308',
+              background: '#2563EB',
               flexShrink: 0,
-              boxShadow: '0 0 0 3px rgba(234, 179, 8, 0.25)'
+              boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.2)'
             }}
             title="Unread"
           />
         )}
 
-        {/* Expand / Collapse Chevron */}
+        {/* Minimal Micro Chevron */}
         <span
           style={{
             color: '#94A3B8',
             display: 'flex',
             alignItems: 'center',
             transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.22s ease',
+            transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
             flexShrink: 0
           }}
         >
-          <Icon name="chevron-down" size={16} />
+          <Icon name="chevron-down" size={15} />
         </span>
       </div>
 
-      {/* Expandable Body Content */}
-      <div
-        style={{
-          maxHeight: isExpanded ? '300px' : '0px',
-          opacity: isExpanded ? 1 : 0,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease',
-          paddingTop: isExpanded ? '10px' : '0px'
-        }}
-      >
-        <div style={{ height: '1px', background: isRead ? '#E2E8F0' : 'rgba(0,0,0,0.06)', margin: '4px 0 10px' }} />
-        <p
-          style={{
-            margin: 0,
-            fontSize: '12.8px',
-            color: isRead ? '#475569' : '#1E293B',
-            lineHeight: 1.5,
-            paddingLeft: '48px'
-          }}
-        >
-          {note.body}
-        </p>
-
-        {/* Offer Actions: "Claim Now" & "View More" */}
-        {isOffer && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginTop: '12px',
-              paddingLeft: '48px'
-            }}
+      {/* Expandable Body */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            style={{ overflow: 'hidden' }}
           >
-            <button
-              type="button"
-              className="btn primary"
+            <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '10px 0 8px', opacity: 0.8 }} />
+            <p
               style={{
-                height: '34px',
-                padding: '0 14px',
-                borderRadius: '10px',
+                margin: 0,
                 fontSize: '12.5px',
-                fontWeight: 750,
-                background: '#000000',
-                color: '#FFFFFF',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px'
+                color: isRead ? 'var(--muted, #64748B)' : 'var(--ink, #334155)',
+                lineHeight: 1.55,
+                paddingLeft: '48px'
               }}
-              onClick={() => onClaimOffer(note)}
             >
-              <span>Claim Now</span>
-              <Icon name="chevron-right" size={13} />
-            </button>
+              {note.body}
+            </p>
 
-            <button
-              type="button"
-              className="btn"
-              style={{
-                height: '34px',
-                padding: '0 12px',
-                borderRadius: '10px',
-                fontSize: '12px',
-                fontWeight: 700,
-                background: 'var(--field, #F1F5F9)',
-                color: 'var(--ink, #0F172A)',
-                border: '1px solid var(--line, #E2E8F0)',
-                cursor: 'pointer'
-              }}
-              onClick={() => onViewOfferDetails(note)}
-            >
-              View More
-            </button>
-          </div>
+            {/* Offer Action Buttons */}
+            {isOffer && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginTop: '11px',
+                  paddingLeft: '48px'
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn primary"
+                  style={{
+                    height: '32px',
+                    padding: '0 13px',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    background: '#000000',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  onClick={() => onClaimOffer(note)}
+                >
+                  <span>Claim Offer</span>
+                  <Icon name="chevron-right" size={13} />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    height: '32px',
+                    padding: '0 11px',
+                    borderRadius: '999px',
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    background: 'var(--field, #F1F5F9)',
+                    color: 'var(--ink, #0F172A)',
+                    border: '1px solid var(--line, #E2E8F0)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => onViewOfferDetails(note)}
+                >
+                  Details
+                </button>
+              </div>
+            )}
+          </motion.div>
         )}
-      </div>
-    </div>
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -482,24 +507,25 @@ export default function NotificationsSheet() {
       setExpandedId(null);
     } else {
       setExpandedId(id);
-      // Auto mark as read on tap
       markNotifRead(id);
     }
   };
 
-  // Smooth clean collapse animation into bottom without opening any new modal!
+  // Ultra-clean modern cleaning animation:
+  // Cards smoothly sweep out with staggered delay, then empty state dissolves in gracefully.
+  // No layout shift, no secondary popups or toasts.
   const handleClearAll = () => {
     if (!unotes || unotes.length === 0 || isClearingAll) return;
     setIsClearingAll(true);
     if (navigator.vibrate) {
-      try { navigator.vibrate([20, 35, 20]); } catch (e) {}
+      try { navigator.vibrate(20); } catch (e) {}
     }
-    // Smooth transition delay so items smoothly collapse to bottom
+
+    // Wait for the sweeping cards animation to gracefully finish
     setTimeout(() => {
       clearAllNotifs();
       setExpandedId(null);
       setIsClearingAll(false);
-      addToast('All notifications cleared', 'info');
     }, 320);
   };
 
@@ -523,133 +549,214 @@ export default function NotificationsSheet() {
   };
 
   const hasNotes = unotes && unotes.length > 0;
+  const showList = hasNotes && !isClearingAll;
 
   return (
     <>
       <div className="layer on" id="u-notifs-layer" style={{ zIndex: 90 }}>
         <div className="scrim" onClick={handleClose} />
 
-        <div className="sheet" role="dialog" aria-modal="true">
-          {/* Header without total count */}
-          <div className="sheet-sticky-top">
-            <div className="grab" />
-            <div className="sheet-h" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>
-                Notifications
-              </h3>
-              <button
-                className="iconbtn"
-                onClick={handleClose}
-                aria-label="Close"
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '50%',
-                  background: 'var(--field)',
-                  border: '1px solid var(--line)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--ink)'
-                }}
-              >
-                <Icon name="x" size={18} />
-              </button>
+        <div
+          className="sheet"
+          role="dialog"
+          aria-modal="true"
+          style={{
+            maxWidth: '460px',
+            margin: '0 auto',
+            borderTopLeftRadius: '24px',
+            borderTopRightRadius: '24px',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Minimal Modern Sticky Header */}
+          <div className="sheet-sticky-top" style={{ padding: '12px 18px 8px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '4px',
+                borderRadius: '999px',
+                background: 'var(--line, #CBD5E1)',
+                margin: '0 auto 12px',
+                opacity: 0.8
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: 'var(--ink, #0F172A)',
+                    letterSpacing: '-0.02em'
+                  }}
+                >
+                  Notifications
+                </h3>
+                {hasNotes && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: 'var(--muted, #64748B)',
+                      background: 'var(--field, #F1F5F9)',
+                      padding: '2px 7px',
+                      borderRadius: '999px',
+                      border: '1px solid var(--line, #E2E8F0)'
+                    }}
+                  >
+                    {unotes.length}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Minimal Header "Clear all" text button */}
+                {hasNotes && !isClearingAll && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '5px 8px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: '#64748B',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      transition: 'color 0.18s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#64748B')}
+                  >
+                    Clear all
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="iconbtn"
+                  onClick={handleClose}
+                  aria-label="Close"
+                  style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    background: 'var(--field, #F1F5F9)',
+                    border: '1px solid var(--line, #E2E8F0)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--ink, #0F172A)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Scrollable Body */}
-          <div className="sheet-scroll-body" style={{ padding: '16px 18px 24px' }}>
-            {hasNotes ? (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'all 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
-                }}
-              >
-                {unotes.map((n) => (
-                  <ExpandableNotifCard
-                    key={n.id}
-                    note={n}
-                    isExpanded={expandedId === n.id}
-                    onToggleExpand={handleToggleExpand}
-                    onClaimOffer={handleClaimOffer}
-                    onViewOfferDetails={handleViewOfferDetails}
-                    isClearingAll={isClearingAll}
-                  />
-                ))}
-              </div>
-            ) : (
-              /* Appealing Empty State Message */
-              <div
-                className="empty"
-                style={{
-                  padding: '42px 18px',
-                  textAlign: 'center',
-                  animation: 'fadeIn 0.3s ease'
-                }}
-              >
-                <span
+          {/* Body with guaranteed stable height to prevent layout shifts */}
+          <div
+            className="sheet-scroll-body"
+            style={{
+              padding: '12px 18px 24px',
+              minHeight: '280px',
+              position: 'relative'
+            }}
+          >
+            <AnimatePresence mode="wait">
+              {showList ? (
+                <motion.div
+                  key="notifications-list"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{
+                    opacity: 0,
+                    transition: { duration: 0.2, ease: 'easeOut' }
+                  }}
                   style={{
-                    width: '56px',
-                    height: '56px',
-                    borderRadius: '50%',
-                    background: 'var(--field, #F1F5F9)',
-                    color: '#94A3B8',
-                    display: 'grid',
-                    placeItems: 'center',
-                    margin: '0 auto 14px',
-                    boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
+                    display: 'flex',
+                    flexDirection: 'column'
                   }}
                 >
-                  <Icon name="bell" size={24} />
-                </span>
-                <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 750, color: 'var(--ink)' }}>
-                  No notifications
-                </h4>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.45, maxWidth: '280px', marginInline: 'auto' }}>
-                  You're all caught up! Live trip updates, chauffeur arrivals, and special rewards will appear here.
-                </p>
-              </div>
-            )}
-
-            {/* Clear All Button: Visible only when notifications exist. Smoothly collapses when clicked. */}
-            <div
-              style={{
-                overflow: 'hidden',
-                maxHeight: hasNotes ? '70px' : '0px',
-                opacity: hasNotes ? 1 : 0,
-                transition: 'max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease',
-                marginTop: hasNotes ? '14px' : '0px'
-              }}
-            >
-              <button
-                type="button"
-                className="btn"
-                disabled={isClearingAll}
-                style={{
-                  width: '100%',
-                  height: '46px',
-                  borderRadius: '14px',
-                  background: isClearingAll ? 'rgba(239, 68, 68, 0.16)' : 'rgba(239, 68, 68, 0.08)',
-                  color: '#EF4444',
-                  border: '1px solid rgba(239, 68, 68, 0.22)',
-                  fontWeight: 700,
-                  fontSize: '14px',
-                  cursor: isClearingAll ? 'default' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.22s ease'
-                }}
-                onClick={handleClearAll}
-              >
-                <Icon name="trash" size={16} />
-                <span>{isClearingAll ? 'Clearing notifications...' : 'Clear All'}</span>
-              </button>
-            </div>
+                  {unotes.map((n, idx) => (
+                    <ExpandableNotifCard
+                      key={n.id}
+                      note={n}
+                      index={idx}
+                      isExpanded={expandedId === n.id}
+                      onToggleExpand={handleToggleExpand}
+                      onClaimOffer={handleClaimOffer}
+                      onViewOfferDetails={handleViewOfferDetails}
+                      isClearingAll={isClearingAll}
+                    />
+                  ))}
+                </motion.div>
+              ) : (
+                /* Ultra Minimal Empty State */
+                <motion.div
+                  key="notifications-empty"
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1], delay: 0.05 }
+                  }}
+                  exit={{ opacity: 0 }}
+                  style={{
+                    padding: '48px 16px',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '50%',
+                      background: 'var(--field, #F8FAFC)',
+                      border: '1px solid var(--line, #E2E8F0)',
+                      color: '#94A3B8',
+                      display: 'grid',
+                      placeItems: 'center',
+                      marginBottom: '14px',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    <Icon name="bell" size={22} />
+                  </span>
+                  <h4
+                    style={{
+                      margin: '0 0 5px',
+                      fontSize: '15px',
+                      fontWeight: 700,
+                      color: 'var(--ink, #0F172A)',
+                      letterSpacing: '-0.01em'
+                    }}
+                  >
+                    No notifications
+                  </h4>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: '12.5px',
+                      color: 'var(--muted, #64748B)',
+                      lineHeight: 1.5,
+                      maxWidth: '260px'
+                    }}
+                  >
+                    You're all caught up. Live trip updates and special chauffeur offers will arrive here.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

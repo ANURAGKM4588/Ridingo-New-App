@@ -145,8 +145,8 @@ function MainApp() {
                 >
                   <div className="content" id="u-content" style={{ display: onboardingOpen ? 'none' : 'block' }}>
                     <div key={uTab} className="apple-page-enter">
-                      {uTab === 'home' && <HomeTab />}
-                      {uTab === 'trips' && <TripsTab />}
+                      {(uTab === 'home' || !['trips', 'history', 'wallet', 'profile'].includes(uTab)) && <HomeTab />}
+                      {(uTab === 'trips' || uTab === 'history') && <TripsTab />}
                       {uTab === 'wallet' && <WalletTab />}
                       {uTab === 'profile' && <ProfileTab />}
                     </div>

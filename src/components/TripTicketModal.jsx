@@ -4,6 +4,8 @@ import { generateTripTicketImage } from '../utils/tripTicketGenerator';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { shareTicketImageWithCaption } from '../services/installedUpiService';
+import { cleanLocationName } from '../utils/locationCleaner';
 
 export default function TripTicketModal({ trip, isOpen, onClose, addToast }) {
   const [ticketData, setTicketData] = useState(null);
@@ -46,8 +48,8 @@ export default function TripTicketModal({ trip, isOpen, onClose, addToast }) {
     trip.driverPhone ||
     trip.car?.driverPhone ||
     '+91 94471 23456';
-  const pickupLoc = trip.pickup || 'Pickup Location';
-  const dropLoc = trip.drop_loc || 'City Destination';
+  const pickupLoc = cleanLocationName(trip.pickup) || 'Pickup Location';
+  const dropLoc = cleanLocationName(trip.drop_loc) || 'City Destination';
   const fare = Number(trip.fare) || 750;
   const otp = String(trip.startOtp || trip.otp || '4821').trim();
   const trackUrl = `https://ridingo.app/track/${trip.id}`;
@@ -72,7 +74,24 @@ Live GPS Tracking: ${trackUrl}`;
     }
 
     try {
-      // A. Mobile Native via Capacitor Filesystem + Share (Guarantees image attachment in WhatsApp / Android / iOS)
+      // A1. Direct Native WhatsApp Image + Caption Sharer (guarantees text is the caption, NOT separate message)
+      if (Capacitor.isNativePlatform() && ticketData?.dataUrl) {
+        try {
+          const sent = await shareTicketImageWithCaption({
+            base64Data: ticketData.dataUrl,
+            caption: shareText,
+            targetApp: 'whatsapp'
+          });
+          if (sent) {
+            if (addToast) addToast('Ticket shared successfully!', 'check');
+            return;
+          }
+        } catch (nativeShareErr) {
+          console.warn('[TicketModal] shareTicketImageWithCaption note:', nativeShareErr);
+        }
+      }
+
+      // A2. Mobile Native via Capacitor Filesystem + Share Fallback
       if (Capacitor.isNativePlatform()) {
         try {
           const base64Data = ticketData.dataUrl.split(',')[1];
@@ -83,9 +102,9 @@ Live GPS Tracking: ${trackUrl}`;
             directory: Directory.Cache
           });
 
+          // When sharing an image, do NOT supply 'title' so WhatsApp and Android treat 'text' strictly as the image caption
           await Share.share({
-            title: `Ridingo Ticket · ${trip.id}`,
-            text: `Ridingo Chauffeur Ticket · ${trip.id}\nDriver: ${driverName} (${driverPhone})\nOTP: ${otp}\nLive Track: ${trackUrl}`,
+            text: shareText,
             files: [savedFile.uri],
             dialogTitle: 'Share Trip Ticket'
           });
@@ -120,10 +139,10 @@ Live GPS Tracking: ${trackUrl}`;
         navigator.canShare({ files: [ticketData.file] })
       ) {
         try {
+          // Omit title so browser attaches text strictly as image caption
           await navigator.share({
             files: [ticketData.file],
-            title: `Ridingo Ticket · ${trip.id}`,
-            text: `Ridingo Chauffeur Ticket · ${trip.id}\nDriver: ${driverName} (${driverPhone})\nOTP: ${otp}\nLive Track: ${trackUrl}`
+            text: shareText
           });
           if (addToast) addToast('Ticket shared successfully!', 'check');
           return;

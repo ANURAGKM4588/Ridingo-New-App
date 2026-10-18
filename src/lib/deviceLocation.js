@@ -15,12 +15,8 @@ let cachedAddress = cachedDeviceCoords?.address || null;
 let isLocatingPromise = null;
 const geocodeCache = new Map();
 
-export function cleanPlusCode(str) {
-  if (!str || typeof str !== 'string') return '';
-  let cleaned = str.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}[,\s]*/i, '').trim();
-  cleaned = cleaned.replace(/^[,-\s]+/, '').trim();
-  return cleaned || str;
-}
+import { cleanLocationName, cleanPlusCode, isLocationCode } from '../utils/locationCleaner';
+export { cleanLocationName, cleanPlusCode, isLocationCode };
 
 /**
  * Reverse geocode latitude and longitude using Google Maps or OpenStreetMap Nominatim
@@ -39,7 +35,7 @@ export async function reverseGeocode(lat, lng) {
       const googleResult = await new Promise((resolve) => {
         geocoder.geocode({ location: { lat: Number(lat), lng: Number(lng) } }, (results, status) => {
           if (status === 'OK' && results && results[0]) {
-            resolve(cleanPlusCode(results[0].formatted_address));
+            resolve(cleanLocationName(results[0].formatted_address));
           } else {
             resolve(null);
           }
@@ -71,26 +67,29 @@ export async function reverseGeocode(lat, lng) {
       const data = await res.json();
       if (data && data.address) {
         const a = data.address;
-        const primary = a.amenity || a.building || a.road || a.pedestrian || a.suburb || a.neighbourhood || a.commercial || a.isolated_dwelling;
+        const candidatePrimary = a.amenity || a.building;
+        const roadOrArea = a.road || a.pedestrian || a.suburb || a.neighbourhood || a.commercial || a.isolated_dwelling;
+        // If candidatePrimary is a code (like ARRA-99), skip it and use road or area name
+        const primary = (candidatePrimary && !isLocationCode(candidatePrimary)) ? candidatePrimary : roadOrArea;
         const secondary = a.neighbourhood || a.suburb || a.residential || a.city_district || a.quarter || a.subdistrict;
         const city = a.city || a.town || a.village || a.municipality || a.county || a.state_district;
         const state = a.state;
 
         const parts = [];
-        if (primary) parts.push(primary);
-        if (secondary && secondary !== primary) parts.push(secondary);
-        if (city && city !== secondary && city !== primary) parts.push(city);
+        if (primary && !isLocationCode(primary)) parts.push(cleanLocationName(primary));
+        if (secondary && secondary !== primary && !isLocationCode(secondary)) parts.push(cleanLocationName(secondary));
+        if (city && city !== secondary && city !== primary && !isLocationCode(city)) parts.push(cleanLocationName(city));
         if (state && parts.length < 3) parts.push(state);
 
         if (parts.length > 0) {
-          const finalAddr = parts.join(', ');
+          const finalAddr = cleanLocationName(parts.join(', '));
           geocodeCache.set(cacheKey, finalAddr);
           return finalAddr;
         }
       }
 
       if (data && data.display_name) {
-        const fallbackStr = data.display_name.split(',').slice(0, 3).join(', ').trim();
+        const fallbackStr = cleanLocationName(data.display_name.split(',').slice(0, 4).join(', ').trim());
         geocodeCache.set(cacheKey, fallbackStr);
         return fallbackStr;
       }

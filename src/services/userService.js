@@ -442,14 +442,14 @@ export function isUpcomingFutureTrip(trip) {
   }
   const schedTs = getTripScheduledTimestamp(trip);
   const diffMs = schedTs - Date.now();
-  // Scheduled more than 2 hours in the future
-  return diffMs > 2 * 60 * 60 * 1000;
+  // Scheduled more than 1 hour in the future (tracking locked until 1h prior)
+  return diffMs > 1 * 60 * 60 * 1000;
 }
 
 /**
  * Checks whether tracking should be unlocked for this trip:
- * Tracking is active if the trip is NOT a future trip (> 2h away),
- * i.e., it starts within 2 hours, is happening today, or is in progress / arrived!
+ * Tracking is active if the trip starts within 1 hour, or is in progress / arrived / ready!
+ * (Before 1 hour, real-time driver GPS is not allowed for privacy/battery).
  */
 export function isTripTrackingUnlocked(trip) {
   if (!trip) return false;
@@ -459,7 +459,9 @@ export function isTripTrackingUnlocked(trip) {
   if (['requested', 'accepted', 'scheduled'].includes(trip.status)) {
     const schedTs = getTripScheduledTimestamp(trip);
     const diffMs = schedTs - Date.now();
-    return diffMs <= 2 * 60 * 60 * 1000;
+    // Tracking allowed only within 1 hour before trip time or immediate trips
+    return diffMs <= 1 * 60 * 60 * 1000;
   }
   return false;
 }
+

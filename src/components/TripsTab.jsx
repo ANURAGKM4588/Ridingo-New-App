@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import { openPhonePeCheckout } from '../utils/phonepe';
+import { cleanLocationName, getLocationUpToFirstComma } from '../utils/locationCleaner';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'hourly', unit: 'hr', units: 'hours' },
@@ -126,22 +128,84 @@ export default function TripsTab() {
         <p>All your driver bookings</p>
       </div>
 
-      {/* Filter Chips */}
-      <div className="chips stagger-2" style={{ marginBottom: '14px', display: 'flex', gap: '6px', overflowX: 'auto' }}>
-        {Object.keys(F).map(k => (
-          <button
-            key={k}
-            className={`chip ${filter === k ? 'on' : ''}`}
-            onClick={() => setFilter(k)}
-          >
-            {F[k]}
-          </button>
-        ))}
+      {/* Apple-Style Minimal Segmented Trip Status Bar */}
+      <div
+        className="stagger-2"
+        style={{
+          marginBottom: '16px',
+          background: 'var(--field)',
+          borderRadius: '16px',
+          padding: '4px',
+          display: 'grid',
+          gridTemplateColumns: `repeat(${Object.keys(F).length}, 1fr)`,
+          gap: '4px',
+          border: '1px solid var(--line)',
+          position: 'relative'
+        }}
+      >
+        {Object.keys(F).map((k) => {
+          const isActive = filter === k;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setFilter(k)}
+              style={{
+                position: 'relative',
+                height: '38px',
+                border: 'none',
+                background: 'transparent',
+                borderRadius: '12px',
+                fontSize: '13px',
+                fontWeight: isActive ? 700 : 550,
+                color: isActive ? 'var(--ink)' : 'var(--muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 4px',
+                zIndex: 1,
+                transition: 'color 0.18s ease',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none'
+              }}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="appleTripStatusActivePill"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '12px',
+                    background: 'var(--card)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)',
+                    zIndex: -1
+                  }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 480,
+                    damping: 38,
+                    mass: 0.8
+                  }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 2 }}>{F[k]}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Trip List */}
-      {list.length === 0 ? (
-        <div className="card stagger-3" style={{ textAlign: 'center', padding: '40px 20px', borderRadius: '22px', background: 'var(--card)', border: '1.5px solid var(--line)', marginTop: '8px' }}>
+      {/* Trip List with Apple-style smooth crossfade */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={filter}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {list.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '40px 20px', borderRadius: '22px', background: 'var(--card)', border: '1.5px solid var(--line)', marginTop: '8px' }}>
           <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--field)', color: 'var(--ink)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <Icon name="route" size={26} />
           </div>
@@ -166,7 +230,7 @@ export default function TripsTab() {
         <div className="trip-list">
           {list.map((t, idx) => {
             const c = CATS[t.cat] || CATS.hourly;
-            const destName = t.drop_loc || t.pickup || `${c.name} trip`;
+            const destName = getLocationUpToFirstComma(t.drop_loc) || getLocationUpToFirstComma(t.pickup) || `${c.name} trip`;
             const isAssigned = ['accepted', 'pickup_arrived', 'ready_to_start', 'inprogress'].includes(t.status);
             const isFuture = isUpcomingFutureTrip ? isUpcomingFutureTrip(t) : false;
             const trackingUnlocked = isTripTrackingUnlocked ? isTripTrackingUnlocked(t) : !isFuture;
@@ -321,6 +385,8 @@ export default function TripsTab() {
           })}
         </div>
       )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

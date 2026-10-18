@@ -9,9 +9,14 @@ import {
   notifyIncomingRideRequest,
   sendUserNativeNotification,
   requestUserNotificationPermission,
+  requestDriverNotificationPermission,
   dismissIncomingRideNotification,
-  stopActiveTone
+  stopActiveTone,
+  isDriverLoginComplete,
+  isUserLoginComplete,
+  setupNotificationActionListeners
 } from '../services/driverNotificationService';
+import { cleanLocationName } from '../utils/locationCleaner';
 import {
   isUserTrip,
   generateRidingoUserId,
@@ -107,7 +112,40 @@ export const INITIAL_TRIPS = [];
 
 export const INITIAL_UTX = [];
 
-export const INITIAL_UNOTES = [];
+export const INITIAL_UNOTES = [
+  {
+    id: 'notif-1',
+    ts: Date.now() - 1000 * 60 * 18,
+    title: 'Airport Express Chauffeur Offer',
+    body: 'Get 5% cashback on your airport transfer bookings with professional verified chauffeurs. Use promo code AIRPORT5.',
+    icon: 'star',
+    category: 'airport',
+    isOffer: true,
+    offerCode: 'AIRPORT5',
+    offerDiscount: '5% Cashback',
+    read: false
+  },
+  {
+    id: 'notif-2',
+    ts: Date.now() - 1000 * 60 * 65,
+    title: 'Chauffeur Safety Shield Active',
+    body: 'Real-time GPS tracking and 24/7 SOS dispatch are enabled on all your active trips for your peace of mind.',
+    icon: 'shield',
+    read: false
+  },
+  {
+    id: 'notif-3',
+    ts: Date.now() - 1000 * 60 * 60 * 5,
+    title: 'Hourly Chauffeur Pass',
+    body: 'Enjoy 35% off your first city chauffeur booking. Experience effortless commuting in your personal car.',
+    icon: 'gift',
+    category: 'hourly',
+    isOffer: true,
+    offerCode: 'FIRST35',
+    offerDiscount: '35% Off',
+    read: true
+  }
+];
 
 export function AppProvider({ children }) {
   // User state: null on fresh install or logged out
@@ -178,8 +216,59 @@ export function AppProvider({ children }) {
 
   const [view, setView] = useState(determineView);
 
+  const switchAppView = (targetView, extra = {}) => {
+    if (targetView === 'driver') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', 'driver');
+        window.history.pushState({}, '', url.toString());
+      } catch (e) {}
+      setView('driver');
+      if (extra?.tripId) {
+        setTrips(prev => {
+          const matched = prev.find(t => t.id === extra.tripId);
+          if (matched && matched.status === 'requested') {
+            setIncomingTripRequest(matched);
+          } else if (extra.fare) {
+            setIncomingTripRequest({
+              id: extra.tripId,
+              fare: extra.fare,
+              advance: extra.advance,
+              pickup: cleanLocationName(extra.pickup),
+              drop_loc: cleanLocationName(extra.drop),
+              distanceText: extra.distance,
+              durationText: extra.duration,
+              status: 'requested',
+              when_ts: Date.now()
+            });
+          }
+          return prev;
+        });
+      }
+    } else if (targetView === 'user') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('view');
+        window.history.pushState({}, '', url.toString());
+      } catch (e) {}
+      setView('user');
+    } else if (targetView === 'admin') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', 'admin');
+        window.history.pushState({}, '', url.toString());
+      } catch (e) {}
+      setView('admin');
+    }
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    window.__ridingoSetView = switchAppView;
+    try {
+      setupNotificationActionListeners();
+    } catch (e) {}
+
     const handleUrlChange = () => {
       const detected = determineView();
       setView(detected);
@@ -189,6 +278,7 @@ export function AppProvider({ children }) {
     return () => {
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
+      delete window.__ridingoSetView;
     };
   }, []);
 
@@ -397,8 +487,8 @@ export function AppProvider({ children }) {
       id: row.id,
       cat: row.cat || 'hourly',
       qty: Number(row.qty) || 2,
-      pickup: row.pickup || 'Pickup Location',
-      drop_loc: row.drop_loc || 'Drop Location',
+      pickup: cleanLocationName(row.pickup) || 'Pickup Location',
+      drop_loc: cleanLocationName(row.drop_loc) || 'Drop Location',
       trans: carObj.trans || row.trans || 'Automatic',
       car: {
         model: carObj.model || 'Sedan',
@@ -493,6 +583,16 @@ export function AppProvider({ children }) {
         );
         if (activeReqs.length > 0) {
           setIncomingTripRequest(activeReqs[0]);
+          if (isDriverLoginComplete()) {
+            notifyIncomingRideRequest(activeReqs[0], {
+              onAccept: (tripId) => acceptTrip(tripId),
+              onViewMore: (trip) => {
+                if (typeof window.__ridingoSetView === 'function') {
+                  window.__ridingoSetView('driver', { tripId: trip?.id });
+                }
+              }
+            });
+          }
         } else {
           // If no active requests or previous request is no longer requested, clear it
           setIncomingTripRequest(prev => {
@@ -532,10 +632,12 @@ export function AppProvider({ children }) {
 
   // Subscribe to real-time communication between User and Driver apps
   useEffect(() => {
-    // Proactively request notification permissions on user device
+    // Proactively request notification permissions on user device if logged in
     if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
       try {
-        requestUserNotificationPermission();
+        if (isUserLoginComplete()) {
+          requestUserNotificationPermission();
+        }
       } catch (e) {}
     }
 
@@ -557,7 +659,17 @@ export function AppProvider({ children }) {
       });
       setIncomingTripRequest(newTrip);
       setDriverOnline(true);
-      // Note: DriverApp.jsx is the single source for driver push/tones to guarantee minimal, deduplicated alerts
+      // Dispatch background push notification immediately if driver login is complete
+      if (isDriverLoginComplete()) {
+        notifyIncomingRideRequest(newTrip, {
+          onAccept: (tripId) => acceptTrip(tripId),
+          onViewMore: (trip) => {
+            if (typeof window.__ridingoSetView === 'function') {
+              window.__ridingoSetView('driver', { tripId: trip?.id });
+            }
+          }
+        });
+      }
     });
 
     // 4. Instant push sync via Supabase Realtime publication on public.trips table
@@ -593,6 +705,16 @@ export function AppProvider({ children }) {
                     } catch (_) {}
                     if (!declinedTripIds.includes(tripObj.id) && !acceptedTripIdsRef.current.has(tripObj.id) && !settledTripIdsRef.current.has(tripObj.id)) {
                       setIncomingTripRequest(tripObj);
+                      if (isDriverLoginComplete()) {
+                        notifyIncomingRideRequest(tripObj, {
+                          onAccept: (tripId) => acceptTrip(tripId),
+                          onViewMore: (trip) => {
+                            if (typeof window.__ridingoSetView === 'function') {
+                              window.__ridingoSetView('driver', { tripId: trip?.id });
+                            }
+                          }
+                        });
+                      }
                     }
                   } else if (tripObj.status === 'accepted') {
                     const myDriverId = getDeviceDriverId(driverPartner || DEFAULT_DRIVER);
@@ -1082,6 +1204,9 @@ export function AppProvider({ children }) {
     scrollUserToTop();
     setOnboardingOpen(false);
     addToast('Signed in as Arjun Menon', 'check');
+    try {
+      requestUserNotificationPermission();
+    } catch (e) {}
   };
 
   const loginWithDetails = (userData = {}) => {
@@ -1140,6 +1265,9 @@ export function AppProvider({ children }) {
     scrollUserToTop();
     setOnboardingOpen(false);
     addToast(`Welcome, ${updated.firstName || updated.name || 'User'}!`, 'check');
+    try {
+      requestUserNotificationPermission();
+    } catch (e) {}
   };
 
   // Single Active Session Verification: Checks if account was logged in from another device
@@ -1262,6 +1390,9 @@ export function AppProvider({ children }) {
     scrollDriverToTop();
     setDriverOnboardingOpen(false);
     addToast('Signed in as Ravi Kumar (Demo)', 'check');
+    try {
+      requestDriverNotificationPermission();
+    } catch (e) {}
   };
 
   const loginDriverWithDetails = (driverData = {}) => {
@@ -1303,6 +1434,9 @@ export function AppProvider({ children }) {
     scrollDriverToTop();
     setDriverOnboardingOpen(false);
     addToast(`Welcome, ${updated.name || 'Driver Partner'}!`, 'check');
+    try {
+      requestDriverNotificationPermission();
+    } catch (e) {}
   };
 
   const logoutDriver = () => {
@@ -1351,8 +1485,8 @@ export function AppProvider({ children }) {
     const adv = advanceAmount !== undefined ? Number(advanceAmount) : Math.round(safeFare * 0.3);
     const cb = Math.round(safeFare * 0.05);
     const safeCat = String(cat || 'hourly');
-    const safePickup = (typeof pickup === 'string' && pickup.trim()) || 'Edappally Toll, Kochi';
-    const safeDrop = (typeof drop === 'string' && drop.trim()) || (safeCat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route');
+    const safePickup = cleanLocationName((typeof pickup === 'string' && pickup.trim()) || 'Edappally Toll, Kochi');
+    const safeDrop = cleanLocationName((typeof drop === 'string' && drop.trim()) || (safeCat === 'airport' ? 'Cochin International Airport (COK)' : 'City Route'));
     const scheduledDate = schedule?.date || null;
     const scheduledTime = schedule?.time || null;
     const tripTrans = schedule?.trans || 'Automatic';
@@ -1485,16 +1619,10 @@ export function AppProvider({ children }) {
     persistTripToSupabase(newTrip);
 
     setBookingOpen(false);
-    const isFuture = isUpcomingFutureTrip(newTrip);
-    if (isFuture) {
-      setUTab('history');
-      addToast(`Chauffeur scheduled for ${newTrip.scheduleDisplay}! View in upcoming trips.`, 'check');
-    } else {
-      setActiveTrackingTripId(newTrip.id);
-      setLiveTrackingOpen(true);
-      setUTab('home');
-      addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via PhonePe.`, 'check');
-    }
+    setActiveTrackingTripId(newTrip.id);
+    setLiveTrackingOpen(true);
+    setUTab('home');
+    addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via PhonePe.`, 'check');
   };
 
   const updateTripStatusInSupabase = async (tripId, status, extra = {}) => {

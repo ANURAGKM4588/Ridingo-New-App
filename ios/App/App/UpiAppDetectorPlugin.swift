@@ -10,7 +10,8 @@ public class UpiAppDetectorPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getInstalledUpiApps", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "checkInstalledApps", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "canOpenUrl", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openUrl", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "openUrl", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "shareImageWithCaption", returnType: CAPPluginReturnPromise)
     ]
 
     private struct UpiAppCandidate {
@@ -108,6 +109,41 @@ public class UpiAppDetectorPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             UIApplication.shared.open(url, options: [:]) { success in
                 call.resolve(["completed": success])
+            }
+        }
+    }
+
+    @objc func shareImageWithCaption(_ call: CAPPluginCall) {
+        let caption = call.getString("caption") ?? ""
+        let base64Data = call.getString("base64Data")
+
+        var uiImage: UIImage? = nil
+        if let base64 = base64Data {
+            let cleanBase64 = base64.contains(",") ? String(base64.split(separator: ",")[1]) : base64
+            if let data = Data(base64Encoded: cleanBase64) {
+                uiImage = UIImage(data: data)
+            }
+        }
+
+        guard let image = uiImage else {
+            call.reject("Failed to decode image data")
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            var items: [Any] = [image]
+            if !caption.isEmpty {
+                items.append(caption)
+            }
+
+            let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+            if let popover = activityVC.popoverPresentationController {
+                popover.sourceView = self.bridge?.viewController?.view
+            }
+
+            self.bridge?.viewController?.present(activityVC, animated: true) {
+                call.resolve(["completed": true])
             }
         }
     }

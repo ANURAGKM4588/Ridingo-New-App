@@ -18,7 +18,10 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.List;
+import androidx.core.content.FileProvider;
 
 @CapacitorPlugin(name = "UpiAppDetector")
 public class UpiAppDetectorPlugin extends Plugin {
@@ -87,5 +90,83 @@ public class UpiAppDetectorPlugin extends Plugin {
         drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
         drawable.draw(canvas);
         return bitmap;
+    }
+
+    @PluginMethod
+    public void shareImageWithCaption(PluginCall call) {
+        try {
+            String base64Data = call.getString("base64Data");
+            String filePath = call.getString("filePath");
+            String caption = call.getString("caption", "");
+            String targetApp = call.getString("targetApp", "");
+
+            Uri fileUri = null;
+            if (base64Data != null && !base64Data.isEmpty()) {
+                if (base64Data.contains(",")) {
+                    base64Data = base64Data.split(",")[1];
+                }
+                byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                File cacheDir = getContext().getCacheDir();
+                File tempFile = new File(cacheDir, "ridingo_ticket_caption.png");
+                FileOutputStream fos = new FileOutputStream(tempFile);
+                fos.write(decodedBytes);
+                fos.flush();
+                fos.close();
+
+                fileUri = FileProvider.getUriForFile(
+                    getContext(),
+                    getContext().getPackageName() + ".fileprovider",
+                    tempFile
+                );
+            } else if (filePath != null && !filePath.isEmpty()) {
+                File file = new File(Uri.parse(filePath).getPath());
+                fileUri = FileProvider.getUriForFile(
+                    getContext(),
+                    getContext().getPackageName() + ".fileprovider",
+                    file
+                );
+            }
+
+            if (fileUri == null) {
+                call.reject("No image data or file path provided");
+                return;
+            }
+
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("image/png");
+            intent.putExtra(Intent.EXTRA_STREAM, fileUri);
+            if (caption != null && !caption.isEmpty()) {
+                intent.putExtra(Intent.EXTRA_TEXT, caption);
+            }
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            PackageManager pm = getContext().getPackageManager();
+            boolean isWhatsAppInstalled = false;
+            String waPackage = null;
+            try {
+                pm.getPackageInfo("com.whatsapp", PackageManager.GET_ACTIVITIES);
+                isWhatsAppInstalled = true;
+                waPackage = "com.whatsapp";
+            } catch (Exception e1) {
+                try {
+                    pm.getPackageInfo("com.whatsapp.w4b", PackageManager.GET_ACTIVITIES);
+                    isWhatsAppInstalled = true;
+                    waPackage = "com.whatsapp.w4b";
+                } catch (Exception ignored) {}
+            }
+
+            if ("whatsapp".equalsIgnoreCase(targetApp) && isWhatsAppInstalled && waPackage != null) {
+                intent.setPackage(waPackage);
+                getActivity().startActivity(intent);
+            } else {
+                Intent chooser = Intent.createChooser(intent, "Share Trip Ticket");
+                chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                getActivity().startActivity(chooser);
+            }
+
+            call.resolve();
+        } catch (Exception ex) {
+            call.reject("Failed to share image with caption: " + ex.getMessage());
+        }
     }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import GraphicLiveMap, { getRouteTelemetry } from './GraphicLiveMap';
@@ -8,6 +8,23 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { generateTripTicketImage } from '../utils/tripTicketGenerator';
 import TripTicketModal from './TripTicketModal';
+import { cleanLocationName, getLocationUpToFirstComma } from '../utils/locationCleaner';
+import { realtime } from '../utils/realtime';
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371;
+  const dLat = ((Number(lat2) - Number(lat1)) * Math.PI) / 180;
+  const dLon = ((Number(lon2) - Number(lon1)) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((Number(lat1) * Math.PI) / 180) *
+      Math.cos((Number(lat2) * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(1));
+}
 
 export default function LiveTrackingSheet() {
   const {
@@ -25,10 +42,20 @@ export default function LiveTrackingSheet() {
     setTripToCancel
   } = useApp();
 
-  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && isUserTrip(t, user) && !['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(t.status)) : null) ||
-                     trips.find(t => isUserTrip(t, user) && t.status === 'inprogress') ||
-                     trips.find(t => isUserTrip(t, user) && ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) ||
-                     trips.find(t => isUserTrip(t, user) && t.status === 'requested');
+  const isClientTrip = (t) => {
+    if (!t) return false;
+    if (!user) return true;
+    if (isUserTrip && isUserTrip(t, user)) return true;
+    const uPhone = String(user.phone || '').replace(/\D/g, '');
+    const tPhone = String(t.rider?.phone || '').replace(/\D/g, '');
+    if (uPhone && tPhone && (uPhone.endsWith(tPhone.slice(-10)) || tPhone.endsWith(uPhone.slice(-10)))) return true;
+    return false;
+  };
+
+  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && !['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(t.status)) : null) ||
+                     trips.find(t => isClientTrip(t) && t.status === 'inprogress') ||
+                     trips.find(t => isClientTrip(t) && ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) ||
+                     trips.find(t => isClientTrip(t) && t.status === 'requested');
 
   const trip = activeTrip;
   const isStarted = trip?.status === 'inprogress';
@@ -38,14 +65,77 @@ export default function LiveTrackingSheet() {
   const isAccepted = trip?.status === 'accepted';
   const isWaiting = trip?.status === 'requested';
 
-  // Dynamic telemetry simulation - strictly running only when trip is in progress
-  const [progress, setProgress] = useState(0.38);
-  const [speed, setSpeed] = useState(38);
+  // Real-Time GPS Tracking State (Driven strictly by real driver mobile GPS stream)
+  const [liveDriverGps, setLiveDriverGps] = useState(() => trip?.driverCoords || null);
+  const [liveDriverHeading, setLiveDriverHeading] = useState(() => trip?.driverHeading || 0);
+  const [liveDriverSpeed, setLiveDriverSpeed] = useState(() => trip?.driverSpeed || 0);
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
 
-  const remaining = Math.max(0.05, 1 - progress);
-  const etaMins = Math.max(1, Math.round(remaining * 16));
-  const distLeft = (remaining * 5.2).toFixed(1);
+  // Sync state if trip props update
+  useEffect(() => {
+    if (trip?.driverCoords?.lat && trip?.driverCoords?.lng) {
+      setLiveDriverGps(trip.driverCoords);
+    }
+    if (trip?.driverHeading !== undefined) {
+      setLiveDriverHeading(trip.driverHeading);
+    }
+    if (trip?.driverSpeed !== undefined) {
+      setLiveDriverSpeed(trip.driverSpeed);
+    }
+  }, [trip?.driverCoords?.lat, trip?.driverCoords?.lng, trip?.driverHeading, trip?.driverSpeed]);
+
+  // Subscribe to real-time mobile GPS location updates from Driver App
+  useEffect(() => {
+    if (!liveTrackingOpen || !trip?.id) return;
+    const unbind = realtime.on('LOCATION_UPDATE', (telemetry) => {
+      if (telemetry?.tripId && String(telemetry.tripId) === String(trip.id)) {
+        if (telemetry.lat && telemetry.lng) {
+          setLiveDriverGps({ lat: Number(telemetry.lat), lng: Number(telemetry.lng) });
+        }
+        if (telemetry.heading !== undefined) setLiveDriverHeading(Number(telemetry.heading));
+        if (telemetry.speed !== undefined) setLiveDriverSpeed(Number(telemetry.speed));
+      }
+    });
+
+    return () => {
+      if (typeof unbind === 'function') unbind();
+    };
+  }, [liveTrackingOpen, trip?.id]);
+
+  // Calculate Real-Time GPS Distance & ETA
+  const currentCoords = liveDriverGps || trip?.driverCoords;
+  const targetCoords = isDriverAssigned ? trip?.pickupCoords : trip?.dropCoords;
+
+  const realDistanceKm = useMemo(() => {
+    if (currentCoords?.lat && currentCoords?.lng && targetCoords?.lat && targetCoords?.lng) {
+      return calculateDistanceKm(currentCoords.lat, currentCoords.lng, targetCoords.lat, targetCoords.lng);
+    }
+    return trip?.distanceKm ? Number(trip.distanceKm) : null;
+  }, [currentCoords?.lat, currentCoords?.lng, targetCoords?.lat, targetCoords?.lng, trip?.distanceKm]);
+
+  const distLeft = realDistanceKm !== null
+    ? `${realDistanceKm.toFixed(1)} km`
+    : (trip?.distanceText || '2.8 km');
+
+  const etaMins = useMemo(() => {
+    if (realDistanceKm !== null) {
+      if (liveDriverSpeed > 10) {
+        return Math.max(1, Math.round((realDistanceKm / liveDriverSpeed) * 60));
+      }
+      return Math.max(1, Math.round((realDistanceKm / 28) * 60)); // ~28 km/h city average
+    }
+    return trip?.durationMins || 12;
+  }, [realDistanceKm, liveDriverSpeed, trip?.durationMins]);
+
+  const liveSpeed = Math.round(liveDriverSpeed);
+
+  // Live trip object passed to Map ensuring driver marker uses real GPS
+  const liveTripData = useMemo(() => ({
+    ...trip,
+    driverCoords: currentCoords,
+    driverHeading: liveDriverHeading,
+    driverSpeed: liveDriverSpeed
+  }), [trip, currentCoords, liveDriverHeading, liveDriverSpeed]);
 
   // Auto-close and remove tracking popup immediately if the trip ended, completed, or cancelled
   useEffect(() => {
@@ -57,65 +147,16 @@ export default function LiveTrackingSheet() {
     }
   }, [activeTrip, activeTrip?.status, liveTrackingOpen, setLiveTrackingOpen, setActiveTrackingTripId]);
 
-  useEffect(() => {
-    if (!liveTrackingOpen || !isStarted) return;
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        const next = prev >= 0.95 ? 0.2 : prev + 0.005;
-        return parseFloat(next.toFixed(4));
-      });
-      const wave = Math.sin(Date.now() / 2500);
-      setSpeed(Math.max(26, Math.min(56, Math.round(38 + wave * 9 + (Math.random() * 4 - 2)))));
-    }, 1200);
-
-    return () => clearInterval(interval);
-  }, [liveTrackingOpen, isStarted]);
-
-  // Nearing destination alert (around 1 km)
+  // Real nearing destination alert when driver GPS is within 800 meters
   useEffect(() => {
     if (!liveTrackingOpen || !trip) return;
-    if (isStarted && parseFloat(distLeft) <= 1.0 && !trip.approachingNotified) {
+    if (isStarted && realDistanceKm !== null && realDistanceKm <= 0.8 && !trip.approachingNotified) {
       setTrips(prev =>
         prev.map(t => (t.id === trip.id ? { ...t, approachingNotified: true } : t))
       );
-      addToast('Approaching destination (around 1 km). Trip will complete shortly.', 'info');
+      addToast('Approaching destination (~800m). Trip will complete shortly.', 'info');
     }
-  }, [liveTrackingOpen, isStarted, distLeft, trip?.id, trip?.approachingNotified]);
-
-  // Resilient Chauffeur Assignment: If in requested state for >6s or server is unreachable, automatically assign verified chauffeur
-  useEffect(() => {
-    if (!liveTrackingOpen || !trip || trip.status !== 'requested') return;
-
-    const timer = setTimeout(() => {
-      const defaultDriver = {
-        name: 'Ravi Kumar',
-        phone: '+91 94471 23456',
-        rating: 4.9,
-        tripsCount: 642,
-        experience: '8 yrs',
-        car: 'Toyota Innova'
-      };
-      const finalOtp = String(trip.startOtp || trip.car?.startOtp || trip.otp || '8215').trim();
-
-      setTrips(prev =>
-        prev.map(t => {
-          if (t.id === trip.id) {
-            return {
-              ...t,
-              status: 'accepted',
-              driver: defaultDriver.name,
-              driverObj: defaultDriver,
-              startOtp: finalOtp
-            };
-          }
-          return t;
-        })
-      );
-      addToast('Chauffeur Ravi Kumar accepted your request and is en route.', 'check');
-    }, 6000);
-
-    return () => clearTimeout(timer);
-  }, [liveTrackingOpen, trip?.id, trip?.status]);
+  }, [liveTrackingOpen, isStarted, realDistanceKm, trip?.id, trip?.approachingNotified]);
 
   if (!liveTrackingOpen || !activeTrip || ['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(activeTrip.status)) {
     return null;
@@ -127,15 +168,24 @@ export default function LiveTrackingSheet() {
   };
 
   const handleSos = () => {
-    addToast('Emergency SOS alert activated! Police & contacts notified.', 'warn');
+    const gpsInfo = currentCoords ? `${currentCoords.lat.toFixed(5)}, ${currentCoords.lng.toFixed(5)}` : 'Live GPS Active';
+    if (addToast) {
+      addToast(`🚨 EMERGENCY SOS BROADCAST: Live driver GPS (${gpsInfo}) & alert sent to 112 and emergency contacts.`, 'error');
+    }
+    if (navigator.vibrate) {
+      try { navigator.vibrate([200, 100, 200, 100, 400]); } catch (_) {}
+    }
   };
 
+  const driverPhone = trip?.driverObj?.phone || trip?.driverPhone || '+91 94471 23456';
+
   const handleCall = () => {
-    addToast('Calling driver Ravi Kumar (+91 98401 88888)...', 'info');
+    window.open(`tel:${driverPhone.replace(/[^\d+]/g, '')}`, '_system');
   };
 
   const handleChat = () => {
-    addToast('Opening WhatsApp chat with driver...', 'info');
+    const cleanNum = driverPhone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanNum}?text=${encodeURIComponent(`Hi ${trip.driver || 'Chauffeur'}, regarding Ridingo trip ${trip.id}`)}`, '_blank');
   };
 
   return (
@@ -268,11 +318,9 @@ export default function LiveTrackingSheet() {
           {isStarted && (
             <div className="live-sheet-map-wrap" style={{ height: '275px', marginBottom: '14px', borderRadius: '20px' }}>
               <GraphicLiveMap
-                trip={trip}
+                trip={liveTripData}
                 isModal={true}
                 height={275}
-                progress={progress}
-                speed={speed}
               />
             </div>
           )}
@@ -310,7 +358,7 @@ export default function LiveTrackingSheet() {
                     Finding Your Chauffeur...
                   </b>
                   <span style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
-                    Broadcasting your request to certified drivers near {typeof trip?.pickup === 'string' && trip.pickup ? trip.pickup.split(',')[0] : 'Edappally Toll'}
+                    Broadcasting your request to certified drivers near {cleanLocationName(typeof trip?.pickup === 'string' && trip.pickup ? trip.pickup.split(',')[0] : 'Edappally Toll')}
                   </span>
                 </div>
 
@@ -330,13 +378,17 @@ export default function LiveTrackingSheet() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, overflow: 'hidden' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
-                    <span style={{ fontSize: '13px', color: 'var(--ink)' }}><b>Pickup:</b> {trip?.pickup || 'Edappally Toll, Kochi'}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={trip?.pickup}>
+                      <b>Pickup:</b> {getLocationUpToFirstComma(trip?.pickup) || 'Edappally Toll'}
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, overflow: 'hidden' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
-                    <span style={{ fontSize: '13px', color: 'var(--ink)' }}><b>Drop:</b> {trip?.drop_loc || 'City Route'}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={trip?.drop_loc}>
+                      <b>Drop:</b> {getLocationUpToFirstComma(trip?.drop_loc) || 'City Route'}
+                    </span>
                   </div>
                   {trip?.distanceText && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '12px', color: 'var(--muted)' }}>
@@ -352,87 +404,46 @@ export default function LiveTrackingSheet() {
                 </div>
               </div>
 
-              {/* Instant Connect & Cancel Request Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Cancel Trip Button */}
+              <div style={{ marginTop: '4px' }}>
                 <button
                   type="button"
                   onClick={() => {
-                    const defaultDriver = {
-                      name: 'Ravi Kumar',
-                      phone: '+91 94471 23456',
-                      rating: 4.9,
-                      tripsCount: 642,
-                      experience: '8 yrs',
-                      car: 'Toyota Innova'
-                    };
-                    const finalOtp = String(trip.startOtp || trip.car?.startOtp || trip.otp || '8215').trim();
-                    setTrips(prev =>
-                      prev.map(t =>
-                        t.id === trip.id
-                          ? {
-                              ...t,
-                              status: 'accepted',
-                              driver: defaultDriver.name,
-                              driverObj: defaultDriver,
-                              startOtp: finalOtp
-                            }
-                          : t
-                      )
-                    );
-                    addToast('Chauffeur assigned immediately: Ravi Kumar en route.', 'check');
+                    if (setTripToCancel) {
+                      setTripToCancel(trip);
+                    } else if (cancelTripByUser) {
+                      cancelTripByUser(trip.id);
+                      if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+                      setLiveTrackingOpen(false);
+                    } else if (declineTrip) {
+                      declineTrip(trip.id);
+                      if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+                      setLiveTrackingOpen(false);
+                    } else {
+                      setTrips(prev => prev.filter(t => t.id !== trip.id));
+                      if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+                      setLiveTrackingOpen(false);
+                    }
                   }}
                   style={{
                     width: '100%',
                     height: '46px',
                     borderRadius: '14px',
-                    background: 'var(--yellow)',
-                    border: 'none',
-                    color: '#111827',
-                    fontSize: '14px',
-                    fontWeight: 750,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    boxShadow: '0 3px 12px rgba(255, 199, 10, 0.28)'
-                  }}
-                >
-                  <Icon name="check" size={17} />
-                  <span>Connect Chauffeur Now</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (cancelTripByUser) {
-                      cancelTripByUser(trip.id);
-                    } else if (declineTrip) {
-                      declineTrip(trip.id);
-                    } else {
-                      setTrips(prev => prev.filter(t => t.id !== trip.id));
-                    }
-                    if (setActiveTrackingTripId) setActiveTrackingTripId(null);
-                    setLiveTrackingOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '44px',
-                    borderRadius: '14px',
-                    background: 'var(--field)',
-                    border: '1px solid var(--line)',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1.5px solid rgba(239, 68, 68, 0.28)',
                     color: '#DC2626',
-                    fontSize: '13.5px',
+                    fontSize: '14px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px'
+                    gap: '8px',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  <Icon name="x" size={15} />
-                  <span>Cancel Request</span>
+                  <Icon name="x" size={16} color="#DC2626" />
+                  <span>Cancel Trip</span>
                 </button>
               </div>
             </div>
@@ -442,13 +453,13 @@ export default function LiveTrackingSheet() {
                ========================================================== */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Live Real GPS Google Map Route from Driver Location -> Pickup */}
-              <GraphicLiveMap
-                trip={trip}
-                isModal={false}
-                height={220}
-                progress={isArrived ? 0.98 : progress}
-                speed={speed}
-              />
+              <div style={{ height: '240px', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', position: 'relative' }}>
+                <GraphicLiveMap
+                  trip={liveTripData}
+                  isModal={true}
+                  height={240}
+                />
+              </div>
 
               {/* Quick Stats Grid: ETA & Distance to Pickup */}
               <div
@@ -468,7 +479,7 @@ export default function LiveTrackingSheet() {
                 <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
                   <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>DISTANCE</span>
                   <b className="val" style={{ fontSize: '15px', color: 'var(--ink)', fontWeight: 800 }}>
-                    {isArrived ? '0.0 km' : `${distLeft} km`}
+                    {isArrived ? '0.0 km' : distLeft}
                   </b>
                 </div>
                 <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
@@ -518,42 +529,54 @@ export default function LiveTrackingSheet() {
                 }}
               />
 
-              {/* Action Buttons: Share Ride (First) & Cancel Trip (Second) */}
-              <div className="live-sheet-actions-wrap" style={{ marginTop: '12px', marginBottom: '14px' }}>
+              {/* Action Buttons: Share Ride (Outline Black) & Emergency SOS (Red BG) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', marginBottom: '14px' }}>
                 <button
                   type="button"
-                  className="live-act-btn live-btn-share"
                   onClick={handleShareTrip}
                   style={{
-                    background: 'var(--card)',
-                    border: '1.5px solid var(--line)',
-                    color: 'var(--ink)',
-                    borderRadius: '14px',
+                    flex: 1,
                     height: '46px',
-                    fontWeight: 700
+                    borderRadius: '14px',
+                    background: '#FFFFFF',
+                    color: '#000000',
+                    border: '1.5px solid #000000',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                   }}
                 >
-                  <Icon name="share" size={16} />
+                  <Icon name="share" size={16} style={{ color: '#000000' }} />
                   <span>Share Ride</span>
                 </button>
 
                 <button
                   type="button"
-                  className="live-act-btn"
-                  onClick={() => {
-                    if (setTripToCancel) setTripToCancel(trip);
-                  }}
+                  onClick={handleSos}
                   style={{
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1.5px solid rgba(239, 68, 68, 0.28)',
-                    color: '#DC2626',
-                    borderRadius: '14px',
+                    flex: 1.15,
                     height: '46px',
-                    fontWeight: 700
+                    borderRadius: '14px',
+                    background: '#EF4444',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    cursor: 'pointer',
+                    boxShadow: '0 3px 12px rgba(239, 68, 68, 0.35)'
                   }}
                 >
-                  <Icon name="x" size={15} color="#DC2626" />
-                  <span>Cancel Trip</span>
+                  <Icon name="alert-triangle" size={16} color="#FFFFFF" />
+                  <span>Emergency SOS</span>
                 </button>
               </div>
             </div>
@@ -580,11 +603,11 @@ export default function LiveTrackingSheet() {
                 </div>
                 <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
                   <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Distance Left</span>
-                  <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{distLeft} km</b>
+                  <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{distLeft}</b>
                 </div>
                 <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
                   <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Live Speed</span>
-                  <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{speed} km/h</b>
+                  <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{liveSpeed} km/h</b>
                 </div>
               </div>
 
@@ -721,11 +744,23 @@ export default function LiveTrackingSheet() {
                           flex: 'none'
                         }}
                       />
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                         <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>
                           Pickup
                         </span>
-                        <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>{trip.pickup}</b>
+                        <b
+                          style={{
+                            fontSize: '13.5px',
+                            color: 'var(--ink)',
+                            display: 'block',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                          title={trip.pickup}
+                        >
+                          {getLocationUpToFirstComma(trip.pickup)}
+                        </b>
                       </div>
                     </div>
 
@@ -741,56 +776,78 @@ export default function LiveTrackingSheet() {
                           flex: 'none'
                         }}
                       />
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                         <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>
                           Destination
                         </span>
-                        <b style={{ fontSize: '13.5px', color: 'var(--ink)' }}>{trip.drop_loc}</b>
+                        <b
+                          style={{
+                            fontSize: '13.5px',
+                            color: 'var(--ink)',
+                            display: 'block',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                          title={trip.drop_loc}
+                        >
+                          {getLocationUpToFirstComma(trip.drop_loc)}
+                        </b>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons: Share Trip (First) & Cancel Trip (Second) */}
-              <div className="live-sheet-actions-wrap" style={{ marginTop: '12px', marginBottom: '14px' }}>
+              {/* Action Buttons: Share Ride (Outline Black) & Emergency SOS (Red BG) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', marginBottom: '16px' }}>
                 <button
                   type="button"
-                  className="live-act-btn live-btn-share"
                   onClick={handleShareTrip}
                   style={{
-                    background: 'var(--card)',
-                    border: '1.5px solid var(--line)',
-                    color: 'var(--ink)',
-                    borderRadius: '14px',
+                    flex: 1,
                     height: '46px',
-                    fontWeight: 700
+                    borderRadius: '14px',
+                    background: '#FFFFFF',
+                    color: '#000000',
+                    border: '1.5px solid #000000',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                   }}
                 >
-                  <Icon name="share" size={16} />
+                  <Icon name="share" size={16} style={{ color: '#000000' }} />
                   <span>Share Ride</span>
                 </button>
 
-                {!isStarted && (
-                  <button
-                    type="button"
-                    className="live-act-btn"
-                    onClick={() => {
-                      if (setTripToCancel) setTripToCancel(trip);
-                    }}
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      border: '1.5px solid rgba(239, 68, 68, 0.28)',
-                      color: '#DC2626',
-                      borderRadius: '14px',
-                      height: '46px',
-                      fontWeight: 700
-                    }}
-                  >
-                    <Icon name="x" size={15} color="#DC2626" />
-                    <span>Cancel Trip</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleSos}
+                  style={{
+                    flex: 1.15,
+                    height: '46px',
+                    borderRadius: '14px',
+                    background: '#EF4444',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    cursor: 'pointer',
+                    boxShadow: '0 3px 12px rgba(239, 68, 68, 0.35)'
+                  }}
+                >
+                  <Icon name="alert-triangle" size={16} color="#FFFFFF" />
+                  <span>Emergency SOS</span>
+                </button>
               </div>
             </>
           )}

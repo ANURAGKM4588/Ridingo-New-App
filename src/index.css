@@ -68,6 +68,63 @@
   color: var(--ink);
 }
 
+/* 2026 Modern UI: Live Trip Card Moving Neon Green Border */
+.live-trip-glow-wrap {
+  position: relative;
+  border-radius: 24px;
+  padding: 2.2px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
+  margin-bottom: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.live-trip-glow-wrap::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -60%;
+  width: 220%;
+  height: 220%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 60deg,
+    rgba(16, 185, 129, 0.2) 110deg,
+    #10B981 170deg,
+    #34D399 210deg,
+    rgba(16, 185, 129, 0.25) 260deg,
+    transparent 310deg,
+    transparent 360deg
+  );
+  animation: live-border-rotate 6s linear infinite;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.live-trip-glow-wrap.is-expanded::before {
+  opacity: 1;
+}
+
+.live-trip-glow-inner {
+  position: relative;
+  background: var(--card);
+  border-radius: 22px;
+  z-index: 1;
+  overflow: hidden;
+}
+
+@keyframes live-border-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+
 html {
   scroll-padding-top: env(safe-area-inset-top, 0px);
   overflow-x: hidden !important;
@@ -6560,6 +6617,72 @@ body[data-theme="dark"] .onboarding-continue-btn {
   flex: 1 1 auto !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
+}
+
+/* Cancellation Modal - Floating Minimal Modern Card with Mobile Frame Padding */
+.cancel-modal-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 10005 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  padding: 0 16px max(18px, calc(env(safe-area-inset-bottom, 0px) + 16px)) 16px !important;
+  box-sizing: border-box !important;
+  pointer-events: auto !important;
+}
+
+.cancel-modal-scrim {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  background: rgba(0, 0, 0, 0.68) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  pointer-events: auto !important;
+  animation: cancelModalFadeIn 0.22s ease-out !important;
+}
+
+.cancel-modal-card {
+  position: relative !important;
+  z-index: 20 !important;
+  width: 100% !important;
+  max-width: 420px !important;
+  background: var(--card, #1C1C1E) !important;
+  border-radius: 26px !important;
+  padding: 18px 18px 20px 18px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line, rgba(255, 255, 255, 0.1)) !important;
+  pointer-events: auto !important;
+  box-sizing: border-box !important;
+  animation: cancelModalSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.cancel-modal-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong, rgba(255, 255, 255, 0.2));
+  margin: 0 auto 16px auto;
+}
+
+@keyframes cancelModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cancelModalSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 

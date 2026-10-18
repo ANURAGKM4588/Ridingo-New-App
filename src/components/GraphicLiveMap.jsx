@@ -66,7 +66,7 @@ export default function GraphicLiveMap({
   speed = 38,
   onOpenModal
 }) {
-  const mapHeight = height || (isModal ? 280 : 190);
+  const mapHeight = height || (isModal ? 280 : 150);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const tileLayerRef = useRef(null);
@@ -86,7 +86,6 @@ export default function GraphicLiveMap({
     return ROUTE_COORDS;
   });
 
-  const [mapType, setMapType] = useState('roadmap'); // 'roadmap' | 'hybrid'
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     if (typeof document !== 'undefined') {
       return document.documentElement.getAttribute('data-theme') === 'dark' ||
@@ -113,25 +112,36 @@ export default function GraphicLiveMap({
   }, []);
 
   const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
+  const isOnTrip = trip?.status === 'inprogress';
   const driverLive = trip?.driverCoords;
 
-  const originCoords = isApproachingPickup
-    ? (driverLive?.lat && driverLive?.lng ? driverLive : trip?.pickupCoords)
-    : (driverLive?.lat && driverLive?.lng ? driverLive : trip?.pickupCoords);
+  // Real GPS Coordinates: Standard Route between Pickup and Destination
+  // Start: Pickup Location
+  // End: Destination / Drop Location
+  const originCoords = useMemo(() => {
+    if (trip?.pickupCoords?.lat && trip?.pickupCoords?.lng) {
+      return { lat: Number(trip.pickupCoords.lat), lng: Number(trip.pickupCoords.lng) };
+    }
+    return { lat: 10.0245, lng: 76.3075 };
+  }, [trip?.pickupCoords?.lat, trip?.pickupCoords?.lng]);
 
-  const destCoords = isApproachingPickup
-    ? trip?.pickupCoords
-    : (trip?.dropCoords || trip?.pickupCoords);
+  const destCoords = useMemo(() => {
+    if (trip?.dropCoords?.lat && trip?.dropCoords?.lng) {
+      return { lat: Number(trip.dropCoords.lat), lng: Number(trip.dropCoords.lng) };
+    }
+    if (trip?.pickupCoords?.lat && trip?.pickupCoords?.lng) {
+      return {
+        lat: Number(trip.pickupCoords.lat) + 0.012,
+        lng: Number(trip.pickupCoords.lng) + 0.009
+      };
+    }
+    return { lat: 10.0285, lng: 76.3120 };
+  }, [trip?.pickupCoords?.lat, trip?.pickupCoords?.lng, trip?.dropCoords?.lat, trip?.dropCoords?.lng]);
 
-  const originName = isApproachingPickup
-    ? (driverLive?.lat ? (trip?.driver || 'Chauffeur Location') : trip?.pickup)
-    : trip?.pickup;
+  const originName = trip?.pickup || 'Pickup Location';
+  const destName = trip?.drop_loc || trip?.drop || 'Destination';
 
-  const destName = isApproachingPickup
-    ? trip?.pickup
-    : (trip?.drop_loc || trip?.pickup);
-
-  // Fetch pure and perfect road directions from Google Maps API / Road Network Router
+  // Fetch standard driving route using Google Maps Directions Service
   useEffect(() => {
     let isSubscribed = true;
     async function loadRoadRoute() {
@@ -146,14 +156,15 @@ export default function GraphicLiveMap({
           setRoutePoints(result.points);
         }
       } catch (err) {
-        console.warn('[GraphicLiveMap] Error fetching road directions:', err);
+        console.warn('[GraphicLiveMap] Error fetching Google Maps Directions:', err);
       }
     }
     loadRoadRoute();
     return () => { isSubscribed = false; };
   }, [
     trip?.id,
-    trip?.status,
+    trip?.pickup,
+    trip?.drop_loc,
     originName,
     destName,
     originCoords?.lat,
@@ -162,12 +173,12 @@ export default function GraphicLiveMap({
     destCoords?.lng
   ]);
 
-  const geom = useMemo(() => getRouteTelemetry(routePoints, progress), [routePoints, progress]);
-  const carLat = driverLive?.lat || geom.lat;
-  const carLng = driverLive?.lng || geom.lng;
-  const carAngle = trip?.driverHeading !== undefined ? trip.driverHeading : (geom.angle || 0);
+  // Real Driver Mobile GPS location (or initial pickup position)
+  const carLat = driverLive?.lat || routePoints[0]?.lat || 10.0245;
+  const carLng = driverLive?.lng || routePoints[0]?.lng || 76.3075;
+  const carAngle = trip?.driverHeading !== undefined ? trip.driverHeading : 0;
 
-  // Initialize stock Google Map once container is ready
+  // Initialize Map once container is ready
   useEffect(() => {
     if (!containerRef.current) return;
     if (mapRef.current) {
@@ -182,14 +193,18 @@ export default function GraphicLiveMap({
 
     const map = L.map(containerRef.current, {
       center: [centerLat, centerLng],
-      zoom: isModal ? 13 : 12,
+      zoom: isModal ? 13 : 13,
       zoomControl: false,
-      attributionControl: false
+      attributionControl: false,
+      scrollWheelZoom: isModal,
+      dragging: isModal,
+      touchZoom: isModal,
+      doubleClickZoom: isModal
     });
     mapRef.current = map;
 
-    // Google Maps Stock Tile Layer
-    const googleCfg = GOOGLE_MAP_TILES[mapType] || GOOGLE_MAP_TILES.roadmap;
+    // Google Maps Tile Layer
+    const googleCfg = GOOGLE_MAP_TILES.roadmap;
     const gLayer = L.tileLayer(googleCfg.url, {
       subdomains: googleCfg.subdomains,
       maxZoom: googleCfg.maxZoom,
@@ -197,68 +212,101 @@ export default function GraphicLiveMap({
     }).addTo(map);
     tileLayerRef.current = gLayer;
 
-    // Google Maps Classic Blue Road Polyline
+    // Standard Google Maps Directions Route Polyline
     const latlngs = routePoints.map(p => [p.lat, p.lng]);
     
-    // Outer outline casing for Google Maps route
+    // Google Maps subtle road casing for contrast
     const polyOuter = L.polyline(latlngs, {
-      color: isDarkTheme ? '#0D47A1' : '#1558B0',
+      color: isDarkTheme ? '#1E3A8A' : '#1A73E8',
       weight: 7,
-      opacity: 0.95,
+      opacity: 0.35,
       lineJoin: 'round',
       lineCap: 'round'
     }).addTo(map);
     polylineOuterRef.current = polyOuter;
 
-    // Inner bright blue Google Maps route
+    // Standard Google Maps driving blue route
     const polyInner = L.polyline(latlngs, {
-      color: isDarkTheme ? '#4285F4' : '#1A73E8',
+      color: isDarkTheme ? '#3B82F6' : '#4285F4',
       weight: 5,
-      opacity: 1,
+      opacity: 0.95,
       lineJoin: 'round',
       lineCap: 'round'
     }).addTo(map);
     polylineInnerRef.current = polyInner;
 
-    // Origin Marker: Blue circular dot
+    // Proper Google Maps Start Marker (Pickup Location - Green Pin)
     const originIcon = L.divIcon({
       className: 'gmap-origin-marker',
-      html: '<div style="width:14px;height:14px;background:#1A73E8;border:3px solid #FFFFFF;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
+      html: `
+        <div style="display:flex; flex-direction:column; align-items:center; transform:translateY(-14px);">
+          <svg width="24" height="30" viewBox="0 0 24 30" fill="none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 7.8 12 18 12 18s12-10.2 12-18c0-6.63-5.37-12-12-12z" fill="#0F9D58"/>
+            <circle cx="12" cy="11.5" r="4.5" fill="#FFFFFF"/>
+            <circle cx="12" cy="11.5" r="2.2" fill="#0F9D58"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [24, 30],
+      iconAnchor: [12, 28]
     });
     originMarkerRef.current = L.marker([firstPt.lat, firstPt.lng], { icon: originIcon }).addTo(map);
 
-    // Destination Marker: Official Google Maps Red Teardrop Pin
+    // Proper Google Maps End Marker (Destination Location - Red Pin)
     const destIcon = L.divIcon({
       className: 'gmap-dest-marker',
-      html: `<svg width="26" height="36" viewBox="0 0 24 34" fill="none" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));">
-        <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 22 12 22s12-13.5 12-22c0-6.63-5.37-12-12-12z" fill="#EA4335"/>
-        <circle cx="12" cy="11.5" r="4.2" fill="#FFFFFF"/>
-        <circle cx="12" cy="11.5" r="2" fill="#B31412"/>
-      </svg>`,
-      iconSize: [26, 36],
-      iconAnchor: [13, 36]
+      html: `
+        <div style="display:flex; flex-direction:column; align-items:center; transform:translateY(-14px);">
+          <svg width="24" height="30" viewBox="0 0 24 30" fill="none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 7.8 12 18 12 18s12-10.2 12-18c0-6.63-5.37-12-12-12z" fill="#EA4335"/>
+            <circle cx="12" cy="11.5" r="4.5" fill="#FFFFFF"/>
+            <circle cx="12" cy="11.5" r="2.2" fill="#B31412"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [24, 30],
+      iconAnchor: [12, 28]
     });
     destMarkerRef.current = L.marker([lastPt.lat, lastPt.lng], { icon: destIcon }).addTo(map);
 
-    // Live Moving Vehicle Marker on the Road
+    // Live Chauffeur Vehicle Puck (Luxury Minimalist Design)
+    const carAccentColor = isOnTrip ? '#22C55E' : '#EAB308';
     const carIcon = L.divIcon({
       className: 'gmap-car-marker',
-      html: `<div style="transform: rotate(${carAngle || 0}deg); width:28px; height:28px; background:#000000; border:2px solid #FFC70A; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.45); transition: transform 0.2s ease;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFC70A"><polygon points="12 2 19 21 12 17 5 21 12 2"/></svg>
-      </div>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14]
+      html: `
+        <div style="position:relative; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <div style="position:absolute; inset:-3px; border-radius:50%; background:${carAccentColor}33; animation:pulse 2s infinite;"></div>
+          <div style="transform: rotate(${carAngle || 0}deg); width:28px; height:28px; background:#0F172A; border:2px solid ${carAccentColor}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,0.35); transition: transform 0.25s ease;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="${carAccentColor}">
+              <polygon points="12 2 19 21 12 17 5 21 12 2"/>
+            </svg>
+          </div>
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
     });
     carMarkerRef.current = L.marker([carLat, carLng], { icon: carIcon }).addTo(map);
 
     // Fit map bounds smoothly
     if (latlngs.length >= 2) {
-      map.fitBounds(L.latLngBounds(latlngs), { padding: [32, 32] });
+      map.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
     }
 
+    // Invalidate size after container settles
+    const tId = setTimeout(() => {
+      try {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+          if (latlngs.length >= 2) {
+            mapRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
+          }
+        }
+      } catch (_) {}
+    }, 150);
+
     return () => {
+      clearTimeout(tId);
       map.remove();
       mapRef.current = null;
     };
@@ -271,7 +319,7 @@ export default function GraphicLiveMap({
       carMarkerRef.current.setLatLng([carLat, carLng]);
       const el = carMarkerRef.current.getElement();
       if (el) {
-        const iconDiv = el.querySelector('div');
+        const iconDiv = el.querySelector('div > div:nth-child(2)');
         if (iconDiv) {
           iconDiv.style.transform = `rotate(${carAngle}deg)`;
         }
@@ -298,38 +346,19 @@ export default function GraphicLiveMap({
       destMarkerRef.current.setLatLng([last.lat, last.lng]);
     }
     try {
-      mapRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [32, 32] });
+      mapRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
     } catch (e) {}
   }, [routePoints]);
 
   // Update polyline colors when theme changes
   useEffect(() => {
     if (polylineOuterRef.current) {
-      polylineOuterRef.current.setStyle({ color: isDarkTheme ? '#0D47A1' : '#1558B0' });
+      polylineOuterRef.current.setStyle({ color: isDarkTheme ? '#1E3A8A' : '#1A73E8' });
     }
     if (polylineInnerRef.current) {
-      polylineInnerRef.current.setStyle({ color: isDarkTheme ? '#4285F4' : '#1A73E8' });
+      polylineInnerRef.current.setStyle({ color: isDarkTheme ? '#3B82F6' : '#4285F4' });
     }
   }, [isDarkTheme]);
-
-  // Update tile layer when mapType toggles
-  useEffect(() => {
-    if (mapRef.current && tileLayerRef.current) {
-      const map = mapRef.current;
-      try {
-        map.removeLayer(tileLayerRef.current);
-      } catch (e) {}
-      const googleCfg = GOOGLE_MAP_TILES[mapType] || GOOGLE_MAP_TILES.roadmap;
-      const newLayer = L.tileLayer(googleCfg.url, {
-        subdomains: googleCfg.subdomains,
-        maxZoom: googleCfg.maxZoom,
-        attribution: googleCfg.attribution
-      }).addTo(map);
-      tileLayerRef.current = newLayer;
-    }
-  }, [mapType]);
-
-  const isSatelliteMode = mapType === 'satellite' || mapType === 'hybrid';
 
   return (
     <div
@@ -339,48 +368,57 @@ export default function GraphicLiveMap({
         height: `${mapHeight}px`,
         borderRadius: isModal ? '20px' : '16px',
         overflow: 'hidden',
-        border: '1.5px solid var(--line)',
-        boxShadow: isDarkTheme ? '0 4px 18px rgba(0, 0, 0, 0.4)' : '0 4px 18px rgba(0, 0, 0, 0.08)',
+        border: '1px solid var(--line)',
+        boxShadow: isDarkTheme ? '0 2px 12px rgba(0, 0, 0, 0.35)' : '0 2px 10px rgba(0, 0, 0, 0.04)',
         background: isDarkTheme ? '#141519' : '#EDEEF2'
       }}
       onClick={!isModal && onOpenModal ? onOpenModal : undefined}
     >
-      {/* Map Leaflet Container with theme class and satellite exclusion */}
+      {/* Map Leaflet Container with theme class */}
       <div
         ref={containerRef}
-        className={`gmap-container ${isSatelliteMode ? 'layer-satellite' : ''} ${isDarkTheme ? 'gmap-dark-mode' : 'gmap-light-mode'}`}
+        className={`gmap-container ${isDarkTheme ? 'gmap-dark-mode' : 'gmap-light-mode'}`}
         style={{ width: '100%', height: '100%' }}
       />
 
-      {/* Stock Google Maps [Map | Satellite] Switcher */}
-      <div className="gmap-stock-type-ctrl" style={{ top: '8px', left: '8px' }} onClick={e => e.stopPropagation()}>
-        <button
-          type="button"
-          className={`gmap-stock-type-btn ${mapType === 'roadmap' ? 'active' : ''}`}
-          onClick={() => setMapType('roadmap')}
+      {/* Minimal Top-Right Status Badge (Zero AI Clutter, only in full modal) */}
+      {isModal && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            zIndex: 400,
+            background: isDarkTheme ? 'rgba(15, 23, 42, 0.82)' : 'rgba(255, 255, 255, 0.92)',
+            backdropFilter: 'blur(8px)',
+            color: isDarkTheme ? '#F8FAFC' : '#0F172A',
+            fontSize: '11px',
+            fontWeight: 800,
+            padding: '4px 10px',
+            borderRadius: '999px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5.5px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            border: '1px solid var(--line)',
+            pointerEvents: 'none',
+            letterSpacing: '0.02em'
+          }}
         >
-          Map
-        </button>
-        <button
-          type="button"
-          className={`gmap-stock-type-btn ${mapType === 'hybrid' ? 'active' : ''}`}
-          onClick={() => setMapType('hybrid')}
-        >
-          Satellite
-        </button>
-      </div>
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: isOnTrip ? '#22C55E' : '#EAB308',
+              boxShadow: `0 0 6px ${isOnTrip ? '#22C55E' : '#EAB308'}`
+            }}
+          />
+          <span>{isOnTrip ? 'Live Trip' : isApproachingPickup ? 'Chauffeur On Way' : 'Live Route'}</span>
+        </div>
+      )}
 
-      {/* Stock Google Maps Watermark Logo */}
-      <div className="gmap-stock-logo" style={{ bottom: '6px', left: '8px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#4285F4' }}>G</span>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#EA4335' }}>o</span>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#FBBC05' }}>o</span>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#4285F4' }}>g</span>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#34A853' }}>l</span>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#EA4335' }}>e</span>
-      </div>
-
-      {/* Stock Google Maps Zoom Controls */}
+      {/* Stock Google Maps Zoom Controls only in full modal */}
       {isModal && (
         <div className="gmap-stock-zoom-ctrl" style={{ bottom: '12px', right: '10px' }} onClick={e => e.stopPropagation()}>
           <button
@@ -400,32 +438,6 @@ export default function GraphicLiveMap({
           >
             −
           </button>
-        </div>
-      )}
-
-      {/* Mini Overlay Button: Tap to open fullscreen tracker */}
-      {!isModal && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '8px',
-            right: '8px',
-            zIndex: 400,
-            background: isDarkTheme ? '#202124' : '#000000',
-            color: '#FFFFFF',
-            fontSize: '11.5px',
-            fontWeight: 700,
-            padding: '5px 12px',
-            borderRadius: '999px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.45)',
-            border: isDarkTheme ? '1px solid rgba(255, 255, 255, 0.15)' : 'none',
-            cursor: 'pointer'
-          }}
-        >
-          <span>Live Tracking</span>
         </div>
       )}
     </div>
