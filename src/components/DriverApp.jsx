@@ -3408,303 +3408,197 @@ export default function DriverApp() {
 
                         {t.status === 'inprogress' && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-                            {/* iOS Floating Capsule Dock (Apple / Tesla style dual-pill segmented toggles) */}
-                            <div
-                              style={{
-                                background: '#F1F5F9',
-                                borderRadius: '26px',
-                                padding: '4px',
-                                boxShadow: 'inset 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 8px -2px rgba(15, 23, 42, 0.05)',
-                                border: '1px solid #E2E8F0',
-                                display: 'grid',
-                                gridTemplateColumns: '1fr 1fr',
-                                gap: '4px',
-                                position: 'relative'
-                              }}
-                            >
-                              {/* Capsule Segment 1: Additional Trip (Distance) */}
+                            {/* Ultra-Clean Minimalist Text Buttons with Simple Badge Pills */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                              {/* Feature A: Additional Trip Text Button */}
                               <button
                                 type="button"
                                 onClick={() => handleToggleAdditionalRide(t.id)}
                                 style={{
-                                  padding: '8px 12px',
-                                  borderRadius: '22px',
-                                  background: isAdditionalRideActive ? '#0F172A' : '#FFFFFF',
-                                  border: 'none',
-                                  color: isAdditionalRideActive ? '#FFFFFF' : '#0F172A',
+                                  padding: '10px 12px',
+                                  borderRadius: '12px',
+                                  border: isAdditionalRideActive ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+                                  background: isAdditionalRideActive ? '#F0FDF4' : '#FFFFFF',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  gap: '8px',
+                                  gap: '6px',
                                   cursor: 'pointer',
-                                  boxShadow: isAdditionalRideActive
-                                    ? '0 4px 14px rgba(15, 23, 42, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                                    : '0 2px 6px rgba(15, 23, 42, 0.04)',
-                                  transition: 'all 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
-                                  textAlign: 'left',
-                                  minHeight: '52px',
-                                  overflow: 'hidden'
+                                  transition: 'all 0.18s ease',
+                                  minWidth: 0
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                  {/* Icon Circle */}
-                                  <div
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                                  <Icon
+                                    name="route"
+                                    size={15}
+                                    color={isAdditionalRideActive ? '#059669' : '#475569'}
+                                  />
+                                  <span
                                     style={{
-                                      width: '32px',
-                                      height: '32px',
-                                      borderRadius: '50%',
-                                      background: isAdditionalRideActive ? 'rgba(16, 185, 129, 0.2)' : '#F8FAFC',
-                                      color: isAdditionalRideActive ? '#34D399' : '#2563EB',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      flexShrink: 0
+                                      fontSize: '12.5px',
+                                      fontWeight: 700,
+                                      color: isAdditionalRideActive ? '#065F46' : '#0F172A',
+                                      whiteSpace: 'nowrap'
                                     }}
                                   >
-                                    <Icon name="route" size={15} />
-                                  </div>
-
-                                  <div style={{ minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <span style={{ fontSize: '11.5px', fontWeight: 750, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
-                                        Extra Km
-                                      </span>
-                                      {isAdditionalRideActive && (
-                                        <span
-                                          className="animate-pulse-dot"
-                                          style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }}
-                                        />
-                                      )}
-                                    </div>
-                                    <span
-                                      style={{
-                                        fontSize: '11px',
-                                        fontWeight: 650,
-                                        color: isAdditionalRideActive ? '#34D399' : '#64748B',
-                                        fontVariantNumeric: 'tabular-nums',
-                                        display: 'block',
-                                        lineHeight: '1.2',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}
-                                    >
-                                      {extraKm > 0 ? `+${formatDistanceKm(extraKm)} (+₹${extFare})` : '₹18/km'}
-                                    </span>
-                                  </div>
+                                    {isAdditionalRideActive ? 'Stop Extra' : 'Extra Trip'}
+                                  </span>
                                 </div>
 
-                                {/* Apple / Tesla Segmented Switch Toggle Pill */}
-                                <div
+                                <span
                                   style={{
-                                    width: '34px',
-                                    height: '20px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    padding: '3px 8px',
                                     borderRadius: '999px',
-                                    background: isAdditionalRideActive ? '#10B981' : '#E2E8F0',
-                                    padding: '2px',
-                                    display: 'flex',
+                                    background: isAdditionalRideActive ? '#DCFCE7' : '#F1F5F9',
+                                    color: isAdditionalRideActive ? '#15803D' : '#64748B',
+                                    whiteSpace: 'nowrap',
+                                    display: 'inline-flex',
                                     alignItems: 'center',
-                                    flexShrink: 0,
-                                    transition: 'background 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
-                                    position: 'relative'
+                                    gap: '4px',
+                                    flexShrink: 0
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      width: '16px',
-                                      height: '16px',
-                                      borderRadius: '50%',
-                                      background: '#FFFFFF',
-                                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-                                      transform: isAdditionalRideActive ? 'translateX(14px)' : 'translateX(0)',
-                                      transition: 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)'
-                                    }}
-                                  />
-                                </div>
+                                  {isAdditionalRideActive && (
+                                    <span
+                                      className="animate-pulse-dot"
+                                      style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }}
+                                    />
+                                  )}
+                                  {isAdditionalRideActive
+                                    ? `+${formatDistanceKm(extraKm)}`
+                                    : (extraKm > 0 ? `+${formatDistanceKm(extraKm)}` : '₹18/km')}
+                                </span>
                               </button>
 
-                              {/* Capsule Segment 2: Waiting Timer */}
+                              {/* Feature B: Waiting Time Text Button */}
                               <button
                                 type="button"
                                 onClick={() => handleToggleWaiting(t.id)}
                                 style={{
-                                  padding: '8px 12px',
-                                  borderRadius: '22px',
-                                  background: isWaitingActive ? '#0F172A' : '#FFFFFF',
-                                  border: 'none',
-                                  color: isWaitingActive ? '#FFFFFF' : '#0F172A',
+                                  padding: '10px 12px',
+                                  borderRadius: '12px',
+                                  border: isWaitingActive
+                                    ? (isWaitingFree ? '1.5px solid #F59E0B' : '1.5px solid #EF4444')
+                                    : '1px solid #E2E8F0',
+                                  background: isWaitingActive
+                                    ? (isWaitingFree ? '#FFFBEB' : '#FEF2F2')
+                                    : '#FFFFFF',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  gap: '8px',
+                                  gap: '6px',
                                   cursor: 'pointer',
-                                  boxShadow: isWaitingActive
-                                    ? '0 4px 14px rgba(15, 23, 42, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                                    : '0 2px 6px rgba(15, 23, 42, 0.04)',
-                                  transition: 'all 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
-                                  textAlign: 'left',
-                                  minHeight: '52px',
-                                  overflow: 'hidden'
+                                  transition: 'all 0.18s ease',
+                                  minWidth: 0
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                  {/* Icon Circle */}
-                                  <div
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                                  <Icon
+                                    name="clock"
+                                    size={15}
+                                    color={isWaitingActive ? (isWaitingFree ? '#D97706' : '#DC2626') : '#475569'}
+                                  />
+                                  <span
                                     style={{
-                                      width: '32px',
-                                      height: '32px',
-                                      borderRadius: '50%',
-                                      background: isWaitingActive ? (isWaitingFree ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)') : '#F8FAFC',
-                                      color: isWaitingActive ? (isWaitingFree ? '#FBBF24' : '#F87171') : '#D97706',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      flexShrink: 0
+                                      fontSize: '12.5px',
+                                      fontWeight: 700,
+                                      color: isWaitingActive
+                                        ? (isWaitingFree ? '#92400E' : '#991B1B')
+                                        : '#0F172A',
+                                      whiteSpace: 'nowrap'
                                     }}
                                   >
-                                    <Icon name="clock" size={15} />
-                                  </div>
-
-                                  <div style={{ minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <span style={{ fontSize: '11.5px', fontWeight: 750, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
-                                        Waiting
-                                      </span>
-                                      {isWaitingActive && (
-                                        <span
-                                          className="animate-pulse-dot"
-                                          style={{
-                                            width: '5px',
-                                            height: '5px',
-                                            borderRadius: '50%',
-                                            background: isWaitingFree ? '#F59E0B' : '#EF4444',
-                                            flexShrink: 0
-                                          }}
-                                        />
-                                      )}
-                                    </div>
-                                    <span
-                                      style={{
-                                        fontSize: '11px',
-                                        fontWeight: 650,
-                                        color: isWaitingActive ? (isWaitingFree ? '#FBBF24' : '#F87171') : '#64748B',
-                                        fontVariantNumeric: 'tabular-nums',
-                                        display: 'block',
-                                        lineHeight: '1.2',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}
-                                    >
-                                      {waitingSeconds > 0
-                                        ? `${formatDurationSeconds(waitingSeconds)} ${waitFare > 0 ? `(+₹${waitFare})` : 'Free'}`
-                                        : '60m Free'}
-                                    </span>
-                                  </div>
+                                    {isWaitingActive ? 'Stop Wait' : 'Waiting'}
+                                  </span>
                                 </div>
 
-                                {/* Apple / Tesla Segmented Switch Toggle Pill */}
-                                <div
+                                <span
                                   style={{
-                                    width: '34px',
-                                    height: '20px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    padding: '3px 8px',
                                     borderRadius: '999px',
-                                    background: isWaitingActive ? (isWaitingFree ? '#F59E0B' : '#EF4444') : '#E2E8F0',
-                                    padding: '2px',
-                                    display: 'flex',
+                                    background: isWaitingActive
+                                      ? (isWaitingFree ? '#FEF3C7' : '#FEE2E2')
+                                      : '#F1F5F9',
+                                    color: isWaitingActive
+                                      ? (isWaitingFree ? '#B45309' : '#DC2626')
+                                      : '#64748B',
+                                    whiteSpace: 'nowrap',
+                                    display: 'inline-flex',
                                     alignItems: 'center',
-                                    flexShrink: 0,
-                                    transition: 'background 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
-                                    position: 'relative'
+                                    gap: '4px',
+                                    flexShrink: 0
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      width: '16px',
-                                      height: '16px',
-                                      borderRadius: '50%',
-                                      background: '#FFFFFF',
-                                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-                                      transform: isWaitingActive ? 'translateX(14px)' : 'translateX(0)',
-                                      transition: 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)'
-                                    }}
-                                  />
-                                </div>
+                                  {isWaitingActive && (
+                                    <span
+                                      className="animate-pulse-dot"
+                                      style={{
+                                        width: '5px',
+                                        height: '5px',
+                                        borderRadius: '50%',
+                                        background: isWaitingFree ? '#F59E0B' : '#EF4444'
+                                      }}
+                                    />
+                                  )}
+                                  {isWaitingActive
+                                    ? formatDurationSeconds(waitingSeconds)
+                                    : (waitingSeconds > 0 ? formatDurationSeconds(waitingSeconds) : '60m Free')}
+                                </span>
                               </button>
                             </div>
 
-                            {/* Real-Time Dynamic Bill Breakdown Card */}
+                            {/* Minimal Live Bill Breakdown (Zero clutter) */}
                             {(isAdditionalRideActive || isWaitingActive || extraKm > 0 || waitingSeconds > 0) && (
                               <div
                                 style={{
                                   background: '#F8FAFC',
                                   border: '1px solid #F1F5F9',
-                                  borderRadius: '16px',
-                                  padding: '14px 16px',
+                                  borderRadius: '12px',
+                                  padding: '10px 12px',
                                   display: 'flex',
                                   flexDirection: 'column',
-                                  gap: '8px'
+                                  gap: '6px',
+                                  fontSize: '12px'
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                    Live Bill Breakdown
-                                  </span>
-                                  <span
-                                    style={{
-                                      fontSize: '10.5px',
-                                      fontWeight: 650,
-                                      background: (isAdditionalRideActive || isWaitingActive) ? '#ECFDF5' : '#F1F5F9',
-                                      color: (isAdditionalRideActive || isWaitingActive) ? '#059669' : '#64748B',
-                                      padding: '2px 8px',
-                                      borderRadius: '999px',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px'
-                                    }}
-                                  >
-                                    {(isAdditionalRideActive || isWaitingActive) && (
-                                      <span className="animate-pulse-dot" style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
-                                    )}
-                                    <span>{(isAdditionalRideActive || isWaitingActive) ? 'Live Metering' : 'Frozen'}</span>
-                                  </span>
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
                                   <span>Base Booking Fare</span>
                                   <b style={{ color: '#0F172A' }}>₹{fare}</b>
                                 </div>
 
                                 {(extraKm > 0 || isAdditionalRideActive) && (
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
-                                    <span>
-                                      Additional Trip ({formatDistanceKm(extraKm)} @ ₹{RATE_PER_KM}/km)
-                                    </span>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
+                                    <span>Extra ({formatDistanceKm(extraKm)} @ ₹{RATE_PER_KM}/km)</span>
                                     <b style={{ color: '#059669' }}>+₹{extFare}</b>
                                   </div>
                                 )}
 
                                 {(waitingSeconds > 0 || isWaitingActive) && (
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
-                                    <span>
-                                      Waiting Time ({formatDurationSeconds(waitingSeconds)}{isWaitingFree ? ' · Free 60m' : ` · +${billableWaitingMinutes}m @ ₹${WAITING_RATE_PER_MIN}/m`})
-                                    </span>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
+                                    <span>Wait ({formatDurationSeconds(waitingSeconds)}{isWaitingFree ? ' · Free' : ` · +${billableWaitingMinutes}m`})</span>
                                     <b style={{ color: waitFare > 0 ? '#DC2626' : '#059669' }}>
-                                      {waitFare > 0 ? `+₹${waitFare}` : 'Free (₹0)'}
+                                      {waitFare > 0 ? `+₹${waitFare}` : 'Free'}
                                     </b>
                                   </div>
                                 )}
 
-                                <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+                                <div style={{ height: '1px', background: '#E2E8F0', margin: '2px 0' }} />
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                   <div>
-                                    <b style={{ fontSize: '13.5px', color: '#0F172A' }}>Estimated Total Fare</b>
-                                    <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>
+                                    <span style={{ fontWeight: 650, color: '#0F172A' }}>Estimated Total</span>
+                                    <span style={{ fontSize: '10.5px', color: '#64748B', display: 'block' }}>
                                       Driver Net (70%): ₹{driverEarn}
                                     </span>
                                   </div>
-                                  <b style={{ fontSize: '17px', color: '#0F172A', fontWeight: 800 }}>
+                                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 800 }}>
                                     ₹{liveTotalFare}
                                   </b>
                                 </div>
