@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import L from 'leaflet';
 import Icon from './Icon';
 import { getDeviceLocation, reverseGeocode, getCachedDeviceLocation } from '../lib/deviceLocation';
+import { getCurrentDevicePosition } from '../services/nativeLocationService';
 import { GOOGLE_MAP_TILES, cleanPlusCode, fetchNearestLandmarkByCoordinates } from '../services/googleMapsService';
 
 export default function MapPickerModal({ isOpen, onClose, onSelect, targetField = 'pickup' }) {
@@ -254,29 +255,25 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
       }
     }
 
-    // 2. Hardware GPS fast sync in parallel without blocking UI
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (pos && pos.coords) {
-            const { latitude, longitude, accuracy } = pos.coords;
-            if (mapInstanceRef.current) {
-              mapInstanceRef.current.panTo([latitude, longitude], { animate: false });
-              if (deviceCircleRef.current) {
-                deviceCircleRef.current.setLatLng([latitude, longitude]);
-                deviceCircleRef.current.setRadius(Math.min(accuracy || 20, 80));
-              }
-              if (deviceMarkerRef.current) {
-                deviceMarkerRef.current.setLatLng([latitude, longitude]);
-              }
+    // 2. Hardware GPS fast sync in parallel without blocking UI (Strictly routed through Capacitor Geolocation on iOS/Android)
+    getCurrentDevicePosition({ enableHighAccuracy: true, timeout: 3500, maximumAge: 60000 })
+      .then((pos) => {
+        if (pos && pos.coords) {
+          const { latitude, longitude, accuracy } = pos.coords;
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.panTo([latitude, longitude], { animate: false });
+            if (deviceCircleRef.current) {
+              deviceCircleRef.current.setLatLng([latitude, longitude]);
+              deviceCircleRef.current.setRadius(Math.min(accuracy || 20, 80));
             }
-            geocodeCenter(latitude, longitude);
+            if (deviceMarkerRef.current) {
+              deviceMarkerRef.current.setLatLng([latitude, longitude]);
+            }
           }
-        },
-        null,
-        { enableHighAccuracy: true, timeout: 2000, maximumAge: 300000 }
-      );
-    }
+          geocodeCenter(latitude, longitude);
+        }
+      })
+      .catch(() => {});
   };
 
   const handleConfirm = () => {

@@ -1117,12 +1117,12 @@ const PAGES = {
     <div class="grid kpis">
       ${kpi("Gross Volume (GMV)", money(gmv), "Total cumulative booking value", "+18.4% MoM", "status-pill green")}
       ${kpi("Platform Net (15%)", money(comm), "Retained platform commission", "15% Take-Rate", "status-pill amber")}
-      ${kpi("Chauffeur Payouts (85%)", money(payouts), "Settled to verified partner chauffeurs", "Settled", "status-pill green")}
+      ${kpi("Driver Payouts (85%)", money(payouts), "Settled to verified partner drivers", "Settled", "status-pill green")}
       ${kpi("Completed Trips", `${c.completed || 184} / ${c.total || 184}`, "100% fulfillment rate across Kerala", "Fulfilled", "status-pill blue")}
     </div>
 
     <div class="grid kpis">
-      ${kpi("Registered Fleet", DB.drivers.length, "Active professional chauffeurs", "Verified Fleet")}
+      ${kpi("Registered Fleet", DB.drivers.length, "Active professional drivers", "Verified Fleet")}
       ${kpi("Customer Accounts", DB.users.length, "Synced user profiles & riders", "Active Riders")}
       ${kpi("Operating Expense", money(f.tot.expense || 1730), "Google Maps API, SMS & Database")}
       ${kpi("Net Operating Profit", money(comm - (f.tot.expense || 1730)), "Retained commission minus costs", "Profitable", "status-pill green")}
@@ -1156,7 +1156,7 @@ const PAGES = {
     const newDrivers = DB.drivers.filter(d => d.status === "pending" || d.category === "new_registration");
     const oldDrivers = DB.drivers.filter(d => d.status === "approved" || d.category === "old_registered");
 
-    $("#view").innerHTML = head("Drivers & KYC Management", `${DB.drivers.length} registered partner chauffeurs`, `
+    $("#view").innerHTML = head("Drivers & KYC Management", `${DB.drivers.length} registered partner drivers`, `
       <div style="position:relative;display:flex;align-items:center">
         <input id="q" placeholder="Search by name, PIN, mobile, ID…">
       </div>
@@ -1167,13 +1167,13 @@ const PAGES = {
     <!-- Category Segmented Control (Matching Profile Card Aesthetic) -->
     <div class="segmented">
       <button id="cat-all" class="${activeDriverCategory === 'all' ? 'active' : ''}" onclick="setDriverCat('all')">
-        <span>All Chauffeurs</span> <span class="count-chip">${DB.drivers.length}</span>
+        <span>All Drivers</span> <span class="count-chip">${DB.drivers.length}</span>
       </button>
       <button id="cat-new" class="${activeDriverCategory === 'new' ? 'active' : ''}" onclick="setDriverCat('new')">
         <span>New Registrations</span> <span class="count-chip amber">${newDrivers.length}</span>
       </button>
       <button id="cat-old" class="${activeDriverCategory === 'old' ? 'active' : ''}" onclick="setDriverCat('old')">
-        <span>Verified Chauffeurs</span> <span class="count-chip green">${oldDrivers.length}</span>
+        <span>Verified Drivers</span> <span class="count-chip green">${oldDrivers.length}</span>
       </button>
     </div>
 
@@ -1229,7 +1229,7 @@ const PAGES = {
             </div>
 
             <div class="pc-name">${esc(n)}</div>
-            <div class="pc-sub">${isPending ? 'New applicant • Verification in progress for Kerala network' : 'Ridingo Executive Chauffeur • Premium Kerala Fleet'}</div>
+            <div class="pc-sub">${isPending ? 'New applicant • Verification in progress for Kerala network' : 'Ridingo Executive Driver • Premium Kerala Fleet'}</div>
 
             <!-- 3-Column Stats Container (Exact Inset Pill) -->
             <div class="pc-stats-pill">
@@ -1256,7 +1256,7 @@ const PAGES = {
             </div>
           </div>
         </div>`;
-      }).join("") : `<div class="empty">No chauffeur profiles matching your search query.</div>`;
+      }).join("") : `<div class="empty">No driver profiles matching your search query.</div>`;
     };
 
     draw("");
@@ -1318,7 +1318,7 @@ const PAGES = {
             <th>Date</th>
             <th>Pickup Location</th>
             <th>Destination</th>
-            <th>Chauffeur</th>
+            <th>Driver</th>
             <th>Customer</th>
             <th>Gross Fare</th>
             <th>Dispatch Status</th>
@@ -1355,7 +1355,7 @@ const PAGES = {
 
     $("#view").innerHTML = head("Financial Settlements & Ledger", `${DB.payments.length} transactions settled`) + banner() + `
     <div class="grid kpis">
-      ${kpi("Settled Payouts", money(sum("paid") || 121422), "Direct chauffeur partner transfer", "Settled", "status-pill green")}
+      ${kpi("Settled Payouts", money(sum("paid") || 121422), "Direct driver partner transfer", "Settled", "status-pill green")}
       ${kpi("Platform Retained", money(Math.round((sum("paid") || 142850) * 0.15)), "15% standard commission", "Retained", "status-pill amber")}
       ${kpi("Failed Transactions", money(sum("failed")), "Re-queued for automatic retry", "0 Failures")}
       ${kpi("Pending Settlements", money(sum("pending")), "Scheduled overnight batch", "Pending")}
@@ -1368,7 +1368,7 @@ const PAGES = {
             <th>Trip ID</th>
             <th>Gross Fare</th>
             <th>Ridingo Fee (15%)</th>
-            <th>Chauffeur Net (85%)</th>
+            <th>Driver Net (85%)</th>
             <th>Payment Status</th>
           </tr>
         </thead>
@@ -1394,7 +1394,7 @@ const PAGES = {
     <div class="grid kpis">
       ${kpi("Gross Volume", money(f.tot.revenue || 142850), "Total rider booking value")}
       ${kpi("Platform Net (15%)", money(Math.round((f.tot.revenue || 142850) * 0.15)), "Retained platform fee", "Take-Rate", "status-pill amber")}
-      ${kpi("Chauffeur Payouts (85%)", money(Math.round((f.tot.revenue || 142850) * 0.85)), "Automated payout ledger", "Settled", "status-pill green")}
+      ${kpi("Driver Payouts (85%)", money(Math.round((f.tot.revenue || 142850) * 0.85)), "Automated payout ledger", "Settled", "status-pill green")}
       ${kpi("Operational Costs", money(f.tot.expense || 1730), "SMS, Maps API & Hosting infrastructure")}
     </div>
 
@@ -1530,7 +1530,7 @@ function driverModal(id) {
       <div style="margin-bottom:12px">
         <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;background:${isPending ? 'var(--warn-soft)' : 'var(--ok-soft)'};color:${isPending ? 'var(--warn)' : 'var(--ok)'};border:1px solid ${isPending ? 'var(--warn-border)' : 'var(--ok-border)'}">
           ${!isPending ? ICONS.check : ''}
-          <span>${isPending ? 'Pending KYC Verification' : 'Verified Chauffeur Partner'}</span>
+          <span>${isPending ? 'Pending KYC Verification' : 'Verified Driver Partner'}</span>
         </span>
       </div>
 
@@ -1634,7 +1634,7 @@ function openAddDriverModal() {
   $("#mbox").innerHTML = `
   <div class="modal-form-body">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h3 style="margin:0;font-family:var(--font-display);font-size:18px">Register New Chauffeur</h3>
+      <h3 style="margin:0;font-family:var(--font-display);font-size:18px">Register New Driver</h3>
       <button type="button" class="btn ghost" onclick="$('#modal').classList.add('hidden')" style="padding:6px 12px;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center">${ICONS.close}</button>
     </div>
     <form onsubmit="event.preventDefault();submitNewDriver()">
@@ -1652,7 +1652,7 @@ function openAddDriverModal() {
         <div><label>Driving Licence No.</label><input id="ndDl" placeholder="KL-07-20210049281"></div>
         <div><label>Aadhaar Number</label><input id="ndAadhar" placeholder="4829 1928 4719"></div>
       </div>
-      <button type="submit" class="btn full" style="padding:13px;font-size:13.5px;font-weight:800;border-radius:14px">Register & Activate Chauffeur</button>
+      <button type="submit" class="btn full" style="padding:13px;font-size:13.5px;font-weight:800;border-radius:14px">Register & Activate Driver</button>
     </form>
   </div>`;
   $("#modal").classList.remove("hidden");
@@ -1710,7 +1710,7 @@ async function notifyAdminNewDriver(drv) {
         user_id: "team.ridingo@gmail.com",
         type: "driver_registration_alert",
         title: alertData.subject,
-        message: `New chauffeur partner application from ${alertData.name} (${alertData.phone}, ${alertData.city}). Pending KYC document verification.`,
+        message: `New driver partner application from ${alertData.name} (${alertData.phone}, ${alertData.city}). Pending KYC document verification.`,
         created_at: alertData.timestamp
       });
     } catch(err) {

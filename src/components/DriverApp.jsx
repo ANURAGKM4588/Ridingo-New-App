@@ -2,6 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { useApp, getDeviceDriverId, DEFAULT_DRIVER } from '../context/AppContext';
 import { realtime } from '../utils/realtime';
+import {
+  checkLocationPermissions,
+  requestLocationPermissions,
+  watchDevicePosition,
+  clearDeviceWatch
+} from '../services/nativeLocationService';
 import Icon from './Icon';
 import BrandLogo from './BrandLogo';
 import DriverOnboardingModal from './DriverOnboardingModal';
@@ -1400,19 +1406,10 @@ export default function DriverApp() {
     const initLaunchPermissions = async () => {
       try {
         if (Capacitor.isNativePlatform()) {
-          const { Geolocation } = await import('@capacitor/geolocation');
-          if (Geolocation && typeof Geolocation.checkPermissions === 'function') {
-            const status = await Geolocation.checkPermissions();
-            if (status?.location !== 'granted') {
-              await Geolocation.requestPermissions();
-            }
+          const status = await checkLocationPermissions();
+          if (status?.location !== 'granted') {
+            await requestLocationPermissions();
           }
-        } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            () => console.info('[DriverApp] Location permission active'),
-            (err) => console.log('[DriverApp] Location permission query:', err.message),
-            { enableHighAccuracy: true, timeout: 8000 }
-          );
         }
       } catch (locErr) {
         console.warn('[DriverApp] Location permission launch check:', locErr);
@@ -1498,48 +1495,23 @@ export default function DriverApp() {
     // Continuous Real GPS Tracking via Capacitor Geolocation on Mobile or HTML5 Geolocation on Web
     const startTracking = async () => {
       try {
-        if (Capacitor.isNativePlatform()) {
-          const { Geolocation } = await import('@capacitor/geolocation');
-          if (Geolocation && typeof Geolocation.watchPosition === 'function') {
-            const id = await Geolocation.watchPosition(
-              { enableHighAccuracy: true, timeout: 5000, maximumAge: 3000 },
-              (pos) => {
-                if (pos?.coords) {
-                  emitLocation(
-                    pos.coords.latitude,
-                    pos.coords.longitude,
-                    pos.coords.heading || 0,
-                    pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0
-                  );
-                }
-              }
-            );
-            watchId = id;
-            return;
-          }
-        }
+        const id = await watchDevicePosition(
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 3000 },
+          (pos) => {
+            if (pos?.coords) {
+              emitLocation(
+                pos.coords.latitude,
+                pos.coords.longitude,
+                pos.coords.heading || 0,
+                pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0
+              );
+            }
+          },
+          (err) => console.log('[DriverApp] GPS watch notice:', err.message)
+        );
+        watchId = id;
       } catch (err) {
         console.warn('[DriverApp] Native GPS watch error:', err);
-      }
-
-      // Web / Desktop browser tracking
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        try {
-          watchId = navigator.geolocation.watchPosition(
-            (pos) => {
-              if (pos?.coords) {
-                emitLocation(
-                  pos.coords.latitude,
-                  pos.coords.longitude,
-                  pos.coords.heading || 0,
-                  pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0
-                );
-              }
-            },
-            (err) => console.log('[DriverApp] GPS watch notice:', err.message),
-            { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
-          );
-        } catch (_) {}
       }
     };
 
@@ -1548,13 +1520,7 @@ export default function DriverApp() {
     return () => {
       isStreaming = false;
       if (watchId !== null) {
-        if (typeof watchId === 'string' && Capacitor.isNativePlatform()) {
-          import('@capacitor/geolocation').then(({ Geolocation }) => {
-            Geolocation.clearWatch({ id: watchId }).catch(() => {});
-          }).catch(() => {});
-        } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
-          navigator.geolocation.clearWatch(watchId);
-        }
+        clearDeviceWatch(watchId);
       }
     };
   }, [trips, driverPartner?.id, driverPartner?.name, isTripTrackingUnlocked]);

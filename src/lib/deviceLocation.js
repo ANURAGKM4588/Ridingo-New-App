@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 
 // Cache the last known real device location in memory and localStorage for 0ms startup
 const STORAGE_KEY = 'ridingo_cached_device_coords';
@@ -157,12 +158,11 @@ export async function getDeviceLocation(forceRefresh = false) {
     let lng = null;
     let accuracy = null;
 
-    // 1. Native Capacitor Geolocation with fast timeout
-    try {
-      const { Geolocation } = await import('@capacitor/geolocation');
-      if (Geolocation && typeof Geolocation.getCurrentPosition === 'function') {
+    // 1. Native Capacitor Geolocation with fast timeout (iOS & Android)
+    if (Capacitor.isNativePlatform()) {
+      try {
         const perm = await Geolocation.checkPermissions();
-        if (perm.location !== 'granted') {
+        if (perm?.location !== 'granted') {
           await Geolocation.requestPermissions();
         }
         const pos = await Geolocation.getCurrentPosition({
@@ -175,13 +175,11 @@ export async function getDeviceLocation(forceRefresh = false) {
           lng = pos.coords.longitude;
           accuracy = pos.coords.accuracy;
         }
+      } catch (nativeErr) {
+        console.warn('Fast native geolocation note:', nativeErr);
       }
-    } catch (nativeErr) {
-      console.warn('Fast native geolocation note:', nativeErr);
-    }
-
-    // 2. HTML5 Geolocation API in regular desktop browser
-    if (lat === null && !Capacitor.isNativePlatform() && typeof navigator !== 'undefined' && navigator.geolocation) {
+    } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      // 2. HTML5 Geolocation API in regular desktop browser ONLY
       try {
         const pos = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(

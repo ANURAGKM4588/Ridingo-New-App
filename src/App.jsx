@@ -16,6 +16,7 @@ import DriverApp from './components/DriverApp';
 import AdminPanel from './components/admin/AdminPanel';
 import Icon from './components/Icon';
 import NetworkStatusBanner from './components/NetworkStatusBanner';
+import { checkLocationPermissions, requestLocationPermissions } from './services/nativeLocationService';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -104,15 +105,14 @@ function MainApp() {
 
   React.useEffect(() => {
     // Proactively request initial permissions for Device Location & Notifications on initial app launch
-    try {
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          () => console.info('[UserApp] Location permission active'),
-          (err) => console.log('[UserApp] Location query:', err.message),
-          { enableHighAccuracy: true, timeout: 8000 }
-        );
-      }
-    } catch (e) {}
+    // Strictly routed through Capacitor Geolocation (NEVER triggers WKWebView 'localhost' prompt)
+    checkLocationPermissions()
+      .then(status => {
+        if (status?.location !== 'granted') {
+          requestLocationPermissions().catch(() => {});
+        }
+      })
+      .catch(() => {});
 
     try {
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
