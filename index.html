@@ -32,9 +32,20 @@
           // Initialize clean full-screen preview state
           var search = (window.location.search || '').toLowerCase();
           var path = (window.location.pathname || '').toLowerCase();
-          var isDriver = search.includes('app=driver') || search.includes('view=driver') || path.includes('/driver') || (window.location.hash || '').toLowerCase().includes('driver');
+          var isDriver = (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'driver') ||
+            search.includes('app=driver') ||
+            search.includes('view=driver') ||
+            path.includes('/driver') ||
+            (window.location.hash || '').toLowerCase().includes('driver');
+
           document.documentElement.classList.add('standalone-app');
-          document.documentElement.classList.add(isDriver ? 'standalone-driver' : 'standalone-user');
+          if (isDriver) {
+            document.documentElement.classList.add('standalone-driver');
+            document.documentElement.classList.remove('standalone-user');
+          } else {
+            document.documentElement.classList.add('standalone-user');
+            document.documentElement.classList.remove('standalone-driver');
+          }
         } catch (e) {}
       })();
     </script>

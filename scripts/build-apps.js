@@ -59,21 +59,36 @@ function copyFolderRecursiveSync(source, target) {
 
 function compileStandaloneHtml(appType, appName) {
   const isUser = appType === 'user';
-  const standaloneClass = isUser ? 'standalone-app standalone-user' : 'standalone-app standalone-driver';
+  const targetClass = isUser ? 'standalone-user' : 'standalone-driver';
+  const oppositeClass = isUser ? 'standalone-driver' : 'standalone-user';
 
   let html = originalHtml;
 
   // Set accurate native title
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${appName}</title>`);
 
-  // Inject target definition and dynamic native status bar configuration early in head
+  // Strip conflicting legacy class additions from original index.html
+  html = html.replace(/document\.documentElement\.classList\.add\(isDriver\s*\?\s*['"]standalone-driver['"]\s*:\s*['"]standalone-user['"]\);?/g, `document.documentElement.classList.add('standalone-${appType}');`);
+  html = html.replace(new RegExp(oppositeClass, 'g'), targetClass);
+
+  // Inject target definition immediately after <head> so it runs BEFORE any module or theme script
+  const topHeadInjection = `
+  <script>
+    window.RIDINGO_TARGET = '${appType}';
+    try {
+      document.documentElement.classList.add('standalone-app', 'standalone-${appType}');
+      document.documentElement.classList.remove('standalone-${isUser ? 'driver' : 'user'}');
+    } catch (_) {}
+  </script>`;
+  html = html.replace(/<head>/i, `<head>${topHeadInjection}`);
+
+  // Inject dynamic native status bar configuration early in head
   const headInjection = `
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="${isUser ? '#F2F2F7' : '#0D0E12'}">
   <script>
-    window.RIDINGO_TARGET = '${appType}';
     (function configureNativeBars(){
       function applyStatus(){
         try {
@@ -125,8 +140,8 @@ function compileStandaloneHtml(appType, appName) {
   html = html.replace('</head>', `${headInjection}\n</head>`);
 
   // Pre-apply standalone class to html and body tags
-  html = html.replace(/<html([^>]*)>/i, `<html$1 class="standalone-app">`);
-  html = html.replace(/<body([^>]*)>/i, `<body$1 class="${standaloneClass}">`);
+  html = html.replace(/<html([^>]*)>/i, `<html$1 class="standalone-app standalone-${appType}">`);
+  html = html.replace(/<body([^>]*)>/i, `<body$1 class="standalone-app standalone-${appType}">`);
 
   return html;
 }

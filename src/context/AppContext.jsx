@@ -172,37 +172,29 @@ export function AppProvider({ children }) {
   // App navigation state (User App, Driver App, or CRM Admin Panel)
   const determineView = () => {
     if (typeof window !== 'undefined') {
-      // 1. ABSOLUTE STANDALONE NATIVE BUILD LOCK:
-      // If built for user app, it is 100% User App. NEVER switch to driver!
-      const isStandaloneUser =
-        window.RIDINGO_TARGET === 'user' ||
-        (typeof document !== 'undefined' && (
-          document.body?.classList?.contains('standalone-user') ||
-          document.documentElement?.classList?.contains('standalone-user')
-        ));
-
-      if (isStandaloneUser) {
-        // Purge any stale ?view=driver from URL immediately
-        try {
-          const url = new URL(window.location.href);
-          if (url.searchParams.get('view') === 'driver') {
-            url.searchParams.delete('view');
-            window.history.replaceState({}, '', url.toString());
-          }
-        } catch (_) {}
+      // 1. ABSOLUTE EXPLICIT TARGET CHECK (Primary Source of Truth from standalone build):
+      if (window.RIDINGO_TARGET === 'driver') {
+        return 'driver';
+      }
+      if (window.RIDINGO_TARGET === 'user') {
         return 'user';
       }
 
-      // If built for driver app, it is 100% Driver App. NEVER switch to user!
-      const isStandaloneDriver =
-        window.RIDINGO_TARGET === 'driver' ||
-        (typeof document !== 'undefined' && (
-          document.body?.classList?.contains('standalone-driver') ||
-          document.documentElement?.classList?.contains('standalone-driver')
-        ));
-
-      if (isStandaloneDriver) {
+      // 2. Class check for standalone apps if RIDINGO_TARGET not yet defined
+      if (
+        (typeof document !== 'undefined' && document.body?.classList?.contains('standalone-driver')) ||
+        (typeof document !== 'undefined' && document.documentElement?.classList?.contains('standalone-driver'))
+      ) {
         return 'driver';
+      }
+
+      if (
+        typeof document !== 'undefined' &&
+        document.body?.classList?.contains('standalone-user') &&
+        !document.body?.classList?.contains('standalone-driver') &&
+        !document.documentElement?.classList?.contains('standalone-driver')
+      ) {
+        return 'user';
       }
 
       // 2. Web dev server / browser preview (when running on localhost):
