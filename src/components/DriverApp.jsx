@@ -1248,9 +1248,12 @@ export default function DriverApp() {
     const dc = document.getElementById('d-content');
     if (!dc) return;
 
+    let ptrRafId = null;
+
     const handleTouchStart = (e) => {
       if (isPtrRefreshingRef.current || dTab !== 'dash') return;
-      if (dc.scrollTop <= 2 && e.touches.length === 1) {
+      // Strictly only track if completely scrolled to top
+      if (dc.scrollTop <= 0 && e.touches.length === 1) {
         ptrTouchStartY.current = e.touches[0].clientY;
         ptrTouchStartX.current = e.touches[0].clientX;
         isPtrTracking.current = true;
@@ -1262,10 +1265,15 @@ export default function DriverApp() {
 
     const handleTouchMove = (e) => {
       if (!isPtrTracking.current || isPtrRefreshingRef.current || dTab !== 'dash') return;
-      if (dc.scrollTop > 2) {
+      
+      // If user has scrolled down into the page, immediately relinquish tracking so native scroll is fluid
+      if (dc.scrollTop > 0) {
         isPtrTracking.current = false;
-        setIsPtrPulling(false);
-        setPtrPullDist(0);
+        if (ptrPullDistRef.current > 0) {
+          ptrPullDistRef.current = 0;
+          setIsPtrPulling(false);
+          setPtrPullDist(0);
+        }
         return;
       }
 
@@ -1274,11 +1282,16 @@ export default function DriverApp() {
       const deltaY = currentY - ptrTouchStartY.current;
       const deltaX = currentX - ptrTouchStartX.current;
 
-      if (deltaY > 0 && deltaY > Math.abs(deltaX) * 1.1) {
-        const damped = Math.min(64, deltaY * 0.42);
+      // Require explicit downward pull of at least 10px and vertical intent before engaging PTR
+      if (deltaY > 10 && deltaY > Math.abs(deltaX) * 1.5) {
+        const damped = Math.min(64, (deltaY - 10) * 0.42);
         ptrPullDistRef.current = damped;
-        setIsPtrPulling(true);
-        setPtrPullDist(damped);
+
+        if (ptrRafId) cancelAnimationFrame(ptrRafId);
+        ptrRafId = requestAnimationFrame(() => {
+          setIsPtrPulling(true);
+          setPtrPullDist(damped);
+        });
 
         if (damped >= PTR_PULL_THRESHOLD && !hasPtrVibratedRef.current) {
           hasPtrVibratedRef.current = true;
@@ -1289,13 +1302,17 @@ export default function DriverApp() {
           hasPtrVibratedRef.current = false;
         }
 
-        if (e.cancelable && damped > 6) {
+        if (e.cancelable && damped > 8) {
           e.preventDefault();
         }
       } else if (deltaY < 0) {
+        // User scrolling down through trip requests: let native momentum scroll handle cleanly
         isPtrTracking.current = false;
-        setIsPtrPulling(false);
-        setPtrPullDist(0);
+        if (ptrPullDistRef.current > 0) {
+          ptrPullDistRef.current = 0;
+          setIsPtrPulling(false);
+          setPtrPullDist(0);
+        }
       }
     };
 
@@ -2727,8 +2744,8 @@ export default function DriverApp() {
               </div>
             )}
 
-            {/* Trip Requests Section */}
-            <div className="sec stagger-2">
+            {/* Trip Requests Section - Smooth scrollable without re-animation shifts */}
+            <div className="sec">
               <h3>Trip requests</h3>
               <span className="pill" style={{ background: driverOnline && requestedTrips.length > 0 ? '#16A34A' : 'var(--field)', color: driverOnline && requestedTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
                 {driverOnline ? requestedTrips.length : 0} waiting
@@ -2736,7 +2753,7 @@ export default function DriverApp() {
             </div>
 
             {driverOnline && requestedTrips.length > 0 ? (
-              <div className="stack stagger-2">
+              <div className="stack" style={{ willChange: 'contents' }}>
                 {requestedTrips.map(t => {
                   const c = CATS[t.cat] || CATS.hourly;
                   const fare = Number(t.fare) || 600;

@@ -870,7 +870,8 @@ body.standalone-app .content {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-y: contain !important;
   overscroll-behavior: contain !important;
-  scroll-behavior: smooth;
+  scroll-behavior: auto !important;
+  touch-action: pan-y !important;
   padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
   padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 74px) !important;
   padding-inline: 18px !important;
@@ -1066,9 +1067,28 @@ body.standalone-app .map-picker-foot {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
+  touch-action: pan-y;
   padding: 4px 18px calc(76px + env(safe-area-inset-bottom, 16px));
   scrollbar-width: none;
+}
+
+#d-content {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important;
+  scroll-behavior: auto !important;
+  touch-action: pan-y !important;
+  will-change: scroll-position;
+}
+
+/* GPU containment for driver trip request cards to guarantee smooth 60fps/120fps scrolling */
+.card.trip {
+  contain: content;
+  content-visibility: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .content::-webkit-scrollbar {

@@ -1,12 +1,13 @@
 import { Appearance, Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 /**
- * Ridingo React Native Custom Notification Engine
+ * Ridingo React Native Custom Notification Engine for Driver App
  * 
- * Core Specifications:
+ * Strict UI Specifications:
  * 1. Dynamic Theme Switching:
- *    - Light Mode: White Background (#FFFFFF) with Black Text (#000000)
- *    - Dark Mode: Black Background (#000000) with White Text (#FFFFFF)
+ *    - Light Mode: Pure White Background (#FFFFFF) with Pure Black Text (#000000)
+ *    - Dark Mode: Pure Black Background (#000000) with Pure White Text (#FFFFFF)
  * 2. Information Displayed:
  *    - Pickup Location & Destination / Drop Location
  *    - Fare Amount (₹) & Advance Payment details
@@ -14,9 +15,10 @@ import { Appearance, Platform } from 'react-native';
  * 3. Action Buttons:
  *    - Green Accept Button (#16A34A / #22C55E)
  *    - Red Decline Button (#DC2626 / #EF4444)
- * 4. Platform Architecture:
+ * 4. Background Execution & Platform Architecture:
  *    - iOS: UNNotificationCategory ('TRIP_DISPATCH_CATEGORY') with native Destructive (Red) & Foreground (Green) actions
  *    - Android: Custom Layout & Background Action Event Receiver via @notifee/react-native & Firebase Headless JS
+ *    - Universal Fallback: Expo Notifications (TaskManager background task) & Browser Web Notification
  */
 
 export const NOTIFICATION_CHANNELS = {
@@ -33,7 +35,7 @@ export const NOTIFICATION_ACTIONS = {
   DECLINE: 'ACTION_DECLINE_TRIP'
 };
 
-// Theme Color Palettes
+// Strict Theme Color Palettes
 export const NOTIFICATION_THEMES = {
   light: {
     background: '#FFFFFF',       // Strict White Background
@@ -61,7 +63,15 @@ export const NOTIFICATION_THEMES = {
  * Resolves current theme colors based on device system appearance
  */
 export function getNotificationThemeColors() {
-  const isDark = Appearance?.getColorScheme ? Appearance.getColorScheme() === 'dark' : false;
+  let isDark = false;
+  try {
+    if (Appearance && typeof Appearance.getColorScheme === 'function') {
+      isDark = Appearance.getColorScheme() === 'dark';
+    } else if (typeof window !== 'undefined' && window.matchMedia) {
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+  } catch (_) {}
+
   return {
     isDark,
     theme: isDark ? NOTIFICATION_THEMES.dark : NOTIFICATION_THEMES.light
@@ -73,11 +83,11 @@ export function getNotificationThemeColors() {
  * Configures iOS UNNotificationCategory with Green/Red actions and Android Heads-Up Notification Channel.
  */
 export async function setupTripNotificationEngine() {
+  // 1. Try Notifee native module
   try {
     const notifee = (await import('@notifee/react-native')).default;
     const { AndroidImportance, AndroidVisibility } = await import('@notifee/react-native');
 
-    // 1. Android Notification Channel (Heads-up banner + sound + lockscreen visible)
     if (Platform.OS === 'android') {
       await notifee.createChannel({
         id: NOTIFICATION_CHANNELS.TRIP_DISPATCH,
@@ -93,7 +103,6 @@ export async function setupTripNotificationEngine() {
       });
     }
 
-    // 2. iOS UNNotificationCategory (Action buttons on lockscreen and notification center)
     if (Platform.OS === 'ios') {
       await notifee.setNotificationCategories([
         {
@@ -102,50 +111,86 @@ export async function setupTripNotificationEngine() {
             {
               id: NOTIFICATION_ACTIONS.ACCEPT,
               title: 'Accept Trip',
-              foreground: true // Launches or brings driver app to foreground immediately
+              foreground: true
             },
             {
               id: NOTIFICATION_ACTIONS.DECLINE,
               title: 'Decline',
-              destructive: true // Native iOS renders destructive actions in Red (#DC2626)
+              destructive: true
             }
           ]
         }
       ]);
     }
 
-    console.info('[NotificationEngine] Channels & Categories initialized successfully');
-  } catch (err) {
-    console.warn('[NotificationEngine] Setup note:', err?.message || err);
+    console.info('[NotificationEngine] Notifee Channels & Categories initialized successfully');
+    return true;
+  } catch (notifeeErr) {
+    // 2. Fallback to Expo Notifications if Notifee is unavailable
+    try {
+      const Notifications = await import('expo-notifications');
+      if (Notifications && typeof Notifications.setNotificationCategoryAsync === 'function') {
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.TRIP_DISPATCH, {
+            name: 'Ridingo Trip Requests',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FFC70A',
+            sound: 'default',
+            showBadge: true
+          });
+        }
+
+        await Notifications.setNotificationCategoryAsync(NOTIFICATION_CATEGORIES.TRIP_DISPATCH, [
+          {
+            identifier: NOTIFICATION_ACTIONS.ACCEPT,
+            buttonTitle: '✓ Accept Trip',
+            options: {
+              opensAppToForeground: true
+            }
+          },
+          {
+            identifier: NOTIFICATION_ACTIONS.DECLINE,
+            buttonTitle: '✕ Decline',
+            options: {
+              isDestructive: true,
+              opensAppToForeground: false
+            }
+          }
+        ]);
+        console.info('[NotificationEngine] Expo Notifications Categories initialized successfully');
+        return true;
+      }
+    } catch (_) {}
   }
+  return false;
 }
 
 /**
  * 2. Display Custom Light/Dark Mode Trip Notification
- * Applies strict:
+ * Strict UI:
  * - Light Mode: White background (#FFFFFF) with Black text (#000000)
  * - Dark Mode: Black background (#000000) with White text (#FFFFFF)
  * - Pickup, Drop, Distance, ETA, and Fare Amount (₹)
- * - Green Accept Button (#16A34A / #22C55E) & Red Decline Button (#DC2626 / #EF4444)
+ * - Green Accept Button (#16A34A) & Red Decline Button (#DC2626)
  */
 export async function displayCustomTripNotification(tripData = {}) {
+  const tripId = tripData.tripId || tripData.id || `trip_${Date.now()}`;
+  const fare = Number(tripData.fare || tripData.driverPayout || 600);
+  const advance = Number(tripData.advance || Math.round(fare * 0.3));
+  const pickup = tripData.pickup || tripData.from || 'Customer Pickup';
+  const drop = tripData.drop || tripData.drop_loc || tripData.destination || 'City Destination';
+  const distance = tripData.distance || tripData.distanceText || '12.4 km';
+  const duration = tripData.duration || tripData.durationText || '28 mins';
+  const customer = tripData.customerName || 'Customer';
+
+  const { isDark, theme } = getNotificationThemeColors();
+
+  // 1. Try Notifee native module
   try {
     const notifee = (await import('@notifee/react-native')).default;
     const { AndroidImportance, AndroidVisibility, AndroidStyle } = await import('@notifee/react-native');
 
-    const tripId = tripData.tripId || tripData.id || `trip_${Date.now()}`;
-    const fare = Number(tripData.fare || tripData.driverPayout || 600);
-    const advance = Number(tripData.advance || Math.round(fare * 0.3));
-    const pickup = tripData.pickup || tripData.from || 'Customer Pickup';
-    const drop = tripData.drop || tripData.drop_loc || tripData.destination || 'City Destination';
-    const distance = tripData.distance || tripData.distanceText || '12.4 km';
-    const duration = tripData.duration || tripData.durationText || '28 mins';
-    const customer = tripData.customerName || 'Customer';
-
-    // 1. Detect dynamic system color scheme
-    const { isDark, theme } = getNotificationThemeColors();
-
-    // 2. Android Styled HTML Text representation (Respects Light #FFFFFF vs Dark #000000 background)
     const formattedHtmlText = `
       <div style="background-color: ${theme.background}; color: ${theme.textPrimary}; padding: 8px;">
         <p><b style="color: ${theme.textPrimary}; font-size: 16px;">₹${fare} Total</b> <span style="color: ${theme.textSecondary}; font-size: 13px;">(₹${advance} Advance Paid)</span></p>
@@ -155,9 +200,7 @@ export async function displayCustomTripNotification(tripData = {}) {
       </div>
     `.trim();
 
-    const plainTextBody = `Total: ₹${fare} (₹${advance} Advance)\nPickup: ${pickup}\nDrop: ${drop}\nRoute: ${distance} · ETA: ${duration}`;
-
-    // 3. Android Action Button titles styled with Green (#16A34A) and Red (#DC2626) HTML spans
+    const plainTextBody = `Total: ₹${fare} (₹${advance} Advance)\n📍 Pickup: ${pickup}\n🏁 Drop: ${drop}\nRoute: ${distance} · ETA: ${duration}`;
     const acceptActionTitle = `<font color="${theme.acceptColor}"><b>✓ ACCEPT ₹${fare}</b></font>`;
     const declineActionTitle = `<font color="${theme.declineColor}"><b>✕ DECLINE</b></font>`;
 
@@ -176,7 +219,6 @@ export async function displayCustomTripNotification(tripData = {}) {
         duration,
         type: 'TRIP_REQUEST'
       },
-      // iOS Configuration: UNNotificationCategory with APNs time-sensitive interruption
       ios: {
         categoryId: NOTIFICATION_CATEGORIES.TRIP_DISPATCH,
         sound: 'default',
@@ -189,12 +231,11 @@ export async function displayCustomTripNotification(tripData = {}) {
           list: true
         }
       },
-      // Android Configuration: Custom Theme, Strict White/Black color scheme, Green/Red action buttons
       android: {
         channelId: NOTIFICATION_CHANNELS.TRIP_DISPATCH,
         importance: AndroidImportance.HIGH,
         visibility: AndroidVisibility.PUBLIC,
-        color: theme.background, // Sets notification accent & header background
+        color: theme.background,
         smallIcon: 'ic_stat_ridingo',
         largeIcon: 'https://ridingo.app/App%20icon.png',
         style: {
@@ -205,7 +246,7 @@ export async function displayCustomTripNotification(tripData = {}) {
         },
         actions: [
           {
-            title: acceptActionTitle, // Green Accept Button
+            title: acceptActionTitle,
             icon: 'https://ridingo.app/icons/accept-check.png',
             pressAction: {
               id: NOTIFICATION_ACTIONS.ACCEPT,
@@ -213,7 +254,7 @@ export async function displayCustomTripNotification(tripData = {}) {
             }
           },
           {
-            title: declineActionTitle, // Red Decline Button
+            title: declineActionTitle,
             icon: 'https://ridingo.app/icons/decline-cross.png',
             pressAction: {
               id: NOTIFICATION_ACTIONS.DECLINE,
@@ -228,83 +269,170 @@ export async function displayCustomTripNotification(tripData = {}) {
       }
     });
 
-    console.info(`[NotificationEngine] Displayed custom trip notification (${isDark ? 'Dark Mode #000000' : 'Light Mode #FFFFFF'}, Fare: ₹${fare})`);
+    console.info(`[NotificationEngine] Displayed Notifee custom notification (${isDark ? 'Dark Mode' : 'Light Mode'}, Fare: ₹${fare})`);
     return true;
-  } catch (err) {
-    console.warn('[NotificationEngine] Display error:', err);
-    return false;
+  } catch (notifeeErr) {
+    // 2. Fallback to Expo Notifications
+    try {
+      const Notifications = await import('expo-notifications');
+      if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
+        await Notifications.scheduleNotificationAsync({
+          identifier: String(tripId),
+          content: {
+            title: `🚗 New Trip Request: ₹${fare}`,
+            subtitle: `${pickup} ➔ ${drop}`,
+            body: `₹${fare} Total (₹${advance} Advance)\n📍 Pickup: ${pickup}\n🏁 Drop: ${drop}\nRoute: ${distance} · ETA: ${duration}`,
+            categoryIdentifier: NOTIFICATION_CATEGORIES.TRIP_DISPATCH,
+            data: {
+              tripId: String(tripId),
+              fare: String(fare),
+              advance: String(advance),
+              pickup,
+              drop,
+              type: 'TRIP_REQUEST'
+            },
+            sound: 'default',
+            priority: Notifications.AndroidNotificationPriority.MAX
+          },
+          trigger: null // immediate delivery
+        });
+        console.info(`[NotificationEngine] Displayed Expo custom notification (Fare: ₹${fare})`);
+        return true;
+      }
+    } catch (_) {}
+
+    // 3. Browser / Web fallback
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(`🚗 New Trip Request: ₹${fare}`, {
+          body: `📍 ${pickup} ➔ 🏁 ${drop}\nTotal: ₹${fare} (₹${advance} Advance)`,
+          icon: '/App icon.png',
+          tag: String(tripId),
+          data: { tripId, fare, pickup, drop }
+        });
+        return true;
+      } catch (_) {}
+    }
   }
+
+  return false;
 }
 
 /**
- * 3. Android Custom Layout Receiver (Background & Foreground Action Handler)
- * Listens for driver interactions with Green Accept and Red Decline buttons
+ * 3. Android & iOS Custom Background & Foreground Action Receiver
+ * Listens for driver interactions with Green Accept and Red Decline buttons in background and foreground.
+ * Automatically updates Supabase even if the app UI is backgrounded or killed!
  * 
  * @param {Object} handlers
  * @param {Function} handlers.onAccept - Called when Accept button is pressed
  * @param {Function} handlers.onDecline - Called when Decline button is pressed
  */
 export async function registerNotifeeActionReceiver(handlers = {}) {
+  // Direct Supabase background update helper
+  const handleBackgroundTripAccept = async (tripId, data) => {
+    try {
+      if (supabase && tripId) {
+        await supabase
+          .from('trips')
+          .update({
+            status: 'accepted',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', tripId);
+        console.info(`[BackgroundHandler] Trip ${tripId} accepted in Supabase`);
+      }
+    } catch (e) {
+      console.warn('[BackgroundHandler] Accept error:', e);
+    }
+  };
+
+  const handleBackgroundTripDecline = async (tripId, data) => {
+    try {
+      if (supabase && tripId) {
+        await supabase
+          .from('trips')
+          .update({
+            status: 'declined',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', tripId);
+        console.info(`[BackgroundHandler] Trip ${tripId} declined in Supabase`);
+      }
+    } catch (e) {
+      console.warn('[BackgroundHandler] Decline error:', e);
+    }
+  };
+
+  // 1. Notifee Receiver
   try {
     const notifee = (await import('@notifee/react-native')).default;
     const { EventType } = await import('@notifee/react-native');
 
-    // 1. Background Event Receiver (App is minimized, backgrounded, or killed)
+    // Background Event Receiver (App backgrounded or closed)
     notifee.onBackgroundEvent(async ({ type, detail }) => {
       const { notification, pressAction } = detail;
       const tripId = notification?.data?.tripId || notification?.id;
 
       if (type === EventType.ACTION_PRESS) {
         if (pressAction.id === NOTIFICATION_ACTIONS.ACCEPT) {
-          console.info(`✅ [Receiver] Driver ACCEPTED trip: ${tripId}`);
-          if (tripId) {
-            await notifee.cancelNotification(notification.id);
-          }
-          if (handlers.onAccept) {
-            await handlers.onAccept(notification.data);
-          }
+          console.info(`✅ [Notifee Background] Driver ACCEPTED trip: ${tripId}`);
+          if (tripId) await notifee.cancelNotification(notification.id);
+          await handleBackgroundTripAccept(tripId, notification?.data);
+          if (handlers.onAccept) await handlers.onAccept(notification.data);
         } else if (pressAction.id === NOTIFICATION_ACTIONS.DECLINE) {
-          console.info(`❌ [Receiver] Driver DECLINED trip: ${tripId}`);
-          if (tripId) {
-            await notifee.cancelNotification(notification.id);
-          }
-          if (handlers.onDecline) {
-            await handlers.onDecline(notification.data);
-          }
+          console.info(`❌ [Notifee Background] Driver DECLINED trip: ${tripId}`);
+          if (tripId) await notifee.cancelNotification(notification.id);
+          await handleBackgroundTripDecline(tripId, notification?.data);
+          if (handlers.onDecline) await handlers.onDecline(notification.data);
         }
       }
     });
 
-    // 2. Foreground Event Receiver (App is currently open)
+    // Foreground Event Receiver (App currently open)
     notifee.onForegroundEvent(async ({ type, detail }) => {
       const { notification, pressAction } = detail;
       const tripId = notification?.data?.tripId || notification?.id;
 
       if (type === EventType.ACTION_PRESS) {
         if (pressAction.id === NOTIFICATION_ACTIONS.ACCEPT) {
-          console.info(`✅ [ForegroundReceiver] Driver ACCEPTED trip: ${tripId}`);
-          if (tripId) {
-            await notifee.cancelNotification(notification.id);
-          }
-          if (handlers.onAccept) {
-            handlers.onAccept(notification.data);
-          }
+          console.info(`✅ [Notifee Foreground] Driver ACCEPTED trip: ${tripId}`);
+          if (tripId) await notifee.cancelNotification(notification.id);
+          await handleBackgroundTripAccept(tripId, notification?.data);
+          if (handlers.onAccept) handlers.onAccept(notification.data);
         } else if (pressAction.id === NOTIFICATION_ACTIONS.DECLINE) {
-          console.info(`❌ [ForegroundReceiver] Driver DECLINED trip: ${tripId}`);
-          if (tripId) {
-            await notifee.cancelNotification(notification.id);
-          }
-          if (handlers.onDecline) {
-            handlers.onDecline(notification.data);
-          }
+          console.info(`❌ [Notifee Foreground] Driver DECLINED trip: ${tripId}`);
+          if (tripId) await notifee.cancelNotification(notification.id);
+          await handleBackgroundTripDecline(tripId, notification?.data);
+          if (handlers.onDecline) handlers.onDecline(notification.data);
         }
       }
     });
 
-    console.info('[NotificationEngine] Action Receiver registered for Accept/Decline events');
-  } catch (err) {
-    console.warn('[NotificationEngine] Action receiver setup error:', err);
-  }
+    console.info('[NotificationEngine] Notifee Action Receiver registered');
+  } catch (_) {}
+
+  // 2. Expo Notifications Response Listener
+  try {
+    const Notifications = await import('expo-notifications');
+    if (Notifications && typeof Notifications.addNotificationResponseReceivedListener === 'function') {
+      Notifications.addNotificationResponseReceivedListener(async (response) => {
+        const actionId = response?.actionIdentifier;
+        const tripData = response?.notification?.request?.content?.data;
+        const tripId = tripData?.tripId || response?.notification?.request?.identifier;
+
+        if (actionId === NOTIFICATION_ACTIONS.ACCEPT) {
+          console.info(`✅ [Expo Response] Driver ACCEPTED trip: ${tripId}`);
+          await handleBackgroundTripAccept(tripId, tripData);
+          if (handlers.onAccept) handlers.onAccept(tripData);
+        } else if (actionId === NOTIFICATION_ACTIONS.DECLINE) {
+          console.info(`❌ [Expo Response] Driver DECLINED trip: ${tripId}`);
+          await handleBackgroundTripDecline(tripId, tripData);
+          if (handlers.onDecline) handlers.onDecline(tripData);
+        }
+      });
+      console.info('[NotificationEngine] Expo Response Listener registered');
+    }
+  } catch (_) {}
 }
 
 /**
@@ -314,32 +442,57 @@ export async function registerNotifeeActionReceiver(handlers = {}) {
 export function registerFirebaseBackgroundHandler(messagingInstance) {
   if (!messagingInstance) return;
 
-  messagingInstance().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.info('🔔 [FCM Background Task] Remote Trip Request received:', remoteMessage);
+  try {
+    messagingInstance().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.info('🔔 [FCM Background Task] Remote Trip Request received:', remoteMessage);
 
-    const data = remoteMessage?.data || {};
+      const data = remoteMessage?.data || {};
 
-    if (data.type === 'TRIP_REQUEST' || data.type === 'TRIP_REQUESTED' || remoteMessage.notification?.title?.includes('Trip')) {
-      await displayCustomTripNotification({
-        tripId: data.tripId || data.id,
-        fare: data.fare || data.driverPayout || 600,
-        advance: data.advance || Math.round(Number(data.fare || 600) * 0.3),
-        pickup: data.pickup || data.from || 'Customer Pickup',
-        drop: data.drop || data.drop_loc || data.destination || 'Destination',
-        distance: data.distance || data.distanceText || '12.4 km',
-        duration: data.duration || data.durationText || '28 mins',
-        customerName: data.customerName || data.name || 'Customer'
-      });
-    }
+      if (data.type === 'TRIP_REQUEST' || data.type === 'TRIP_REQUESTED' || remoteMessage.notification?.title?.includes('Trip')) {
+        await displayCustomTripNotification({
+          tripId: data.tripId || data.id,
+          fare: data.fare || data.driverPayout || 600,
+          advance: data.advance || Math.round(Number(data.fare || 600) * 0.3),
+          pickup: data.pickup || data.from || 'Customer Pickup',
+          drop: data.drop || data.drop_loc || data.destination || 'Destination',
+          distance: data.distance || data.distanceText || '12.4 km',
+          duration: data.duration || data.durationText || '28 mins',
+          customerName: data.customerName || data.name || 'Customer'
+        });
+      }
 
-    return Promise.resolve();
-  });
+      return Promise.resolve();
+    });
 
-  console.info('[NotificationEngine] Firebase setBackgroundMessageHandler registered');
+    console.info('[NotificationEngine] Firebase setBackgroundMessageHandler registered');
+  } catch (err) {
+    console.warn('[NotificationEngine] Firebase background handler registration error:', err);
+  }
 }
 
 /**
- * 5. iOS APNs Payload with 'content-available: 1' and 'TRIP_DISPATCH_CATEGORY'
+ * 5. Universal Root Background Registration
+ * Must be called in index.js at the top-level entry point before registerRootComponent
+ */
+export function registerUniversalBackgroundHandler() {
+  try {
+    // 1. Notifee headless background handler
+    registerNotifeeActionReceiver();
+  } catch (_) {}
+
+  try {
+    // 2. React Native Firebase Messaging handler if available
+    import('@react-native-firebase/messaging').then((messagingModule) => {
+      const messaging = messagingModule?.default;
+      if (messaging) {
+        registerFirebaseBackgroundHandler(messaging);
+      }
+    }).catch(() => {});
+  } catch (_) {}
+}
+
+/**
+ * 6. iOS APNs Payload with 'content-available: 1' and 'TRIP_DISPATCH_CATEGORY'
  */
 export function getBackendAPNsPayload({
   token,
@@ -397,71 +550,3 @@ export function getBackendAPNsPayload({
     }
   };
 }
-
-/**
- * 6. Reference Native Android RemoteViews Custom Layout XML
- * For native Android NotificationManager implementations requiring an XML layout
- */
-export const ANDROID_CUSTOM_LAYOUT_XML = `
-<?xml version="1.0" encoding="utf-8"?>
-<!-- res/layout/custom_trip_notification.xml -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@color/notification_bg">
-
-    <TextView
-        android:id="@+id/notif_fare"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/notification_text"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/notif_pickup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/notification_text_secondary"
-        android:textSize="14sp"
-        android:layout_marginTop="4dp" />
-
-    <TextView
-        android:id="@+id/notif_drop"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/notification_text_secondary"
-        android:textSize="14sp"
-        android:layout_marginTop="2dp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="12dp">
-
-        <Button
-            android:id="@+id/btn_accept"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:text="ACCEPT"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#16A34A"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/btn_decline"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="DECLINE"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#DC2626"
-            android:textStyle="bold" />
-    </LinearLayout>
-</LinearLayout>
-`.trim();
