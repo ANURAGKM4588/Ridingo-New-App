@@ -5111,23 +5111,7 @@ export default function DriverApp() {
         </button>
       </nav>
 
-      {/* Custom Push Notification Banner UI specifically for Driver App Trip Requests */}
-      {(customPushTrip || incomingTripRequest) && (customPushTrip?.status === 'requested' || incomingTripRequest?.status === 'requested') && (!minimizedRequestTripId || minimizedRequestTripId !== (customPushTrip?.id || incomingTripRequest?.id)) && (
-        <DriverCustomTripNotification
-          trip={customPushTrip || incomingTripRequest}
-          onAccept={(tripId) => {
-            setCustomPushTrip(null);
-            handleAccept(tripId);
-          }}
-          onDecline={(tripId) => {
-            setCustomPushTrip(null);
-            handleDecline(tripId);
-          }}
-          onExpand={(trip) => {
-            setSelectedRequestDetails(trip);
-          }}
-        />
-      )}
+      {/* In-app floating banner removed: Push notifications only appear as real system notifications when app is minimized or closed */}
 
       {/* "View More" Full Details Modal for any trip request in the Trip Requests list */}
       {selectedRequestDetails && (

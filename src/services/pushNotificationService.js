@@ -652,21 +652,23 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
 
   const dedupKey = `trip_request_${normalizeActionKey(tripId)}`;
 
-  // STRICT SINGLE NOTIFICATION GUARANTEE
+  // STRICT USER SPECIFICATION:
+  // When the app is OPEN, do NOT show the trip request push notification!
+  // It only needs to appear when the app is MINIMIZED (background) or CLOSED (not running).
+  const isAppOpenInForeground = typeof document !== 'undefined' &&
+    document.visibilityState === 'visible' &&
+    (typeof document.hasFocus === 'function' ? document.hasFocus() : true);
+
+  if (isAppOpenInForeground && !callbacks.forcePush) {
+    console.info('[PushNotifications] Driver app is currently OPEN in foreground. Suppressing trip request push notification (driver sees incoming card directly).');
+    return false;
+  }
+
+  // STRICT SINGLE NOTIFICATION GUARANTEE WHEN MINIMIZED OR CLOSED
   if (hasNotificationBeenSent(dedupKey)) {
     return false;
   }
-  // Atomically record immediately to defeat parallel race conditions
   recordNotificationSent(dedupKey);
-
-  // Dispatch custom event so Driver App renders the Custom Push Notification Banner UI immediately
-  if (typeof window !== 'undefined') {
-    try {
-      window.dispatchEvent(new CustomEvent('RIDINGO_SHOW_CUSTOM_DRIVER_NOTIFICATION', {
-        detail: { trip, callbacks }
-      }));
-    } catch (_) {}
-  }
 
   const pickup = cleanLocationName(trip?.pickup || trip?.from) || 'Customer Pickup';
   const drop = cleanLocationName(trip?.drop_loc || trip?.drop || trip?.to) || 'City Route';

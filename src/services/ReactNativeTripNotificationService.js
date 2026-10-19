@@ -184,6 +184,22 @@ export async function displayCustomTripNotification(tripData = {}) {
   const duration = tripData.duration || tripData.durationText || '28 mins';
   const customer = tripData.customerName || 'Customer';
 
+  // STRICT USER SPECIFICATION:
+  // When the app is OPEN, do NOT show the trip request push notification!
+  // It only needs to appear when the app is MINIMIZED (background) or CLOSED (not in recent apps).
+  let isAppForeground = false;
+  try {
+    const { AppState } = await import('react-native');
+    if (AppState && AppState.currentState === 'active' && !tripData.forceNotification) {
+      isAppForeground = true;
+    }
+  } catch (_) {}
+
+  if (isAppForeground) {
+    console.info('[NotificationEngine] Driver app is currently OPEN in foreground. Suppressing trip request push notification (driver sees incoming UI directly).');
+    return false;
+  }
+
   const { isDark, theme } = getNotificationThemeColors();
 
   // 1. Try Notifee native module
