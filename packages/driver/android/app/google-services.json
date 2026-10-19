@@ -9,6 +9,25 @@
       "client_info": {
         "mobilesdk_app_id": "1:1013815921601:android:6eb5782a150ea3b3233d40",
         "android_client_info": {
+          "package_name": "com.ridingo.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSl-GKwzyb4JBdUVLUZIc9lENKlg4NYhY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1013815921601:android:6eb5782a150ea3b3233d40",
+        "android_client_info": {
           "package_name": "com.ridingo.app"
         }
       },

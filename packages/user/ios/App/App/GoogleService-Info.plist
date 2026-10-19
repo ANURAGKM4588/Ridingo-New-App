@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.ridingo.app</string>
+	<string>com.ridingo.user</string>
 	<key>PROJECT_ID</key>
 	<string>ridingo-bd466</string>
 	<key>STORAGE_BUCKET</key>
