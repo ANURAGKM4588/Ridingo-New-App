@@ -443,15 +443,21 @@ export default function TripsTab() {
                         <b style={{ color: '#0F172A' }}>₹{t.baseFare || (t.fare - (t.extensionFare || 0) - (t.waitingFare || 0))}</b>
                       </div>
                       {(t.extensionDistanceKm > 0 || t.extensionFare > 0) && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                          <span>Additional Ride ({t.extensionDistanceKm ? `${Number(t.extensionDistanceKm).toFixed(2)} km` : 'Extra km'} @ ₹18/km)</span>
-                          <b style={{ color: '#059669' }}>+₹{t.extensionFare || Math.round((Number(t.extensionDistanceKm) || 0) * 18)}</b>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: '8px', background: '#F0FDF4', border: '1px solid #DCFCE7', marginBottom: '4px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#166534', fontWeight: 600 }}>
+                            <Icon name="route" size={12} color="#166534" />
+                            <span>Additional Trip ({t.extensionDistanceKm ? `${Number(t.extensionDistanceKm).toFixed(2)} km` : 'Extra km'} @ ₹18/km)</span>
+                          </span>
+                          <b style={{ color: '#15803D', fontSize: '12px' }}>+₹{t.extensionFare || Math.round((Number(t.extensionDistanceKm) || 0) * 18)}</b>
                         </div>
                       )}
                       {(t.waitingMinutes > 0 || t.waitingFare > 0) && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                          <span>Waiting Charge ({t.waitingMinutes ? `${t.waitingMinutes}m billable after 60m free` : 'Waiting'} @ ₹2/m)</span>
-                          <b style={{ color: '#DC2626' }}>+₹{t.waitingFare || (Number(t.waitingMinutes) * 2)}</b>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FEE2E2', marginBottom: '4px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#991B1B', fontWeight: 600 }}>
+                            <Icon name="clock" size={12} color="#991B1B" />
+                            <span>Waiting Charge ({t.waitingMinutes ? `${t.waitingMinutes}m billable` : 'Waiting'} @ ₹2/m)</span>
+                          </span>
+                          <b style={{ color: '#DC2626', fontSize: '12px' }}>+₹{t.waitingFare || (Number(t.waitingMinutes) * 2)}</b>
                         </div>
                       )}
                       <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />

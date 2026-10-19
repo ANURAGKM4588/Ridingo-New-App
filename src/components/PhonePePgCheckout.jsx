@@ -786,21 +786,45 @@ export default function PhonePePgCheckout() {
 
                 {/* Additional Trip Distance */}
                 {extraKm > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: theme.textPrimary }}>
-                    <span>
-                      Additional Ride (+{extraKm.toFixed(1)} km @ ₹18/km)
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '12.5px',
+                      padding: '7px 10px',
+                      borderRadius: '10px',
+                      background: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
+                      border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.25)' : '#A7F3D0'}`
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#34D399' : '#065F46', fontWeight: 600 }}>
+                      <Icon name="route" size={13} color={isDark ? '#34D399' : '#065F46'} />
+                      <span>Additional Trip (+{extraKm.toFixed(1)} km @ ₹18/km)</span>
                     </span>
-                    <span style={{ fontWeight: 650, color: '#D97706' }}>+₹{extensionFare}</span>
+                    <span style={{ fontWeight: 750, color: isDark ? '#34D399' : '#047857' }}>+₹{extensionFare}</span>
                   </div>
                 )}
 
                 {/* Waiting Charge */}
                 {waitingMins > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: theme.textPrimary }}>
-                    <span>
-                      Waiting Charges ({waitingMins} mins @ ₹2/min)
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '12.5px',
+                      padding: '7px 10px',
+                      borderRadius: '10px',
+                      background: isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEF2F2',
+                      border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.25)' : '#FECACA'}`
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#F87171' : '#991B1B', fontWeight: 600 }}>
+                      <Icon name="clock" size={13} color={isDark ? '#F87171' : '#991B1B'} />
+                      <span>Waiting Charges ({waitingMins} mins @ ₹2/min)</span>
                     </span>
-                    <span style={{ fontWeight: 650, color: '#EF4444' }}>+₹{waitingFare}</span>
+                    <span style={{ fontWeight: 750, color: isDark ? '#F87171' : '#B91C1C' }}>+₹{waitingFare}</span>
                   </div>
                 )}
 

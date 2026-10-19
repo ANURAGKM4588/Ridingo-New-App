@@ -3408,50 +3408,120 @@ export default function DriverApp() {
 
                         {t.status === 'inprogress' && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-                            {/* Feature Action Buttons: Additional Ride & Waiting Time */}
+                            {/* Feature Action Buttons: Additional Trip & Waiting Time - Modern Button Style */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                              {/* Feature A: + Additional Ride Button */}
+                              {/* Feature A: + Additional Trip Button */}
                               <button
                                 type="button"
                                 onClick={() => handleToggleAdditionalRide(t.id)}
                                 style={{
-                                  padding: '11px 12px',
-                                  borderRadius: '14px',
+                                  padding: '12px 13px',
+                                  borderRadius: '16px',
                                   border: isAdditionalRideActive ? '1.5px solid #10B981' : '1px solid #E2E8F0',
-                                  background: isAdditionalRideActive ? '#ECFDF5' : '#FFFFFF',
-                                  color: isAdditionalRideActive ? '#059669' : '#0F172A',
+                                  background: isAdditionalRideActive ? '#F0FDF4' : '#FFFFFF',
                                   display: 'flex',
                                   flexDirection: 'column',
-                                  alignItems: 'flex-start',
-                                  gap: '4px',
+                                  justifyContent: 'space-between',
+                                  gap: '10px',
                                   cursor: 'pointer',
                                   boxShadow: isAdditionalRideActive
-                                    ? '0 4px 12px rgba(16, 185, 129, 0.15)'
-                                    : '0 2px 6px rgba(0, 0, 0, 0.04)',
-                                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-                                  textAlign: 'left'
+                                    ? '0 6px 20px -4px rgba(16, 185, 129, 0.25)'
+                                    : '0 2px 8px -2px rgba(15, 23, 42, 0.04)',
+                                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  textAlign: 'left',
+                                  position: 'relative',
+                                  overflow: 'hidden'
                                 }}
                               >
+                                {/* Top Row: Icon Squircle & Rate Badge */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    {isAdditionalRideActive ? (
-                                      <span
-                                        className="animate-pulse-dot"
-                                        style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}
-                                      />
-                                    ) : (
-                                      <Icon name="navigation" size={15} color="#2563EB" />
+                                  <div
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '10px',
+                                      background: isAdditionalRideActive ? 'rgba(16, 185, 129, 0.15)' : '#F1F5F9',
+                                      color: isAdditionalRideActive ? '#059669' : '#2563EB',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    <Icon name="route" size={16} />
+                                  </div>
+
+                                  <span
+                                    style={{
+                                      fontSize: '10px',
+                                      fontWeight: 750,
+                                      letterSpacing: '0.02em',
+                                      padding: '3px 7px',
+                                      borderRadius: '999px',
+                                      background: isAdditionalRideActive ? '#DCFCE7' : '#F1F5F9',
+                                      color: isAdditionalRideActive ? '#15803D' : '#64748B',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    {isAdditionalRideActive && (
+                                      <span className="animate-pulse-dot" style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
                                     )}
-                                    <span style={{ fontSize: '13px', fontWeight: 700 }}>
-                                      {isAdditionalRideActive ? 'Stop Extension' : '+ Additional Ride'}
+                                    {isAdditionalRideActive ? 'RECORDING' : '₹18/km'}
+                                  </span>
+                                </div>
+
+                                {/* Center Metric & Label */}
+                                <div>
+                                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', display: 'block', letterSpacing: '-0.01em' }}>
+                                    Additional Trip
+                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '2px' }}>
+                                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: isAdditionalRideActive ? '#059669' : (extraKm > 0 ? '#0F172A' : '#64748B'), fontVariantNumeric: 'tabular-nums' }}>
+                                      {extraKm > 0 ? `+${formatDistanceKm(extraKm)}` : '0.0 km'}
                                     </span>
+                                    {extFare > 0 && (
+                                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669' }}>
+                                        (+₹{extFare})
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-                                <span style={{ fontSize: '11px', color: isAdditionalRideActive ? '#047857' : '#64748B', fontWeight: 500 }}>
-                                  {isAdditionalRideActive
-                                    ? `${formatDistanceKm(extraKm)} (+₹${extFare})`
-                                    : (extraKm > 0 ? `${formatDistanceKm(extraKm)} (+₹${extFare})` : 'Inner/pocket roads')}
-                                </span>
+
+                                {/* Modern Interactive Bottom Action CTA Pill */}
+                                <div
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 10px',
+                                    borderRadius: '10px',
+                                    background: isAdditionalRideActive ? '#DC2626' : (extraKm > 0 ? '#0F172A' : '#F8FAFC'),
+                                    border: isAdditionalRideActive ? 'none' : (extraKm > 0 ? 'none' : '1px solid #E2E8F0'),
+                                    color: isAdditionalRideActive ? '#FFFFFF' : (extraKm > 0 ? '#FFFFFF' : '#0F172A'),
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '5px',
+                                    boxShadow: isAdditionalRideActive
+                                      ? '0 2px 8px rgba(220, 38, 38, 0.25)'
+                                      : (extraKm > 0 ? '0 2px 8px rgba(15, 23, 42, 0.15)' : 'none'),
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  {isAdditionalRideActive ? (
+                                    <>
+                                      <span style={{ width: '6px', height: '6px', borderRadius: '1.5px', background: '#FFFFFF', display: 'inline-block' }} />
+                                      <span>Stop Distance</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Icon name="plus" size={12} color={extraKm > 0 ? '#FFFFFF' : '#0F172A'} />
+                                      <span>{extraKm > 0 ? 'Resume Trip' : 'Start Trip'}</span>
+                                    </>
+                                  )}
+                                </div>
                               </button>
 
                               {/* Feature B: Waiting Time Button */}
@@ -3459,59 +3529,142 @@ export default function DriverApp() {
                                 type="button"
                                 onClick={() => handleToggleWaiting(t.id)}
                                 style={{
-                                  padding: '11px 12px',
-                                  borderRadius: '14px',
+                                  padding: '12px 13px',
+                                  borderRadius: '16px',
                                   border: isWaitingActive
                                     ? (isWaitingFree ? '1.5px solid #F59E0B' : '1.5px solid #EF4444')
                                     : '1px solid #E2E8F0',
                                   background: isWaitingActive
-                                    ? (isWaitingFree ? '#FEF3C7' : '#FEF2F2')
+                                    ? (isWaitingFree ? '#FFFBEB' : '#FEF2F2')
                                     : '#FFFFFF',
-                                  color: isWaitingActive
-                                    ? (isWaitingFree ? '#B45309' : '#DC2626')
-                                    : '#0F172A',
                                   display: 'flex',
                                   flexDirection: 'column',
-                                  alignItems: 'flex-start',
-                                  gap: '4px',
+                                  justifyContent: 'space-between',
+                                  gap: '10px',
                                   cursor: 'pointer',
                                   boxShadow: isWaitingActive
-                                    ? '0 4px 12px rgba(245, 158, 11, 0.15)'
-                                    : '0 2px 6px rgba(0, 0, 0, 0.04)',
-                                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-                                  textAlign: 'left'
+                                    ? (isWaitingFree ? '0 6px 20px -4px rgba(245, 158, 11, 0.25)' : '0 6px 20px -4px rgba(239, 68, 68, 0.25)')
+                                    : '0 2px 8px -2px rgba(15, 23, 42, 0.04)',
+                                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  textAlign: 'left',
+                                  position: 'relative',
+                                  overflow: 'hidden'
                                 }}
                               >
+                                {/* Top Row: Icon Squircle & Rate Badge */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    {isWaitingActive ? (
+                                  <div
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '10px',
+                                      background: isWaitingActive
+                                        ? (isWaitingFree ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)')
+                                        : '#F1F5F9',
+                                      color: isWaitingActive
+                                        ? (isWaitingFree ? '#D97706' : '#DC2626')
+                                        : '#D97706',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    <Icon name="clock" size={16} />
+                                  </div>
+
+                                  <span
+                                    style={{
+                                      fontSize: '10px',
+                                      fontWeight: 750,
+                                      letterSpacing: '0.02em',
+                                      padding: '3px 7px',
+                                      borderRadius: '999px',
+                                      background: isWaitingActive
+                                        ? (isWaitingFree ? '#FEF3C7' : '#FEE2E2')
+                                        : '#FEF3C7',
+                                      color: isWaitingActive
+                                        ? (isWaitingFree ? '#B45309' : '#DC2626')
+                                        : '#B45309',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    {isWaitingActive && (
                                       <span
                                         className="animate-pulse-dot"
                                         style={{
-                                          width: '8px',
-                                          height: '8px',
+                                          width: '5px',
+                                          height: '5px',
                                           borderRadius: '50%',
-                                          background: isWaitingFree ? '#F59E0B' : '#EF4444',
-                                          display: 'inline-block'
+                                          background: isWaitingFree ? '#F59E0B' : '#EF4444'
                                         }}
                                       />
-                                    ) : (
-                                      <Icon name="clock" size={15} color="#D97706" />
                                     )}
-                                    <span style={{ fontSize: '13px', fontWeight: 700 }}>
-                                      {isWaitingActive ? 'Stop Waiting' : (waitingSeconds > 0 ? 'Resume Waiting' : 'Start Waiting')}
+                                    {isWaitingActive ? (isWaitingFree ? 'FREE TILL 60M' : 'BILLABLE') : '60m Free'}
+                                  </span>
+                                </div>
+
+                                {/* Center Metric & Label */}
+                                <div>
+                                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', display: 'block', letterSpacing: '-0.01em' }}>
+                                    Waiting Timer
+                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '2px' }}>
+                                    <span
+                                      style={{
+                                        fontSize: '14.5px',
+                                        fontWeight: 800,
+                                        color: isWaitingActive
+                                          ? (isWaitingFree ? '#B45309' : '#DC2626')
+                                          : (waitingSeconds > 0 ? '#0F172A' : '#64748B'),
+                                        fontVariantNumeric: 'tabular-nums'
+                                      }}
+                                    >
+                                      {waitingSeconds > 0 ? formatDurationSeconds(waitingSeconds) : '00:00:00'}
                                     </span>
+                                    {waitFare > 0 && (
+                                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#DC2626' }}>
+                                        (+₹{waitFare})
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-                                <span style={{ fontSize: '11px', color: isWaitingActive ? (isWaitingFree ? '#B45309' : '#B91C1C') : '#64748B', fontWeight: 500 }}>
-                                  {isWaitingActive
-                                    ? (isWaitingFree
-                                        ? `Free: ${remainingFreeMinutes}m left (${formatDurationSeconds(waitingSeconds)})`
-                                        : `Live: +${billableWaitingMinutes}m (+₹${waitFare})`)
-                                    : (waitingSeconds > 0
-                                        ? `${formatDurationSeconds(waitingSeconds)} (${isWaitingFree ? 'Free' : `+₹${waitFare}`})`
-                                        : 'Free: 60m first')}
-                                </span>
+
+                                {/* Modern Interactive Bottom Action CTA Pill */}
+                                <div
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 10px',
+                                    borderRadius: '10px',
+                                    background: isWaitingActive ? '#DC2626' : (waitingSeconds > 0 ? '#0F172A' : '#F8FAFC'),
+                                    border: isWaitingActive ? 'none' : (waitingSeconds > 0 ? 'none' : '1px solid #E2E8F0'),
+                                    color: isWaitingActive ? '#FFFFFF' : (waitingSeconds > 0 ? '#FFFFFF' : '#0F172A'),
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '5px',
+                                    boxShadow: isWaitingActive
+                                      ? '0 2px 8px rgba(220, 38, 38, 0.25)'
+                                      : (waitingSeconds > 0 ? '0 2px 8px rgba(15, 23, 42, 0.15)' : 'none'),
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  {isWaitingActive ? (
+                                    <>
+                                      <span style={{ width: '6px', height: '6px', borderRadius: '1.5px', background: '#FFFFFF', display: 'inline-block' }} />
+                                      <span>Pause Timer</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Icon name="clock" size={12} color={waitingSeconds > 0 ? '#FFFFFF' : '#0F172A'} />
+                                      <span>{waitingSeconds > 0 ? 'Resume Timer' : 'Start Timer'}</span>
+                                    </>
+                                  )}
+                                </div>
                               </button>
                             </div>
 
@@ -3529,16 +3682,16 @@ export default function DriverApp() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                                     Live Bill Breakdown
                                   </span>
                                   <span
                                     style={{
                                       fontSize: '10.5px',
-                                      fontWeight: 600,
+                                      fontWeight: 650,
                                       background: (isAdditionalRideActive || isWaitingActive) ? '#ECFDF5' : '#F1F5F9',
                                       color: (isAdditionalRideActive || isWaitingActive) ? '#059669' : '#64748B',
-                                      padding: '2px 7px',
+                                      padding: '2px 8px',
                                       borderRadius: '999px',
                                       display: 'inline-flex',
                                       alignItems: 'center',
@@ -3548,7 +3701,7 @@ export default function DriverApp() {
                                     {(isAdditionalRideActive || isWaitingActive) && (
                                       <span className="animate-pulse-dot" style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
                                     )}
-                                    <span>{(isAdditionalRideActive || isWaitingActive) ? 'Live Tracking' : 'Frozen'}</span>
+                                    <span>{(isAdditionalRideActive || isWaitingActive) ? 'Live Metering' : 'Frozen'}</span>
                                   </span>
                                 </div>
 
@@ -3560,7 +3713,7 @@ export default function DriverApp() {
                                 {(extraKm > 0 || isAdditionalRideActive) && (
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
                                     <span>
-                                      Additional Ride ({formatDistanceKm(extraKm)} @ ₹{RATE_PER_KM}/km)
+                                      Additional Trip ({formatDistanceKm(extraKm)} @ ₹{RATE_PER_KM}/km)
                                     </span>
                                     <b style={{ color: '#059669' }}>+₹{extFare}</b>
                                   </div>

@@ -206,18 +206,24 @@ export default function TripInvoiceModal({
                 <b style={{ color: '#0F172A' }}>₹{baseFare}</b>
               </div>
               {extraKm > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
-                  <span>Additional Ride ({extraKm.toFixed(2)} km @ ₹{ratePerKm}/km)</span>
-                  <b style={{ color: '#059669' }}>+₹{extensionFare}</b>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', borderRadius: '10px', background: '#F0FDF4', border: '1px solid #DCFCE7' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#166534', fontWeight: 600 }}>
+                    <Icon name="route" size={13} color="#166534" />
+                    <span>Additional Trip (+{extraKm.toFixed(2)} km @ ₹{ratePerKm}/km)</span>
+                  </span>
+                  <b style={{ color: '#15803D', fontSize: '12.5px' }}>+₹{extensionFare}</b>
                 </div>
               )}
               {waitingSeconds > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
-                  <span>
-                    Waiting Time ({Math.floor(waitingSeconds / 60)}m{billableWaitingMinutes > 0 ? ` · ${billableWaitingMinutes}m billable @ ₹${waitingRatePerMin}/m` : ' · 60m Free'})
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', borderRadius: '10px', background: waitingFare > 0 ? '#FEF2F2' : '#FFFBEB', border: waitingFare > 0 ? '1px solid #FEE2E2' : '1px solid #FEF3C7' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: waitingFare > 0 ? '#991B1B' : '#92400E', fontWeight: 600 }}>
+                    <Icon name="clock" size={13} color={waitingFare > 0 ? '#991B1B' : '#92400E'} />
+                    <span>
+                      Waiting Time ({Math.floor(waitingSeconds / 60)}m{billableWaitingMinutes > 0 ? ` · ${billableWaitingMinutes}m billable @ ₹${waitingRatePerMin}/m` : ' · 60m Free'})
+                    </span>
                   </span>
-                  <b style={{ color: waitingFare > 0 ? '#DC2626' : '#059669' }}>
-                    {waitingFare > 0 ? `+₹${waitingFare}` : 'Free (₹0)'}
+                  <b style={{ color: waitingFare > 0 ? '#DC2626' : '#059669', fontSize: '12.5px' }}>
+                    {waitingFare > 0 ? `+₹${waitingFare}` : 'Free'}
                   </b>
                 </div>
               )}
