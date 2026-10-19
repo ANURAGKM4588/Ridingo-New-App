@@ -172,6 +172,40 @@ export function AppProvider({ children }) {
   // App navigation state (User App, Driver App, or CRM Admin Panel)
   const determineView = () => {
     if (typeof window !== 'undefined') {
+      // 1. ABSOLUTE STANDALONE NATIVE BUILD LOCK:
+      // If built for user app, it is 100% User App. NEVER switch to driver!
+      const isStandaloneUser =
+        window.RIDINGO_TARGET === 'user' ||
+        (typeof document !== 'undefined' && (
+          document.body?.classList?.contains('standalone-user') ||
+          document.documentElement?.classList?.contains('standalone-user')
+        ));
+
+      if (isStandaloneUser) {
+        // Purge any stale ?view=driver from URL immediately
+        try {
+          const url = new URL(window.location.href);
+          if (url.searchParams.get('view') === 'driver') {
+            url.searchParams.delete('view');
+            window.history.replaceState({}, '', url.toString());
+          }
+        } catch (_) {}
+        return 'user';
+      }
+
+      // If built for driver app, it is 100% Driver App. NEVER switch to user!
+      const isStandaloneDriver =
+        window.RIDINGO_TARGET === 'driver' ||
+        (typeof document !== 'undefined' && (
+          document.body?.classList?.contains('standalone-driver') ||
+          document.documentElement?.classList?.contains('standalone-driver')
+        ));
+
+      if (isStandaloneDriver) {
+        return 'driver';
+      }
+
+      // 2. Web dev server / browser preview (when running on localhost):
       const search = window.location.search.toLowerCase();
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
@@ -190,24 +224,21 @@ export function AppProvider({ children }) {
       }
 
       if (
-        window.RIDINGO_TARGET === 'driver' ||
         port === '5174' ||
         search.includes('app=driver') ||
         search.includes('view=driver') ||
         path.includes('/driver') ||
-        hash.includes('driver') ||
-        (typeof document !== 'undefined' && document.body?.classList?.contains('standalone-driver'))
+        hash.includes('driver')
       ) {
         return 'driver';
       }
+
       if (
-        window.RIDINGO_TARGET === 'user' ||
         port === '5173' ||
         search.includes('app=user') ||
         search.includes('view=user') ||
         path.includes('/user') ||
-        hash.includes('user') ||
-        (typeof document !== 'undefined' && document.body?.classList?.contains('standalone-user'))
+        hash.includes('user')
       ) {
         return 'user';
       }
@@ -218,6 +249,26 @@ export function AppProvider({ children }) {
   const [view, setView] = useState(determineView);
 
   const switchAppView = (targetView, extra = {}) => {
+    // HARD LOCK: Standalone User App package NEVER switches away from 'user'!
+    if (window.RIDINGO_TARGET === 'user') {
+      if (targetView !== 'user') {
+        console.info('[AppContext] Suppressed cross-app switch in User App. Target requested:', targetView);
+        if (extra?.tripId) {
+          setActiveTrackingTripId(extra.tripId);
+          setLiveTrackingOpen(true);
+        }
+        return;
+      }
+    }
+
+    // HARD LOCK: Standalone Driver App package NEVER switches away from 'driver'!
+    if (window.RIDINGO_TARGET === 'driver') {
+      if (targetView !== 'driver') {
+        console.info('[AppContext] Suppressed cross-app switch in Driver App. Target requested:', targetView);
+        return;
+      }
+    }
+
     if (targetView === 'driver') {
       try {
         const url = new URL(window.location.href);
@@ -253,6 +304,10 @@ export function AppProvider({ children }) {
         window.history.pushState({}, '', url.toString());
       } catch (e) {}
       setView('user');
+      if (extra?.tripId) {
+        setActiveTrackingTripId(extra.tripId);
+        setLiveTrackingOpen(true);
+      }
     } else if (targetView === 'admin') {
       try {
         const url = new URL(window.location.href);
@@ -582,7 +637,11 @@ export function AppProvider({ children }) {
           !settledTripIds.includes(t.id) &&
           !settledTripIdsRef.current.has(t.id)
         );
-        if (activeReqs.length > 0) {
+        const isCurrentDriverApp =
+          window.RIDINGO_TARGET === 'driver' ||
+          (view === 'driver' && window.RIDINGO_TARGET !== 'user');
+
+        if (activeReqs.length > 0 && isCurrentDriverApp) {
           setIncomingTripRequest(activeReqs[0]);
           if (isDriverLoginComplete()) {
             notifyIncomingRideRequest(activeReqs[0], {
@@ -594,6 +653,9 @@ export function AppProvider({ children }) {
               }
             });
           }
+        } else if (!isCurrentDriverApp) {
+          // User app must never have incoming driver trip request modal or sounds
+          setIncomingTripRequest(null);
         } else {
           // If no active requests or previous request is no longer requested, clear it
           setIncomingTripRequest(prev => {
@@ -658,18 +720,24 @@ export function AppProvider({ children }) {
         }
         return [newTrip, ...prev]; // Preserve all existing requests!
       });
-      setIncomingTripRequest(newTrip);
-      setDriverOnline(true);
-      // Dispatch background push notification immediately if driver backgroundPush setting is enabled
-      if (driverPartner?.backgroundPush !== false && isDriverLoginComplete()) {
-        notifyIncomingRideRequest(newTrip, {
-          onAccept: (tripId) => acceptTrip(tripId),
-          onViewMore: (trip) => {
-            if (typeof window.__ridingoSetView === 'function') {
-              window.__ridingoSetView('driver', { tripId: trip?.id });
+      const isCurrentDriverApp =
+        window.RIDINGO_TARGET === 'driver' ||
+        (view === 'driver' && window.RIDINGO_TARGET !== 'user');
+
+      if (isCurrentDriverApp) {
+        setIncomingTripRequest(newTrip);
+        setDriverOnline(true);
+        // Dispatch background push notification immediately if driver backgroundPush setting is enabled
+        if (driverPartner?.backgroundPush !== false && isDriverLoginComplete()) {
+          notifyIncomingRideRequest(newTrip, {
+            onAccept: (tripId) => acceptTrip(tripId),
+            onViewMore: (trip) => {
+              if (typeof window.__ridingoSetView === 'function') {
+                window.__ridingoSetView('driver', { tripId: trip?.id });
+              }
             }
-          }
-        });
+          });
+        }
       }
     });
 
@@ -700,21 +768,27 @@ export function AppProvider({ children }) {
                   });
 
                   if (tripObj.status === 'requested') {
-                    let declinedTripIds = [];
-                    try {
-                      declinedTripIds = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
-                    } catch (_) {}
-                    if (!declinedTripIds.includes(tripObj.id) && !acceptedTripIdsRef.current.has(tripObj.id) && !settledTripIdsRef.current.has(tripObj.id)) {
-                      setIncomingTripRequest(tripObj);
-                      if (driverPartner?.backgroundPush !== false && isDriverLoginComplete()) {
-                        notifyIncomingRideRequest(tripObj, {
-                          onAccept: (tripId) => acceptTrip(tripId),
-                          onViewMore: (trip) => {
-                            if (typeof window.__ridingoSetView === 'function') {
-                              window.__ridingoSetView('driver', { tripId: trip?.id });
+                    const isCurrentDriverApp =
+                      window.RIDINGO_TARGET === 'driver' ||
+                      (view === 'driver' && window.RIDINGO_TARGET !== 'user');
+
+                    if (isCurrentDriverApp) {
+                      let declinedTripIds = [];
+                      try {
+                        declinedTripIds = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+                      } catch (_) {}
+                      if (!declinedTripIds.includes(tripObj.id) && !acceptedTripIdsRef.current.has(tripObj.id) && !settledTripIdsRef.current.has(tripObj.id)) {
+                        setIncomingTripRequest(tripObj);
+                        if (driverPartner?.backgroundPush !== false && isDriverLoginComplete()) {
+                          notifyIncomingRideRequest(tripObj, {
+                            onAccept: (tripId) => acceptTrip(tripId),
+                            onViewMore: (trip) => {
+                              if (typeof window.__ridingoSetView === 'function') {
+                                window.__ridingoSetView('driver', { tripId: trip?.id });
+                              }
                             }
-                          }
-                        });
+                          });
+                        }
                       }
                     }
                   } else if (tripObj.status === 'accepted') {

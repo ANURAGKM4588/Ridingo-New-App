@@ -117,31 +117,35 @@ export function clearNotificationDeduplicationCache() {
  * If login/registration is complete, background push notifications are permitted.
  */
 export function isDriverLoginComplete() {
+  if (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'user') {
+    return false;
+  }
   try {
-    if (typeof localStorage === 'undefined') return true;
+    if (typeof localStorage === 'undefined') return false;
     const raw = localStorage.getItem('ridingo_driver_session');
     if (raw) {
       const session = JSON.parse(raw);
-      if (session && typeof session === 'object') {
-        const notLoggedOut = session.loggedOut !== true && session.status !== 'logged_out';
-        return notLoggedOut;
+      if (session && typeof session === 'object' && session.id) {
+        return session.loggedOut !== true && session.status !== 'logged_out';
       }
     }
     const dp = localStorage.getItem('ridingo_driver_partner');
     if (dp) {
       try {
         const partner = JSON.parse(dp);
-        if (partner?.loggedOut === true || partner?.status === 'logged_out') return false;
+        if (partner?.id && partner?.loggedOut !== true && partner?.status !== 'logged_out') return true;
       } catch (_) {}
-      return true;
     }
-    return true;
+    return false;
   } catch (e) {
-    return true;
+    return false;
   }
 }
 
 export function isUserLoginComplete() {
+  if (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'driver') {
+    return false;
+  }
   try {
     if (typeof localStorage === 'undefined') return false;
     const raw = localStorage.getItem('ridingo_user_session');
@@ -162,7 +166,7 @@ export function isUserLoginComplete() {
 
 /**
  * Setup notification action listener for Capacitor and Web ServiceWorker
- * When driver taps on a push notification, switches directly to the Driver App (?view=driver)
+ * Accurately redirects to User App or Driver App depending on the origin
  */
 export function setupNotificationActionListeners() {
   if (isLocalNotificationListenerAttached) return;
@@ -183,8 +187,46 @@ export function setupNotificationActionListeners() {
           return;
         }
 
-        const isDriver = extra.source === 'RidingoDriver' || extra.tripId || action?.notification?.channelId === 'driver_dispatch_alerts';
-        if (isDriver) {
+        // STRICT IDENTIFICATION:
+        // Do NOT use extra.tripId to decide if it's driver! User notifications also have extra.tripId!
+        const isUserNotif =
+          extra.source === 'RidingoUser' ||
+          extra.targetView === 'user' ||
+          action?.notification?.channelId === 'user_trip_updates';
+
+        const isDriverNotif =
+          extra.source === 'RidingoDriver' ||
+          extra.targetView === 'driver' ||
+          action?.notification?.channelId === 'driver_dispatch_alerts';
+
+        // 1. STANDALONE USER APP PACKAGE: ALWAYS STAY IN USER APP!
+        if (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'user') {
+          if (typeof window.__ridingoSetView === 'function') {
+            window.__ridingoSetView('user', extra);
+          }
+          return;
+        }
+
+        // 2. STANDALONE DRIVER APP PACKAGE: ALWAYS STAY IN DRIVER APP!
+        if (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'driver') {
+          if (typeof window.__ridingoSetView === 'function') {
+            window.__ridingoSetView('driver', { ...extra, actionId });
+          }
+          return;
+        }
+
+        // 3. Web or Universal mode:
+        if (isUserNotif) {
+          if (typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
+            window.__ridingoSetView('user', extra);
+          } else if (typeof window !== 'undefined') {
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('view');
+              window.location.href = url.toString();
+            } catch (e) {}
+          }
+        } else if (isDriverNotif) {
           if (typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
             window.__ridingoSetView('driver', { ...extra, actionId });
           } else if (typeof window !== 'undefined') {
@@ -209,8 +251,21 @@ export function setupNotificationActionListeners() {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'NOTIFICATION_ACTION_CLICK') {
           const extra = event.data.data || {};
-          const isDriver = extra.source === 'RidingoDriver' || extra.tripId;
-          if (isDriver && typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
+          const isUserNotif = extra.source === 'RidingoUser' || extra.targetView === 'user';
+          const isDriverNotif = extra.source === 'RidingoDriver' || extra.targetView === 'driver';
+
+          if (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'user') {
+            if (typeof window.__ridingoSetView === 'function') window.__ridingoSetView('user', extra);
+            return;
+          }
+          if (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'driver') {
+            if (typeof window.__ridingoSetView === 'function') window.__ridingoSetView('driver', extra);
+            return;
+          }
+
+          if (isUserNotif && typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
+            window.__ridingoSetView('user', extra);
+          } else if (isDriverNotif && typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
             window.__ridingoSetView('driver', extra);
           }
         }
