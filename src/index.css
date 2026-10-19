@@ -6834,6 +6834,26 @@ body.app-offline-mode .action-btn {
   }
 }
 
+/* ========================================================
+   Driver Custom Push Notification Banner UI
+   ======================================================== */
+@keyframes notificationSlideDown {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -90%, 0) scale(0.94);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(0, 4px, 0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
 
-
+.driver-custom-push-banner {
+  animation: notificationSlideDown 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
 

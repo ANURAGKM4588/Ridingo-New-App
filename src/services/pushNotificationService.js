@@ -659,6 +659,15 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
   // Atomically record immediately to defeat parallel race conditions
   recordNotificationSent(dedupKey);
 
+  // Dispatch custom event so Driver App renders the Custom Push Notification Banner UI immediately
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new CustomEvent('RIDINGO_SHOW_CUSTOM_DRIVER_NOTIFICATION', {
+        detail: { trip, callbacks }
+      }));
+    } catch (_) {}
+  }
+
   const pickup = cleanLocationName(trip?.pickup || trip?.from) || 'Customer Pickup';
   const drop = cleanLocationName(trip?.drop_loc || trip?.drop || trip?.to) || 'City Route';
   const fare = Number(trip?.fare) || 600;

@@ -17,6 +17,7 @@ import VehicleConditionModal from './VehicleConditionModal';
 import ContactProfileCard from './ContactProfileCard';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import InspectionMediaModal from './InspectionMediaModal';
+import DriverCustomTripNotification from './DriverCustomTripNotification';
 import { supabase } from '../lib/supabase';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
 import {
@@ -1179,6 +1180,43 @@ export default function DriverApp() {
         saved.forEach(id => acceptedTripIdsRef.current.add(id));
       }
     } catch (_) {}
+  }, []);
+
+  // Custom Push Notification Banner State for Driver App
+  const [customPushTrip, setCustomPushTrip] = useState(null);
+
+  // Sync customPushTrip with incomingTripRequest context state
+  useEffect(() => {
+    if (incomingTripRequest && incomingTripRequest.status === 'requested') {
+      try {
+        const declined = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+        if (declined.includes(incomingTripRequest.id)) {
+          setCustomPushTrip(null);
+          return;
+        }
+      } catch (_) {}
+      setCustomPushTrip(incomingTripRequest);
+    } else {
+      setCustomPushTrip(null);
+    }
+  }, [incomingTripRequest?.id, incomingTripRequest?.status]);
+
+  // Listen to custom push notification dispatch from pushNotificationService
+  useEffect(() => {
+    const handleCustomPushEvent = (e) => {
+      const trip = e.detail?.trip;
+      if (trip && trip.status === 'requested') {
+        try {
+          const declined = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
+          if (declined.includes(trip.id)) return;
+        } catch (_) {}
+        setCustomPushTrip(trip);
+      }
+    };
+    window.addEventListener('RIDINGO_SHOW_CUSTOM_DRIVER_NOTIFICATION', handleCustomPushEvent);
+    return () => {
+      window.removeEventListener('RIDINGO_SHOW_CUSTOM_DRIVER_NOTIFICATION', handleCustomPushEvent);
+    };
   }, []);
 
   // Scroll-linked pull-to-refresh state & refs for Driver Home Page (dTab === 'dash' only)
@@ -5056,13 +5094,21 @@ export default function DriverApp() {
         </button>
       </nav>
 
-      {/* Real-time incoming ride request pop-up on Driver App */}
-      {incomingTripRequest && incomingTripRequest.status === 'requested' && (!minimizedRequestTripId || minimizedRequestTripId !== incomingTripRequest.id) && (
-        <IncomingRideModal
-          trip={incomingTripRequest}
-          onAccept={handleAccept}
-          onDecline={handleDecline}
-          onMinimize={() => setMinimizedRequestTripId(incomingTripRequest.id)}
+      {/* Custom Push Notification Banner UI specifically for Driver App Trip Requests */}
+      {(customPushTrip || incomingTripRequest) && (customPushTrip?.status === 'requested' || incomingTripRequest?.status === 'requested') && (!minimizedRequestTripId || minimizedRequestTripId !== (customPushTrip?.id || incomingTripRequest?.id)) && (
+        <DriverCustomTripNotification
+          trip={customPushTrip || incomingTripRequest}
+          onAccept={(tripId) => {
+            setCustomPushTrip(null);
+            handleAccept(tripId);
+          }}
+          onDecline={(tripId) => {
+            setCustomPushTrip(null);
+            handleDecline(tripId);
+          }}
+          onExpand={(trip) => {
+            setSelectedRequestDetails(trip);
+          }}
         />
       )}
 
