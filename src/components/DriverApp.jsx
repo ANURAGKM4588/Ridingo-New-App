@@ -3408,150 +3408,219 @@ export default function DriverApp() {
 
                         {t.status === 'inprogress' && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-                            {/* Ultra-Clean Minimalist Text Buttons with Simple Badge Pills */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                              {/* Feature A: Additional Trip Text Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleAdditionalRide(t.id)}
+                            {/* Stacked Minimal Action Strips (Uber / Lyft Driver style) */}
+                            <div
+                              style={{
+                                background: '#FFFFFF',
+                                border: '1px solid #E2E8F0',
+                                borderRadius: '16px',
+                                overflow: 'hidden',
+                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+                              }}
+                            >
+                              {/* Row 1: Additional Trip Action Strip */}
+                              <div
                                 style={{
-                                  padding: '10px 12px',
-                                  borderRadius: '12px',
-                                  border: isAdditionalRideActive ? '1.5px solid #10B981' : '1px solid #E2E8F0',
-                                  background: isAdditionalRideActive ? '#F0FDF4' : '#FFFFFF',
-                                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                  padding: '11px 14px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  gap: '6px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.18s ease',
-                                  minWidth: 0
+                                  gap: '12px',
+                                  background: isAdditionalRideActive ? '#F0FDF4' : '#FFFFFF',
+                                  transition: 'background 0.2s ease'
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                                  <Icon
-                                    name="route"
-                                    size={15}
-                                    color={isAdditionalRideActive ? '#059669' : '#475569'}
-                                  />
-                                  <span
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                                  <div
                                     style={{
-                                      fontSize: '12.5px',
-                                      fontWeight: 700,
-                                      color: isAdditionalRideActive ? '#065F46' : '#0F172A',
-                                      whiteSpace: 'nowrap'
+                                      width: '36px',
+                                      height: '36px',
+                                      borderRadius: '10px',
+                                      background: isAdditionalRideActive ? '#DCFCE7' : '#F1F5F9',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
                                     }}
                                   >
-                                    {isAdditionalRideActive ? 'Stop Extra' : 'Extra Trip'}
-                                  </span>
+                                    <Icon
+                                      name="route"
+                                      size={17}
+                                      color={isAdditionalRideActive ? '#15803D' : '#475569'}
+                                    />
+                                  </div>
+
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <b style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
+                                        Additional Trip
+                                      </b>
+                                      {isAdditionalRideActive && (
+                                        <span
+                                          style={{
+                                            fontSize: '10px',
+                                            fontWeight: 700,
+                                            color: '#15803D',
+                                            background: '#DCFCE7',
+                                            padding: '1px 6px',
+                                            borderRadius: '999px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}
+                                        >
+                                          <span
+                                            className="animate-pulse-dot"
+                                            style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10B981' }}
+                                          />
+                                          Active
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ fontSize: '11.5px', marginTop: '1px' }}>
+                                      {isAdditionalRideActive || extraKm > 0 ? (
+                                        <span style={{ fontWeight: 700, color: '#059669' }}>
+                                          +{formatDistanceKm(extraKm)} (+₹{extFare})
+                                        </span>
+                                      ) : (
+                                        <span style={{ color: '#64748B' }}>Standard rate ₹{RATE_PER_KM}/km</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
 
-                                <span
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleAdditionalRide(t.id)}
                                   style={{
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    padding: '3px 8px',
+                                    padding: '7px 14px',
                                     borderRadius: '999px',
-                                    background: isAdditionalRideActive ? '#DCFCE7' : '#F1F5F9',
-                                    color: isAdditionalRideActive ? '#15803D' : '#64748B',
-                                    whiteSpace: 'nowrap',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    flexShrink: 0
+                                    border: isAdditionalRideActive ? 'none' : '1px solid #CBD5E1',
+                                    background: isAdditionalRideActive ? '#DC2626' : '#FFFFFF',
+                                    color: isAdditionalRideActive ? '#FFFFFF' : '#0F172A',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                    boxShadow: isAdditionalRideActive ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
+                                    transition: 'all 0.15s ease'
                                   }}
                                 >
-                                  {isAdditionalRideActive && (
-                                    <span
-                                      className="animate-pulse-dot"
-                                      style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }}
-                                    />
-                                  )}
-                                  {isAdditionalRideActive
-                                    ? `+${formatDistanceKm(extraKm)}`
-                                    : (extraKm > 0 ? `+${formatDistanceKm(extraKm)}` : '₹18/km')}
-                                </span>
-                              </button>
+                                  {isAdditionalRideActive ? 'Stop Extra' : '+ Add Extra'}
+                                </button>
+                              </div>
 
-                              {/* Feature B: Waiting Time Text Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleWaiting(t.id)}
+                              {/* Subtle 1px Divider */}
+                              <div style={{ height: '1px', background: '#F1F5F9', margin: '0 14px' }} />
+
+                              {/* Row 2: Waiting Timer Action Strip */}
+                              <div
                                 style={{
-                                  padding: '10px 12px',
-                                  borderRadius: '12px',
-                                  border: isWaitingActive
-                                    ? (isWaitingFree ? '1.5px solid #F59E0B' : '1.5px solid #EF4444')
-                                    : '1px solid #E2E8F0',
+                                  padding: '11px 14px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '12px',
                                   background: isWaitingActive
                                     ? (isWaitingFree ? '#FFFBEB' : '#FEF2F2')
                                     : '#FFFFFF',
-                                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '6px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.18s ease',
-                                  minWidth: 0
+                                  transition: 'background 0.2s ease'
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                                  <Icon
-                                    name="clock"
-                                    size={15}
-                                    color={isWaitingActive ? (isWaitingFree ? '#D97706' : '#DC2626') : '#475569'}
-                                  />
-                                  <span
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                                  <div
                                     style={{
-                                      fontSize: '12.5px',
-                                      fontWeight: 700,
-                                      color: isWaitingActive
-                                        ? (isWaitingFree ? '#92400E' : '#991B1B')
-                                        : '#0F172A',
-                                      whiteSpace: 'nowrap'
+                                      width: '36px',
+                                      height: '36px',
+                                      borderRadius: '10px',
+                                      background: isWaitingActive
+                                        ? (isWaitingFree ? '#FEF3C7' : '#FEE2E2')
+                                        : '#F1F5F9',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
                                     }}
                                   >
-                                    {isWaitingActive ? 'Stop Wait' : 'Waiting'}
-                                  </span>
+                                    <Icon
+                                      name="clock"
+                                      size={17}
+                                      color={isWaitingActive ? (isWaitingFree ? '#B45309' : '#DC2626') : '#475569'}
+                                    />
+                                  </div>
+
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <b style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
+                                        Waiting Timer
+                                      </b>
+                                      {isWaitingActive && (
+                                        <span
+                                          style={{
+                                            fontSize: '10px',
+                                            fontWeight: 700,
+                                            color: isWaitingFree ? '#B45309' : '#DC2626',
+                                            background: isWaitingFree ? '#FEF3C7' : '#FEE2E2',
+                                            padding: '1px 6px',
+                                            borderRadius: '999px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}
+                                        >
+                                          <span
+                                            className="animate-pulse-dot"
+                                            style={{
+                                              width: '4px',
+                                              height: '4px',
+                                              borderRadius: '50%',
+                                              background: isWaitingFree ? '#F59E0B' : '#EF4444'
+                                            }}
+                                          />
+                                          {isWaitingFree ? 'Free 60m' : 'Chargeable'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ fontSize: '11.5px', marginTop: '1px' }}>
+                                      {isWaitingActive || waitingSeconds > 0 ? (
+                                        <span
+                                          style={{
+                                            fontWeight: 700,
+                                            color: isWaitingFree ? '#B45309' : '#DC2626'
+                                          }}
+                                        >
+                                          {formatDurationSeconds(waitingSeconds)}{' '}
+                                          {isWaitingFree ? '(Complimentary)' : `(+₹${waitFare})`}
+                                        </span>
+                                      ) : (
+                                        <span style={{ color: '#64748B' }}>
+                                          First 60 mins free · then ₹{WAITING_RATE_PER_MIN}/min
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
 
-                                <span
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleWaiting(t.id)}
                                   style={{
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    padding: '3px 8px',
+                                    padding: '7px 14px',
                                     borderRadius: '999px',
-                                    background: isWaitingActive
-                                      ? (isWaitingFree ? '#FEF3C7' : '#FEE2E2')
-                                      : '#F1F5F9',
-                                    color: isWaitingActive
-                                      ? (isWaitingFree ? '#B45309' : '#DC2626')
-                                      : '#64748B',
-                                    whiteSpace: 'nowrap',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    flexShrink: 0
+                                    border: isWaitingActive ? 'none' : '1px solid #CBD5E1',
+                                    background: isWaitingActive ? '#DC2626' : '#FFFFFF',
+                                    color: isWaitingActive ? '#FFFFFF' : '#0F172A',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                    boxShadow: isWaitingActive ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
+                                    transition: 'all 0.15s ease'
                                   }}
                                 >
-                                  {isWaitingActive && (
-                                    <span
-                                      className="animate-pulse-dot"
-                                      style={{
-                                        width: '5px',
-                                        height: '5px',
-                                        borderRadius: '50%',
-                                        background: isWaitingFree ? '#F59E0B' : '#EF4444'
-                                      }}
-                                    />
-                                  )}
-                                  {isWaitingActive
-                                    ? formatDurationSeconds(waitingSeconds)
-                                    : (waitingSeconds > 0 ? formatDurationSeconds(waitingSeconds) : '60m Free')}
-                                </span>
-                              </button>
+                                  {isWaitingActive ? 'Stop Wait' : '+ Start Wait'}
+                                </button>
+                              </div>
                             </div>
 
                             {/* Minimal Live Bill Breakdown (Zero clutter) */}
