@@ -23,11 +23,11 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
   if (!offer) return null;
 
   const defaultTerms = [
-    'Offer valid on all Chauffeur bookings booked via the Ridingo mobile app.',
+    'Offer valid on all Driver bookings booked via the Ridingo mobile app.',
     'Cashback of 20% (up to ₹250) is credited to your Ridingo Wallet immediately upon trip completion.',
     'Applicable for both Manual and Automatic transmission personal vehicles.',
     'Cannot be combined with any other promotional coupons or corporate discounts.',
-    'Platform terms and chauffeur service policies apply.'
+    'Platform terms and driver service policies apply.'
   ];
 
   const terms = offer.terms || defaultTerms;
@@ -89,7 +89,7 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
                 Offer Details
               </h3>
               <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)' }}>
-                Exclusive Chauffeur Promotion
+                Exclusive Driver Promotion
               </span>
             </div>
           </div>
@@ -132,10 +132,10 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
             {discountLabel}
           </div>
           <h4 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>
-            {offer.title || 'Special Chauffeur Offer'}
+            {offer.title || 'Special Driver Offer'}
           </h4>
           <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#94A3B8', lineHeight: 1.45 }}>
-            {offer.body || 'Enjoy professional chauffeurs at exceptional discounts.'}
+            {offer.body || 'Enjoy professional drivers at exceptional discounts.'}
           </p>
 
           {/* Coupon Code Pill */}
@@ -534,7 +534,7 @@ export default function NotificationsSheet() {
     setBookingCategory(offerCat);
     setNotifsOpen(false);
     setBookingOpen(true);
-    addToast(`Offer activated! Book your ${offerCat} chauffeur now.`, 'check');
+    addToast(`Offer activated! Book your ${offerCat} driver now.`, 'check');
   };
 
   const handleViewOfferDetails = (note) => {
@@ -752,7 +752,7 @@ export default function NotificationsSheet() {
                       maxWidth: '260px'
                     }}
                   >
-                    You're all caught up. Live trip updates and special chauffeur offers will arrive here.
+                    You're all caught up. Live trip updates and special driver offers will arrive here.
                   </p>
                 </motion.div>
               )}

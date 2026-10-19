@@ -15,6 +15,7 @@ import TripCancellationModal from './components/TripCancellationModal';
 import DriverApp from './components/DriverApp';
 import AdminPanel from './components/admin/AdminPanel';
 import Icon from './components/Icon';
+import NetworkStatusBanner from './components/NetworkStatusBanner';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -74,6 +75,8 @@ class ErrorBoundary extends React.Component {
 }
 
 function MainApp() {
+  const app = useApp();
+  if (!app) return null;
   const {
     view,
     setView,
@@ -121,6 +124,20 @@ function MainApp() {
   }, []);
 
   React.useEffect(() => {
+    // Graceful fade-out of the App Refresh Splash Screen
+    const splash = document.getElementById('app-splash-screen');
+    if (splash) {
+      const timer = setTimeout(() => {
+        splash.classList.add('splash-fade-out');
+        setTimeout(() => {
+          if (splash.parentNode) splash.parentNode.removeChild(splash);
+        }, 500);
+      }, 750);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  React.useEffect(() => {
     const el = document.getElementById('u-content');
     if (el) {
       el.scrollTop = 0;
@@ -138,6 +155,7 @@ function MainApp() {
           <section className="col col-fullscreen" id="col-u" data-theme={userThemeVal} data-theme-setting={userTheme}>
             <div className="phone phone-fullscreen">
               <div className="inner inner-fullscreen">
+                <NetworkStatusBanner />
                 <ErrorBoundary
                   fallbackMessage="User app encountered a display issue. Tap below to return home."
                   buttonText="Return to Home"
@@ -189,9 +207,12 @@ function MainApp() {
         {view === 'driver' && (
           <section className="col col-fullscreen" id="col-d" data-theme={driverThemeVal} data-theme-setting={driverTheme}>
             <div className="phone phone-fullscreen">
-              <ErrorBoundary fallbackMessage="Driver app encountered a display issue. Tap to recover.">
-                <DriverApp />
-              </ErrorBoundary>
+              <div className="inner inner-fullscreen" style={{ display: 'flex', flexDirection: 'column' }}>
+                <NetworkStatusBanner />
+                <ErrorBoundary fallbackMessage="Driver app encountered a display issue. Tap to recover.">
+                  <DriverApp />
+                </ErrorBoundary>
+              </div>
             </div>
           </section>
         )}

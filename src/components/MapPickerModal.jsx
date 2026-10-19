@@ -9,16 +9,18 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
 
   const [selectedAddr, setSelectedAddr] = useState(() => {
     const cached = getCachedDeviceLocation();
-    return cleanPlusCode(cached?.address) || 'Locating...';
+    return cleanPlusCode(cached?.address) || 'Selected Location';
   });
 
   const [coordsInfo, setCoordsInfo] = useState(() => {
     const cached = getCachedDeviceLocation();
+    const cleanAddr = cleanPlusCode(cached?.address) || 'Selected Location';
     return {
       lat: cached?.lat || 10.0275,
       lng: cached?.lng || 76.3080,
       accuracy: cached?.accuracy || null,
-      name: 'Selected Location'
+      name: cleanAddr.split(',')[0].trim() || 'Selected Location',
+      address: cleanAddr
     };
   });
 
@@ -97,14 +99,16 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
 
     const initialLat = cachedLoc.lat;
     const initialLng = cachedLoc.lng;
+    const initialAddr = cleanPlusCode(cachedLoc.address) || 'Selected Location';
 
     setCoordsInfo({
       lat: initialLat,
       lng: initialLng,
       accuracy: cachedLoc.accuracy,
-      name: 'Selected Location'
+      name: initialAddr.split(',')[0].trim() || 'Selected Location',
+      address: initialAddr
     });
-    setSelectedAddr(cleanPlusCode(cachedLoc.address) || 'Locating...');
+    setSelectedAddr(initialAddr);
 
     if (!mapInstanceRef.current && containerRef.current) {
       const map = L.map(containerRef.current, {
@@ -178,12 +182,11 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
         if (mapInstanceRef.current) {
           mapInstanceRef.current.invalidateSize();
         }
-      }, 100);
+      }, 50);
     }
 
-    // Refresh GPS in background
-    setIsLocating(true);
-    getDeviceLocation(true)
+    // Fast non-blocking background GPS refresh without loading overlay
+    getDeviceLocation(false)
       .then((freshLoc) => {
         if (isCancelled || !freshLoc || !freshLoc.lat) return;
         setCoordsInfo((prev) => ({
@@ -197,7 +200,7 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
         }
 
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.panTo([freshLoc.lat, freshLoc.lng], { animate: true, duration: 0.5 });
+          mapInstanceRef.current.panTo([freshLoc.lat, freshLoc.lng], { animate: false });
           if (deviceCircleRef.current) {
             deviceCircleRef.current.setLatLng([freshLoc.lat, freshLoc.lng]);
             deviceCircleRef.current.setRadius(Math.min(freshLoc.accuracy || 20, 80));
@@ -207,12 +210,7 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
           }
         }
       })
-      .catch((err) => {
-        console.warn('Background GPS note:', err);
-      })
-      .finally(() => {
-        if (!isCancelled) setIsLocating(false);
-      });
+      .catch(() => {});
 
     return () => {
       isCancelled = true;
@@ -227,42 +225,57 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
     };
   }, [isOpen, geocodeCenter, mapType]);
 
-  // Recenter GPS
-  const handleDetectCurrentLocation = async () => {
-    setIsLocating(true);
+  // Recenter GPS: Instant detection with 0ms delay
+  const handleDetectCurrentLocation = () => {
     setGpsError(null);
 
-    try {
-      const loc = await getDeviceLocation(true);
-      if (loc && loc.lat && loc.lng) {
-        setCoordsInfo({
-          lat: loc.lat,
-          lng: loc.lng,
-          accuracy: loc.accuracy,
-          name: loc.address ? cleanPlusCode(loc.address).split(',')[0].trim() : 'Current Location'
-        });
-        setSelectedAddr(cleanPlusCode(loc.address));
+    // 1. Instant detection from cache
+    const cached = getCachedDeviceLocation();
+    if (cached && cached.lat && cached.lng) {
+      const cleanAddr = cleanPlusCode(cached.address) || 'Current Location';
+      setCoordsInfo({
+        lat: cached.lat,
+        lng: cached.lng,
+        accuracy: cached.accuracy || 20,
+        name: cleanAddr.split(',')[0].trim() || 'Current Location',
+        address: cleanAddr
+      });
+      setSelectedAddr(cleanAddr);
 
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.flyTo([loc.lat, loc.lng], 17, {
-            duration: 1.0,
-            easeLinearity: 0.25
-          });
-
-          if (deviceCircleRef.current) {
-            deviceCircleRef.current.setLatLng([loc.lat, loc.lng]);
-            deviceCircleRef.current.setRadius(Math.min(loc.accuracy || 20, 80));
-          }
-          if (deviceMarkerRef.current) {
-            deviceMarkerRef.current.setLatLng([loc.lat, loc.lng]);
-          }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setView([cached.lat, cached.lng], 17, { animate: false });
+        if (deviceCircleRef.current) {
+          deviceCircleRef.current.setLatLng([cached.lat, cached.lng]);
+          deviceCircleRef.current.setRadius(Math.min(cached.accuracy || 20, 80));
+        }
+        if (deviceMarkerRef.current) {
+          deviceMarkerRef.current.setLatLng([cached.lat, cached.lng]);
         }
       }
-    } catch (err) {
-      console.warn('GPS detection warning:', err);
-      setGpsError('Could not read exact GPS. Please check location permissions.');
-    } finally {
-      setIsLocating(false);
+    }
+
+    // 2. Hardware GPS fast sync in parallel without blocking UI
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (pos && pos.coords) {
+            const { latitude, longitude, accuracy } = pos.coords;
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.panTo([latitude, longitude], { animate: false });
+              if (deviceCircleRef.current) {
+                deviceCircleRef.current.setLatLng([latitude, longitude]);
+                deviceCircleRef.current.setRadius(Math.min(accuracy || 20, 80));
+              }
+              if (deviceMarkerRef.current) {
+                deviceMarkerRef.current.setLatLng([latitude, longitude]);
+              }
+            }
+            geocodeCenter(latitude, longitude);
+          }
+        },
+        null,
+        { enableHighAccuracy: true, timeout: 2000, maximumAge: 300000 }
+      );
     }
   };
 
@@ -308,7 +321,7 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
               Choose {label}
             </b>
             <span style={{ fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
-              {isLocating ? 'Detecting device GPS...' : 'Move map or tap to place the pin'}
+              Move map or tap to place the pin
             </span>
           </div>
         </div>
@@ -400,14 +413,14 @@ export default function MapPickerModal({ isOpen, onClose, onSelect, targetField 
             width: '42px',
             height: '42px',
             borderRadius: '50%',
-            background: '#FFFFFF',
-            border: '1.5px solid #E2E8F0',
+            background: 'var(--card, #FFFFFF)',
+            border: '1.5px solid var(--line, #E2E8F0)',
             boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
             display: 'grid',
             placeItems: 'center',
             cursor: 'pointer',
             zIndex: 900,
-            color: '#0F172A'
+            color: 'var(--ink, #0F172A)'
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

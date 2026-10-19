@@ -4,7 +4,7 @@ import BrandLogo from './BrandLogo';
 import Icon from './Icon';
 import { sendOtp, verifyOtp, formatIndianPhone } from '../services/authOtpService';
 import { performNativeGoogleSignIn } from '../services/nativeGoogleAuth';
-import { registerDriverProfile } from '../services/driverService';
+import { registerDriverProfile, checkDriverExists } from '../services/driverService';
 
 export default function DriverOnboardingModal() {
   const {
@@ -25,7 +25,7 @@ export default function DriverOnboardingModal() {
   // Step: 'form' | 'driver_kyc' | 'otp'
   const [step, setStep] = useState('form');
 
-  // Delivery channel: 'phone' | 'email'
+  // Delivery channel: 'phone'
   const [otpMethod, setOtpMethod] = useState('phone');
 
   // Terms agreement state (starts unchecked)
@@ -39,16 +39,8 @@ export default function DriverOnboardingModal() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showGooglePicker, setShowGooglePicker] = useState(false);
   const [otpError, setOtpError] = useState(null);
+  const [unregisteredMobile, setUnregisteredMobile] = useState('');
   const [kycWarning, setKycWarning] = useState(null);
-
-  // Minimal KYC Email OTP Popup States
-  const [showKycEmailOtpModal, setShowKycEmailOtpModal] = useState(false);
-  const [kycOtp, setKycOtp] = useState(['', '', '', '', '', '']);
-  const [isSendingKycOtp, setIsSendingKycOtp] = useState(false);
-  const [isVerifyingKycOtp, setIsVerifyingKycOtp] = useState(false);
-  const [kycOtpError, setKycOtpError] = useState(null);
-  const [kycResendTimer, setKycResendTimer] = useState(0);
-  const kycOtpInputRefs = useRef([]);
 
   // OTP Verification state & feedback
   const [otpStatus, setOtpStatus] = useState('idle'); // 'idle' | 'success' | 'error'
@@ -63,7 +55,6 @@ export default function DriverOnboardingModal() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [regMobile, setRegMobile] = useState('');
-  const [regEmail, setRegEmail] = useState('');
 
   // Register - Driver Document & KYC Details
   const [dlNumber, setDlNumber] = useState('');
@@ -93,22 +84,8 @@ export default function DriverOnboardingModal() {
       setOtpStatus('idle');
       setOtpError(null);
       setKycWarning(null);
-      setShowKycEmailOtpModal(false);
-      setKycOtp(['', '', '', '', '', '']);
-      setKycOtpError(null);
     }
   }, [driverOnboardingOpen]);
-
-  // KYC email OTP resend countdown
-  useEffect(() => {
-    let timer;
-    if (showKycEmailOtpModal && kycResendTimer > 0) {
-      timer = setTimeout(() => {
-        setKycResendTimer(c => c - 1);
-      }, 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [showKycEmailOtpModal, kycResendTimer]);
 
   // Keyboard open/close frame responsiveness
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -159,37 +136,33 @@ export default function DriverOnboardingModal() {
     reader.readAsDataURL(file);
   };
 
-  const getTargetIdentifier = (method, tab) => {
+  const getTargetIdentifier = (method = 'phone', tab = activeTab) => {
     if (tab === 'register') {
-      return method === 'phone' ? regMobile : regEmail;
+      return regMobile;
     }
-    return method === 'phone' ? phone : email;
+    return phone;
   };
 
-  const handleSendOtp = async (methodToUse = otpMethod) => {
+  const handleSendOtp = async (methodToUse = 'phone') => {
     setOtpError(null);
     setOtpStatus('idle');
     setIsShaking(false);
-    const rawId = getTargetIdentifier(methodToUse, activeTab);
-    if (!rawId || (methodToUse === 'phone' && rawId.replace(/\D/g, '').length < 10)) {
-      addToast(methodToUse === 'phone' ? 'Please enter a valid 10-digit mobile number' : 'Please enter a valid email address', 'warn');
-      return;
-    }
-    if (methodToUse === 'email' && !rawId.includes('@')) {
-      addToast('Please enter a valid email address', 'warn');
+    const rawId = getTargetIdentifier('phone', activeTab);
+    if (!rawId || rawId.replace(/\D/g, '').length < 10) {
+      addToast('Please enter a valid 10-digit mobile number', 'warn');
       return;
     }
 
     setSendingOtp(true);
     try {
       const res = await sendOtp({
-        method: methodToUse,
+        method: 'phone',
         identifier: rawId
       });
       setSendingOtp(false);
       setOtpStatus('idle');
       setIsShaking(false);
-      setOtpMethod(methodToUse);
+      setOtpMethod('phone');
       setStep('otp');
       setResendCountdown(30);
       setOtp(['', '', '', '', '', '']);
@@ -206,7 +179,7 @@ export default function DriverOnboardingModal() {
     }
   };
 
-  const handleSignInSubmit = (e) => {
+  const handleSignInSubmit = async (e) => {
     e.preventDefault();
     if (!agreedTerms) {
       setTermsWarning(true);
@@ -214,11 +187,36 @@ export default function DriverOnboardingModal() {
       return;
     }
     setTermsWarning(false);
-    handleSendOtp(otpMethod);
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      const msg = 'Please enter a valid 10-digit mobile number';
+      setOtpError(msg);
+      addToast(msg, 'warn');
+      return;
+    }
+
+    setSendingOtp(true);
+    setOtpError(null);
+    setUnregisteredMobile('');
+    try {
+      const check = await checkDriverExists({ phone: cleanPhone });
+      if (!check.exists) {
+        setSendingOtp(false);
+        const errMsg = 'This number is not registered, please create an account';
+        setOtpError(errMsg);
+        setUnregisteredMobile(cleanPhone);
+        addToast(errMsg, 'warn');
+        return;
+      }
+    } catch (checkErr) {
+      console.warn('Check driver exists error:', checkErr);
+    }
+    setSendingOtp(false);
+    handleSendOtp('phone');
   };
 
   // Step 1: Basic Register Form submit -> Navigate to Registration KYC Filling Form Page
-  const handleRegisterBasicSubmit = (e) => {
+  const handleRegisterBasicSubmit = async (e) => {
     e.preventDefault();
     if (!firstName.trim()) {
       addToast('Please enter your First Name', 'warn');
@@ -233,37 +231,24 @@ export default function DriverOnboardingModal() {
       addToast('Please enter a valid 10-digit mobile number', 'warn');
       return;
     }
-    if (!regEmail.trim() || !regEmail.includes('@')) {
-      addToast('Please enter a valid email address', 'warn');
-      return;
+
+    try {
+      const check = await checkDriverExists({ phone: cleanMobile });
+      if (check.exists) {
+        addToast('You are already registered with this mobile number. Please sign in.', 'warn');
+        setPhone(cleanMobile);
+        setActiveTab('signin');
+        return;
+      }
+    } catch (e) {
+      console.warn('Driver check error:', e);
     }
 
     setKycWarning(null);
     setStep('driver_kyc');
   };
 
-  const handleSendKycEmailOtp = async () => {
-    setIsSendingKycOtp(true);
-    setKycOtpError(null);
-    try {
-      await sendOtp({
-        method: 'email',
-        identifier: regEmail
-      });
-      setShowKycEmailOtpModal(true);
-      setKycResendTimer(30);
-      addToast(`Verification code sent to ${regEmail}`, 'check');
-    } catch (err) {
-      console.warn('Send email OTP error:', err);
-      setShowKycEmailOtpModal(true);
-      setKycResendTimer(30);
-      addToast(`Verification code requested for ${regEmail}`, 'info');
-    } finally {
-      setIsSendingKycOtp(false);
-    }
-  };
-
-  // Step 2: Driver Document & KYC Filling Form Submit
+  // Step 2: Driver Document & KYC Filling Form Submit -> Sends Mobile OTP directly
   const handleKycFormSubmit = async (e) => {
     e.preventDefault();
     setKycWarning(null);
@@ -307,123 +292,24 @@ export default function DriverOnboardingModal() {
       return;
     }
 
-    // Trigger minimal email OTP verification modal
-    await handleSendKycEmailOtp();
-  };
-
-  const handleKycOtpChange = (index, value) => {
-    setKycOtpError(null);
-    const cleanChars = value.trim().replace(/[^a-zA-Z0-9]/g, '');
-    if (cleanChars.length > 1) {
-      const newOtp = [...kycOtp];
-      for (let i = 0; i < cleanChars.length && (index + i) < 6; i++) {
-        newOtp[index + i] = cleanChars[i];
-      }
-      setKycOtp(newOtp);
-      const nextIdx = Math.min(index + cleanChars.length, 5);
-      kycOtpInputRefs.current[nextIdx]?.focus();
-      return;
-    }
-
-    const char = cleanChars.slice(-1);
-    const newOtp = [...kycOtp];
-    newOtp[index] = char;
-    setKycOtp(newOtp);
-
-    if (char && index < 5) {
-      kycOtpInputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKycOtpKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !kycOtp[index] && index > 0) {
-      kycOtpInputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleKycOtpPaste = (e) => {
-    e.preventDefault();
-    const raw = e.clipboardData.getData('text');
-    if (!raw) return;
-    const cleaned = raw.trim().replace(/[^a-zA-Z0-9]/g, '').slice(0, 6);
-    if (!cleaned) return;
-
-    const newOtp = ['', '', '', '', '', ''];
-    for (let i = 0; i < cleaned.length; i++) {
-      newOtp[i] = cleaned[i];
-    }
-    setKycOtp(newOtp);
-    setKycOtpError(null);
-    const targetIdx = Math.min(cleaned.length, 5);
-    setTimeout(() => {
-      kycOtpInputRefs.current[targetIdx]?.focus();
-    }, 20);
-  };
-
-  const handleVerifyKycEmailOtp = async (e) => {
-    if (e) e.preventDefault();
-    const token = kycOtp.join('');
-    if (token.length !== 6) {
-      setKycOtpError('Please enter all 6 digits of the verification code');
-      addToast('Please enter the 6-digit code sent to your email', 'warn');
-      return;
-    }
-
-    setIsVerifyingKycOtp(true);
-    setKycOtpError(null);
-
+    // Trigger Firebase Mobile Phone OTP verification directly
+    setSendingOtp(true);
     try {
-      let sbUser = null;
-      try {
-        const res = await verifyOtp({
-          method: 'email',
-          identifier: regEmail,
-          token
-        });
-        sbUser = res.user;
-      } catch (sbErr) {
-        console.warn('Supabase email OTP verify notice:', sbErr);
-        if (!token || token.length !== 6) {
-          throw sbErr;
-        }
-      }
-
-      // Register Driver Profile in local registry and Supabase
-      const createdDriver = await registerDriverProfile({
-        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: regEmail.trim(),
-        phone: regMobile.trim(),
-        homeAddress: homeAddress.trim(),
-        street: street.trim(),
-        city: city.trim(),
-        pincode: pincode.trim(),
-        state: state.trim() || 'Kerala',
-        nationality: nationality.trim() || 'India',
-        dlNumber: dlNumber.trim().toUpperCase(),
-        dlPhoto: dlPhoto || null,
-        aadharNumber: aadharNumber.replace(/\D/g, ''),
-        aadharPhoto: aadharPhoto || null,
-        avatar: dlPhoto || null,
-        category: 'new_registration',
-        status: 'pending'
+      const res = await sendOtp({
+        method: 'phone',
+        identifier: regMobile
       });
-
-      loginDriverWithDetails({
-        ...createdDriver,
-        authMethod: 'email_otp',
-        supabaseUser: sbUser,
-        isAuthenticated: true
-      });
-
-      setIsVerifyingKycOtp(false);
-      setShowKycEmailOtpModal(false);
-      addToast(`Driver account created! Welcome, ${createdDriver.name}!`, 'check');
+      setSendingOtp(false);
+      setStep('otp');
+      setResendCountdown(30);
+      setOtp(['', '', '', '', '', '']);
+      addToast(res.message || `Verification code sent to ${regMobile}`, 'check');
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 100);
     } catch (err) {
-      setIsVerifyingKycOtp(false);
-      setKycOtpError(err.message || 'Invalid verification code. Please check and try again.');
-      addToast(err.message || 'Verification failed. Please check the code.', 'warn');
+      setSendingOtp(false);
+      addToast(err.message || 'Failed to send SMS OTP code', 'warn');
     }
   };
 
@@ -489,33 +375,33 @@ export default function DriverOnboardingModal() {
       setOtpStatus('error');
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 450);
-      const channelLabel = otpMethod === 'phone' ? 'mobile' : 'email';
+      const channelLabel = 'mobile';
       const msg = `Please enter the complete 6-digit verification code sent to your ${channelLabel}`;
       setOtpError(msg);
       addToast(msg, 'warn');
       return;
     }
 
-    const currentId = getTargetIdentifier(otpMethod, activeTab);
+    const currentId = getTargetIdentifier('phone', activeTab);
     setVerifyingOtp(true);
     setOtpError(null);
 
     try {
       const res = await verifyOtp({
-        method: otpMethod,
+        method: 'phone',
         identifier: currentId,
         token
       });
       setVerifyingOtp(false);
       setOtpStatus('success');
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (activeTab === 'register') {
-          loginDriverWithDetails({
+          const createdDriver = await registerDriverProfile({
             name: `${firstName.trim()} ${lastName.trim()}`.trim() || 'Driver Partner',
             firstName: firstName.trim(),
             lastName: lastName.trim(),
-            email: regEmail.trim(),
+            email: '',
             phone: regMobile.trim(),
             dlNumber: dlNumber.trim().toUpperCase(),
             dlPhoto: dlPhoto || null,
@@ -524,9 +410,17 @@ export default function DriverOnboardingModal() {
             homeAddress: homeAddress.trim(),
             street: street.trim(),
             city: city.trim(),
+            pincode: pincode.trim(),
             state: state.trim() || 'Kerala',
             nationality: nationality.trim() || 'India',
-            authMethod: otpMethod,
+            avatar: dlPhoto || null,
+            category: 'new_registration',
+            status: 'pending'
+          });
+
+          loginDriverWithDetails({
+            ...createdDriver,
+            authMethod: 'phone_otp',
             supabaseUser: res.user,
             isAuthenticated: true
           });
@@ -534,14 +428,14 @@ export default function DriverOnboardingModal() {
           loginDriverWithDetails({
             name: res.user?.user_metadata?.full_name || 'Ravi Kumar',
             phone: phone.trim(),
-            email: email.trim() || (otpMethod === 'email' ? currentId : 'driver@example.com'),
-            authMethod: otpMethod,
+            email: '',
+            authMethod: 'phone_otp',
             supabaseUser: res.user,
             isAuthenticated: true
           });
         }
         setOtpStatus('idle');
-        addToast('Verified successfully! Welcome to Ridingo Chauffeur Portal.', 'check');
+        addToast('Verified successfully! Welcome to Ridingo Driver Portal.', 'check');
       }, 650);
     } catch (err) {
       setVerifyingOtp(false);
@@ -576,7 +470,7 @@ export default function DriverOnboardingModal() {
             authMethod: 'google',
             isAuthenticated: true
           });
-          addToast(`Welcome to Chauffeur Portal, ${gUser.name || 'Partner'}!`, 'check');
+          addToast(`Welcome to Driver Portal, ${gUser.name || 'Partner'}!`, 'check');
           return;
         }
       } catch (err) {
@@ -743,12 +637,12 @@ export default function DriverOnboardingModal() {
             maxWidth: '320px'
           }}>
             {step === 'otp'
-              ? `Enter the 6-digit verification code sent to your ${otpMethod === 'phone' ? 'mobile' : 'email'}`
+              ? 'Enter the 6-digit verification code sent to your mobile'
               : step === 'driver_kyc'
               ? 'Please submit your licence, Aadhaar & address details'
               : activeTab === 'signin'
-              ? 'Sign in or register with your mobile or email'
-              : 'Join the Ridingo chauffeur partner network'}
+              ? 'Sign in or register with your mobile number'
+              : 'Join the Ridingo driver partner network'}
           </p>
         </div>
 
@@ -796,15 +690,13 @@ export default function DriverOnboardingModal() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Icon name={otpMethod === 'phone' ? 'phone' : 'mail'} size={18} />
+                <Icon name="phone" size={18} />
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {otpMethod === 'phone' ? 'SMS Code Sent To' : 'Email Code Sent To'}
+                    SMS Code Sent To
                   </div>
                   <div style={{ fontSize: '13.5px', fontWeight: 750, color: 'var(--ink)' }}>
-                    {otpMethod === 'phone'
-                      ? formatIndianPhone(getTargetIdentifier('phone', activeTab))
-                      : getTargetIdentifier('email', activeTab)}
+                    {formatIndianPhone(getTargetIdentifier('phone', activeTab))}
                   </div>
                 </div>
               </div>
@@ -895,41 +787,22 @@ export default function DriverOnboardingModal() {
                   Resend code in <strong style={{ color: 'var(--ink)' }}>{resendCountdown}s</strong>
                 </span>
               ) : (
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleSendOtp(otpMethod)}
-                    disabled={sendingOtp}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--ink)',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      textDecoration: 'underline',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {sendingOtp ? 'Sending...' : 'Resend OTP'}
-                  </button>
-                  <span style={{ color: 'var(--line)' }}>•</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSendOtp(otpMethod === 'phone' ? 'email' : 'phone')}
-                    disabled={sendingOtp}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--muted)',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      textDecoration: 'underline',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Try {otpMethod === 'phone' ? 'Email' : 'Mobile'} instead
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSendOtp('phone')}
+                  disabled={sendingOtp}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--ink)',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {sendingOtp ? 'Sending...' : 'Resend OTP'}
+                </button>
               )}
             </div>
 
@@ -957,30 +830,12 @@ export default function DriverOnboardingModal() {
              SIGN IN FORM: MATCHING ATTACHED IMAGE EXACTLY
              ======================================================== */
           <form onSubmit={handleSignInSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-            {/* Header row: Label on left, Switch button on right */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '-4px' }}>
+            {/* Mobile Number Input */}
+            <div>
               <label style={labelStyle}>
-                {otpMethod === 'phone' ? 'Mobile Number' : 'Email Address'}
+                Mobile Number
               </label>
-              <button
-                type="button"
-                onClick={() => setOtpMethod(otpMethod === 'phone' ? 'email' : 'phone')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--ink)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  padding: '2px 0',
-                  textDecoration: 'none'
-                }}
-              >
-                {otpMethod === 'phone' ? 'Use Email instead →' : 'Use Mobile instead →'}
-              </button>
-            </div>
 
-            {otpMethod === 'phone' ? (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', height: '48px', borderRadius: '14px', background: 'var(--card)', border: '1.5px solid var(--line)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                   <span style={{ padding: '0 12px', fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)', borderRight: '1px solid var(--line)', height: '100%', display: 'flex', alignItems: 'center', background: 'var(--field)', flexShrink: 0 }}>IN +91</span>
@@ -992,26 +847,14 @@ export default function DriverOnboardingModal() {
                     onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="Enter 10-digit mobile number"
                     style={{ flex: 1, height: '100%', border: 'none', outline: 'none', background: 'transparent', padding: '0 12px', fontSize: '15px', fontWeight: 600, color: 'var(--ink)', letterSpacing: '0.04em' }}
+                    required
                   />
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '5px' }}>
                   We'll send a 6-digit verification code to your mobile.
                 </div>
               </div>
-            ) : (
-              <div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  style={{ ...fieldStyle, height: '48px', borderRadius: '14px' }}
-                />
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '5px' }}>
-                  We'll send a 6-digit verification code to your email.
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* Terms and Conditions Checkbox */}
             <label
@@ -1101,11 +944,39 @@ export default function DriverOnboardingModal() {
                   lineHeight: 1.45,
                   fontWeight: 600,
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
+                  flexDirection: 'column',
+                  gap: '6px'
                 }}
               >
-                <span>{otpError}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon name="alert-circle" size={14} color="#d93025" />
+                  <span>{otpError}</span>
+                </div>
+                {unregisteredMobile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegMobile(unregisteredMobile);
+                      setPhone(unregisteredMobile);
+                      setActiveTab('register');
+                      setOtpError(null);
+                      setUnregisteredMobile('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--ink)',
+                      fontWeight: 800,
+                      fontSize: '12.5px',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      padding: '2px 0 0 22px'
+                    }}
+                  >
+                    Click here to register driver with +91 {unregisteredMobile} →
+                  </button>
+                )}
               </div>
             )}
 
@@ -1206,17 +1077,6 @@ export default function DriverOnboardingModal() {
               </div>
             </div>
 
-            <div>
-              <label style={labelStyle}>Email ID *</label>
-              <input
-                type="email"
-                placeholder="driver@example.com"
-                value={regEmail}
-                onChange={e => setRegEmail(e.target.value)}
-                style={{ ...fieldStyle, height: '48px', borderRadius: '14px' }}
-                required
-              />
-            </div>
 
             <button
               type="submit"
@@ -1483,7 +1343,7 @@ export default function DriverOnboardingModal() {
             {/* Submit and OTP button */}
             <button
               type="submit"
-              disabled={isSendingKycOtp}
+              disabled={sendingOtp}
               className="btn"
               style={{
                 height: '48px',
@@ -1493,16 +1353,16 @@ export default function DriverOnboardingModal() {
                 border: isDarkTheme ? '1.5px solid #FFFFFF' : '1.5px solid #000000',
                 fontSize: '15px',
                 fontWeight: 700,
-                cursor: isSendingKycOtp ? 'not-allowed' : 'pointer',
+                cursor: sendingOtp ? 'not-allowed' : 'pointer',
                 boxShadow: isDarkTheme ? '0 4px 16px rgba(255,255,255,0.15)' : '0 4px 14px rgba(0,0,0,0.22)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginTop: '6px',
-                opacity: isSendingKycOtp ? 0.7 : 1
+                opacity: sendingOtp ? 0.7 : 1
               }}
             >
-              {isSendingKycOtp ? 'Sending Email OTP...' : 'Submit and OTP →'}
+              {sendingOtp ? 'Sending Mobile OTP...' : 'Submit & Verify Mobile OTP →'}
             </button>
 
             <button
@@ -1634,7 +1494,7 @@ export default function DriverOnboardingModal() {
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
-              to continue to <strong style={{ color: 'var(--ink)' }}>Ridingo Chauffeur Portal</strong>
+              to continue to <strong style={{ color: 'var(--ink)' }}>Ridingo Driver Portal</strong>
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1671,208 +1531,6 @@ export default function DriverOnboardingModal() {
         </div>
       )}
 
-      {/* ========================================================
-          MINIMAL UI EMAIL OTP VERIFICATION POPUP (MODAL)
-         ======================================================== */}
-      {showKycEmailOtpModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 99999,
-            background: 'rgba(0, 0, 0, 0.72)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-          onClick={e => {
-            if (e.target === e.currentTarget) setShowKycEmailOtpModal(false);
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '380px',
-              background: isDarkTheme ? '#181A20' : '#FFFFFF',
-              borderRadius: '24px',
-              border: isDarkTheme ? '1.5px solid rgba(255,255,255,0.12)' : '1.5px solid rgba(0,0,0,0.08)',
-              padding: '24px 22px',
-              boxShadow: isDarkTheme ? '0 20px 48px rgba(0,0,0,0.6)' : '0 20px 48px rgba(0,0,0,0.18)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              position: 'relative'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setShowKycEmailOtpModal(false)}
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  right: '16px',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  background: isDarkTheme ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                  border: 'none',
-                  color: 'var(--muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}
-                aria-label="Close"
-              >
-                <Icon name="x" size={14} />
-              </button>
-
-            {/* Shield / Mail Header Icon */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '14px',
-                  background: 'linear-gradient(135deg, #FFC70A 0%, #E5A800 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#000000',
-                  boxShadow: '0 6px 18px rgba(255,199,10,0.3)',
-                  flexShrink: 0
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="m9 12 2 2 4-4"/>
-                </svg>
-              </div>
-              <div>
-                <b style={{ fontSize: '16px', color: 'var(--ink)', display: 'block' }}>Email OTP Verification</b>
-                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Verify Driver Profile</span>
-              </div>
-            </div>
-
-            <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.45 }}>
-              Enter the 6-digit verification code sent to <strong style={{ color: 'var(--ink)' }}>{regEmail}</strong> to activate your driver partner profile.
-            </p>
-
-            {/* 6 OTP Input Boxes */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: '6px',
-                margin: '4px 0'
-              }}
-              onPaste={handleKycOtpPaste}
-            >
-              {kycOtp.map((digit, idx) => (
-                <input
-                  key={idx}
-                  ref={el => (kycOtpInputRefs.current[idx] = el)}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={e => handleKycOtpChange(idx, e.target.value)}
-                  onKeyDown={e => handleKycOtpKeyDown(idx, e)}
-                  style={{
-                    width: '44px',
-                    height: '52px',
-                    textAlign: 'center',
-                    fontSize: '20px',
-                    fontWeight: 700,
-                    borderRadius: '12px',
-                    border: digit
-                      ? '2px solid #FFC70A'
-                      : (isDarkTheme ? '1.5px solid rgba(255,255,255,0.15)' : '1.5px solid rgba(0,0,0,0.12)'),
-                    background: isDarkTheme ? '#121316' : '#F8F9FA',
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Error Message */}
-            {kycOtpError && (
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: '#EF4444',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Icon name="alert-circle" size={14} color="#EF4444" />
-                <span>{kycOtpError}</span>
-              </div>
-            )}
-
-            {/* Verify & Create Driver Profile Button */}
-            <button
-              type="button"
-              onClick={handleVerifyKycEmailOtp}
-              disabled={isVerifyingKycOtp || kycOtp.join('').length !== 6}
-              className="btn"
-              style={{
-                width: '100%',
-                height: '46px',
-                borderRadius: '13px',
-                background: isDarkTheme ? '#FFFFFF' : '#000000',
-                color: isDarkTheme ? '#000000' : '#FFFFFF',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '14.5px',
-                cursor: (isVerifyingKycOtp || kycOtp.join('').length !== 6) ? 'not-allowed' : 'pointer',
-                opacity: (isVerifyingKycOtp || kycOtp.join('').length !== 6) ? 0.6 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: isDarkTheme ? '0 4px 16px rgba(255,255,255,0.15)' : '0 4px 14px rgba(0,0,0,0.22)'
-              }}
-            >
-              {isVerifyingKycOtp ? 'Verifying Account...' : 'Verify & Create Driver Profile'}
-            </button>
-
-            {/* Resend Code Option */}
-            <div style={{ textAlign: 'center' }}>
-              {kycResendTimer > 0 ? (
-                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                  Resend code in <strong style={{ color: 'var(--ink)' }}>{kycResendTimer}s</strong>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSendKycEmailOtp}
-                  disabled={isSendingKycOtp}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#FFC70A',
-                    fontWeight: 700,
-                    fontSize: '12.5px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Resend Email OTP
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

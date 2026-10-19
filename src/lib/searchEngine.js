@@ -134,7 +134,7 @@ export const APP_SERVICES = [
   },
   {
     id: 'srv-daily',
-    title: 'Full Day Chauffeur',
+    title: 'Full Day Driver',
     sub: 'Dedicated 10 hours day driver for family visits & office · ₹1,800/day',
     icon: 'sun',
     cat: 'daily',

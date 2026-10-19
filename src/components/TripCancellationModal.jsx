@@ -9,7 +9,7 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
   const cancelFee = isDriverAssigned ? 100 : 50;
   const advancePaid = Number(trip.advance) || 0;
   const refundAmount = Math.max(0, advancePaid - cancelFee);
-  const driverName = (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) || trip.driverObj?.name || 'Assigned Chauffeur';
+  const driverName = (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) || trip.driverObj?.name || 'Assigned Driver';
 
   // Format short address helper
   const formatShortLoc = (loc, fallback) => {
@@ -131,7 +131,7 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
             </span>
           </div>
 
-          {/* Schedule & Chauffeur status */}
+          {/* Schedule & Driver status */}
           <div
             style={{
               display: 'flex',
@@ -161,7 +161,7 @@ export default function TripCancellationModal({ trip, onConfirm, onClose }) {
                   background: isDriverAssigned ? '#22C55E' : '#F59E0B'
                 }}
               />
-              {isDriverAssigned ? `Assigned · ${driverName}` : 'Chauffeur Unassigned'}
+              {isDriverAssigned ? `Assigned · ${driverName}` : 'Driver Unassigned'}
             </span>
           </div>
         </div>

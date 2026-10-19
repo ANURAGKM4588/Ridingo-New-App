@@ -53,9 +53,134 @@
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM&libraries=places,geometry" async defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://mercury-uat.phonepe.com/web/bundle/checkout.js"></script>
+    <style id="app-splash-styles">
+      .app-splash-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #FFFFFF;
+        transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: auto;
+      }
+
+      /* Dark mode background */
+      [data-theme="dark"] .app-splash-overlay,
+      html[data-theme="dark"] .app-splash-overlay,
+      body[data-theme="dark"] .app-splash-overlay {
+        background: #090A0E;
+      }
+
+      .app-splash-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        transform: translateY(-8px);
+      }
+
+      .app-splash-logo {
+        height: 44px;
+        width: auto;
+        max-width: 220px;
+        object-fit: contain;
+        display: none;
+        animation: splashLogoEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      /* Light mode: Black logo */
+      .app-splash-overlay .splash-logo-light {
+        display: block;
+      }
+
+      /* Dark mode: White logo */
+      [data-theme="dark"] .app-splash-overlay .splash-logo-light,
+      html[data-theme="dark"] .app-splash-overlay .splash-logo-light,
+      body[data-theme="dark"] .app-splash-overlay .splash-logo-light {
+        display: none !important;
+      }
+
+      [data-theme="dark"] .app-splash-overlay .splash-logo-dark,
+      html[data-theme="dark"] .app-splash-overlay .splash-logo-dark,
+      body[data-theme="dark"] .app-splash-overlay .splash-logo-dark {
+        display: block !important;
+      }
+
+      /* Minimal Modern Premium Loading Bar Animation */
+      .app-splash-loader-track {
+        width: 140px;
+        height: 3px;
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: 999px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      [data-theme="dark"] .app-splash-loader-track,
+      html[data-theme="dark"] .app-splash-loader-track,
+      body[data-theme="dark"] .app-splash-loader-track {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .app-splash-loader-fill {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 45%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #FFC70A 0%, #FFA800 100%);
+        box-shadow: 0 0 10px rgba(255, 199, 10, 0.55);
+        animation: splashShimmer 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+
+      @keyframes splashShimmer {
+        0% {
+          left: -45%;
+          width: 35%;
+        }
+        50% {
+          width: 55%;
+        }
+        100% {
+          left: 110%;
+          width: 35%;
+        }
+      }
+
+      @keyframes splashLogoEnter {
+        0% {
+          opacity: 0;
+          transform: scale(0.94);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .app-splash-overlay.splash-fade-out {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+    </style>
   </head>
   <body class="standalone-app">
+    <!-- App Refresh Premium Splash Screen -->
+    <div id="app-splash-screen" class="app-splash-overlay" aria-hidden="true">
+      <div class="app-splash-content">
+        <img class="app-splash-logo splash-logo-dark" src="/Ridingo White.png" alt="Ridingo" />
+        <img class="app-splash-logo splash-logo-light" src="/Ridingo Black.png" alt="Ridingo" />
+
+        <div class="app-splash-loader-track">
+          <div class="app-splash-loader-fill"></div>
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {

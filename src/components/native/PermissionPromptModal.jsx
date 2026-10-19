@@ -41,7 +41,7 @@ const PERMISSION_CONFIGS = {
     name: 'Device Location',
     title: 'Enable Location Services',
     description:
-      'Ridingo uses your precise GPS location to set accurate pickup coordinates, display nearby available chauffeurs, and calculate optimal route navigation.',
+      'Ridingo uses your precise GPS location to set accurate pickup coordinates, display nearby available drivers, and calculate optimal route navigation.',
     settingsMsg:
       'Location access is currently blocked in device settings. To select your pickup spot or navigate, please enable Location in Settings.'
   },

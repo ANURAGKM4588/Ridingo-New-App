@@ -86,7 +86,7 @@ export async function generateTripTicketImage(trip) {
   const driverName =
     (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) ||
     trip.driverObj?.name ||
-    'Assigned Chauffeur';
+    'Assigned Driver';
   const pickup = getLocationUpToFirstComma(trip.pickup, 'Pickup Location');
   const drop = getLocationUpToFirstComma(trip.drop_loc, 'City Destination');
   const fare = Number(trip.fare) || 750;

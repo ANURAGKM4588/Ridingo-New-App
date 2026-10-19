@@ -134,7 +134,7 @@ export default function SocialAuthScreen({
           </View>
           <Text style={[styles.title, dynamicStyles.textPrimary]}>Welcome to Ridingo</Text>
           <Text style={[styles.subtitle, dynamicStyles.textSecondary]}>
-            Professional, on-demand chauffeurs for your personal car.
+            Professional, on-demand drivers for your personal car.
           </Text>
         </View>
 

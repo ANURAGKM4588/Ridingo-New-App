@@ -224,8 +224,8 @@ img {
   --card: #1C1C1E;
   --sheet: #1C1C1E;
   --field: #2C2C2E;
-  --ink: #F5F5F7;
-  --muted: #9A9AA1;
+  --ink: #FFFFFF;
+  --muted: #B8B8C4;
   --line: #2C2C2E;
   --line-strong: #48484A;
   --yellow: #FFC70A;
@@ -233,7 +233,7 @@ img {
   --yellow-soft: rgba(255, 199, 10, 0.18);
   --chip: #2C2C2E;
   --bar: #3A3A3C;
-  --solid: #F5F5F7;
+  --solid: #FFFFFF;
   --on-solid: #0B0B0C;
   --bezel: #1A1A1C;
   --glass: rgba(24, 24, 26, .78);
@@ -250,6 +250,55 @@ img {
   --on-yellow-soft: #FFD60A;
   color-scheme: dark;
   color: var(--ink);
+}
+
+/* Dark Mode Universal High-Contrast Text Clarity */
+[data-theme="dark"] body,
+[data-theme="dark"] p,
+[data-theme="dark"] .sec > span,
+[data-theme="dark"] .bento-card-desc,
+[data-theme="dark"] .rebook-meta,
+[data-theme="dark"] .rebook-from,
+[data-theme="dark"] .rebook-cat,
+[data-theme="dark"] .review-car,
+[data-theme="dark"] .prof-set-sub,
+[data-theme="dark"] .prof-sub,
+[data-theme="dark"] .muted,
+[data-theme="dark"] .sub,
+[data-theme="dark"] label {
+  color: #C6C6CF;
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] b,
+[data-theme="dark"] strong,
+[data-theme="dark"] .sec h3,
+[data-theme="dark"] .rebook-dest,
+[data-theme="dark"] .bento-card-name,
+[data-theme="dark"] .review-name,
+[data-theme="dark"] .prof-set-title,
+[data-theme="dark"] .sheet-h,
+[data-theme="dark"] .card-title {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .review-quote {
+  color: #EDEDF2 !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] ::placeholder {
+  color: #8E8E98 !important;
+  opacity: 1 !important;
 }
 
 * {
@@ -697,6 +746,8 @@ body.standalone-driver #col-d {
   border-radius: 0 !important;
   background: var(--surface) !important;
   overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 /* Floating Independent Preview Switcher */
@@ -813,17 +864,18 @@ body.standalone-app .content {
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: calc(54px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: 0 !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: auto !important;
-  overscroll-behavior: auto !important;
+  overscroll-behavior-y: contain !important;
+  overscroll-behavior: contain !important;
   scroll-behavior: smooth;
   padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
+  padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 74px) !important;
   padding-inline: 18px !important;
   background: var(--surface) !important;
+  box-sizing: border-box !important;
 }
 
 /* 6. Perfect Bottom Navigation Bar:
@@ -1008,11 +1060,14 @@ body.standalone-app .map-picker-foot {
 .content {
   flex: 1;
   min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: auto;
+  overscroll-behavior-y: contain;
   scroll-behavior: smooth;
-  padding: 4px 18px 120px;
+  padding: 4px 18px calc(76px + env(safe-area-inset-bottom, 16px));
   scrollbar-width: none;
 }
 
@@ -1478,6 +1533,10 @@ body.standalone-app[data-theme="dark"] .nv.on .nv-i svg {
 
 .apple-page-enter {
   width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 /* Modern Minimalist Black & White Button & Status Engine - Strictly Single Line Text Across Entire App */
@@ -2424,16 +2483,27 @@ button.btn-primary:active,
   border-color: var(--yellow);
 }
 
-/* Brand Testimonials & User Reviews */
+/* Brand Testimonials & User Reviews: Manual Swipe Horizontal Slider */
 .reviews-slider {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  padding: 2px 0 10px;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  padding: 4px 4px 12px;
   margin: 0;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reviews-slider:active {
+  cursor: grabbing;
 }
 
 .reviews-slider::-webkit-scrollbar {
@@ -2442,7 +2512,9 @@ button.btn-primary:active,
 
 .review-card {
   flex: 0 0 280px;
+  max-width: 82vw;
   scroll-snap-align: start;
+  scroll-snap-stop: normal;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -2450,15 +2522,16 @@ button.btn-primary:active,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .02);
-  transition: transform .12s cubic-bezier(.2, .9, .3, 1), background-color .12s;
-  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+  pointer-events: auto;
+  touch-action: pan-x;
   user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 .review-card:active {
-  transform: scale(.975);
-  background: var(--field);
+  transform: scale(0.985);
 }
 
 .review-top {
@@ -6684,5 +6757,83 @@ body[data-theme="dark"] .onboarding-continue-btn {
     transform: translateY(0) scale(1);
   }
 }
+
+/* Network Status Banner & PullToRefresh Keyframe Animations */
+@keyframes networkBannerDrop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -24px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes networkDotPing {
+  75%, 100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes ptrSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.ptr-spinning-anim {
+  animation: ptrSpin 0.75s linear infinite;
+}
+
+/* Offline Mode Dimming & Disabled Functions */
+body.app-offline-mode .content,
+body.app-offline-mode .nav,
+body.app-offline-mode .bottom-sheet,
+body.app-offline-mode .bottom-sheet-content {
+  opacity: 0.52 !important;
+  filter: grayscale(0.28) !important;
+  transition: opacity 0.35s ease, filter 0.35s ease !important;
+  user-select: none !important;
+}
+
+body.app-offline-mode button,
+body.app-offline-mode input,
+body.app-offline-mode select,
+body.app-offline-mode textarea,
+body.app-offline-mode [role="button"],
+body.app-offline-mode .nv,
+body.app-offline-mode .action-btn {
+  cursor: not-allowed !important;
+}
+
+/* Subtle Apple-Grade Banner Shake / Wobble */
+.offline-banner-subtle-shake {
+  animation: bannerSubtleShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
+}
+
+@keyframes bannerSubtleShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+
 
 

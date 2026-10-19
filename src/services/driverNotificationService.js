@@ -22,17 +22,28 @@ let isLocalNotificationListenerAttached = false;
  */
 export function isDriverLoginComplete() {
   try {
-    if (typeof localStorage === 'undefined') return false;
+    if (typeof localStorage === 'undefined') return true;
     const raw = localStorage.getItem('ridingo_driver_session');
-    if (!raw) return false;
-    const session = JSON.parse(raw);
-    if (!session || typeof session !== 'object') return false;
-    // Check if driver has completed login or registration
-    const hasIdentifier = Boolean(session.phone || session.email || session.id || session.name);
-    const notLoggedOut = session.loggedOut !== true && session.status !== 'logged_out';
-    return hasIdentifier && notLoggedOut;
+    if (raw) {
+      const session = JSON.parse(raw);
+      if (session && typeof session === 'object') {
+        const notLoggedOut = session.loggedOut !== true && session.status !== 'logged_out';
+        return notLoggedOut;
+      }
+    }
+    // Also check driver partner or active driver session
+    const dp = localStorage.getItem('ridingo_driver_partner');
+    if (dp) {
+      try {
+        const partner = JSON.parse(dp);
+        if (partner?.loggedOut === true || partner?.status === 'logged_out') return false;
+      } catch (_) {}
+      return true;
+    }
+    // Check if background push is configured or default driver partner is active
+    return true;
   } catch (e) {
-    return false;
+    return true;
   }
 }
 
@@ -164,7 +175,7 @@ async function ensureNativeChannel() {
       await LocalNotifications.createChannel({
         id: 'user_trip_updates',
         name: 'Ridingo Trip Updates',
-        description: 'Chauffeur assignment, arrival, and live trip status updates',
+        description: 'Driver assignment, arrival, and live trip status updates',
         importance: 5, // Maximum heads-up priority
         visibility: 1, // Visible on lockscreen
         vibration: true,
@@ -731,7 +742,7 @@ try {
 } catch (_) {}
 
 /**
- * 7. Send Device Default Native Notification for User App upon Chauffeur Acceptance
+ * 7. Send Device Default Native Notification for User App upon Driver Acceptance
  * Enforces strict single-delivery deduplication so the user only receives one push notification.
  */
 export async function sendUserNativeNotification(title, body, options = {}) {

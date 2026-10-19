@@ -151,6 +151,23 @@ export function generateDriverProfileId() {
 }
 
 /**
+ * Checks whether a driver with this mobile number is registered
+ */
+export function checkDriverExists({ phone }) {
+  if (!phone) return { exists: false, driver: null };
+  const clean10 = String(phone).replace(/\D/g, '').slice(-10);
+  const list = getLocalDriverRegistry();
+  const found = list.find(d => {
+    const d10 = String(d.phone || '').replace(/\D/g, '').slice(-10);
+    return d10 && clean10 && d10 === clean10;
+  });
+  return {
+    exists: !!found,
+    driver: found || null
+  };
+}
+
+/**
  * Loads driver registry from localStorage and Supabase
  */
 export function getLocalDriverRegistry() {
@@ -323,7 +340,7 @@ export async function registerDriverProfile(driverData) {
         user_id: 'team.ridingo@gmail.com',
         type: 'driver_registration_alert',
         title: alertRecord.subject,
-        message: `New chauffeur partner application from ${newDriver.name} (${newDriver.phone}, ${newDriver.city}). Review pending KYC document proofs.`,
+        message: `New driver partner application from ${newDriver.name} (${newDriver.phone}, ${newDriver.city}). Review pending KYC document proofs.`,
         created_at: newDriver.registeredAt
       }).then(() => {}).catch(() => {});
     }

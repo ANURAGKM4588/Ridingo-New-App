@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import Icon from './Icon';
-import { GOOGLE_MAP_TILES, openInGoogleMaps, fetchGoogleRoadDirections } from '../services/googleMapsService';
+import {
+  GOOGLE_MAP_TILES,
+  openInGoogleMaps,
+  fetchGoogleRoadDirections,
+  getCachedRoadDirections
+} from '../services/googleMapsService';
 
 // Fallback geographic route waypoints for authentic Google Maps display
 export const ROUTE_COORDS = [
@@ -76,41 +81,6 @@ export default function GraphicLiveMap({
   const polylineOuterRef = useRef(null);
   const polylineInnerRef = useRef(null);
 
-  const [routePoints, setRoutePoints] = useState(() => {
-    if (trip?.pickupCoords?.lat && trip?.dropCoords?.lat) {
-      return [
-        { lat: trip.pickupCoords.lat, lng: trip.pickupCoords.lng },
-        { lat: trip.dropCoords.lat, lng: trip.dropCoords.lng }
-      ];
-    }
-    return ROUTE_COORDS;
-  });
-
-  const [isDarkTheme, setIsDarkTheme] = useState(() => {
-    if (typeof document !== 'undefined') {
-      return document.documentElement.getAttribute('data-theme') === 'dark' ||
-        document.body?.getAttribute('data-theme') === 'dark';
-    }
-    return false;
-  });
-
-  // Observe theme changes across the app
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const checkDark = () => {
-      const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
-        document.body?.getAttribute('data-theme') === 'dark';
-      setIsDarkTheme(dark);
-    };
-    checkDark();
-    const observer = new MutationObserver(checkDark);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    if (document.body) {
-      observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
-    }
-    return () => observer.disconnect();
-  }, []);
-
   const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
   const isOnTrip = trip?.status === 'inprogress';
   const driverLive = trip?.driverCoords;
@@ -141,6 +111,51 @@ export default function GraphicLiveMap({
   const originName = trip?.pickup || 'Pickup Location';
   const destName = trip?.drop_loc || trip?.drop || 'Destination';
 
+  // Initial road points: checks pre-attached trip points or instant cache (NEVER starts with a 2-point straight line)
+  const [routePoints, setRoutePoints] = useState(() => {
+    if (Array.isArray(trip?.routePoints) && trip.routePoints.length > 2) {
+      return trip.routePoints;
+    }
+    const oCoords = (trip?.pickupCoords?.lat && trip?.pickupCoords?.lng)
+      ? { lat: Number(trip.pickupCoords.lat), lng: Number(trip.pickupCoords.lng) }
+      : { lat: 10.0245, lng: 76.3075 };
+    const dCoords = (trip?.dropCoords?.lat && trip?.dropCoords?.lng)
+      ? { lat: Number(trip.dropCoords.lat), lng: Number(trip.dropCoords.lng) }
+      : (trip?.pickupCoords?.lat
+          ? { lat: Number(trip.pickupCoords.lat) + 0.012, lng: Number(trip.pickupCoords.lng) + 0.009 }
+          : { lat: 10.0285, lng: 76.3120 });
+    const cached = getCachedRoadDirections(oCoords, dCoords, trip?.pickup, trip?.drop_loc || trip?.drop);
+    if (cached?.points && cached.points.length > 2) {
+      return cached.points;
+    }
+    return null;
+  });
+
+  const [isDarkTheme, setIsDarkTheme] = useState(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.getAttribute('data-theme') === 'dark' ||
+        document.body?.getAttribute('data-theme') === 'dark';
+    }
+    return false;
+  });
+
+  // Observe theme changes across the app
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const checkDark = () => {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+        document.body?.getAttribute('data-theme') === 'dark';
+      setIsDarkTheme(dark);
+    };
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    if (document.body) {
+      observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+    return () => observer.disconnect();
+  }, []);
+
   // Fetch standard driving route using Google Maps Directions Service
   useEffect(() => {
     let isSubscribed = true;
@@ -153,6 +168,7 @@ export default function GraphicLiveMap({
           destCoords: destCoords
         });
         if (isSubscribed && result?.points && result.points.length >= 2) {
+          if (trip) trip.routePoints = result.points;
           setRoutePoints(result.points);
         }
       } catch (err) {
@@ -174,8 +190,8 @@ export default function GraphicLiveMap({
   ]);
 
   // Real Driver Mobile GPS location (or initial pickup position)
-  const carLat = driverLive?.lat || routePoints[0]?.lat || 10.0245;
-  const carLng = driverLive?.lng || routePoints[0]?.lng || 76.3075;
+  const carLat = driverLive?.lat || originCoords.lat || 10.0245;
+  const carLng = driverLive?.lng || originCoords.lng || 76.3075;
   const carAngle = trip?.driverHeading !== undefined ? trip.driverHeading : 0;
 
   // Initialize Map once container is ready
@@ -186,8 +202,8 @@ export default function GraphicLiveMap({
       mapRef.current = null;
     }
 
-    const firstPt = routePoints[0] || ROUTE_COORDS[0];
-    const lastPt = routePoints[routePoints.length - 1] || ROUTE_COORDS[ROUTE_COORDS.length - 1];
+    const firstPt = originCoords;
+    const lastPt = destCoords;
     const centerLat = (firstPt.lat + lastPt.lat) / 2;
     const centerLng = (firstPt.lng + lastPt.lng) / 2;
 
@@ -213,7 +229,10 @@ export default function GraphicLiveMap({
     tileLayerRef.current = gLayer;
 
     // Standard Google Maps Directions Route Polyline
-    const latlngs = routePoints.map(p => [p.lat, p.lng]);
+    // STRICT RULE: Only render polyline when actual multi-point road path is loaded (>2 coordinates)
+    // NEVER render a 2-point straight line!
+    const hasRoadRoute = Array.isArray(routePoints) && routePoints.length > 2;
+    const latlngs = hasRoadRoute ? routePoints.map(p => [p.lat, p.lng]) : [];
     
     // Google Maps subtle road casing for contrast
     const polyOuter = L.polyline(latlngs, {
@@ -269,7 +288,7 @@ export default function GraphicLiveMap({
     });
     destMarkerRef.current = L.marker([lastPt.lat, lastPt.lng], { icon: destIcon }).addTo(map);
 
-    // Live Chauffeur Vehicle Puck (Luxury Minimalist Design)
+    // Live Driver Vehicle Puck (Luxury Minimalist Design)
     const carAccentColor = isOnTrip ? '#22C55E' : '#EAB308';
     const carIcon = L.divIcon({
       className: 'gmap-car-marker',
@@ -291,6 +310,11 @@ export default function GraphicLiveMap({
     // Fit map bounds smoothly
     if (latlngs.length >= 2) {
       map.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
+    } else {
+      map.fitBounds(L.latLngBounds([
+        [originCoords.lat, originCoords.lng],
+        [destCoords.lat, destCoords.lng]
+      ]), { padding: [24, 24] });
     }
 
     // Invalidate size after container settles
@@ -300,6 +324,11 @@ export default function GraphicLiveMap({
           mapRef.current.invalidateSize();
           if (latlngs.length >= 2) {
             mapRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
+          } else {
+            mapRef.current.fitBounds(L.latLngBounds([
+              [originCoords.lat, originCoords.lng],
+              [destCoords.lat, destCoords.lng]
+            ]), { padding: [24, 24] });
           }
         }
       } catch (_) {}
@@ -328,8 +357,9 @@ export default function GraphicLiveMap({
   }, [carLat, carLng, carAngle]);
 
   // Update polyline and markers when routePoints update from directions API
+  // STRICT RULE: Only draw polyline if routePoints has > 2 coordinates (real road curve, never a 2-point straight line)
   useEffect(() => {
-    if (!mapRef.current || !routePoints || routePoints.length < 2) return;
+    if (!mapRef.current || !routePoints || routePoints.length <= 2) return;
     const latlngs = routePoints.map(p => [p.lat, p.lng]);
     if (polylineOuterRef.current) {
       polylineOuterRef.current.setLatLngs(latlngs);
@@ -414,7 +444,7 @@ export default function GraphicLiveMap({
               boxShadow: `0 0 6px ${isOnTrip ? '#22C55E' : '#EAB308'}`
             }}
           />
-          <span>{isOnTrip ? 'Live Trip' : isApproachingPickup ? 'Chauffeur On Way' : 'Live Route'}</span>
+          <span>{isOnTrip ? 'Live Trip' : isApproachingPickup ? 'Driver On Way' : 'Live Route'}</span>
         </div>
       )}
 

@@ -15,7 +15,8 @@ export default function CustomVideoPlayer({
   src,
   poster,
   title = 'Vehicle Walkaround Inspection Video',
-  subtitle = 'Verified Pre-Trip Condition Recording'
+  subtitle = 'Verified Pre-Trip Condition Recording',
+  onExpandFullscreen
 }) {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -361,36 +362,70 @@ export default function CustomVideoPlayer({
             </span>
           </div>
 
-          {/* Audio Mute / Unmute Button */}
-          <button
-            type="button"
-            onClick={toggleMute}
-            title={isMuted ? 'Unmute' : 'Mute'}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#CBD5E1',
-              padding: '4px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            {isMuted ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <line x1="23" y1="9" x2="17" y2="15" />
-                <line x1="17" y1="9" x2="23" y2="15" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Audio Mute / Unmute Button */}
+            <button
+              type="button"
+              onClick={toggleMute}
+              title={isMuted ? 'Unmute' : 'Mute'}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#CBD5E1',
+                padding: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {isMuted ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+              )}
+            </button>
+
+            {/* Fullscreen Expand & Zoom Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onExpandFullscreen) {
+                  onExpandFullscreen(videoSrc, title);
+                } else if (videoRef.current) {
+                  if (videoRef.current.requestFullscreen) {
+                    videoRef.current.requestFullscreen().catch(() => {});
+                  } else if (videoRef.current.webkitRequestFullscreen) {
+                    videoRef.current.webkitRequestFullscreen();
+                  }
+                }
+              }}
+              title="Expand to Full Screen & Zoom"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#CBD5E1',
+                padding: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
               </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              </svg>
-            )}
-          </button>
+            </button>
+          </div>
         </div>
       </div>
     </div>

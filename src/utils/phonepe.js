@@ -5,7 +5,7 @@
  * - Dynamic PhonePe UPI QR Generation
  * - Direct In-App UPI Intent (PhonePe, GPay, Paytm, CRED, Navi)
  * - Transaction Status Check (/pg/v1/status)
- * - Chauffeur Payouts & Escrow Settlement
+ * - Driver Payouts & Escrow Settlement
  * - Configurable Sandbox / Production credentials
  */
 
@@ -212,7 +212,7 @@ export async function verifyPhonePePaymentStatus({
 }
 
 /**
- * PhonePe Chauffeur Instant Payout
+ * PhonePe Driver Instant Payout
  * Used for driver amount withdrawal directly to Bank Account / UPI
  */
 export function processPhonePeDriverPayout({

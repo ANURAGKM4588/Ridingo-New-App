@@ -91,11 +91,11 @@ const PERMISSION_RATIONALE = {
   user: {
     [PERMISSION_TYPES.LOCATION_FOREGROUND]: {
       title: 'Location Access Needed',
-      message: 'Ridingo requires your GPS location to set accurate pickup points and route your chauffeur to your doorstep.'
+      message: 'Ridingo requires your GPS location to set accurate pickup points and route your driver to your doorstep.'
     },
     [PERMISSION_TYPES.NOTIFICATIONS]: {
       title: 'Notifications Recommended',
-      message: 'Enable notifications to receive instant updates when your chauffeur is assigned, arrives at pickup, or begins the journey.'
+      message: 'Enable notifications to receive instant updates when your driver is assigned, arrives at pickup, or begins the journey.'
     },
     [PERMISSION_TYPES.PHOTO_LIBRARY]: {
       title: 'Photo Library Access',

@@ -40,6 +40,7 @@ export default function OnboardingModal() {
   // OTP Verification state & visual feedback
   const [otpStatus, setOtpStatus] = useState('idle'); // 'idle' | 'success' | 'error'
   const [isShaking, setIsShaking] = useState(false);
+  const [unregisteredMobile, setUnregisteredMobile] = useState('');
 
   // Authentication & Profile Fields
   const [phone, setPhone] = useState('');
@@ -127,6 +128,7 @@ export default function OnboardingModal() {
       setOtp(['', '', '', '', '', '']);
       setOtpStatus('idle');
       setOtpError(null);
+      setUnregisteredMobile('');
       setVerifiedUserObj(null);
       try {
         localStorage.setItem('ridingo_has_onboarded', 'true');
@@ -136,26 +138,20 @@ export default function OnboardingModal() {
 
   if (!onboardingOpen) return null;
 
-  const getTargetIdentifier = (method, tab) => {
+  const getTargetIdentifier = (method = 'phone', tab = activeTab) => {
     if (tab === 'register') {
-      return method === 'phone' ? (regMobile || phone) : email;
+      return regMobile || phone;
     }
-    return method === 'phone' ? phone : email;
+    return phone;
   };
 
-  const handleSendOtp = async (methodToUse = otpMethod) => {
+  const handleSendOtp = async (methodToUse = 'phone') => {
     setOtpError(null);
     setOtpStatus('idle');
     setIsShaking(false);
-    const rawId = getTargetIdentifier(methodToUse, activeTab);
-    if (!rawId || (methodToUse === 'phone' && rawId.replace(/\D/g, '').length < 10)) {
-      const msg = methodToUse === 'phone' ? 'Please enter a valid 10-digit mobile number' : 'Please enter a valid email address';
-      setOtpError(msg);
-      addToast(msg, 'warn');
-      return;
-    }
-    if (methodToUse === 'email' && !rawId.includes('@')) {
-      const msg = 'Please enter a valid email address';
+    const rawId = getTargetIdentifier('phone', activeTab);
+    if (!rawId || rawId.replace(/\D/g, '').length < 10) {
+      const msg = 'Please enter a valid 10-digit mobile number';
       setOtpError(msg);
       addToast(msg, 'warn');
       return;
@@ -164,14 +160,14 @@ export default function OnboardingModal() {
     setSendingOtp(true);
     try {
       const res = await sendOtp({
-        method: methodToUse,
+        method: 'phone',
         identifier: rawId
       });
       setSendingOtp(false);
       setOtpError(null);
       setOtpStatus('idle');
       setIsShaking(false);
-      setOtpMethod(methodToUse);
+      setOtpMethod('phone');
       setStep('otp');
       setResendCountdown(30);
       setOtp(['', '', '', '', '', '']);
@@ -189,7 +185,7 @@ export default function OnboardingModal() {
     }
   };
 
-  const handleSignInSubmit = (e) => {
+  const handleSignInSubmit = async (e) => {
     e.preventDefault();
     if (!agreedTerms) {
       setTermsWarning(true);
@@ -197,7 +193,35 @@ export default function OnboardingModal() {
       return;
     }
     setTermsWarning(false);
-    handleSendOtp(otpMethod);
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      const msg = 'Please enter a valid 10-digit mobile number';
+      setOtpError(msg);
+      addToast(msg, 'warn');
+      return;
+    }
+
+    // Check if user is registered: If NOT, show error & guide to Create Account
+    setSendingOtp(true);
+    setOtpError(null);
+    setUnregisteredMobile('');
+    try {
+      const check = await checkUserExists({ phone: cleanPhone });
+      if (!check.exists) {
+        setSendingOtp(false);
+        const errMsg = 'This number is not registered, please create an account';
+        setOtpError(errMsg);
+        setUnregisteredMobile(cleanPhone);
+        addToast(errMsg, 'warn');
+        return;
+      }
+    } catch (checkErr) {
+      console.warn('Check user exists error:', checkErr);
+    }
+    setSendingOtp(false);
+
+    // Number is registered - Proceed to send OTP for login
+    handleSendOtp('phone');
   };
 
   const handleRegisterSubmit = async (e) => {
@@ -216,26 +240,23 @@ export default function OnboardingModal() {
       addToast('Please enter your Last Name', 'warn');
       return;
     }
-    const cleanPhone = (phone || '').replace(/\D/g, '');
+    const cleanPhone = (phone || regMobile || '').replace(/\D/g, '');
     if (cleanPhone.length < 10) {
       addToast('Please enter a valid 10-digit mobile number', 'warn');
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
-      addToast('Please enter a valid email address', 'warn');
-      return;
-    }
 
-    // Check if user already exists in database or local registry
+    // Check if user already exists in database or local registry by mobile
     setSendingOtp(true);
     setOtpError(null);
     try {
-      const check = await checkUserExists({ phone: cleanPhone, email: email.trim() });
+      const check = await checkUserExists({ phone: cleanPhone });
       if (check.exists) {
         setSendingOtp(false);
-        const warnMsg = 'You are already registered with this mobile number/email. Please log in.';
+        const warnMsg = 'You are already registered with this mobile number. Please log in.';
         addToast(warnMsg, 'warn');
         setOtpError(warnMsg);
+        setPhone(cleanPhone);
         setActiveTab('signin');
         return;
       }
@@ -244,7 +265,9 @@ export default function OnboardingModal() {
     }
     setSendingOtp(false);
 
+    // Number is new - send OTP to mobile for account creation
     setOtpMethod('phone');
+    setPhone(cleanPhone);
     handleSendOtp('phone');
   };
 
@@ -311,7 +334,7 @@ export default function OnboardingModal() {
       setOtpStatus('error');
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 450);
-      const channelLabel = otpMethod === 'phone' ? 'mobile' : 'email';
+      const channelLabel = 'mobile';
       const msg = `Please enter the complete 6-digit verification code sent to your ${channelLabel}`;
       setOtpError(msg);
       addToast(msg, 'warn');
@@ -387,7 +410,7 @@ export default function OnboardingModal() {
         otpInputRefs.current[0]?.focus();
       }, 450);
 
-      const channelLabel = otpMethod === 'phone' ? 'mobile' : 'email';
+      const channelLabel = 'mobile';
       const errorMsg = `Please enter the correct verification code sent to your ${channelLabel}`;
       setOtpError(errorMsg);
       addToast(errorMsg, 'warn');
@@ -402,10 +425,6 @@ export default function OnboardingModal() {
     }
     if (!lastName.trim()) {
       addToast('Please enter your Last Name', 'warn');
-      return;
-    }
-    if (!email.trim() || !email.includes('@')) {
-      addToast('Please enter a valid email address', 'warn');
       return;
     }
     const cleanEmergency = emergencyPhone.replace(/\D/g, '');
@@ -539,9 +558,9 @@ export default function OnboardingModal() {
   const slides = [
     {
       id: 0,
-      badge: 'VERIFIED CHAUFFEURS',
-      title: 'Your Car.\nOur Chauffeur.',
-      desc: 'Hire background-verified, uniformed professional chauffeurs for your personal car by the hour, day, or outstation journey.',
+      badge: 'VERIFIED DRIVERS',
+      title: 'Your Car.\nOur Driver.',
+      desc: 'Hire background-verified, uniformed professional drivers for your personal car by the hour, day, or outstation journey.',
       icon: (
         <div style={{ width: '78px', height: '78px', borderRadius: '24px', background: 'linear-gradient(135deg, #FFC70A 0%, #D9A400 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 12px 28px rgba(255, 199, 10, 0.35)', color: '#000000', margin: '0 auto 16px' }}>
           <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -592,7 +611,7 @@ export default function OnboardingModal() {
         </div>
       ),
       highlights: [
-        'Instant Chauffeur Arrival in 15 Minutes',
+        'Instant Driver Arrival in 15 Minutes',
         '4-Digit Pickup & Drop OTP Protection',
         'Cashless UPI, Cards & Wallet Cashbacks'
       ]
@@ -988,13 +1007,13 @@ export default function OnboardingModal() {
             }}
           >
             {step === 'welcome'
-              ? 'Your account is verified and ready. Book personal chauffeurs on demand.'
+              ? 'Your account is verified and ready. Book personal drivers on demand.'
               : step === 'profile'
               ? 'First-time login setup: enter your name and emergency contact details'
               : step === 'otp'
-              ? `Enter the 6-digit verification code sent to your ${otpMethod === 'phone' ? 'mobile' : 'email'}`
+              ? 'Enter the 6-digit verification code sent to your mobile'
               : activeTab === 'signin'
-              ? 'Sign in or register with your mobile or email'
+              ? 'Sign in or register with your mobile number'
               : 'Sign up in seconds for on-demand personal drivers'}
           </p>
         </div>
@@ -1118,7 +1137,7 @@ export default function OnboardingModal() {
                 marginTop: '4px'
               }}
             >
-              <span>Explore &amp; Book Chauffeur</span>
+              <span>Explore &amp; Book Driver</span>
               <span>→</span>
             </button>
           </div>
@@ -1155,18 +1174,25 @@ export default function OnboardingModal() {
               </div>
             </div>
 
-            {/* Email Address */}
-            <div>
-              <label style={labelStyle}>Email ID *</label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                style={fieldStyle}
-                required
-              />
-            </div>
+            {/* Linked Google Account badge (if authenticated via Google) */}
+            {email && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 12px',
+                  borderRadius: '12px',
+                  background: 'var(--field)',
+                  border: '1px solid var(--line)',
+                  fontSize: '12.5px',
+                  color: 'var(--muted)'
+                }}
+              >
+                <Icon name="mail" size={14} color="var(--ink)" />
+                <span>Google: <strong style={{ color: 'var(--ink)' }}>{email}</strong></span>
+              </div>
+            )}
 
             {/* Mobile (Prefilled from auth or input) */}
             <div>
@@ -1276,7 +1302,7 @@ export default function OnboardingModal() {
                 />
               </div>
               <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-                Used by chauffeur &amp; support during safety emergencies.
+                Used by driver &amp; support during safety emergencies.
               </div>
             </div>
 
@@ -1325,15 +1351,13 @@ export default function OnboardingModal() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Icon name={otpMethod === 'phone' ? 'phone' : 'mail'} size={18} />
+                <Icon name="phone" size={18} />
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {otpMethod === 'phone' ? 'Code Sent To Mobile' : 'Code Sent To Email'}
+                    Code Sent To Mobile
                   </div>
                   <div style={{ fontSize: '13.5px', fontWeight: 750, color: 'var(--ink)' }}>
-                    {otpMethod === 'phone'
-                      ? formatIndianPhone(getTargetIdentifier('phone', activeTab))
-                      : getTargetIdentifier('email', activeTab)}
+                    {formatIndianPhone(getTargetIdentifier('phone', activeTab))}
                   </div>
                 </div>
               </div>
@@ -1417,48 +1441,29 @@ export default function OnboardingModal() {
               {verifyingOtp ? 'Verifying Code...' : 'Verify & Proceed'}
             </button>
 
-            {/* Resend OTP & Channel Switch Section */}
+            {/* Resend OTP Section */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: isKeyboardVisible ? '4px' : '6px', alignItems: 'center' }}>
               {resendCountdown > 0 ? (
                 <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
                   Resend code in <strong style={{ color: 'var(--ink)' }}>{resendCountdown}s</strong>
                 </span>
               ) : (
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleSendOtp(otpMethod)}
-                    disabled={sendingOtp}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--ink)',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      textDecoration: 'underline',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {sendingOtp ? 'Sending...' : 'Resend OTP'}
-                  </button>
-                  <span style={{ color: 'var(--line)' }}>•</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSendOtp(otpMethod === 'phone' ? 'email' : 'phone')}
-                    disabled={sendingOtp}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--muted)',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      textDecoration: 'underline',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Try {otpMethod === 'phone' ? 'Email' : 'Mobile'} instead
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSendOtp('phone')}
+                  disabled={sendingOtp}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--ink)',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {sendingOtp ? 'Sending...' : 'Resend OTP'}
+                </button>
               )}
             </div>
 
@@ -1485,123 +1490,67 @@ export default function OnboardingModal() {
              FLOW 1A: SIGN IN (Clean Mobile / Email Switch & Terms Checkbox)
              ======================================================== */
           <form onSubmit={handleSignInSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-            {/* Header row with sleek Switcher Link (No chunky segmented block) */}
+            {/* Mobile Number Input */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>
-                  {otpMethod === 'phone' ? 'Mobile Number' : 'Email Address'}
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOtpMethod(prev => prev === 'phone' ? 'email' : 'phone');
-                    setOtpError(null);
-                  }}
+              <label style={labelStyle}>
+                Mobile Number
+              </label>
+
+              <div>
+                <div
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--ink)',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    padding: '2px 0',
-                    textDecoration: 'underline',
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    height: '48px',
+                    borderRadius: '14px',
+                    background: 'var(--card)',
+                    border: '1.5px solid var(--line)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    overflow: 'hidden'
                   }}
                 >
-                  {otpMethod === 'phone' ? 'Use Email instead →' : 'Use Mobile instead →'}
-                </button>
-              </div>
-
-              {/* Field: Mobile Number */}
-              {otpMethod === 'phone' ? (
-                <div>
-                  <div
+                  <span
                     style={{
+                      padding: '0 12px',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: 'var(--ink)',
+                      borderRight: '1px solid var(--line)',
+                      height: '100%',
                       display: 'flex',
                       alignItems: 'center',
-                      height: '48px',
-                      borderRadius: '14px',
-                      background: 'var(--card)',
-                      border: '1.5px solid var(--line)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                      overflow: 'hidden'
+                      background: 'var(--field)',
+                      flexShrink: 0
                     }}
                   >
-                    <span
-                      style={{
-                        padding: '0 12px',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        color: 'var(--ink)',
-                        borderRight: '1px solid var(--line)',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        background: 'var(--field)',
-                        flexShrink: 0
-                      }}
-                    >
-                      +91
-                    </span>
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={10}
-                      value={phone}
-                      onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="Enter 10-digit mobile number"
-                      style={{
-                        flex: 1,
-                        height: '100%',
-                        border: 'none',
-                        outline: 'none',
-                        background: 'transparent',
-                        padding: '0 12px',
-                        fontSize: '15.5px',
-                        fontWeight: 600,
-                        color: 'var(--ink)',
-                        letterSpacing: '0.04em'
-                      }}
-                      required
-                    />
-                  </div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
-                    We'll send a 6-digit verification code to your mobile.
-                  </div>
-                </div>
-              ) : (
-                /* Field: Email ID */
-                <div>
+                    +91
+                  </span>
                   <input
-                    type="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    value={phone}
+                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="Enter 10-digit mobile number"
                     style={{
-                      width: '100%',
-                      height: '48px',
-                      borderRadius: '14px',
-                      background: 'var(--card)',
-                      border: '1.5px solid var(--line)',
-                      padding: '0 14px',
-                      fontSize: '14.5px',
+                      flex: 1,
+                      height: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      padding: '0 12px',
+                      fontSize: '15.5px',
                       fontWeight: 600,
                       color: 'var(--ink)',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                      letterSpacing: '0.04em'
                     }}
                     required
                   />
-                  <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
-                    We'll send a 6-digit verification code to your email.
-                  </div>
                 </div>
-              )}
+                <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
+                  We'll send a 6-digit verification code to your mobile.
+                </div>
+              </div>
             </div>
 
             {/* Terms and Conditions Acceptance Checkbox */}
@@ -1706,7 +1655,7 @@ export default function OnboardingModal() {
               </div>
             )}
 
-            {/* Inline error feedback if sending fails */}
+            {/* Inline error feedback if sending fails or number is unregistered */}
             {otpError && (
               <div
                 style={{
@@ -1719,11 +1668,39 @@ export default function OnboardingModal() {
                   lineHeight: 1.45,
                   fontWeight: 600,
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
+                  flexDirection: 'column',
+                  gap: '6px'
                 }}
               >
-                <span>{otpError}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon name="alert-circle" size={14} color="#d93025" />
+                  <span>{otpError}</span>
+                </div>
+                {unregisteredMobile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegMobile(unregisteredMobile);
+                      setPhone(unregisteredMobile);
+                      setActiveTab('register');
+                      setOtpError(null);
+                      setUnregisteredMobile('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--ink)',
+                      fontWeight: 800,
+                      fontSize: '12.5px',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      padding: '2px 0 0 22px'
+                    }}
+                  >
+                    Click here to create account with +91 {unregisteredMobile} →
+                  </button>
+                )}
               </div>
             )}
 
@@ -1861,18 +1838,6 @@ export default function OnboardingModal() {
               </div>
             </div>
 
-            {/* Email Address */}
-            <div>
-              <label style={labelStyle}>Email ID *</label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                style={fieldStyle}
-                required
-              />
-            </div>
 
             {/* Terms and Conditions Acceptance Checkbox */}
             <label

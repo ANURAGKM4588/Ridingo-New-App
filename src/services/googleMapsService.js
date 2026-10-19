@@ -1914,6 +1914,24 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
   };
 }
 
+// In-memory cache for road-following polylines to guarantee 0ms instant display without straight-line delays
+const roadDirectionsCache = new Map();
+
+export function getCachedRoadDirectionsKey(originCoords, destCoords, origin, destination) {
+  const oKey = originCoords?.lat && originCoords?.lng
+    ? `${Number(originCoords.lat).toFixed(4)},${Number(originCoords.lng).toFixed(4)}`
+    : String(origin || '').toLowerCase().trim();
+  const dKey = destCoords?.lat && destCoords?.lng
+    ? `${Number(destCoords.lat).toFixed(4)},${Number(destCoords.lng).toFixed(4)}`
+    : String(destination || '').toLowerCase().trim();
+  return `${oKey}->${dKey}`;
+}
+
+export function getCachedRoadDirections(originCoords, destCoords, origin, destination) {
+  const key = getCachedRoadDirectionsKey(originCoords, destCoords, origin, destination);
+  return roadDirectionsCache.get(key) || null;
+}
+
 /**
  * Fetches real, road-hugging driving directions between origin and destination.
  * 1. Checks if Google Maps DirectionsService is available in window.google and returns
@@ -1923,6 +1941,11 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
  * 3. Falls back gracefully to interpolated waypoints if network is offline.
  */
 export async function fetchGoogleRoadDirections({ origin, destination, originCoords, destCoords }) {
+  const cacheKey = getCachedRoadDirectionsKey(originCoords, destCoords, origin, destination);
+  if (roadDirectionsCache.has(cacheKey)) {
+    return roadDirectionsCache.get(cacheKey);
+  }
+
   // 1. Resolve coordinates if not provided
   let oLat = originCoords?.lat;
   let oLng = originCoords?.lng;
@@ -1990,12 +2013,14 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
         const distKm = leg?.distance?.value ? Number((leg.distance.value / 1000).toFixed(1)) : null;
         const durMins = leg?.duration?.value ? Math.round(leg.duration.value / 60) : null;
 
-        return {
+        const res = {
           points,
           distanceKm: distKm,
           durationMins: durMins,
           source: 'google_directions_api'
         };
+        roadDirectionsCache.set(cacheKey, res);
+        return res;
       }
     } catch (gErr) {
       console.warn('[GoogleRoadDirections] Google DirectionsService unavailable or failed, switching to road network router:', gErr);
@@ -2023,12 +2048,14 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
         const distanceKm = Number((route.distance / 1000).toFixed(1));
         const durationMins = Math.round(route.duration / 60);
 
-        return {
+        const res = {
           points,
           distanceKm,
           durationMins,
           source: 'road_network_driving'
         };
+        roadDirectionsCache.set(cacheKey, res);
+        return res;
       }
     }
   } catch (osrmErr) {
@@ -2037,10 +2064,12 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
 
   // 4. Offline fallback: Smooth curved highway waypoints
   const mock = calculateMockRoute({ lat: oLat, lng: oLng }, { lat: dLat, lng: dLng });
-  return {
+  const fallbackRes = {
     points: mock.waypoints,
     distanceKm: mock.distanceKm,
     durationMins: mock.durationMins,
     source: 'interpolated_highway'
   };
+  roadDirectionsCache.set(cacheKey, fallbackRes);
+  return fallbackRes;
 }

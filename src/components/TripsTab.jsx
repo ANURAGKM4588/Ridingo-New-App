@@ -89,7 +89,7 @@ export default function TripsTab() {
       case 'accepted':
         return (
           <span className="pill good" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(34, 197, 94, 0.12)', color: '#16A34A', fontWeight: 750 }}>
-            Chauffeur Assigned
+            Driver Assigned
           </span>
         );
       case 'pickup_arrived':
@@ -211,7 +211,7 @@ export default function TripsTab() {
           </div>
           <b style={{ fontSize: '17px', color: 'var(--ink)', display: 'block', marginBottom: '6px' }}>No rides yet</b>
           <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '0 auto 20px', maxWidth: '250px', lineHeight: 1.45 }}>
-            Your upcoming and completed bookings will appear here once you hire a verified chauffeur.
+            Your upcoming and completed bookings will appear here once you hire a verified driver.
           </p>
           <button
             type="button"
@@ -223,7 +223,7 @@ export default function TripsTab() {
             }}
           >
             <Icon name="navigation" size={15} />
-            <span>Book a Chauffeur</span>
+            <span>Book a Driver</span>
           </button>
         </div>
       ) : (
@@ -264,8 +264,8 @@ export default function TripsTab() {
                           style={{
                             fontSize: '10.5px',
                             fontWeight: 800,
-                            background: '#000000',
-                            color: '#FFFFFF',
+                            background: 'var(--solid)',
+                            color: 'var(--on-solid)',
                             padding: '1.5px 6px',
                             borderRadius: '5px',
                             fontFamily: 'var(--font-mono, monospace)',
@@ -308,8 +308,8 @@ export default function TripsTab() {
                       {isFuture
                         ? 'Scheduled · Tracking unlocks 2h before trip'
                         : ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)
-                          ? 'Chauffeur assigned · Tracking active'
-                          : 'Searching chauffeur · ₹50 fee applies'}
+                          ? 'Driver assigned · Tracking active'
+                          : 'Searching driver · ₹50 fee applies'}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {canTrack && (

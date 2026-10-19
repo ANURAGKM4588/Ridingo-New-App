@@ -57,16 +57,34 @@ export function getCompoundLoginKey(phone, email) {
   return `${normalizePhone10(phone)}_${normalizeEmail(email)}`;
 }
 
+export const DEFAULT_SEED_USERS = [
+  {
+    id: 'RDU-10001',
+    userId: 'RDU-10001',
+    name: 'Arjun Menon',
+    firstName: 'Arjun',
+    lastName: 'Menon',
+    phone: '+91 98401 23456',
+    email: 'arjun@ridingo.com',
+    emergencyPhone: '+91 98401 99999'
+  }
+];
+
 /**
  * Reads local cached user registry
  */
 export function getLocalUserRegistry() {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return DEFAULT_SEED_USERS;
   try {
     const raw = localStorage.getItem(LOCAL_REGISTRY_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) {
+      localStorage.setItem(LOCAL_REGISTRY_KEY, JSON.stringify(DEFAULT_SEED_USERS));
+      return DEFAULT_SEED_USERS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_SEED_USERS;
   } catch (e) {
-    return [];
+    return DEFAULT_SEED_USERS;
   }
 }
 
@@ -182,18 +200,15 @@ export async function registerUserProfile({ firstName, lastName, phone, email, e
   if (!cleanPhone || cleanPhone.length < 10) {
     throw new Error('Please enter a valid 10-digit mobile number');
   }
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    throw new Error('Please enter a valid email address');
-  }
 
   // Check uniqueness against database & registry
-  const check = await checkUserExists({ phone: cleanPhone, email: cleanEmail });
+  const check = await checkUserExists({ phone: cleanPhone, email: cleanEmail || undefined });
   if (check.exists) {
     return {
       success: false,
       alreadyRegistered: true,
       matchedField: check.matchedField,
-      message: 'You are already registered with this mobile number/email. Please log in.',
+      message: 'You are already registered with this mobile number. Please log in.',
       existingUser: check.user
     };
   }

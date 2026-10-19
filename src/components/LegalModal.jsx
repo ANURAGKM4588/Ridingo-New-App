@@ -181,7 +181,7 @@ export default function LegalModal() {
               >
                 <Icon name="shield" size={18} />
                 <span style={{ fontSize: '12.5px', color: 'var(--ink)', lineHeight: 1.4, fontWeight: 500 }}>
-                  <b>Ridingo is a driver-providing service platform.</b> You provide the vehicle; we provide verified, professional chauffeurs on demand.
+                  <b>Ridingo is a driver-providing service platform.</b> You provide the vehicle; we provide verified, professional drivers on demand.
                 </span>
               </div>
 
@@ -189,7 +189,7 @@ export default function LegalModal() {
                 {
                   num: '01',
                   title: 'Platform Nature & Agency Scope',
-                  body: 'Ridingo connects car owners and authorized users with independent, verified chauffeurs. Ridingo does not own or provide vehicles; our service consists solely of matching and dispatching qualified drivers to drive your personal or commercial vehicle.'
+                  body: 'Ridingo connects car owners and authorized users with independent, verified drivers. Ridingo does not own or provide vehicles; our service consists solely of matching and dispatching qualified drivers to drive your personal or commercial vehicle.'
                 },
                 {
                   num: '02',
@@ -203,18 +203,18 @@ export default function LegalModal() {
                 },
                 {
                   num: '04',
-                  title: 'Professional Chauffeur Standards',
-                  body: 'All Ridingo driver partners undergo background screening, license verification, and defensive driving assessments. Chauffeurs are required to observe all traffic regulations, maintain passenger privacy, and ensure vehicle safety at all times.'
+                  title: 'Professional Driver Standards',
+                  body: 'All Ridingo driver partners undergo background screening, license verification, and defensive driving assessments. Drivers are required to observe all traffic regulations, maintain passenger privacy, and ensure vehicle safety at all times.'
                 },
                 {
                   num: '05',
                   title: 'Zero Tolerance Policy',
-                  body: 'We enforce strict zero tolerance for operating vehicles under the influence of alcohol, drugs, or illegal substances. Both riders and chauffeurs are entitled to a safe, harassment-free environment with instant SOS emergency dispatch support.'
+                  body: 'We enforce strict zero tolerance for operating vehicles under the influence of alcohol, drugs, or illegal substances. Both riders and drivers are entitled to a safe, harassment-free environment with instant SOS emergency dispatch support.'
                 },
                 {
                   num: '06',
                   title: 'Cancellation & Rescheduling',
-                  body: 'Bookings may be cancelled free of charge up to 30 minutes before the scheduled pickup time. Cancellations made after a chauffeur is dispatched may incur a nominal cancellation fee credited towards partner dispatch compensation.'
+                  body: 'Bookings may be cancelled free of charge up to 30 minutes before the scheduled pickup time. Cancellations made after a driver is dispatched may incur a nominal cancellation fee credited towards partner dispatch compensation.'
                 },
                 {
                   num: '07',
@@ -289,7 +289,7 @@ export default function LegalModal() {
                 {
                   num: '01',
                   title: 'Information We Collect',
-                  body: 'We collect your mobile number, name, and email address for account authentication. We also save registered vehicle details (model, registration plate) to verify vehicle suitability for chauffeurs.'
+                  body: 'We collect your mobile number, name, and email address for account authentication. We also save registered vehicle details (model, registration plate) to verify vehicle suitability for drivers.'
                 },
                 {
                   num: '02',
@@ -299,7 +299,7 @@ export default function LegalModal() {
                 {
                   num: '03',
                   title: 'Phone Number Masking & Security',
-                  body: 'Calls and communications between car owners and chauffeurs are routed through encrypted number masking gateways. Your personal private phone number is never exposed to drivers.'
+                  body: 'Calls and communications between car owners and drivers are routed through encrypted number masking gateways. Your personal private phone number is never exposed to drivers.'
                 },
                 {
                   num: '04',

@@ -116,8 +116,8 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-1',
     ts: Date.now() - 1000 * 60 * 18,
-    title: 'Airport Express Chauffeur Offer',
-    body: 'Get 5% cashback on your airport transfer bookings with professional verified chauffeurs. Use promo code AIRPORT5.',
+    title: 'Airport Express Driver Offer',
+    body: 'Get 5% cashback on your airport transfer bookings with professional verified drivers. Use promo code AIRPORT5.',
     icon: 'star',
     category: 'airport',
     isOffer: true,
@@ -128,7 +128,7 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-2',
     ts: Date.now() - 1000 * 60 * 65,
-    title: 'Chauffeur Safety Shield Active',
+    title: 'Driver Safety Shield Active',
     body: 'Real-time GPS tracking and 24/7 SOS dispatch are enabled on all your active trips for your peace of mind.',
     icon: 'shield',
     read: false
@@ -136,8 +136,8 @@ export const INITIAL_UNOTES = [
   {
     id: 'notif-3',
     ts: Date.now() - 1000 * 60 * 60 * 5,
-    title: 'Hourly Chauffeur Pass',
-    body: 'Enjoy 35% off your first city chauffeur booking. Experience effortless commuting in your personal car.',
+    title: 'Hourly Driver Pass',
+    body: 'Enjoy 35% off your first city driver booking. Experience effortless commuting in your personal car.',
     icon: 'gift',
     category: 'hourly',
     isOffer: true,
@@ -410,7 +410,7 @@ export function AppProvider({ children }) {
     const stableNotificationId = 30000 + (numericPortion % 60000);
 
     sendUserNativeNotification(
-      `Chauffeur Assigned: ${driverName}`,
+      `Driver Assigned: ${driverName}`,
       `${driverName} (${driverPhone}) is en route to your pickup. Your 4-digit Pickup OTP is ${targetOtp}.`,
       {
         id: stableNotificationId,
@@ -659,8 +659,8 @@ export function AppProvider({ children }) {
       });
       setIncomingTripRequest(newTrip);
       setDriverOnline(true);
-      // Dispatch background push notification immediately if driver login is complete
-      if (isDriverLoginComplete()) {
+      // Dispatch background push notification immediately if driver backgroundPush setting is enabled
+      if (driverPartner?.backgroundPush !== false && isDriverLoginComplete()) {
         notifyIncomingRideRequest(newTrip, {
           onAccept: (tripId) => acceptTrip(tripId),
           onViewMore: (trip) => {
@@ -705,7 +705,7 @@ export function AppProvider({ children }) {
                     } catch (_) {}
                     if (!declinedTripIds.includes(tripObj.id) && !acceptedTripIdsRef.current.has(tripObj.id) && !settledTripIdsRef.current.has(tripObj.id)) {
                       setIncomingTripRequest(tripObj);
-                      if (isDriverLoginComplete()) {
+                      if (driverPartner?.backgroundPush !== false && isDriverLoginComplete()) {
                         notifyIncomingRideRequest(tripObj, {
                           onAccept: (tripId) => acceptTrip(tripId),
                           onViewMore: (trip) => {
@@ -724,7 +724,7 @@ export function AppProvider({ children }) {
                       dismissIncomingRideNotification(tripObj.id);
                       stopActiveTone();
                       if (window.RIDINGO_TARGET !== 'driver') {
-                        // User App: Trigger system push notification with chauffeur details
+                        // User App: Trigger system push notification with driver details
                         const driverName = (typeof tripObj.driver === 'string' ? tripObj.driver : tripObj.driver?.name) || 'Ravi Kumar';
                         const driverPhone = tripObj.driverObj?.phone || '+91 94471 23456';
                         const otp = tripObj.startOtp || '4821';
@@ -827,7 +827,7 @@ export function AppProvider({ children }) {
           {
             id: 'notif-' + Date.now(),
             ts: Date.now(),
-            title: 'Chauffeur Assigned',
+            title: 'Driver Assigned',
             body: `${driverName} is on the way to your pickup. Share Pickup OTP: ${targetOtp} upon arrival.`,
             icon: 'car',
             read: false,
@@ -837,7 +837,7 @@ export function AppProvider({ children }) {
           ...prev
         ];
       });
-      addToast(`Chauffeur confirmed. ${driverName} accepted your ride.`, 'check');
+      addToast(`Driver confirmed. ${driverName} accepted your ride.`, 'check');
 
       // 2. Native Device Default System Push Notification for User App (Strictly Once)
       if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
@@ -858,11 +858,11 @@ export function AppProvider({ children }) {
         })
       );
       addNotification(
-        'Chauffeur Arrived at Pickup',
-        `Your chauffeur is at your pickup location. Please share your 4-digit OTP: ${targetOtp}.`,
+        'Driver Arrived at Pickup',
+        `Your driver is at your pickup location. Please share your 4-digit OTP: ${targetOtp}.`,
         'car'
       );
-      addToast('Chauffeur has arrived at pickup location.', 'info');
+      addToast('Driver has arrived at pickup location.', 'info');
     });
 
     const unbindOtp1 = realtime.on('START_OTP_VERIFIED', ({ tripId }) => {
@@ -888,7 +888,7 @@ export function AppProvider({ children }) {
       );
       addNotification(
         'Trip in Progress',
-        'Your chauffeur has started the trip. Live GPS route tracking is active.',
+        'Your driver has started the trip. Live GPS route tracking is active.',
         'map'
       );
       addToast('Trip started. Live tracking active.', 'check');
@@ -905,7 +905,7 @@ export function AppProvider({ children }) {
       setUTab('home');
       addNotification(
         'Arrived at Destination',
-        'Trip ended at destination. Chauffeur is finalizing invoice.',
+        'Trip ended at destination. Driver is finalizing invoice.',
         'flag'
       );
       addToast('Destination reached. Trip ended.', 'check');
@@ -923,7 +923,7 @@ export function AppProvider({ children }) {
     });
 
     // Local driver decline does not dismiss pop-up or tone on other drivers' devices
-    // realtime.on('TRIP_DECLINED') intentionally omitted to allow other chauffeurs to accept
+    // realtime.on('TRIP_DECLINED') intentionally omitted to allow other drivers to accept
 
     const unbindCancel = realtime.on('TRIP_CANCELLED', ({ tripId }) => {
       const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
@@ -1622,7 +1622,7 @@ export function AppProvider({ children }) {
     setActiveTrackingTripId(newTrip.id);
     setLiveTrackingOpen(true);
     setUTab('home');
-    addToast(`Booked ${safeCat.toUpperCase()} chauffeur! ₹${adv} advance paid via PhonePe.`, 'check');
+    addToast(`Booked ${safeCat.toUpperCase()} driver! ₹${adv} advance paid via PhonePe.`, 'check');
   };
 
   const updateTripStatusInSupabase = async (tripId, status, extra = {}) => {
@@ -1803,7 +1803,7 @@ export function AppProvider({ children }) {
       }));
       addToast('Violation: 1 Black Mark issued for cash transaction!', 'warn');
     } else {
-      addToast(`₹${driverEarnings} credited to Chauffeur Wallet!`, 'check');
+      addToast(`₹${driverEarnings} credited to Driver Wallet!`, 'check');
     }
 
     // Update driver partner wallet
@@ -1869,7 +1869,7 @@ export function AppProvider({ children }) {
     // 3. Remove locally from this driver's visible trips list
     setTrips(prev => prev.filter(t => t.id !== tripId));
 
-    // Notice: Do NOT emit realtime.declineRide here so the trip remains active for other chauffeurs!
+    // Notice: Do NOT emit realtime.declineRide here so the trip remains active for other drivers!
     addToast('Trip request declined and removed from your queue', 'info');
   };
 
@@ -1878,7 +1878,7 @@ export function AppProvider({ children }) {
     const targetTrip = (trips || []).find(t => t.id === tripId);
     const isDriverAssigned = targetTrip && ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled'].includes(targetTrip.status);
 
-    // Platform cancellation fee: ₹100 if chauffeur already dispatched/assigned, ₹50 nominal platform fee if searching/unassigned
+    // Platform cancellation fee: ₹100 if driver already dispatched/assigned, ₹50 nominal platform fee if searching/unassigned
     const cancelFee = typeof feeOverride === 'number' ? feeOverride : (isDriverAssigned ? 100 : 50);
     const advancePaid = Number(targetTrip?.advance) || 0;
     const refundAmount = Math.max(0, advancePaid - cancelFee);
@@ -1923,7 +1923,7 @@ export function AppProvider({ children }) {
           type: 'fee',
           amount: -cancelFee,
           title: `Cancellation Fee · ${tripId}`,
-          sub: isDriverAssigned ? 'Platform fee (chauffeur dispatched)' : 'Platform cancellation fee',
+          sub: isDriverAssigned ? 'Platform fee (driver dispatched)' : 'Platform cancellation fee',
           gateway: 'Ridingo Platform'
         },
         ...prev

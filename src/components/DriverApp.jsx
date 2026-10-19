@@ -10,6 +10,7 @@ import TripOtpModal from './TripOtpModal';
 import VehicleConditionModal from './VehicleConditionModal';
 import ContactProfileCard from './ContactProfileCard';
 import CustomVideoPlayer from './CustomVideoPlayer';
+import InspectionMediaModal from './InspectionMediaModal';
 import { supabase } from '../lib/supabase';
 import { processPhonePeDriverPayout } from '../utils/phonepe';
 import {
@@ -1153,6 +1154,14 @@ export default function DriverApp() {
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
   const [driverCustomTune, setDriverCustomTune] = useState(getSelectedCustomTune());
+  const [mediaModalState, setMediaModalState] = useState({
+    isOpen: false,
+    type: 'image',
+    images: [],
+    initialIndex: 0,
+    videoSrc: '',
+    title: ''
+  });
   const settlingTripIdsRef = useRef(new Set());
   const acceptedTripIdsRef = useRef(new Set());
 
@@ -1164,6 +1173,225 @@ export default function DriverApp() {
       }
     } catch (_) {}
   }, []);
+
+  // Scroll-linked pull-to-refresh state & refs for Driver Home Page (dTab === 'dash' only)
+  const [ptrPullDist, setPtrPullDist] = useState(0);
+  const [isPtrPulling, setIsPtrPulling] = useState(false);
+  const [isPtrRefreshing, setIsPtrRefreshing] = useState(false);
+  const ptrTouchStartY = useRef(0);
+  const ptrTouchStartX = useRef(0);
+  const isPtrTracking = useRef(false);
+  const hasPtrVibratedRef = useRef(false);
+  const isPtrRefreshingRef = useRef(false);
+  isPtrRefreshingRef.current = isPtrRefreshing;
+  const ptrPullDistRef = useRef(0);
+  ptrPullDistRef.current = ptrPullDist;
+
+  const PTR_PULL_THRESHOLD = 46;
+
+  // Scroll-linked pull-to-refresh gesture listeners on scroll container #d-content (only active when dTab === 'dash')
+  useEffect(() => {
+    // Only allow pull-to-refresh on driver dashboard (Home page)
+    if (dTab !== 'dash') {
+      setPtrPullDist(0);
+      setIsPtrPulling(false);
+      setIsPtrRefreshing(false);
+      ptrPullDistRef.current = 0;
+      return;
+    }
+
+    const dc = document.getElementById('d-content');
+    if (!dc) return;
+
+    const handleTouchStart = (e) => {
+      if (isPtrRefreshingRef.current || dTab !== 'dash') return;
+      if (dc.scrollTop <= 2 && e.touches.length === 1) {
+        ptrTouchStartY.current = e.touches[0].clientY;
+        ptrTouchStartX.current = e.touches[0].clientX;
+        isPtrTracking.current = true;
+        hasPtrVibratedRef.current = false;
+      } else {
+        isPtrTracking.current = false;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isPtrTracking.current || isPtrRefreshingRef.current || dTab !== 'dash') return;
+      if (dc.scrollTop > 2) {
+        isPtrTracking.current = false;
+        setIsPtrPulling(false);
+        setPtrPullDist(0);
+        return;
+      }
+
+      const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
+      const deltaY = currentY - ptrTouchStartY.current;
+      const deltaX = currentX - ptrTouchStartX.current;
+
+      if (deltaY > 0 && deltaY > Math.abs(deltaX) * 1.1) {
+        const damped = Math.min(64, deltaY * 0.42);
+        ptrPullDistRef.current = damped;
+        setIsPtrPulling(true);
+        setPtrPullDist(damped);
+
+        if (damped >= PTR_PULL_THRESHOLD && !hasPtrVibratedRef.current) {
+          hasPtrVibratedRef.current = true;
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate(18); } catch (_) {}
+          }
+        } else if (damped < PTR_PULL_THRESHOLD && hasPtrVibratedRef.current) {
+          hasPtrVibratedRef.current = false;
+        }
+
+        if (e.cancelable && damped > 6) {
+          e.preventDefault();
+        }
+      } else if (deltaY < 0) {
+        isPtrTracking.current = false;
+        setIsPtrPulling(false);
+        setPtrPullDist(0);
+      }
+    };
+
+    const handleTouchEnd = async () => {
+      if (!isPtrTracking.current) return;
+      isPtrTracking.current = false;
+      setIsPtrPulling(false);
+
+      if (ptrPullDistRef.current >= PTR_PULL_THRESHOLD && !isPtrRefreshingRef.current && dTab === 'dash') {
+        setIsPtrRefreshing(true);
+        setPtrPullDist(40);
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate([14, 25, 14]); } catch (_) {}
+        }
+
+        const startTime = Date.now();
+        try {
+          if (typeof syncTripsFromSupabase === 'function') {
+            await syncTripsFromSupabase();
+          }
+          if (realtime && typeof realtime.reconnect === 'function') {
+            realtime.reconnect();
+          }
+        } catch (err) {
+          console.warn('[Driver PullToRefresh] sync error:', err);
+        }
+
+        const elapsed = Date.now() - startTime;
+        const remainingWait = Math.max(0, 850 - elapsed);
+        setTimeout(() => {
+          setIsPtrRefreshing(false);
+          setPtrPullDist(0);
+          ptrPullDistRef.current = 0;
+        }, remainingWait);
+      } else {
+        setPtrPullDist(0);
+        ptrPullDistRef.current = 0;
+      }
+    };
+
+    let isMouseDown = false;
+    let mouseStartY = 0;
+    let mouseStartX = 0;
+
+    const handleMouseDown = (e) => {
+      if (isPtrRefreshingRef.current || dTab !== 'dash') return;
+      if (dc.scrollTop <= 2 && e.button === 0) {
+        isMouseDown = true;
+        mouseStartY = e.clientY;
+        mouseStartX = e.clientX;
+        hasPtrVibratedRef.current = false;
+      }
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isMouseDown || isPtrRefreshingRef.current || dTab !== 'dash') return;
+      if (dc.scrollTop > 2) {
+        isMouseDown = false;
+        setIsPtrPulling(false);
+        setPtrPullDist(0);
+        return;
+      }
+
+      const deltaY = e.clientY - mouseStartY;
+      const deltaX = e.clientX - mouseStartX;
+      if (deltaY > 0 && deltaY > Math.abs(deltaX) * 1.1) {
+        const damped = Math.min(64, deltaY * 0.42);
+        ptrPullDistRef.current = damped;
+        setIsPtrPulling(true);
+        setPtrPullDist(damped);
+
+        if (damped >= PTR_PULL_THRESHOLD && !hasPtrVibratedRef.current) {
+          hasPtrVibratedRef.current = true;
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate(18); } catch (_) {}
+          }
+        } else if (damped < PTR_PULL_THRESHOLD && hasPtrVibratedRef.current) {
+          hasPtrVibratedRef.current = false;
+        }
+      }
+    };
+
+    const handleMouseUp = async () => {
+      if (!isMouseDown) return;
+      isMouseDown = false;
+      setIsPtrPulling(false);
+
+      if (ptrPullDistRef.current >= PTR_PULL_THRESHOLD && !isPtrRefreshingRef.current && dTab === 'dash') {
+        setIsPtrRefreshing(true);
+        setPtrPullDist(40);
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate([14, 25, 14]); } catch (_) {}
+        }
+
+        const startTime = Date.now();
+        try {
+          if (typeof syncTripsFromSupabase === 'function') {
+            await syncTripsFromSupabase();
+          }
+          if (realtime && typeof realtime.reconnect === 'function') {
+            realtime.reconnect();
+          }
+        } catch (err) {
+          console.warn('[Driver PullToRefresh] sync error:', err);
+        }
+
+        const elapsed = Date.now() - startTime;
+        const remainingWait = Math.max(0, 850 - elapsed);
+        setTimeout(() => {
+          setIsPtrRefreshing(false);
+          setPtrPullDist(0);
+          ptrPullDistRef.current = 0;
+        }, remainingWait);
+      } else {
+        setPtrPullDist(0);
+        ptrPullDistRef.current = 0;
+      }
+    };
+
+    dc.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
+
+    dc.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      dc.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+
+      dc.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dTab, syncTripsFromSupabase]);
 
   useEffect(() => {
     // Proactively request initial device runtime permissions on launch:
@@ -1380,7 +1608,7 @@ export default function DriverApp() {
       const acceptedDriver = data?.driver;
       if (!acceptedId) return;
 
-      // If ANOTHER chauffeur accepted this trip, remove the popup, banner, and notification for this driver
+      // If ANOTHER driver accepted this trip, remove the popup, banner, and notification for this driver
       const myDriverId = getDeviceDriverId(driverPartner || DEFAULT_DRIVER);
       const assignedDriverId = String(acceptedDriver?.deviceDriverId || acceptedDriver?.id || acceptedDriver?.phone || '');
 
@@ -1391,7 +1619,7 @@ export default function DriverApp() {
         setTrips(prev => prev.filter(t => t.id !== acceptedId));
         stopActiveTone();
         dismissIncomingRideNotification(acceptedId);
-        addToast(`Trip was accepted by another chauffeur (${acceptedDriver?.name || 'Partner'})`, 'info');
+        addToast(`Trip was accepted by another driver (${acceptedDriver?.name || 'Partner'})`, 'info');
       }
     };
 
@@ -1663,7 +1891,7 @@ export default function DriverApp() {
     const reader = new FileReader();
     reader.onload = (event) => {
       setEditDriverAvatar(event.target.result);
-      addToast('Chauffeur photo selected! Tap Save to apply.', 'check');
+      addToast('Driver photo selected! Tap Save to apply.', 'check');
     };
     reader.readAsDataURL(file);
   };
@@ -1748,7 +1976,7 @@ export default function DriverApp() {
       avatar: editDriverAvatar
     });
     setActiveDriverModal(null);
-    addToast('Chauffeur profile & photo updated successfully', 'check');
+    addToast('Driver profile & photo updated successfully', 'check');
   };
 
   const handleSavePayout = (e) => {
@@ -2152,15 +2380,78 @@ export default function DriverApp() {
   const todayEarnings = driverTx.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
 
   return (
-    <div className="inner">
+    <div className="inner" style={{ flex: 1, minHeight: 0, height: '100%', borderRadius: 0, display: 'flex', flexDirection: 'column' }}>
       <div className="content" id="d-content">
         <div key={dTab} className="apple-page-enter">
           {/* ===================== DASHBOARD TAB ===================== */}
           {dTab === 'dash' && (
           <div>
-            {/* CLEAN APPLE CARD / IOS MINIMALIST OVERVIEW CARD */}
+            {/* Minimal Background-Free Pull-to-Refresh Loading Animation */}
             <div
-              className="card stagger-1"
+              className="home-ptr-slot"
+              style={{
+                height: isPtrRefreshing ? 42 : `${ptrPullDist}px`,
+                opacity: isPtrRefreshing ? 1 : Math.min(1, Math.max(0, ptrPullDist / 38)),
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: isPtrPulling ? 'none' : 'height 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease',
+                pointerEvents: 'none',
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                boxShadow: 'none',
+                flexShrink: 0
+              }}
+              aria-hidden={ptrPullDist === 0 && !isPtrRefreshing}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transform: isPtrRefreshing ? 'none' : `rotate(${Math.min(360, (ptrPullDist / 44) * 360)}deg)`,
+                  transition: isPtrPulling ? 'none' : 'transform 0.15s ease',
+                  color: 'var(--ink)'
+                }}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className={isPtrRefreshing ? 'ptr-spinning-anim' : ''}
+                  style={{ display: 'block' }}
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="8.5"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeDasharray="53.4"
+                    strokeDashoffset={isPtrRefreshing ? 16 : 53.4 * (1 - Math.min(1, Math.max(0, ptrPullDist / 44)))}
+                    style={{
+                      opacity: 0.92,
+                      transformOrigin: 'center'
+                    }}
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Dashboard Content - Moves Down Smoothly When Pulled */}
+            <div
+              className="driver-scroll-body"
+              style={{
+                transition: isPtrPulling ? 'none' : 'transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1)'
+              }}
+            >
+              {/* CLEAN APPLE CARD / IOS MINIMALIST OVERVIEW CARD */}
+              <div
+                className="card stagger-1"
               style={{
                 borderRadius: '24px',
                 padding: '20px',
@@ -2170,7 +2461,7 @@ export default function DriverApp() {
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
               }}
             >
-              {/* Row 1: Chauffeur Profile Pill + Duty Status */}
+              {/* Row 1: Driver Profile Pill + Duty Status */}
               <div
                 style={{
                   display: 'flex',
@@ -2236,7 +2527,7 @@ export default function DriverApp() {
                       </span>
                     </div>
                     <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>
-                      Pro Chauffeur · Kochi Central
+                      Pro Driver · Kochi Central
                     </span>
                   </div>
                 </div>
@@ -2423,7 +2714,7 @@ export default function DriverApp() {
               >
                 <Icon name="alert-circle" size={20} color="#DC2626" />
                 <div style={{ fontSize: '12.5px', color: '#991B1B', lineHeight: 1.4 }}>
-                  <b>{driverPartner.blackMarks} Black Mark(s) on Chauffeur Record</b>
+                  <b>{driverPartner.blackMarks} Black Mark(s) on Driver Record</b>
                   <span style={{ display: 'block', color: '#B91C1C', fontSize: '11px' }}>
                     Cash acceptance policy violation. Maintain digital payments to keep your driver account active.
                   </span>
@@ -2734,9 +3025,9 @@ export default function DriverApp() {
                               className="btn sm"
                               style={{
                                 flex: 1,
-                                background: '#FFFFFF',
-                                border: '1.5px solid #000000',
-                                color: '#000000',
+                                background: 'var(--card)',
+                                border: '1.5px solid var(--line-strong)',
+                                color: 'var(--ink)',
                                 fontWeight: 700,
                                 display: 'flex',
                                 alignItems: 'center',
@@ -2752,9 +3043,9 @@ export default function DriverApp() {
                               className="btn primary sm"
                               style={{
                                 flex: 1.2,
-                                background: '#000000',
-                                color: '#FFFFFF',
-                                border: '1.5px solid #000000',
+                                background: 'var(--solid)',
+                                color: 'var(--on-solid)',
+                                border: '1.5px solid var(--solid)',
                                 fontWeight: 700,
                                 display: 'flex',
                                 alignItems: 'center',
@@ -2774,7 +3065,7 @@ export default function DriverApp() {
                               <button
                                 type="button"
                                 className="btn sm"
-                                style={{ flex: 1, background: '#FFFFFF', border: '1.5px solid #000000', color: '#000000', fontWeight: 700 }}
+                                style={{ flex: 1, background: 'var(--card)', border: '1.5px solid var(--line-strong)', color: 'var(--ink)', fontWeight: 700 }}
                                 onClick={() => handleGetDirections(t.pickup)}
                               >
                                 Directions
@@ -2782,7 +3073,7 @@ export default function DriverApp() {
                               <button
                                 type="button"
                                 className="btn primary sm"
-                                style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
+                                style={{ flex: 1.5, background: 'var(--solid)', color: 'var(--on-solid)', border: '1.5px solid var(--solid)', fontWeight: 800 }}
                                 onClick={() => handleArriveAtPickup(t)}
                               >
                                 Enter Pickup OTP
@@ -2872,7 +3163,7 @@ export default function DriverApp() {
                               <button
                                 type="button"
                                 className="btn sm"
-                                style={{ flex: 1, background: '#FFFFFF', border: '1.5px solid #000000', color: '#000000', fontWeight: 750 }}
+                                style={{ flex: 1, background: 'var(--card)', border: '1.5px solid var(--line-strong)', color: 'var(--ink)', fontWeight: 750 }}
                                 onClick={() => handleGetDirections(t.drop_loc || 'Destination')}
                               >
                                 Route Map
@@ -2880,7 +3171,7 @@ export default function DriverApp() {
                               <button
                                 type="button"
                                 className="btn primary sm"
-                                style={{ flex: 1.5, background: '#000000', color: '#FFFFFF', border: '1.5px solid #000000', fontWeight: 800 }}
+                                style={{ flex: 1.5, background: 'var(--solid)', color: 'var(--on-solid)', border: '1.5px solid var(--solid)', fontWeight: 800 }}
                                 onClick={() => handleEndTripClick(t)}
                               >
                                 End Trip
@@ -2989,6 +3280,7 @@ export default function DriverApp() {
             ) : (
               <div className="empty">No upcoming scheduled trips.</div>
             )}
+            </div>
           </div>
         )}
 
@@ -3179,9 +3471,32 @@ export default function DriverApp() {
                                 {realPhotos.length > 0 ? (
                                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(realPhotos.length, 4)}, 1fr)`, gap: '6px' }}>
                                     {realPhotos.map((imgUrl, pIdx) => (
-                                      <div key={pIdx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '4/3', border: '1px solid var(--line, #E2E8F0)', background: '#000000' }}>
+                                      <div
+                                        key={pIdx}
+                                        onClick={() => {
+                                          setMediaModalState({
+                                            isOpen: true,
+                                            type: 'image',
+                                            images: realPhotos,
+                                            initialIndex: pIdx,
+                                            videoSrc: '',
+                                            title: `${t.car?.model || 'Vehicle'} Inspection (Photo ${pIdx + 1})`
+                                          });
+                                        }}
+                                        style={{
+                                          position: 'relative',
+                                          borderRadius: '10px',
+                                          overflow: 'hidden',
+                                          aspectRatio: '4/3',
+                                          border: '1.5px solid var(--line, #E2E8F0)',
+                                          background: '#000000',
+                                          cursor: 'pointer',
+                                          transition: 'transform 0.16s ease, border-color 0.16s ease'
+                                        }}
+                                        title="Tap to view full screen & zoom"
+                                      >
                                         <img src={imgUrl} alt={`Vehicle Photo ${pIdx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        <span style={{ position: 'absolute', bottom: 0, insetInline: 0, padding: '2px', background: 'rgba(0,0,0,0.65)', color: '#FFFFFF', fontSize: '9px', textAlign: 'center', fontWeight: 700 }}>
+                                        <span style={{ position: 'absolute', bottom: 0, insetInline: 0, padding: '2px', background: 'rgba(0,0,0,0.65)', color: '#FFFFFF', fontSize: '9.5px', textAlign: 'center', fontWeight: 700 }}>
                                           Photo {pIdx + 1}
                                         </span>
                                       </div>
@@ -3210,6 +3525,16 @@ export default function DriverApp() {
                                     src={realVideo}
                                     poster={realPhotos[0] || null}
                                     title={`${t.car?.model || 'Vehicle'} Walkaround Inspection`}
+                                    onExpandFullscreen={(src, vidTitle) => {
+                                      setMediaModalState({
+                                        isOpen: true,
+                                        type: 'video',
+                                        images: [],
+                                        initialIndex: 0,
+                                        videoSrc: src,
+                                        title: vidTitle || 'Walkaround Inspection Video'
+                                      });
+                                    }}
                                   />
                                 </div>
                               )}
@@ -3430,7 +3755,7 @@ export default function DriverApp() {
                 </button>
               </div>
 
-              {/* Verified Chauffeur & Partner Badges */}
+              {/* Verified Driver & Partner Badges */}
               <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span
@@ -3445,7 +3770,7 @@ export default function DriverApp() {
                       alignItems: 'center'
                     }}
                   >
-                    Verified Chauffeur
+                    Verified Driver
                   </span>
                   <span style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 500 }}>
                     Partner since 2024
@@ -3487,6 +3812,28 @@ export default function DriverApp() {
                   className={`ios-toggle ${driverPartner?.sound !== false ? 'on' : ''}`}
                   onClick={() => handleDriverToggle('sound', driverPartner?.sound === false, 'Request Sound Alert')}
                   aria-label="Toggle Request Sound"
+                >
+                  <span className="ios-toggle-thumb" />
+                </button>
+              </div>
+
+              {/* Row 3: Background Push Notifications for Trip Requests */}
+              <div className="prof-set-row">
+                <div className="prof-set-info">
+                  <b className="prof-set-title">Background Push Notifications</b>
+                  <span className="prof-set-sub">Receive trip request alerts even when app is minimized or phone is locked</span>
+                </div>
+                <button
+                  type="button"
+                  className={`ios-toggle ${driverPartner?.backgroundPush !== false ? 'on' : ''}`}
+                  onClick={async () => {
+                    const next = driverPartner?.backgroundPush === false;
+                    if (next) {
+                      await requestDriverNotificationPermission();
+                    }
+                    handleDriverToggle('backgroundPush', next, 'Background Push Notifications');
+                  }}
+                  aria-label="Toggle Background Push Notifications"
                 >
                   <span className="ios-toggle-thumb" />
                 </button>
@@ -3563,14 +3910,14 @@ export default function DriverApp() {
               {/* Hourly */}
               <div className="prof-set-row">
                 <div className="prof-set-info">
-                  <b className="prof-set-title">Hourly Chauffeur</b>
+                  <b className="prof-set-title">Hourly Driver</b>
                   <span className="prof-set-sub">₹250/hr · 2 to 12 hours minimum booking</span>
                 </div>
                 <button
                   type="button"
                   className={`ios-toggle ${driverPartner?.services?.hourly !== false ? 'on' : ''}`}
                   onClick={() => handleToggleService('hourly')}
-                  aria-label="Toggle Hourly Chauffeur"
+                  aria-label="Toggle Hourly Driver"
                 >
                   <span className="ios-toggle-thumb" />
                 </button>
@@ -3579,14 +3926,14 @@ export default function DriverApp() {
               {/* Full Day */}
               <div className="prof-set-row">
                 <div className="prof-set-info">
-                  <b className="prof-set-title">Full Day Chauffeur</b>
-                  <span className="prof-set-sub">₹1,800/day · 8 hours dedicated chauffeur service</span>
+                  <b className="prof-set-title">Full Day Driver</b>
+                  <span className="prof-set-sub">₹1,800/day · 8 hours dedicated driver service</span>
                 </div>
                 <button
                   type="button"
                   className={`ios-toggle ${driverPartner?.services?.daily !== false ? 'on' : ''}`}
                   onClick={() => handleToggleService('daily')}
-                  aria-label="Toggle Full Day Chauffeur"
+                  aria-label="Toggle Full Day Driver"
                 >
                   <span className="ios-toggle-thumb" />
                 </button>
@@ -3596,7 +3943,7 @@ export default function DriverApp() {
               <div className="prof-set-row">
                 <div className="prof-set-info">
                   <b className="prof-set-title">Airport Transfer</b>
-                  <span className="prof-set-sub">₹900 flat · Terminal pickup & drop chauffeur</span>
+                  <span className="prof-set-sub">₹900 flat · Terminal pickup & drop driver</span>
                 </div>
                 <button
                   type="button"
@@ -3611,14 +3958,14 @@ export default function DriverApp() {
               {/* Outstation */}
               <div className="prof-set-row">
                 <div className="prof-set-info">
-                  <b className="prof-set-title">Outstation Chauffeur</b>
+                  <b className="prof-set-title">Outstation Driver</b>
                   <span className="prof-set-sub">₹2,200/day · Round trips & intercity travel</span>
                 </div>
                 <button
                   type="button"
                   className={`ios-toggle ${driverPartner?.services?.outstation !== false ? 'on' : ''}`}
                   onClick={() => handleToggleService('outstation')}
-                  aria-label="Toggle Outstation Chauffeur"
+                  aria-label="Toggle Outstation Driver"
                 >
                   <span className="ios-toggle-thumb" />
                 </button>
@@ -4200,10 +4547,10 @@ export default function DriverApp() {
                   {activeDriverModal === 'editDriver' && (
                     <form onSubmit={handleSaveDriverProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                        Edit Chauffeur Profile
+                        Edit Driver Profile
                       </h3>
 
-                      {/* Chauffeur Photo Upload / Edit */}
+                      {/* Driver Photo Upload / Edit */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '6px 0 10px' }}>
                         <div style={{ position: 'relative' }}>
                           <div
@@ -4224,10 +4571,10 @@ export default function DriverApp() {
                               boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
                               cursor: 'pointer'
                             }}
-                            title="Tap to change chauffeur photo"
+                            title="Tap to change driver photo"
                           >
                             {editDriverAvatar ? (
-                              <img src={editDriverAvatar} alt="Chauffeur Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <img src={editDriverAvatar} alt="Driver Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                               (editDriverName ? editDriverName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'RK')
                             )}
@@ -4251,7 +4598,7 @@ export default function DriverApp() {
                               cursor: 'pointer',
                               boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
                             }}
-                            title="Upload Chauffeur Photo"
+                            title="Upload Driver Photo"
                           >
                             <Icon name="camera" size={13} />
                           </button>
@@ -4348,7 +4695,7 @@ export default function DriverApp() {
                         className="btn"
                         style={{ height: '48px', borderRadius: '14px', background: 'var(--yellow)', color: '#111827', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginTop: '6px' }}
                       >
-                        Save Chauffeur Details
+                        Save Driver Details
                       </button>
                     </form>
                   )}
@@ -4542,7 +4889,7 @@ export default function DriverApp() {
                   {activeDriverModal === 'documents' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
-                        Chauffeur KYC & Documents
+                        Driver KYC & Documents
                       </h3>
                       <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
                         Official state documents verified and authenticated on DigiLocker.
@@ -4552,7 +4899,7 @@ export default function DriverApp() {
                         {[
                           { title: 'Commercial Driver License', id: driverPartner?.dlNumber || 'KL-07-20160049281', valid: 'Valid till 14 Dec 2029', status: 'Verified' },
                           { title: 'Police Clearance Certificate', id: 'PCC-ER-2024-8819', valid: 'Clear criminal record', status: 'Approved' },
-                          { title: 'Professional Chauffeur Badge', id: driverPartner?.badgeNumber || 'KL-07-2024-CH08', valid: 'Ernakulam RTO Endorsement', status: 'Active' },
+                          { title: 'Professional Driver Badge', id: driverPartner?.badgeNumber || 'KL-07-2024-CH08', valid: 'Ernakulam RTO Endorsement', status: 'Active' },
                           { title: 'Aadhaar Biometric KYC', id: '•••• •••• 9128', valid: 'Verified via UIDAI', status: 'Completed' }
                         ].map((d, i) => (
                           <div key={i} style={{ padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -4588,7 +4935,7 @@ export default function DriverApp() {
                         24/7 Ridingo Support
                       </h3>
                       <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
-                        Dedicated roadside assistance, live chauffeur dispatching, and 24/7 partner support desk.
+                        Dedicated roadside assistance, live driver dispatching, and 24/7 partner support desk.
                       </p>
 
                       {/* Helpline Phone Number Card */}
@@ -4986,6 +5333,17 @@ export default function DriverApp() {
           onClose={() => setShowInvoiceModal(false)}
         />
       )}
+
+      {/* Full-Screen Vehicle Inspection Media Viewer (Images & Video with Zoom in/out) */}
+      <InspectionMediaModal
+        isOpen={mediaModalState.isOpen}
+        type={mediaModalState.type}
+        images={mediaModalState.images}
+        initialIndex={mediaModalState.initialIndex}
+        videoSrc={mediaModalState.videoSrc}
+        title={mediaModalState.title}
+        onClose={() => setMediaModalState(prev => ({ ...prev, isOpen: false }))}
+      />
 
       <div className="homebar" aria-hidden="true" />
     </div>

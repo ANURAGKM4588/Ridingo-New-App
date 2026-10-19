@@ -678,7 +678,7 @@ export default function PhonePePgCheckout() {
                   Order Summary
                 </span>
                 <h1 style={{ fontSize: '16px', fontWeight: 700, margin: '3px 0 0', color: theme.textPrimary }}>
-                  Ridingo Chauffeur Services
+                  Ridingo Driver Services
                 </h1>
               </div>
               <div

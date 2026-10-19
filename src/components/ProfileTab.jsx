@@ -524,7 +524,7 @@ export default function ProfileTab() {
         >
           <div className="prof-set-info">
             <b className="prof-set-title">Terms of Service</b>
-            <span className="prof-set-sub">Chauffeur transit rules, eligibility &amp; service agreement</span>
+            <span className="prof-set-sub">Driver transit rules, eligibility &amp; service agreement</span>
           </div>
           <div className="prof-set-action-btn">
             <span>View</span>
@@ -911,7 +911,7 @@ export default function ProfileTab() {
             {activeModal === 'temp' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
-                  Chauffeurs configure your vehicle's air conditioning to these settings upon arrival.
+                  Drivers configure your vehicle's air conditioning to these settings upon arrival.
                 </p>
 
                 {/* Temp selector */}
@@ -1012,7 +1012,7 @@ export default function ProfileTab() {
             {activeModal === 'lang' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
-                  Select the languages you prefer your assigned chauffeur to communicate in.
+                  Select the languages you prefer your assigned driver to communicate in.
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1063,7 +1063,7 @@ export default function ProfileTab() {
             {activeModal === 'notif_alerts' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
-                  Receive prompt push notifications when your chauffeur is assigned, begins travel, arrives at your car, and ends the booking.
+                  Receive prompt push notifications when your driver is assigned, begins travel, arrives at your car, and ends the booking.
                 </p>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
@@ -1097,7 +1097,7 @@ export default function ProfileTab() {
             {activeModal === 'notif_whatsapp' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
-                  Receive your chauffeur's verified commercial badge, pre-ride vehicle inspection report, and live GPS tracking link on WhatsApp.
+                  Receive your driver's verified commercial badge, pre-ride vehicle inspection report, and live GPS tracking link on WhatsApp.
                 </p>
 
                 <div style={{ fontSize: '12.5px', color: 'var(--ink)', padding: '10px 12px', borderRadius: '12px', background: 'rgba(37, 211, 102, 0.12)', border: '1px solid rgba(37, 211, 102, 0.3)' }}>
@@ -1135,7 +1135,7 @@ export default function ProfileTab() {
             {activeModal === 'notif_promo' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
-                  Get real-time alerts whenever chauffeur cashbacks, wallet vouchers, and seasonal member perks are added to your account.
+                  Get real-time alerts whenever driver cashbacks, wallet vouchers, and seasonal member perks are added to your account.
                 </p>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
@@ -1169,7 +1169,7 @@ export default function ProfileTab() {
             {activeModal === 'app_biometric' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
-                  Require Face ID or Fingerprint authentication before confirming any chauffeur booking or accessing vehicle telemetry.
+                  Require Face ID or Fingerprint authentication before confirming any driver booking or accessing vehicle telemetry.
                 </p>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', background: 'var(--card)', border: '1px solid var(--line)' }}>
@@ -1259,7 +1259,7 @@ export default function ProfileTab() {
             {activeModal === 'concierge' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
-                  Dedicated roadside assistance, live chauffeur dispatching, and 24/7 account support desk.
+                  Dedicated roadside assistance, live driver dispatching, and 24/7 account support desk.
                 </p>
 
                 {/* Helpline Phone Number Card */}

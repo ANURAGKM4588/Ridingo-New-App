@@ -23,7 +23,7 @@ export default function TripInvoiceModal({
   const qrData = generateLivePhonePeQrUrl({
     amount: totalDriverPayout,
     transactionId: trip?.id,
-    note: `Ridingo Chauffeur Settlement - ${trip?.id || 'TRP'}`
+    note: `Ridingo Driver Settlement - ${trip?.id || 'TRP'}`
   });
 
   const handleSimulatePaymentSettlement = () => {
@@ -147,8 +147,8 @@ export default function TripInvoiceModal({
           {/* Add Tips Section */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Chauffeur Tip</b>
-              <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>100% credited to chauffeur</span>
+              <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Driver Tip</b>
+              <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>100% credited to driver</span>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {[0, 20, 50, 100].map(tipVal => {
@@ -222,42 +222,6 @@ export default function TripInvoiceModal({
             <span style={{ fontSize: '12px', color: 'var(--muted, #64748B)', marginTop: '10px' }}>
               Scan with GPay, PhonePe, Paytm, CRED or Navi
             </span>
-          </div>
-
-          {/* STRICT NO-CASH WARNING SECTION */}
-          <div
-            style={{
-              borderRadius: '16px',
-              padding: '14px',
-              background: 'var(--bad-soft, #FEF2F2)',
-              border: '1.5px solid rgba(220, 38, 38, 0.4)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <Icon name="alert" size={16} color="var(--bad, #991B1B)" />
-              <b style={{ fontSize: '13px', color: 'var(--bad, #991B1B)' }}>Cash Payments Strictly Prohibited</b>
-            </div>
-            <p style={{ fontSize: '11.5px', color: 'var(--bad, #7F1D1D)', margin: '0 0 10px', lineHeight: 1.45 }}>
-              All Ridingo payments must be digital. If a chauffeur accepts cash, <b>1 Black Mark</b> will be permanently added to your profile.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setShowCashPenaltyDialog(true)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '10px',
-                background: 'var(--card, #FFFFFF)',
-                border: '1px solid var(--bad, #DC2626)',
-                color: 'var(--bad, #DC2626)',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              Customer insisted on Cash (Record Violation & Black Mark)
-            </button>
           </div>
         </div>
 
@@ -349,7 +313,7 @@ export default function TripInvoiceModal({
               Confirm Cash Violation?
             </b>
             <p style={{ fontSize: '13px', color: 'var(--muted, #64748B)', lineHeight: 1.45, margin: '0 0 20px' }}>
-              Accepting cash is a direct policy violation. You will receive <b>1 Black Mark</b> on your chauffeur profile.
+              Accepting cash is a direct policy violation. You will receive <b>1 Black Mark</b> on your driver profile.
             </p>
 
             <div style={{ display: 'flex', gap: '10px' }}>

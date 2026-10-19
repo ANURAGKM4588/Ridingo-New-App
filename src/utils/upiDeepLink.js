@@ -55,7 +55,7 @@ export const MAJOR_UPI_APPS = [
 ];
 
 const DEFAULT_VPA = 'ridingo.rzp@icici';
-const DEFAULT_PAYEE_NAME = 'Ridingo Chauffeur Services';
+const DEFAULT_PAYEE_NAME = 'Ridingo Driver Services';
 const MERCHANT_CODE = '4121'; // Passenger Transportation
 
 /**

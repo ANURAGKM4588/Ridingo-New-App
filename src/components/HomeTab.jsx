@@ -15,6 +15,7 @@ import { generateTripTicketImage } from '../utils/tripTicketGenerator';
 import TripTicketModal from './TripTicketModal';
 import { shareTicketImageWithCaption } from '../services/installedUpiService';
 import { cleanLocationName, getLocationUpToFirstComma } from '../utils/locationCleaner';
+import { fetchGoogleRoadDirections } from '../services/googleMapsService';
 
 const CATS = {
   hourly: { name: 'Hourly', blurb: '2 to 12 hours', icon: 'hourly', from: '₹250 per hour' },
@@ -59,30 +60,30 @@ const OFFER_BANNERS = [
   {
     id: 'airport-cashback',
     category: 'airport',
-    brandTag: 'RIDINGO · AIRPORT EXPRESS',
+    brandTag: 'RIDINGO · AIRPORT',
     tag: '5% CASHBACK',
     tagBg: '#10B981',
     tagColor: '#FFFFFF',
-    headline: '5% Cashback on Airport Rides',
-    sub: 'Flight delay tracking · Terminal pickup · Zero surge guarantee',
-    cta: 'Claim 5% Cashback',
+    headline: '5% Off Airport Rides',
+    sub: 'Flight delay tracking with zero surge guarantee',
+    cta: 'Claim 5% Off',
     icon: 'plane',
     promoCode: 'AIRPORT5',
     accentColor: '#10B981',
     accentBorder: 'rgba(16, 185, 129, 0.4)',
     bgGradient: 'linear-gradient(135deg, #061A15 0%, #0D2C24 45%, #0B1929 100%)',
     ambientGlow: 'rgba(16, 185, 129, 0.25)',
-    trustText: 'Verified Flight Chauffeurs'
+    trustText: 'Verified Flight Drivers'
   },
   {
     id: 'hourly-discount',
     category: 'hourly',
-    brandTag: 'RIDINGO · CHAUFFEUR PLUS',
-    tag: '35% OFF FIRST TRIP',
+    brandTag: 'RIDINGO · DRIVER',
+    tag: '35% OFF',
     tagBg: '#F59E0B',
     tagColor: '#000000',
-    headline: '35% OFF Your First City Chauffeur',
-    sub: 'City errands, meetings & shopping in the luxury of your own car',
+    headline: '35% Off City Driver',
+    sub: 'Errands, meetings & shopping in your own car',
     cta: 'Claim 35% Off',
     icon: 'hourly',
     promoCode: 'FIRST35',
@@ -95,12 +96,12 @@ const OFFER_BANNERS = [
   {
     id: 'outstation-discount',
     category: 'outstation',
-    brandTag: 'RIDINGO · HIGHWAY INTERCITY',
+    brandTag: 'RIDINGO · HIGHWAY',
     tag: 'FLAT ₹250 OFF',
     tagBg: '#3B82F6',
     tagColor: '#FFFFFF',
-    headline: 'Flat ₹250 OFF Highway Getaways',
-    sub: 'Scenic hill stations & outstation drives with verified highway drivers',
+    headline: 'Flat ₹250 Off Highway Trips',
+    sub: 'Scenic hill stations & outstation road drives',
     cta: 'Claim ₹250 Off',
     icon: 'route',
     promoCode: 'HIGHWAY250',
@@ -117,6 +118,7 @@ export default function HomeTab() {
     user,
     trips,
     setTrips,
+    syncTripsFromSupabase,
     setBookingOpen,
     setBookingCategory,
     setBookingDestination,
@@ -127,6 +129,7 @@ export default function HomeTab() {
     activeTrackingTripId,
     setActiveTrackingTripId,
     unotes,
+    uTab,
     setUTab,
     addToast,
     isUserTrip,
@@ -144,6 +147,252 @@ export default function HomeTab() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const searchWrapRef = useRef(null);
+  const reviewsSliderRef = useRef(null);
+  const isDraggingReviews = useRef(false);
+  const reviewsStartX = useRef(0);
+  const reviewsScrollLeft = useRef(0);
+
+  // Scroll-linked pull-to-refresh state & refs
+  const [pullDist, setPullDist] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const touchStartX = useRef(0);
+  const isPullTracking = useRef(false);
+  const hasVibratedRef = useRef(false);
+  const isRefreshingRef = useRef(false);
+  isRefreshingRef.current = isRefreshing;
+  const pullDistRef = useRef(0);
+  pullDistRef.current = pullDist;
+
+  const PULL_THRESHOLD = 46;
+
+  // Scroll-linked pull-to-refresh gesture listeners on scroll container #u-content (strictly only when uTab === 'home')
+  useEffect(() => {
+    // Only allow pull-to-refresh on user app home page
+    if (uTab && uTab !== 'home') {
+      setPullDist(0);
+      setIsPulling(false);
+      setIsRefreshing(false);
+      pullDistRef.current = 0;
+      return;
+    }
+
+    const uc = document.getElementById('u-content');
+    if (!uc) return;
+
+    const handleTouchStart = (e) => {
+      if (isRefreshingRef.current || (uTab && uTab !== 'home')) return;
+      if (uc.scrollTop <= 2 && e.touches.length === 1) {
+        touchStartY.current = e.touches[0].clientY;
+        touchStartX.current = e.touches[0].clientX;
+        isPullTracking.current = true;
+        hasVibratedRef.current = false;
+      } else {
+        isPullTracking.current = false;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isPullTracking.current || isRefreshingRef.current) return;
+      if (uc.scrollTop > 2) {
+        isPullTracking.current = false;
+        setIsPulling(false);
+        setPullDist(0);
+        return;
+      }
+
+      const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
+      const deltaY = currentY - touchStartY.current;
+      const deltaX = currentX - touchStartX.current;
+
+      if (deltaY > 0 && deltaY > Math.abs(deltaX) * 1.1) {
+        // Damped distance curve for natural elastic feel
+        const damped = Math.min(64, deltaY * 0.42);
+        pullDistRef.current = damped;
+        setIsPulling(true);
+        setPullDist(damped);
+
+        // Haptic pulse when pull threshold is reached
+        if (damped >= PULL_THRESHOLD && !hasVibratedRef.current) {
+          hasVibratedRef.current = true;
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate(18); } catch (_) {}
+          }
+        } else if (damped < PULL_THRESHOLD && hasVibratedRef.current) {
+          hasVibratedRef.current = false;
+        }
+
+        if (e.cancelable && damped > 6) {
+          e.preventDefault();
+        }
+      } else if (deltaY < 0) {
+        isPullTracking.current = false;
+        setIsPulling(false);
+        setPullDist(0);
+      }
+    };
+
+    const handleTouchEnd = async () => {
+      if (!isPullTracking.current) return;
+      isPullTracking.current = false;
+      setIsPulling(false);
+
+      if (pullDistRef.current >= PULL_THRESHOLD && !isRefreshingRef.current) {
+        setIsRefreshing(true);
+        setPullDist(40);
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate([14, 25, 14]); } catch (_) {}
+        }
+
+        const startTime = Date.now();
+        try {
+          if (typeof syncTripsFromSupabase === 'function') {
+            await syncTripsFromSupabase();
+          }
+          if (realtime && typeof realtime.reconnect === 'function') {
+            realtime.reconnect();
+          }
+        } catch (err) {
+          console.warn('[PullToRefresh] sync error:', err);
+        }
+
+        const elapsed = Date.now() - startTime;
+        const remainingWait = Math.max(0, 850 - elapsed);
+        setTimeout(() => {
+          setIsRefreshing(false);
+          setPullDist(0);
+          pullDistRef.current = 0;
+        }, remainingWait);
+      } else {
+        setPullDist(0);
+        pullDistRef.current = 0;
+      }
+    };
+
+    // Desktop mouse drag support for simulator testing
+    let isMouseDown = false;
+    let mouseStartY = 0;
+    let mouseStartX = 0;
+
+    const handleMouseDown = (e) => {
+      if (isRefreshingRef.current || (uTab && uTab !== 'home')) return;
+      if (uc.scrollTop <= 2 && e.button === 0) {
+        isMouseDown = true;
+        mouseStartY = e.clientY;
+        mouseStartX = e.clientX;
+        hasVibratedRef.current = false;
+      }
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isMouseDown || isRefreshingRef.current) return;
+      if (uc.scrollTop > 2) {
+        isMouseDown = false;
+        setIsPulling(false);
+        setPullDist(0);
+        return;
+      }
+
+      const deltaY = e.clientY - mouseStartY;
+      const deltaX = e.clientX - mouseStartX;
+      if (deltaY > 0 && deltaY > Math.abs(deltaX) * 1.1) {
+        const damped = Math.min(64, deltaY * 0.42);
+        pullDistRef.current = damped;
+        setIsPulling(true);
+        setPullDist(damped);
+
+        if (damped >= PULL_THRESHOLD && !hasVibratedRef.current) {
+          hasVibratedRef.current = true;
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate(18); } catch (_) {}
+          }
+        } else if (damped < PULL_THRESHOLD && hasVibratedRef.current) {
+          hasVibratedRef.current = false;
+        }
+      }
+    };
+
+    const handleMouseUp = async () => {
+      if (!isMouseDown) return;
+      isMouseDown = false;
+      setIsPulling(false);
+
+      if (pullDistRef.current >= PULL_THRESHOLD && !isRefreshingRef.current) {
+        setIsRefreshing(true);
+        setPullDist(40);
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate([14, 25, 14]); } catch (_) {}
+        }
+
+        const startTime = Date.now();
+        try {
+          if (typeof syncTripsFromSupabase === 'function') {
+            await syncTripsFromSupabase();
+          }
+        } catch (err) {
+          console.warn('[PullToRefresh] sync error:', err);
+        }
+
+        const elapsed = Date.now() - startTime;
+        const remainingWait = Math.max(0, 850 - elapsed);
+        setTimeout(() => {
+          setIsRefreshing(false);
+          setPullDist(0);
+          pullDistRef.current = 0;
+        }, remainingWait);
+      } else {
+        setPullDist(0);
+        pullDistRef.current = 0;
+      }
+    };
+
+    uc.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
+
+    uc.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      uc.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+
+      uc.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [uTab, syncTripsFromSupabase]);
+
+  const handleReviewsMouseDown = (e) => {
+    if (!reviewsSliderRef.current) return;
+    isDraggingReviews.current = true;
+    reviewsStartX.current = e.pageX - reviewsSliderRef.current.offsetLeft;
+    reviewsScrollLeft.current = reviewsSliderRef.current.scrollLeft;
+  };
+
+  const handleReviewsMouseLeave = () => {
+    isDraggingReviews.current = false;
+  };
+
+  const handleReviewsMouseUp = () => {
+    isDraggingReviews.current = false;
+  };
+
+  const handleReviewsMouseMove = (e) => {
+    if (!isDraggingReviews.current || !reviewsSliderRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - reviewsSliderRef.current.offsetLeft;
+    const walk = (x - reviewsStartX.current) * 1.4;
+    reviewsSliderRef.current.scrollLeft = reviewsScrollLeft.current - walk;
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -297,6 +546,31 @@ export default function HomeTab() {
     }
   }, [availableTrips]);
 
+  // Pre-fetch actual road directions in background so expanding the map card renders 0ms instant road paths
+  useEffect(() => {
+    if (!Array.isArray(availableTrips) || availableTrips.length === 0) return;
+    availableTrips.forEach(t => {
+      const pCoords = (t.pickupCoords?.lat && t.pickupCoords?.lng)
+        ? { lat: Number(t.pickupCoords.lat), lng: Number(t.pickupCoords.lng) }
+        : null;
+      const dCoords = (t.dropCoords?.lat && t.dropCoords?.lng)
+        ? { lat: Number(t.dropCoords.lat), lng: Number(t.dropCoords.lng) }
+        : null;
+      if (pCoords || dCoords || t.pickup || t.drop_loc) {
+        fetchGoogleRoadDirections({
+          origin: t.pickup || 'Pickup Location',
+          destination: t.drop_loc || t.drop || 'Destination',
+          originCoords: pCoords,
+          destCoords: dCoords
+        }).then(res => {
+          if (res?.points && res.points.length > 2) {
+            t.routePoints = res.points;
+          }
+        }).catch(() => {});
+      }
+    });
+  }, [availableTrips]);
+
   const handleToggleExpand = (tripId, e) => {
     if (e) e.stopPropagation();
     setExpandedTripId(prev => {
@@ -348,7 +622,7 @@ export default function HomeTab() {
       const driverName =
         (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) ||
         trip.driverObj?.name ||
-        'Assigned Chauffeur';
+        'Assigned Driver';
       const driverPhone =
         trip.driverObj?.phone ||
         (typeof trip.driver === 'object' ? trip.driver?.phone : null) ||
@@ -361,12 +635,12 @@ export default function HomeTab() {
       const otp = String(trip.startOtp || trip.otp || '').trim();
       const trackUrl = `https://ridingo.app/track/${trip.id}`;
 
-      const shareText = `🚗 Ridingo Chauffeur Trip Details
+      const shareText = `🚗 Ridingo Driver Trip Details
 Trip ID: ${trip.id}
 ━━━━━━━━━━━━━━━━━━━━
 📍 From (Pickup): ${pickupLoc}
 🏁 To (Destination): ${dropLoc}
-👤 Assigned Chauffeur: ${driverName}
+👤 Assigned Driver: ${driverName}
 ${driverPhone ? `📞 Driver Mobile: ${driverPhone}\n` : ''}💰 Total Fare: ₹${fare}
 ${otp ? `🔑 Trip Pickup OTP: ${otp}\n` : ''}━━━━━━━━━━━━━━━━━━━━
 Live GPS Tracking: ${trackUrl}`;
@@ -546,16 +820,16 @@ Live GPS Tracking: ${trackUrl}`;
     let label = 'Upcoming Booking';
     let miniLabel = 'Upcoming';
     if (status === 'pickup_arrived') {
-      label = 'Chauffeur Arrived';
+      label = 'Driver Arrived';
       miniLabel = 'Driver Arrived';
     } else if (status === 'ready_to_start') {
       label = 'Ready to Start';
       miniLabel = 'Ready to Start';
     } else if (status === 'accepted') {
-      label = 'Chauffeur Arriving';
+      label = 'Driver Arriving';
       miniLabel = 'Driver Arriving';
     } else if (status === 'requested') {
-      label = 'Finding Chauffeur';
+      label = 'Finding Driver';
       miniLabel = 'Finding Driver';
     } else if (status === 'scheduled') {
       label = 'Upcoming Booking';
@@ -680,8 +954,28 @@ Live GPS Tracking: ${trackUrl}`;
 
   return (
     <div>
-      {/* Top Bar with Brand Logo and Notification Bell */}
-      <div className="row stagger-1" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      {/* Top Bar with Brand Logo and Notification Bell (Fixed during pull-to-refresh & active loading, scrolls naturally otherwise) */}
+      <div
+        className="home-fixed-top-bar"
+        style={{
+          position: (isPulling || isRefreshing || pullDist > 0) ? 'sticky' : 'relative',
+          top: 0,
+          zIndex: 75,
+          background: 'var(--surface)',
+          marginLeft: '-18px',
+          marginRight: '-18px',
+          paddingLeft: '18px',
+          paddingRight: '18px',
+          paddingTop: '6px',
+          paddingBottom: '8px',
+          marginBottom: '2px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)'
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <BrandLogo height={38} width={152} />
         </div>
@@ -691,11 +985,73 @@ Live GPS Tracking: ${trackUrl}`;
         </button>
       </div>
 
-      {/* Greeting Header */}
-      <div className="hello stagger-1">
-        <h1>Hi, {first}</h1>
-        <p>Need a driver for your own car?</p>
+      {/* Minimal Background-Free Pull-to-Refresh Loading Animation */}
+      <div
+        className="home-ptr-slot"
+        style={{
+          height: isRefreshing ? 42 : `${pullDist}px`,
+          opacity: isRefreshing ? 1 : Math.min(1, Math.max(0, pullDist / 38)),
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: isPulling ? 'none' : 'height 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease',
+          pointerEvents: 'none',
+          width: '100%',
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none',
+          flexShrink: 0
+        }}
+        aria-hidden={pullDist === 0 && !isRefreshing}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transform: isRefreshing ? 'none' : `rotate(${Math.min(360, (pullDist / 44) * 360)}deg)`,
+            transition: isPulling ? 'none' : 'transform 0.15s ease',
+            color: 'var(--ink)'
+          }}
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            className={isRefreshing ? 'ptr-spinning-anim' : ''}
+            style={{ display: 'block' }}
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="8.5"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeDasharray="53.4"
+              strokeDashoffset={isRefreshing ? 16 : 53.4 * (1 - Math.min(1, Math.max(0, pullDist / 44)))}
+              style={{
+                opacity: 0.92,
+                transformOrigin: 'center'
+              }}
+            />
+          </svg>
+        </div>
       </div>
+
+      {/* Greeting Header & Moving Content */}
+      <div
+        className="home-scroll-body"
+        style={{
+          transition: isPulling ? 'none' : 'transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1)'
+        }}
+      >
+        <div className="hello stagger-1">
+          <h1>Hi, {first}</h1>
+          <p>Need a driver for your own car?</p>
+        </div>
 
       {/* Destination Search Bar - Always pinned on top */}
       <div
@@ -846,7 +1202,7 @@ Live GPS Tracking: ${trackUrl}`;
             position: 'relative',
             borderRadius: '24px',
             overflow: 'hidden',
-            height: '148px',
+            height: '152px',
             boxShadow: '0 6px 24px -4px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.05)',
             cursor: 'grab'
           }}
@@ -965,33 +1321,37 @@ Live GPS Tracking: ${trackUrl}`;
 
               {/* Left Column: Professional Branding, Badges, Headline, Description & CTA */}
               <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
-                {/* Brand Header Line: Brand Category Tag + Discount Badge + Voucher */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                {/* Brand Header Line: Brand Category Tag + Discount Badge + Voucher - Single Line */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'nowrap', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                   <span
                     style={{
                       fontSize: '9px',
                       fontWeight: 850,
                       letterSpacing: '0.08em',
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      textTransform: 'uppercase'
+                      color: 'rgba(255, 255, 255, 0.75)',
+                      textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
                   >
                     {OFFER_BANNERS[activeBannerIdx].brandTag}
                   </span>
-                  <span style={{ color: 'rgba(255, 255, 255, 0.3)', fontSize: '10px' }}>•</span>
+                  <span style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: '10px', flexShrink: 0 }}>•</span>
                   <span
                     style={{
                       background: OFFER_BANNERS[activeBannerIdx].tagBg,
                       color: OFFER_BANNERS[activeBannerIdx].tagColor,
                       fontSize: '9.5px',
                       fontWeight: 900,
-                      letterSpacing: '0.05em',
+                      letterSpacing: '0.04em',
                       padding: '2.5px 8px',
                       borderRadius: '999px',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '4px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.22)'
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.22)',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
                   >
                     <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: OFFER_BANNERS[activeBannerIdx].tagColor }} />
@@ -1002,59 +1362,66 @@ Live GPS Tracking: ${trackUrl}`;
                       fontSize: '9.5px',
                       fontWeight: 800,
                       fontFamily: 'monospace',
-                      color: 'rgba(255, 255, 255, 0.9)',
+                      color: 'rgba(255, 255, 255, 0.95)',
                       background: 'rgba(255, 255, 255, 0.1)',
                       border: '1px dashed rgba(255, 255, 255, 0.35)',
                       padding: '2px 6px',
-                      borderRadius: '5px'
+                      borderRadius: '5px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
                   >
                     {OFFER_BANNERS[activeBannerIdx].promoCode}
                   </span>
                 </div>
 
-                {/* Headline */}
+                {/* Headline - Shows full content without cut-off */}
                 <h4
                   style={{
-                    margin: '0 0 4px 0',
-                    fontSize: '16px',
+                    margin: '0 0 2px 0',
+                    fontSize: '15px',
                     fontWeight: 800,
                     color: '#FFFFFF',
                     letterSpacing: '-0.02em',
-                    lineHeight: 1.25
+                    lineHeight: 1.25,
+                    whiteSpace: 'normal',
+                    display: 'block'
                   }}
                 >
                   {OFFER_BANNERS[activeBannerIdx].headline}
                 </h4>
 
-                {/* Subtitle / Value Proposition */}
+                {/* Subtitle / Value Proposition - Shows full content without cut-off */}
                 <p
                   style={{
-                    margin: '0 0 10px 0',
+                    margin: '0 0 8px 0',
                     fontSize: '11px',
                     fontWeight: 500,
-                    color: 'rgba(255, 255, 255, 0.75)',
-                    lineHeight: 1.35,
-                    maxWidth: '340px'
+                    color: 'rgba(255, 255, 255, 0.82)',
+                    lineHeight: 1.3,
+                    whiteSpace: 'normal',
+                    display: 'block'
                   }}
                 >
                   {OFFER_BANNERS[activeBannerIdx].sub}
                 </p>
 
-                {/* Bottom Row: CTA Button + Trust Guarantee */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Bottom Row: CTA Button + Trust Guarantee - Strictly Single Line */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                   <span
                     style={{
                       fontSize: '11px',
                       fontWeight: 800,
                       color: '#000000',
                       background: '#FFFFFF',
-                      padding: '5px 13px',
+                      padding: '4.5px 12px',
                       borderRadius: '999px',
                       boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '5px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
                       transition: 'transform 0.15s ease'
                     }}
                   >
@@ -1068,8 +1435,10 @@ Live GPS Tracking: ${trackUrl}`;
                     style={{
                       fontSize: '10px',
                       fontWeight: 600,
-                      color: 'rgba(255, 255, 255, 0.65)',
-                      letterSpacing: '-0.01em'
+                      color: 'rgba(255, 255, 255, 0.72)',
+                      letterSpacing: '-0.01em',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
                   >
                     {OFFER_BANNERS[activeBannerIdx].trustText}
@@ -1120,7 +1489,7 @@ Live GPS Tracking: ${trackUrl}`;
                   width: isActive ? '22px' : '6px',
                   height: '5px',
                   borderRadius: '999px',
-                  background: isActive ? '#000000' : 'rgba(0, 0, 0, 0.2)',
+                  background: isActive ? 'var(--solid)' : 'var(--bar)',
                   border: 'none',
                   padding: 0,
                   cursor: 'pointer',
@@ -1162,7 +1531,7 @@ Live GPS Tracking: ${trackUrl}`;
                 (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) ||
                 trip.driverObj?.name ||
                 trip.car?.driverName ||
-                (trip.status === 'requested' ? 'Finding Chauffeur' : 'Chauffeur Assigned');
+                (trip.status === 'requested' ? 'Finding Driver' : 'Driver Assigned');
               const fareValue = trip.fare || trip.estimatedFare || trip.price || 750;
 
               const cardContent = (
@@ -1187,8 +1556,8 @@ Live GPS Tracking: ${trackUrl}`;
                       <span
                         style={{
                           fontSize: '14px',
-                          fontWeight: 500,
-                          color: '#000000',
+                          fontWeight: 600,
+                          color: 'var(--ink)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -1206,11 +1575,11 @@ Live GPS Tracking: ${trackUrl}`;
                         height="14"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="#000000"
-                        strokeWidth="2"
+                        stroke="var(--ink)"
+                        strokeWidth="2.2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        style={{ flexShrink: 0, opacity: 0.7 }}
+                        style={{ flexShrink: 0, opacity: 0.8 }}
                       >
                         <path d="M5 12h14" />
                         <path d="m13 6 6 6-6 6" />
@@ -1218,8 +1587,8 @@ Live GPS Tracking: ${trackUrl}`;
                       <span
                         style={{
                           fontSize: '14px',
-                          fontWeight: 500,
-                          color: '#000000',
+                          fontWeight: 600,
+                          color: 'var(--ink)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -1234,14 +1603,14 @@ Live GPS Tracking: ${trackUrl}`;
                       </span>
                     </div>
 
-                    {/* Right: OTP Pill (Full Black) + (LIVE Badge with Green BG & White Text) */}
+                    {/* Right: OTP Pill + (LIVE Badge with Green BG & White Text) */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                      {/* Bold Highlighted OTP Badge with black text and black outline */}
+                      {/* Bold Highlighted OTP Badge with dynamic light/dark contrast */}
                       <div
                         style={{
-                          background: '#FFFFFF',
-                          color: '#000000',
-                          border: '1.5px solid #000000',
+                          background: 'var(--field)',
+                          color: 'var(--ink)',
+                          border: '1.5px solid var(--line-strong)',
                           borderRadius: '10px',
                           padding: '4px 8px',
                           fontSize: '11px',
@@ -1250,14 +1619,14 @@ Live GPS Tracking: ${trackUrl}`;
                           letterSpacing: '0.5px',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '3.5px',
+                          gap: '4px',
                           boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
                           flexShrink: 0
                         }}
                         title="Pickup OTP"
                       >
-                        <span style={{ fontSize: '9px', fontWeight: 900, color: '#000000' }}>OTP</span>
-                        <span style={{ fontSize: '12px', fontWeight: 900, color: '#000000' }}>{cardOtp}</span>
+                        <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--muted)' }}>OTP</span>
+                        <span style={{ fontSize: '12px', fontWeight: 900, color: 'var(--ink)' }}>{cardOtp}</span>
                       </div>
 
                       {/* LIVE status badge with green bg and white text */}
@@ -1347,32 +1716,37 @@ Live GPS Tracking: ${trackUrl}`;
 
                         {/* Action Buttons: 2 equal buttons on Live Trips (Track & Share); 3 buttons on Upcoming Trips (Track, Share & Cancel) */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px 14px' }}>
-                          {/* 1. Track Button (Black button and white text) */}
+                          {/* 1. Track Button with proper padding space and text alignment */}
                           <button
                             type="button"
                             onClick={(e) => handleOpenTrackingModal(trip, e)}
                             style={{
-                              flex: isLive ? 1 : 1.25,
+                              flex: isLive ? 1 : 1.35,
                               height: '42px',
+                              padding: '0 14px',
                               borderRadius: '12px',
-                              background: '#000000',
-                              color: '#FFFFFF',
+                              background: 'var(--solid)',
+                              color: 'var(--on-solid)',
                               border: 'none',
-                              fontSize: '13px',
-                              fontWeight: 800,
-                              display: 'flex',
+                              fontSize: '12.5px',
+                              fontWeight: 750,
+                              display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '6px',
+                              gap: '7px',
+                              whiteSpace: 'nowrap',
                               cursor: 'pointer',
-                              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)'
+                              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.18)',
+                              transition: 'transform 0.15s ease'
                             }}
                           >
-                            <Icon name="navigation" size={14} style={{ color: '#FFFFFF' }} />
-                            <span>{isLive ? 'Track Live Trip' : 'Track Chauffeur'}</span>
+                            <Icon name="navigation" size={14} style={{ color: 'var(--on-solid)', flexShrink: 0 }} />
+                            <span style={{ whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
+                              {isLive ? 'Track Live Trip' : 'Track Driver'}
+                            </span>
                           </button>
 
-                          {/* 2. Share Button (Outline black only) */}
+                          {/* 2. Share Button */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1380,27 +1754,29 @@ Live GPS Tracking: ${trackUrl}`;
                               handleNativeShareTrip(trip);
                             }}
                             style={{
-                              flex: 1,
+                              flex: isLive ? 1 : 0.9,
                               height: '42px',
+                              padding: '0 12px',
                               borderRadius: '12px',
-                              background: '#FFFFFF',
-                              color: '#000000',
-                              border: '1.5px solid #000000',
+                              background: 'var(--card)',
+                              color: 'var(--ink)',
+                              border: '1.5px solid var(--line-strong)',
                               fontSize: '12.5px',
                               fontWeight: 700,
-                              display: 'flex',
+                              display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               gap: '6px',
+                              whiteSpace: 'nowrap',
                               cursor: 'pointer',
                               boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                             }}
                           >
-                            <Icon name="share" size={14} style={{ color: '#000000' }} />
+                            <Icon name="share" size={14} style={{ color: 'var(--ink)', flexShrink: 0 }} />
                             <span>Share</span>
                           </button>
 
-                          {/* 3. Cancel Button (Red button) - ONLY on Upcoming Trips, NOT on Live Trips */}
+                          {/* 3. Cancel Button - ONLY on Upcoming Trips, NOT on Live Trips */}
                           {!isLive && (
                             <button
                               type="button"
@@ -1410,22 +1786,23 @@ Live GPS Tracking: ${trackUrl}`;
                               }}
                               style={{
                                 height: '42px',
-                                padding: '0 14px',
+                                padding: '0 12px',
                                 borderRadius: '12px',
                                 background: '#EF4444',
                                 color: '#FFFFFF',
                                 border: 'none',
                                 fontSize: '12.5px',
                                 fontWeight: 700,
-                                display: 'flex',
+                                display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '4px',
+                                gap: '5px',
+                                whiteSpace: 'nowrap',
                                 cursor: 'pointer',
-                                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+                                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.28)'
                               }}
                             >
-                              <Icon name="x" size={14} style={{ color: '#FFFFFF' }} />
+                              <Icon name="x" size={13} style={{ color: '#FFFFFF', flexShrink: 0 }} />
                               <span>Cancel</span>
                             </button>
                           )}
@@ -1440,25 +1817,25 @@ Live GPS Tracking: ${trackUrl}`;
                   {/* Lower Section: 3-line info, Share Button & Expand Indicator Arrow (Inverts to Top) */}
                   <div style={{ padding: '13px 18px 15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                     <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '2.5px' }}>
-                      {/* Line 1: Schedule / Status (Full Black) */}
-                      <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#000000' }}>
+                      {/* Line 1: Schedule / Status */}
+                      <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)' }}>
                         {isLive ? 'Live Trip In Progress · En Route' : dateTimeDisplay}
                       </span>
 
-                      {/* Line 2: Chauffeur & Fare (Full Black) */}
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#000000' }}>
-                        {trip.status === 'requested' ? 'Finding Chauffeur' : `Chauffeur: ${driverName}`} · ₹{fareValue}
+                      {/* Line 2: Driver & Fare */}
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
+                        {trip.status === 'requested' ? 'Finding Driver' : `Driver: ${driverName}`} · ₹{fareValue}
                       </span>
 
-                      {/* Line 3: Location (Up to first comma, minimal font with ellipsis) */}
-                      <span style={{ fontSize: '11.5px', fontWeight: 500, color: '#000000', opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '100%' }} title={`${trip.pickup} → ${trip.drop_loc}`}>
+                      {/* Line 3: Location */}
+                      <span style={{ fontSize: '11.5px', fontWeight: 500, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '100%' }} title={`${trip.pickup} → ${trip.drop_loc}`}>
                         {fromLocation} → {toLocation}
                       </span>
                     </div>
 
                     {/* Actions: Share icon button + Circular expand arrow that inverts to top and minimizes on click */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      {/* Share Button (Outline black) */}
+                      {/* Share Button */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1470,12 +1847,12 @@ Live GPS Tracking: ${trackUrl}`;
                           width: '34px',
                           height: '34px',
                           borderRadius: '50%',
-                          background: '#FFFFFF',
-                          border: '1.5px solid #000000',
+                          background: 'var(--field)',
+                          border: '1.5px solid var(--line-strong)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#000000',
+                          color: 'var(--ink)',
                           cursor: 'pointer'
                         }}
                       >
@@ -1492,12 +1869,12 @@ Live GPS Tracking: ${trackUrl}`;
                           width: '34px',
                           height: '34px',
                           borderRadius: '50%',
-                          background: '#FFFFFF',
-                          border: '1.5px solid #000000',
+                          background: 'var(--field)',
+                          border: '1.5px solid var(--line-strong)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#000000',
+                          color: 'var(--ink)',
                           cursor: 'pointer',
                           padding: 0,
                           transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -1544,11 +1921,11 @@ Live GPS Tracking: ${trackUrl}`;
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                         <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.25)', animation: 'pulse-dot 1.5s infinite' }} />
-                        <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#000000' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ink)' }}>
                           Live Trip
                         </span>
                       </div>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#000000', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '999px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#10B981', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.35)', padding: '2px 8px', borderRadius: '999px' }}>
                         GPS Tracking Active
                       </span>
                     </div>
@@ -1565,7 +1942,7 @@ Live GPS Tracking: ${trackUrl}`;
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#EF4444' }} />
-                        <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#000000' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ink)' }}>
                           Upcoming Trips
                         </span>
                         <span
@@ -1574,8 +1951,8 @@ Live GPS Tracking: ${trackUrl}`;
                             fontWeight: 800,
                             padding: '1.5px 7px',
                             borderRadius: '999px',
-                            background: '#000000',
-                            color: '#FFFFFF'
+                            background: 'var(--solid)',
+                            color: 'var(--on-solid)'
                           }}
                         >
                           {upcomingTrips.length}
@@ -1603,7 +1980,7 @@ Live GPS Tracking: ${trackUrl}`;
 
       {/* Bento Grid */}
       <div className="bento-grid stagger-4">
-        {/* Hourly Chauffeur Hero */}
+        {/* Hourly Driver Hero */}
         <button
           className="bento-hero"
           onClick={() => openBooking('hourly')}
@@ -1664,12 +2041,11 @@ Live GPS Tracking: ${trackUrl}`;
         })}
       </div>
 
-      {/* Popular Destinations Quick Book - Only shown if there are relevant booked places in history */}
+      {/* Popular Destinations Quick Book - Only most traveled places from history */}
       {popularDestinationSuggestions.length > 0 && (
         <>
           <div className="sec stagger-5" style={{ marginTop: '22px' }}>
             <h3>Popular destinations</h3>
-            <span>Based on your trips</span>
           </div>
 
           <div className="rebook-list stagger-5">
@@ -1728,7 +2104,17 @@ Live GPS Tracking: ${trackUrl}`;
         </span>
       </div>
 
-      <div className="reviews-slider">
+      {/* Review Cards: Manual Horizontal Swipe Testimonial Slider */}
+      <div
+        ref={reviewsSliderRef}
+        className="reviews-slider"
+        role="region"
+        aria-label="Customer Testimonials"
+        onMouseDown={handleReviewsMouseDown}
+        onMouseMove={handleReviewsMouseMove}
+        onMouseUp={handleReviewsMouseUp}
+        onMouseLeave={handleReviewsMouseLeave}
+      >
         {REVIEWS.map((r, i) => (
           <div key={i} className="review-card">
             <div className="review-top">
@@ -1756,8 +2142,9 @@ Live GPS Tracking: ${trackUrl}`;
         ))}
       </div>
 
-      {/* Generous bottom scroll breathing room without visible text */}
-      <div style={{ height: '48px', width: '100%', flexShrink: 0 }} aria-hidden="true" />
+      {/* Consistent bottom spacing without excess void */}
+      <div style={{ height: '8px', width: '100%', flexShrink: 0 }} aria-hidden="true" />
+      </div>
 
       {/* Map Picker Modal */}
       <MapPickerModal

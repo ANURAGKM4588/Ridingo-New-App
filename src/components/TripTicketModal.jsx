@@ -41,7 +41,7 @@ export default function TripTicketModal({ trip, isOpen, onClose, addToast }) {
   const driverName =
     (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) ||
     trip.driverObj?.name ||
-    'Assigned Chauffeur';
+    'Assigned Driver';
   const driverPhone =
     trip.driverObj?.phone ||
     (typeof trip.driver === 'object' ? trip.driver?.phone : null) ||
@@ -54,12 +54,12 @@ export default function TripTicketModal({ trip, isOpen, onClose, addToast }) {
   const otp = String(trip.startOtp || trip.otp || '4821').trim();
   const trackUrl = `https://ridingo.app/track/${trip.id}`;
 
-  const shareText = `🚗 Ridingo Chauffeur Trip Details
+  const shareText = `🚗 Ridingo Driver Trip Details
 Trip ID: ${trip.id}
 ━━━━━━━━━━━━━━━━━━━━
 📍 From (Pickup): ${pickupLoc}
 🏁 To (Destination): ${dropLoc}
-👤 Assigned Chauffeur: ${driverName}
+👤 Assigned Driver: ${driverName}
 📞 Driver Mobile: ${driverPhone}
 💰 Total Fare: ₹${fare}
 🔑 Trip Pickup OTP: ${otp}

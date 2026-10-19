@@ -15,7 +15,7 @@
  * - Optional: @react-native-community/geolocation or expo-location / expo-image-picker
  * 
  * iOS Info.plist requirements:
- * - NSLocationWhenInUseUsageDescription: "Ridingo uses your location for chauffeur pickup precision."
+ * - NSLocationWhenInUseUsageDescription: "Ridingo uses your location for driver pickup precision."
  * - NSPhotoLibraryUsageDescription: "Ridingo needs access to your photos to upload your profile avatar."
  * 
  * Android AndroidManifest.xml requirements:
@@ -136,7 +136,7 @@ export default function CreateAccountScreen({
           {
             title: 'Location Access Needed',
             message:
-              'Ridingo requires your GPS location to automatically dispatch the closest professional chauffeur to your exact vehicle position.',
+              'Ridingo requires your GPS location to automatically dispatch the closest professional driver to your exact vehicle position.',
             buttonPositive: 'Grant Permission',
             buttonNegative: 'Not Now'
           }
@@ -393,7 +393,7 @@ export default function CreateAccountScreen({
             <Text style={styles.brandTitle}>Ridingo</Text>
             <Text style={styles.screenHeading}>Create Account</Text>
             <Text style={styles.screenSubheading}>
-              On-demand professional chauffeurs for your personal car
+              On-demand professional drivers for your personal car
             </Text>
           </View>
 
@@ -444,7 +444,7 @@ export default function CreateAccountScreen({
               <Text style={styles.locationChipSub}>
                 {locationGranted
                   ? 'Auto-dispatching to your pickup zone'
-                  : 'Tap to grant GPS access for chauffeur arrival precision'}
+                  : 'Tap to grant GPS access for driver arrival precision'}
               </Text>
             </View>
             <Text style={styles.locationChipArrow}>

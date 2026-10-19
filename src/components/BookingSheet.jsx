@@ -420,10 +420,32 @@ export default function BookingSheet() {
 
   const handleUseCurrentLocation = async () => {
     setIsDetectingCurrent(true);
-    addToast('Acquiring device GPS...', 'crosshair');
+
+    // Instant detection from local cache with 0ms delay
+    const cached = getCachedDeviceLocation();
+    if (cached && cached.address) {
+      const cleanAddr = cleanPlusCode(cached.address);
+      setPickup(cleanAddr);
+      if (cached.lat && cached.lng) {
+        const cObj = {
+          lat: Number(cached.lat),
+          lng: Number(cached.lng),
+          name: cleanAddr.split(',')[0].trim(),
+          formatted: cleanAddr,
+          city: cached.city || cleanAddr.split(',')[0].trim(),
+          state: 'Kerala'
+        };
+        setPickupCoords(cObj);
+        setPickupDetails(cObj);
+      }
+      const short = cleanAddr.split(',')[0].trim();
+      addToast(`Pickup set to device location: ${short}`, 'check');
+      setIsDetectingCurrent(false);
+      return;
+    }
 
     try {
-      const loc = await getDeviceLocation(true);
+      const loc = await getDeviceLocation(false);
       if (loc && loc.address) {
         const cleanAddr = cleanPlusCode(loc.address);
         setPickup(cleanAddr);
@@ -638,7 +660,7 @@ export default function BookingSheet() {
             durationText: tripTelemetry.isCalculated ? tripTelemetry.durationText : null,
             eta: tripTelemetry.isCalculated ? tripTelemetry.etaText : null
           });
-          addToast(`Paid ₹${adv} via ${methodLabel}! Chauffeur scheduled for ${dateStr} · ${timeStr}.`, 'check');
+          addToast(`Paid ₹${adv} via ${methodLabel}! Driver scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
         onDismiss: () => {
           // User closed payment sheet
@@ -733,7 +755,7 @@ export default function BookingSheet() {
                     <Icon name="arrow-left" size={18} />
                   </button>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1.2 }}>Book a Chauffeur</h3>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1.2 }}>Book a Driver</h3>
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>Professional driver on demand</p>
                   </div>
                 </div>
@@ -1420,11 +1442,11 @@ export default function BookingSheet() {
                 </span>
               </div>
 
-              {/* Chauffeur Trip Fare */}
+              {/* Driver Trip Fare */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
-                    Chauffeur trip fare
+                    Driver trip fare
                   </span>
                   <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
                     Rate: {rateDesc}

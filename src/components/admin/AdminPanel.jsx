@@ -1039,7 +1039,7 @@ export default function AdminPanel() {
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '11px', color: T.inkMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Chauffeur Payouts (85%)
+                  Driver Payouts (85%)
                 </span>
                 <span style={{ fontSize: '11px', color: T.green, fontWeight: 800, background: T.greenSoft, padding: '2px 8px', borderRadius: '6px' }}>
                   Settled
@@ -1049,7 +1049,7 @@ export default function AdminPanel() {
                 ₹{telemetry.driverPayouts.toLocaleString('en-IN')}
               </div>
               <span style={{ fontSize: '12.5px', color: T.inkMuted }}>
-                Settled to verified partner chauffeurs
+                Settled to verified partner drivers
               </span>
             </div>
 
@@ -1129,7 +1129,7 @@ export default function AdminPanel() {
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    <span>All Chauffeurs</span>
+                    <span>All Drivers</span>
                     <span
                       style={{
                         padding: '1px 8px',
@@ -1203,7 +1203,7 @@ export default function AdminPanel() {
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    <span>Verified Chauffeurs</span>
+                    <span>Verified Drivers</span>
                     <span
                       style={{
                         padding: '1px 8px',
@@ -1459,8 +1459,8 @@ export default function AdminPanel() {
                       </b>
                       <p style={{ fontSize: '12.5px', color: '#4B5563', margin: '0 0 16px', lineHeight: 1.45, maxWidth: '320px' }}>
                         {selectedDriver.category === 'new_registration'
-                          ? 'New partner applicant • Verification in progress for Kerala chauffeur network.'
-                          : 'Ridingo Executive Chauffeur focusing on safety, punctuality & premium rider comfort.'}
+                          ? 'New partner applicant • Verification in progress for Kerala driver network.'
+                          : 'Ridingo Executive Driver focusing on safety, punctuality & premium rider comfort.'}
                       </p>
 
                       {/* 3-Column Stats Container */}
@@ -1705,7 +1705,7 @@ export default function AdminPanel() {
                             }}
                           >
                             <Icons.Check />
-                            <span>Approve KYC & Activate Chauffeur</span>
+                            <span>Approve KYC & Activate Driver</span>
                           </button>
                         )}
 
@@ -1761,7 +1761,7 @@ export default function AdminPanel() {
                       border: `1px solid ${T.border}`
                     }}
                   >
-                    <b style={{ fontSize: '16px', color: T.ink, display: 'block' }}>No chauffeur records found</b>
+                    <b style={{ fontSize: '16px', color: T.ink, display: 'block' }}>No driver records found</b>
                     <p style={{ fontSize: '13px', color: T.inkMuted, margin: '6px 0 0' }}>
                       {searchQuery ? 'Try clearing your search query.' : 'Newly registered drivers will appear here.'}
                     </p>
@@ -1914,7 +1914,7 @@ export default function AdminPanel() {
                       Interactive Tariff & Revenue Simulator
                     </h2>
                     <span style={{ fontSize: '13px', color: T.inkMuted }}>
-                      Calculate Gross Booking Volume, 15% Platform Commission, and Chauffeur Take-Home
+                      Calculate Gross Booking Volume, 15% Platform Commission, and Driver Take-Home
                     </span>
                   </div>
                   <span style={{ padding: '6px 14px', borderRadius: '10px', background: T.taxiSoft, color: '#855D00', fontSize: '12px', fontWeight: 800 }}>
@@ -1962,7 +1962,7 @@ export default function AdminPanel() {
 
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '13.5px', fontWeight: 600, color: T.ink }}>Daily Trips per Chauffeur</span>
+                        <span style={{ fontSize: '13.5px', fontWeight: 600, color: T.ink }}>Daily Trips per Driver</span>
                         <b style={{ fontSize: '14.5px', color: T.ink }}>{simTripVolume} trips/day</b>
                       </div>
                       <input
@@ -2349,7 +2349,7 @@ export default function AdminPanel() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h3 style={{ fontFamily: T.fontDisplay, fontSize: '18px', fontWeight: 800, margin: 0, color: T.ink }}>
-                  Register New Chauffeur Profile
+                  Register New Driver Profile
                 </h3>
                 <span style={{ fontSize: '12.5px', color: T.inkMuted }}>
                   Creates an executive driver partner record in the local and Supabase registry
@@ -2505,7 +2505,7 @@ export default function AdminPanel() {
                   boxShadow: '0 2px 8px rgba(255, 199, 10, 0.3)'
                 }}
               >
-                Register & Verify Chauffeur
+                Register & Verify Driver
               </button>
             </div>
           </form>

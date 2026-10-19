@@ -185,7 +185,7 @@ export default function LiveTrackingSheet() {
 
   const handleChat = () => {
     const cleanNum = driverPhone.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanNum}?text=${encodeURIComponent(`Hi ${trip.driver || 'Chauffeur'}, regarding Ridingo trip ${trip.id}`)}`, '_blank');
+    window.open(`https://wa.me/${cleanNum}?text=${encodeURIComponent(`Hi ${trip.driver || 'Driver'}, regarding Ridingo trip ${trip.id}`)}`, '_blank');
   };
 
   return (
@@ -230,7 +230,7 @@ export default function LiveTrackingSheet() {
                   }}
                 >
                   <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
-                  CHAUFFEUR AT PICKUP
+                  DRIVER AT PICKUP
                 </span>
               ) : isReady ? (
                 <span
@@ -266,7 +266,7 @@ export default function LiveTrackingSheet() {
                   }}
                 >
                   <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
-                  CHAUFFEUR CONFIRMED
+                  DRIVER CONFIRMED
                 </span>
               ) : (
                 <span
@@ -355,7 +355,7 @@ export default function LiveTrackingSheet() {
 
                 <div>
                   <b style={{ fontSize: '17px', color: 'var(--ink)', display: 'block' }}>
-                    Finding Your Chauffeur...
+                    Finding Your Driver...
                   </b>
                   <span style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
                     Broadcasting your request to certified drivers near {cleanLocationName(typeof trip?.pickup === 'string' && trip.pickup ? trip.pickup.split(',')[0] : 'Edappally Toll')}
@@ -364,7 +364,7 @@ export default function LiveTrackingSheet() {
 
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 14px', borderRadius: '999px', background: 'var(--field)', fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>
                   <span className="live-pulse-dot" style={{ background: '#22C55E' }} />
-                  <span>Dispatched to nearest verified chauffeurs</span>
+                  <span>Dispatched to nearest verified drivers</span>
                 </div>
               </div>
 
@@ -372,7 +372,7 @@ export default function LiveTrackingSheet() {
               <div className="card" style={{ padding: '16px', borderRadius: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
-                    {String(trip?.cat || 'hourly').toUpperCase()} CHAUFFEUR SERVICE
+                    {String(trip?.cat || 'hourly').toUpperCase()} DRIVER SERVICE
                   </span>
                   <b style={{ fontSize: '17px', color: 'var(--ink)' }}>₹{trip?.fare || 600}</b>
                 </div>
@@ -449,7 +449,7 @@ export default function LiveTrackingSheet() {
             </div>
           ) : isDriverAssigned ? (
             /* ==========================================================
-               2. CHAUFFEUR ACCEPTED / ARRIVED · REACHING PICKUP
+               2. DRIVER ACCEPTED / ARRIVED · REACHING PICKUP
                ========================================================== */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Live Real GPS Google Map Route from Driver Location -> Pickup */}
@@ -483,14 +483,14 @@ export default function LiveTrackingSheet() {
                   </b>
                 </div>
                 <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
-                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>CHAUFFEUR</span>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>DRIVER</span>
                   <b className="val" style={{ fontSize: '15px', color: '#16A34A', fontWeight: 800 }}>
                     {isArrived ? 'At Pickup' : 'En Route'}
                   </b>
                 </div>
               </div>
 
-              {/* 4-DIGIT PICKUP OTP FOR CHAUFFEUR VERIFICATION */}
+              {/* 4-DIGIT PICKUP OTP FOR DRIVER VERIFICATION */}
               <div
                 style={{
                   background: '#000000',
@@ -509,7 +509,7 @@ export default function LiveTrackingSheet() {
                     Trip Pickup OTP
                   </span>
                   <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginTop: '1px' }}>
-                    Share with chauffeur upon arrival
+                    Share with driver upon arrival
                   </span>
                 </div>
                 <div style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '6px', color: '#FFFFFF', fontFamily: 'monospace' }}>
@@ -520,7 +520,7 @@ export default function LiveTrackingSheet() {
               {/* Driver Contact Row with Call & WhatsApp Buttons */}
               <ContactProfileCard
                 name={trip.driver || 'Ravi Kumar'}
-                role="Assigned Chauffeur"
+                role="Assigned Driver"
                 phone={trip.driverObj?.phone || '+91 94471 23456'}
                 rating="4.9"
                 style={{
@@ -538,9 +538,9 @@ export default function LiveTrackingSheet() {
                     flex: 1,
                     height: '46px',
                     borderRadius: '14px',
-                    background: '#FFFFFF',
-                    color: '#000000',
-                    border: '1.5px solid #000000',
+                    background: 'var(--card)',
+                    color: 'var(--ink)',
+                    border: '1.5px solid var(--line-strong)',
                     fontSize: '13px',
                     fontWeight: 700,
                     display: 'flex',
@@ -551,7 +551,7 @@ export default function LiveTrackingSheet() {
                     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                   }}
                 >
-                  <Icon name="share" size={16} style={{ color: '#000000' }} />
+                  <Icon name="share" size={16} style={{ color: 'var(--ink)' }} />
                   <span>Share Ride</span>
                 </button>
 
@@ -643,7 +643,7 @@ export default function LiveTrackingSheet() {
                         fontSize: '10px',
                         boxShadow: '0 0 0 2px var(--card)'
                       }}
-                      title="Verified Professional Chauffeur"
+                      title="Verified Professional Driver"
                     >
                       <Icon name="check" size={10} color="#FFFFFF" />
                     </span>
@@ -665,7 +665,7 @@ export default function LiveTrackingSheet() {
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-                      Certified Chauffeur · {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
+                      Certified Driver · {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
                     </div>
                   </div>
                 </div>
@@ -808,9 +808,9 @@ export default function LiveTrackingSheet() {
                     flex: 1,
                     height: '46px',
                     borderRadius: '14px',
-                    background: '#FFFFFF',
-                    color: '#000000',
-                    border: '1.5px solid #000000',
+                    background: 'var(--card)',
+                    color: 'var(--ink)',
+                    border: '1.5px solid var(--line-strong)',
                     fontSize: '13px',
                     fontWeight: 700,
                     display: 'flex',
@@ -821,7 +821,7 @@ export default function LiveTrackingSheet() {
                     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                   }}
                 >
-                  <Icon name="share" size={16} style={{ color: '#000000' }} />
+                  <Icon name="share" size={16} style={{ color: 'var(--ink)' }} />
                   <span>Share Ride</span>
                 </button>
 
