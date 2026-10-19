@@ -239,10 +239,12 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
  * - If offer notification: shows "Claim Now" & "View More" action buttons
  */
 /**
- * Expandable Notification Card (Minimal Modern Aesthetic)
- * - Ultra-clean card geometry, delicate borders, crisp typography
- * - Tap smoothly expands details and automatically marks as read
- * - Smooth staggered exit on clear with cleaning animation
+ * Modern Minimalist Notification Card
+ * - 40x40 circular tinted badge with lightweight micro-icon (bg-amber-50, bg-emerald-50, etc.)
+ * - Bold title (14px, font-weight: 600, #0F172A)
+ * - Single/double-line body text (13px, #64748B)
+ * - Right-aligned timestamp (11px, #94A3B8)
+ * - Rounded-2xl (16px), subtle 1px border (#F1F5F9), elevation 2 soft ambient shadow, 16px padding
  */
 function ExpandableNotifCard({
   note,
@@ -261,6 +263,26 @@ function ExpandableNotifCard({
 
   const isGift = note.icon === 'gift' || note.icon === 'star';
   const isCar = note.icon === 'car';
+  const isSuccess = note.icon === 'check' || (note.title && /completed|success|credited|accepted/i.test(note.title));
+
+  // 40x40 circular tinted badge colors
+  let badgeBg = '#F8FAFC'; // default bg-slate-50
+  let badgeColor = '#64748B';
+  let badgeIcon = note.icon || 'bell';
+
+  if (isOffer) {
+    badgeBg = '#FEF3C7'; // bg-amber-50 / amber-100 soft
+    badgeColor = '#D97706';
+    badgeIcon = 'star';
+  } else if (isGift || isSuccess) {
+    badgeBg = '#ECFDF5'; // bg-emerald-50
+    badgeColor = '#059669';
+    badgeIcon = isGift ? 'gift' : 'check';
+  } else if (isCar) {
+    badgeBg = '#EFF6FF'; // bg-blue-50
+    badgeColor = '#2563EB';
+    badgeIcon = 'car';
+  }
 
   const handleClick = (e) => {
     if (e.target.closest('button')) return;
@@ -290,192 +312,154 @@ function ExpandableNotifCard({
       }}
       onClick={handleClick}
       style={{
-        borderRadius: '16px',
-        padding: '13px 15px',
-        marginBottom: '8px',
+        borderRadius: '16px', // rounded-2xl
+        padding: '16px', // consistent 16px padding
+        marginBottom: '10px',
         cursor: 'pointer',
         userSelect: 'none',
-        background: isRead ? 'var(--field, #F8FAFC)' : 'var(--card, #FFFFFF)',
-        border: isRead ? '1px solid var(--line, #E2E8F0)' : '1px solid rgba(0, 0, 0, 0.08)',
-        boxShadow: isRead ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.03)',
+        background: isRead ? '#F8FAFC' : '#FFFFFF', // neutral light-gray surface vs crisp white
+        border: isRead ? '1px solid #F1F5F9' : '1px solid #E2E8F0', // subtle 1px border divider
+        boxShadow: isRead ? 'none' : '0 2px 8px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03)', // soft elevation 2
         transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
         position: 'relative',
         overflow: 'hidden'
       }}
     >
-      {/* Main Bar (Always Visible) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {/* Minimal Rounded Icon */}
+      {/* Top Card Row: 40x40 Circular Tinted Badge + Content */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+        {/* 40x40 Circular Tinted Micro-Icon Badge */}
         <span
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '11px',
-            background: isOffer
-              ? 'rgba(245, 158, 11, 0.12)'
-              : isGift
-              ? 'rgba(16, 185, 129, 0.12)'
-              : isCar
-              ? 'rgba(59, 130, 246, 0.12)'
-              : isRead
-              ? 'var(--line, #E2E8F0)'
-              : 'rgba(15, 23, 42, 0.06)',
-            color: isOffer
-              ? '#D97706'
-              : isGift
-              ? '#059669'
-              : isCar
-              ? '#2563EB'
-              : 'var(--ink, #0F172A)',
-            display: 'grid',
-            placeItems: 'center',
-            flexShrink: 0
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: isRead ? '#F1F5F9' : badgeBg,
+            color: isRead ? '#94A3B8' : badgeColor,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            transition: 'background 0.2s ease, color 0.2s ease'
           }}
         >
-          <Icon name={note.icon || (isOffer ? 'star' : 'bell')} size={17} />
+          <Icon name={badgeIcon} size={18} />
         </span>
 
-        {/* Title & Timestamp */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        {/* Content Column */}
+        <div style={{ flex: 1, minWidth: 0, paddingTop: '1px' }}>
+          {/* Title & Right-Aligned Timestamp */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
             <span
               style={{
-                fontSize: '13.5px',
-                fontWeight: isRead ? 550 : 650,
-                color: isRead ? 'var(--muted, #64748B)' : 'var(--ink, #0F172A)',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: isRead ? '#334155' : '#0F172A',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                whiteSpace: 'nowrap',
                 lineHeight: 1.35,
                 letterSpacing: '-0.01em'
               }}
             >
               {note.title}
             </span>
-            <span
-              style={{
-                fontSize: '11px',
-                color: '#94A3B8',
-                fontWeight: 500,
-                flexShrink: 0,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {formatTimeAgo(note.ts)}
-            </span>
-          </div>
-        </div>
-
-        {/* Minimal Unread Dot */}
-        {!isRead && (
-          <span
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: '#2563EB',
-              flexShrink: 0,
-              boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.2)'
-            }}
-            title="Unread"
-          />
-        )}
-
-        {/* Minimal Micro Chevron */}
-        <span
-          style={{
-            color: '#94A3B8',
-            display: 'flex',
-            alignItems: 'center',
-            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-            flexShrink: 0
-          }}
-        >
-          <Icon name="chevron-down" size={15} />
-        </span>
-      </div>
-
-      {/* Expandable Body */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '10px 0 8px', opacity: 0.8 }} />
-            <p
-              style={{
-                margin: 0,
-                fontSize: '12.5px',
-                color: isRead ? 'var(--muted, #64748B)' : 'var(--ink, #334155)',
-                lineHeight: 1.55,
-                paddingLeft: '48px'
-              }}
-            >
-              {note.body}
-            </p>
-
-            {/* Offer Action Buttons */}
-            {isOffer && (
-              <div
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {!isRead && (
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#059669',
+                    display: 'inline-block'
+                  }}
+                  title="Unread"
+                />
+              )}
+              <span
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginTop: '11px',
-                  paddingLeft: '48px'
+                  fontSize: '11px',
+                  color: '#94A3B8',
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <button
-                  type="button"
-                  className="btn primary"
-                  style={{
-                    height: '32px',
-                    padding: '0 13px',
-                    borderRadius: '999px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    background: '#000000',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                  onClick={() => onClaimOffer(note)}
-                >
-                  <span>Claim Offer</span>
-                  <Icon name="chevron-right" size={13} />
-                </button>
+                {formatTimeAgo(note.ts)}
+              </span>
+            </div>
+          </div>
 
-                <button
-                  type="button"
-                  className="btn"
-                  style={{
-                    height: '32px',
-                    padding: '0 11px',
-                    borderRadius: '999px',
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    background: 'var(--field, #F1F5F9)',
-                    color: 'var(--ink, #0F172A)',
-                    border: '1px solid var(--line, #E2E8F0)',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => onViewOfferDetails(note)}
-                >
-                  Details
-                </button>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {/* Single/Double-Line Body Text (13px, #64748B) */}
+          <p
+            style={{
+              margin: 0,
+              fontSize: '13px',
+              color: isRead ? '#94A3B8' : '#64748B',
+              lineHeight: 1.45,
+              display: isExpanded ? 'block' : '-webkit-box',
+              WebkitLineClamp: isExpanded ? 'unset' : 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            {note.body}
+          </p>
+
+          {/* Offer Action Buttons (Shown when offer or expanded) */}
+          {isOffer && isExpanded && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginTop: '12px'
+              }}
+            >
+              <button
+                type="button"
+                className="btn primary"
+                style={{
+                  height: '32px',
+                  padding: '0 14px',
+                  borderRadius: '999px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  background: '#0F172A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+                onClick={() => onClaimOffer(note)}
+              >
+                <span>Claim Now</span>
+                <Icon name="arrow-right" size={13} />
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  height: '32px',
+                  padding: '0 12px',
+                  borderRadius: '999px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  background: '#F1F5F9',
+                  color: '#475569',
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer'
+                }}
+                onClick={() => onViewOfferDetails(note)}
+              >
+                View Details
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -568,16 +552,23 @@ export default function NotificationsSheet() {
             overflow: 'hidden'
           }}
         >
-          {/* Minimal Modern Sticky Header */}
-          <div className="sheet-sticky-top" style={{ padding: '12px 18px 8px' }}>
+          {/* Modern Minimalist Sticky Header */}
+          <div
+            className="sheet-sticky-top"
+            style={{
+              padding: '16px 20px 14px',
+              borderBottom: '1px solid #F1F5F9',
+              background: '#FFFFFF'
+            }}
+          >
             <div
               style={{
                 width: '36px',
                 height: '4px',
                 borderRadius: '999px',
-                background: 'var(--line, #CBD5E1)',
-                margin: '0 auto 12px',
-                opacity: 0.8
+                background: '#E2E8F0',
+                margin: '0 auto 14px',
+                opacity: 0.9
               }}
             />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -585,9 +576,9 @@ export default function NotificationsSheet() {
                 <h3
                   style={{
                     margin: 0,
-                    fontSize: '17px',
+                    fontSize: '18px',
                     fontWeight: 700,
-                    color: 'var(--ink, #0F172A)',
+                    color: '#0F172A',
                     letterSpacing: '-0.02em'
                   }}
                 >
@@ -597,12 +588,12 @@ export default function NotificationsSheet() {
                   <span
                     style={{
                       fontSize: '11px',
-                      fontWeight: 700,
-                      color: 'var(--muted, #64748B)',
-                      background: 'var(--field, #F1F5F9)',
-                      padding: '2px 7px',
+                      fontWeight: 600,
+                      color: '#059669',
+                      background: '#ECFDF5',
+                      padding: '2px 8px',
                       borderRadius: '999px',
-                      border: '1px solid var(--line, #E2E8F0)'
+                      border: '1px solid #A7F3D0'
                     }}
                   >
                     {unotes.length}
@@ -610,7 +601,7 @@ export default function NotificationsSheet() {
                 )}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {/* Minimal Header "Clear all" text button */}
                 {hasNotes && !isClearingAll && (
                   <button
@@ -619,12 +610,12 @@ export default function NotificationsSheet() {
                     style={{
                       background: 'none',
                       border: 'none',
-                      padding: '5px 8px',
+                      padding: '4px 8px',
                       fontSize: '12.5px',
-                      fontWeight: 600,
+                      fontWeight: 500,
                       color: '#64748B',
                       cursor: 'pointer',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
                       transition: 'color 0.18s ease'
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
@@ -640,16 +631,17 @@ export default function NotificationsSheet() {
                   onClick={handleClose}
                   aria-label="Close"
                   style={{
-                    width: '30px',
-                    height: '30px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '50%',
-                    background: 'var(--field, #F1F5F9)',
-                    border: '1px solid var(--line, #E2E8F0)',
+                    background: '#F8FAFC',
+                    border: '1px solid #F1F5F9',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--ink, #0F172A)',
-                    cursor: 'pointer'
+                    color: '#0F172A',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease'
                   }}
                 >
                   <Icon name="x" size={16} />

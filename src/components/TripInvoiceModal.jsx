@@ -13,9 +13,22 @@ export default function TripInvoiceModal({
   const [showCashPenaltyDialog, setShowCashPenaltyDialog] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Fare calculations: 30% Platform commission deducted -> Driver receives 70% earnings
-  const baseFare = Number(trip?.fare) || 750;
-  const driverEarningsNet = Math.round(baseFare * 0.70);
+  // Dynamic Fare Calculations:
+  // totalFare = baseFare + (extraKm * ratePerKm) + (billableWaitingMinutes * ratePerMinute);
+  const extraKm = Number(trip?.extensionDistanceKm) || 0;
+  const ratePerKm = Number(trip?.ratePerKm) || 18;
+  const extensionFare = Number(trip?.extensionFare) || Math.round(extraKm * ratePerKm);
+
+  const waitingSeconds = Number(trip?.waitingSeconds) || 0;
+  const billableWaitingMinutes = Number(trip?.billableWaitingMinutes) || Math.max(0, Math.ceil((waitingSeconds - 3600) / 60));
+  const waitingRatePerMin = Number(trip?.waitingRatePerMin) || 2;
+  const waitingFare = Number(trip?.waitingFare) || (billableWaitingMinutes * waitingRatePerMin);
+
+  const baseFare = Number(trip?.originalBaseFare) || (Number(trip?.fare) ? Math.max(0, Number(trip?.fare) - extensionFare - waitingFare) : 600);
+  const totalTripFare = baseFare + extensionFare + waitingFare;
+
+  // Platform commission 30% -> Driver receives 70% earnings
+  const driverEarningsNet = Math.round(totalTripFare * 0.70);
   const tipAmount = customTip !== '' ? (Number(customTip) || 0) : selectedTip;
   const totalDriverPayout = driverEarningsNet + tipAmount;
 
@@ -33,7 +46,12 @@ export default function TripInvoiceModal({
       if (onDigitalPaymentSuccess) {
         onDigitalPaymentSuccess({
           amount: totalDriverPayout,
-          fare: baseFare,
+          fare: totalTripFare,
+          baseFare: baseFare,
+          extensionDistanceKm: extraKm,
+          extensionFare: extensionFare,
+          waitingMinutes: billableWaitingMinutes,
+          waitingFare: waitingFare,
           driverEarnings: driverEarningsNet,
           tip: tipAmount,
           method: 'PhonePe QR',
@@ -120,8 +138,42 @@ export default function TripInvoiceModal({
           
 
 
+          {/* Itemized Trip Bill Breakdown */}
+          <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '14px 16px', border: '1px solid #F1F5F9' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+              Invoice Fare Breakdown
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
+                <span>Base Trip Fare</span>
+                <b style={{ color: '#0F172A' }}>₹{baseFare}</b>
+              </div>
+              {extraKm > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
+                  <span>Additional Ride ({extraKm.toFixed(2)} km @ ₹{ratePerKm}/km)</span>
+                  <b style={{ color: '#059669' }}>+₹{extensionFare}</b>
+                </div>
+              )}
+              {waitingSeconds > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
+                  <span>
+                    Waiting Time ({Math.floor(waitingSeconds / 60)}m{billableWaitingMinutes > 0 ? ` · ${billableWaitingMinutes}m billable` : ' · 60m Free'})
+                  </span>
+                  <b style={{ color: waitingFare > 0 ? '#DC2626' : '#059669' }}>
+                    {waitingFare > 0 ? `+₹${waitingFare}` : 'Free (₹0)'}
+                  </b>
+                </div>
+              )}
+              <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <b style={{ color: '#0F172A', fontSize: '13.5px' }}>Total Booking Bill</b>
+                <b style={{ color: '#0F172A', fontSize: '15px' }}>₹{totalTripFare}</b>
+              </div>
+            </div>
+          </div>
+
           {/* Driver Earnings Summary Card (Shows ONLY Driver's Earnings after 30% Commission) */}
-          <div style={{ background: 'var(--card, #F8FAFC)', borderRadius: '16px', padding: '16px', border: '1px solid var(--line, #E2E8F0)' }}>
+          <div style={{ background: 'var(--card, #FFFFFF)', borderRadius: '16px', padding: '16px', border: '1px solid var(--line, #E2E8F0)', boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13.5px' }}>
               <span style={{ color: 'var(--muted, #64748B)', fontWeight: 600 }}>Driver Net Earnings (70%)</span>
               <b style={{ color: '#16A34A', fontSize: '16px' }}>₹{driverEarningsNet}</b>

@@ -51,6 +51,7 @@ const CATS = {
 };
 
 import { cleanLocationName } from '../utils/locationCleaner';
+import { calculateHaversineDistance, formatDistanceKm, formatDurationSeconds } from '../utils/geoDistance';
 export { cleanLocationName };
 
 /**
@@ -1181,6 +1182,232 @@ export default function DriverApp() {
       }
     } catch (_) {}
   }, []);
+
+  // Real-Time Trip Extension & Waiting Time State Management
+  const [isAdditionalRideActive, setIsAdditionalRideActive] = useState(false);
+  const [extensionDistanceKm, setExtensionDistanceKm] = useState(0);
+  const [isWaitingActive, setIsWaitingActive] = useState(false);
+  const [waitingSeconds, setWaitingSeconds] = useState(0);
+
+  const extWatchIdRef = useRef(null);
+  const lastExtCoordsRef = useRef(null);
+  const waitingStartTimeRef = useRef(null);
+  const accumulatedWaitingRef = useRef(0);
+  const activeExtTripIdRef = useRef(null);
+
+  const RATE_PER_KM = 18; // Default ₹18/km
+  const WAITING_RATE_PER_MIN = 2; // Default ₹2/min
+  const FREE_WAITING_LIMIT_SECONDS = 3600; // First 60 minutes are free (3600s)
+
+  // Start real-time GPS tracking for trip extension
+  const handleStartAdditionalRideTracking = async (tripId) => {
+    setIsAdditionalRideActive(true);
+    try {
+      if (extWatchIdRef.current) {
+        clearDeviceWatch(extWatchIdRef.current);
+        extWatchIdRef.current = null;
+      }
+      const watchId = await watchDevicePosition(
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 2000 },
+        (pos) => {
+          if (!pos?.coords) return;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          if (lastExtCoordsRef.current) {
+            const deltaKm = calculateHaversineDistance(
+              lastExtCoordsRef.current.lat,
+              lastExtCoordsRef.current.lng,
+              lat,
+              lng
+            );
+            if (deltaKm > 0) {
+              setExtensionDistanceKm(prev => {
+                const updated = prev + deltaKm;
+                try {
+                  localStorage.setItem(`ridingo_trip_ext_${tripId}`, JSON.stringify({
+                    isActive: true,
+                    accumulatedDistanceKm: updated,
+                    lastCoords: { lat, lng },
+                    updatedAt: Date.now()
+                  }));
+                } catch (_) {}
+                return updated;
+              });
+            }
+          }
+          lastExtCoordsRef.current = { lat, lng };
+        },
+        (err) => console.warn('[ExtensionGPS] Watch warning:', err)
+      );
+      extWatchIdRef.current = watchId;
+    } catch (err) {
+      console.warn('[ExtensionGPS] Start watch error:', err);
+    }
+  };
+
+  // Toggle Additional Ride tracking on/off
+  const handleToggleAdditionalRide = async (tripId) => {
+    if (isAdditionalRideActive) {
+      // Stop extension tracking
+      if (extWatchIdRef.current) {
+        clearDeviceWatch(extWatchIdRef.current);
+        extWatchIdRef.current = null;
+      }
+      setIsAdditionalRideActive(false);
+      lastExtCoordsRef.current = null;
+      try {
+        localStorage.setItem(`ridingo_trip_ext_${tripId}`, JSON.stringify({
+          isActive: false,
+          accumulatedDistanceKm: extensionDistanceKm,
+          updatedAt: Date.now()
+        }));
+      } catch (_) {}
+      addToast(`Additional ride stopped. Extra distance: ${formatDistanceKm(extensionDistanceKm)}`, 'info');
+      triggerTactileHaptic('medium');
+    } else {
+      // Start extension tracking
+      triggerTactileHaptic('success');
+      addToast('Additional ride tracking started. Recording GPS route...', 'check');
+      try {
+        localStorage.setItem(`ridingo_trip_ext_${tripId}`, JSON.stringify({
+          isActive: true,
+          accumulatedDistanceKm: extensionDistanceKm,
+          startedAt: Date.now()
+        }));
+      } catch (_) {}
+      await handleStartAdditionalRideTracking(tripId);
+    }
+  };
+
+  // Toggle Waiting Time on/off
+  const handleToggleWaiting = (tripId) => {
+    if (isWaitingActive) {
+      // Stop / pause waiting
+      setIsWaitingActive(false);
+      accumulatedWaitingRef.current = waitingSeconds;
+      waitingStartTimeRef.current = null;
+      triggerTactileHaptic('medium');
+      addToast(`Waiting paused: ${formatDurationSeconds(waitingSeconds)} total.`, 'info');
+      try {
+        localStorage.setItem(`ridingo_trip_waiting_${tripId}`, JSON.stringify({
+          isActive: false,
+          accumulatedSeconds: waitingSeconds,
+          updatedAt: Date.now()
+        }));
+      } catch (_) {}
+    } else {
+      // Start waiting
+      setIsWaitingActive(true);
+      const now = Date.now();
+      waitingStartTimeRef.current = now;
+      triggerTactileHaptic('success');
+      addToast('Waiting timer started. First 60 minutes are free.', 'check');
+      try {
+        localStorage.setItem(`ridingo_trip_waiting_${tripId}`, JSON.stringify({
+          isActive: true,
+          startedAt: now,
+          accumulatedSeconds: waitingSeconds
+        }));
+      } catch (_) {}
+    }
+  };
+
+  // Background resilience & Wall-clock interval timer for waiting
+  useEffect(() => {
+    let timer = null;
+    if (isWaitingActive) {
+      timer = setInterval(() => {
+        const inProgress = trips.find(t => t.status === 'inprogress');
+        if (!inProgress) return;
+        const now = Date.now();
+        const started = waitingStartTimeRef.current || now;
+        const elapsedSinceStart = Math.max(0, Math.floor((now - started) / 1000));
+        const total = accumulatedWaitingRef.current + elapsedSinceStart;
+        setWaitingSeconds(total);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isWaitingActive, trips]);
+
+  // Recalculate waiting seconds upon returning from background / wake
+  useEffect(() => {
+    const handleSyncOnResume = () => {
+      const inProgress = trips.find(t => t.status === 'inprogress');
+      if (!inProgress) return;
+      try {
+        const storedWaiting = JSON.parse(localStorage.getItem(`ridingo_trip_waiting_${inProgress.id}`) || 'null');
+        if (storedWaiting) {
+          if (storedWaiting.isActive && storedWaiting.startedAt) {
+            const elapsed = Math.max(0, Math.floor((Date.now() - storedWaiting.startedAt) / 1000));
+            const total = (storedWaiting.accumulatedSeconds || 0) + elapsed;
+            accumulatedWaitingRef.current = storedWaiting.accumulatedSeconds || 0;
+            waitingStartTimeRef.current = storedWaiting.startedAt;
+            setWaitingSeconds(total);
+            setIsWaitingActive(true);
+          } else {
+            setWaitingSeconds(storedWaiting.accumulatedSeconds || 0);
+            accumulatedWaitingRef.current = storedWaiting.accumulatedSeconds || 0;
+            setIsWaitingActive(false);
+          }
+        }
+      } catch (_) {}
+    };
+
+    document.addEventListener('visibilitychange', handleSyncOnResume);
+    window.addEventListener('focus', handleSyncOnResume);
+    return () => {
+      document.removeEventListener('visibilitychange', handleSyncOnResume);
+      window.removeEventListener('focus', handleSyncOnResume);
+    };
+  }, [trips]);
+
+  // Sync Extension & Waiting state with currently inprogress trip
+  useEffect(() => {
+    const inProgress = trips.find(t => t.status === 'inprogress');
+    if (!inProgress) {
+      if (extWatchIdRef.current) {
+        clearDeviceWatch(extWatchIdRef.current);
+        extWatchIdRef.current = null;
+      }
+      setIsAdditionalRideActive(false);
+      setIsWaitingActive(false);
+      return;
+    }
+
+    const tripId = inProgress.id;
+    activeExtTripIdRef.current = tripId;
+
+    // Restore waiting state
+    try {
+      const storedWaiting = JSON.parse(localStorage.getItem(`ridingo_trip_waiting_${tripId}`) || 'null');
+      if (storedWaiting) {
+        accumulatedWaitingRef.current = storedWaiting.accumulatedSeconds || 0;
+        if (storedWaiting.isActive && storedWaiting.startedAt) {
+          const elapsed = Math.max(0, Math.floor((Date.now() - storedWaiting.startedAt) / 1000));
+          const total = (storedWaiting.accumulatedSeconds || 0) + elapsed;
+          waitingStartTimeRef.current = storedWaiting.startedAt;
+          setWaitingSeconds(total);
+          setIsWaitingActive(true);
+        } else {
+          setWaitingSeconds(storedWaiting.accumulatedSeconds || 0);
+          setIsWaitingActive(false);
+        }
+      }
+    } catch (_) {}
+
+    // Restore extension state
+    try {
+      const storedExt = JSON.parse(localStorage.getItem(`ridingo_trip_ext_${tripId}`) || 'null');
+      if (storedExt) {
+        setExtensionDistanceKm(storedExt.accumulatedDistanceKm || 0);
+        if (storedExt.isActive && !isAdditionalRideActive) {
+          handleStartAdditionalRideTracking(tripId);
+        }
+      }
+    } catch (_) {}
+  }, [trips]);
 
   // Custom Push Notification Banner State for Driver App
   const [customPushTrip, setCustomPushTrip] = useState(null);
@@ -2325,7 +2552,36 @@ export default function DriverApp() {
   // 5. Destination Reached -> End Trip (No OTP required for ending a trip)
   const handleEndTripClick = (t) => {
     triggerTactileHaptic('success');
-    setActiveTripAction(t);
+
+    // Clean up active GPS watch and freeze timers
+    if (extWatchIdRef.current) {
+      clearDeviceWatch(extWatchIdRef.current);
+      extWatchIdRef.current = null;
+    }
+    setIsAdditionalRideActive(false);
+    setIsWaitingActive(false);
+
+    const extraKm = Number(extensionDistanceKm) || 0;
+    const extensionFare = Math.round(extraKm * RATE_PER_KM);
+    const billableWaitingMinutes = Math.max(0, Math.ceil((waitingSeconds - FREE_WAITING_LIMIT_SECONDS) / 60));
+    const waitingFare = billableWaitingMinutes * WAITING_RATE_PER_MIN;
+    const baseFare = Number(t.fare) || 600;
+    const totalCalculatedFare = baseFare + extensionFare + waitingFare;
+
+    const enrichedTrip = {
+      ...t,
+      extensionDistanceKm: extraKm,
+      extensionFare,
+      ratePerKm: RATE_PER_KM,
+      waitingSeconds,
+      billableWaitingMinutes,
+      waitingFare,
+      waitingRatePerMin: WAITING_RATE_PER_MIN,
+      fare: totalCalculatedFare,
+      originalBaseFare: baseFare
+    };
+
+    setActiveTripAction(enrichedTrip);
     if (requestEndTrip) {
       requestEndTrip(t.id);
     } else if (verifyEndOtp) {
@@ -2554,7 +2810,7 @@ export default function DriverApp() {
                   </div>
                 </div>
 
-                {/* Functional Duty Status Toggle Button: Green when Online, Red when Offline */}
+                {/* Modern iOS-Style Minimal Pill Toggle / Status Chip */}
                 <button
                   type="button"
                   id="driver-duty-toggle-btn"
@@ -2572,38 +2828,37 @@ export default function DriverApp() {
                       next ? 'check' : 'info'
                     );
                     if (driverPartner?.haptic !== false && navigator.vibrate) {
-                      try { navigator.vibrate(50); } catch (e) {}
+                      try { navigator.vibrate(40); } catch (e) {}
                     }
                   }}
                   style={{
-                    background: driverOnline ? '#16A34A' : '#DC2626',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    letterSpacing: '0.03em',
-                    textTransform: 'uppercase',
-                    padding: '6px 14px',
+                    background: driverOnline ? '#ECFDF5' : '#F1F5F9',
+                    color: driverOnline ? '#059669' : '#64748B',
+                    border: driverOnline ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    letterSpacing: '-0.01em',
+                    padding: '7px 14px',
                     borderRadius: '999px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '7px',
                     cursor: 'pointer',
                     boxShadow: driverOnline
-                      ? '0 3px 12px rgba(22, 163, 74, 0.4)'
-                      : '0 3px 12px rgba(220, 38, 38, 0.4)',
-                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                      ? '0 2px 6px rgba(16, 185, 129, 0.12)'
+                      : 'none',
+                    transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
                     userSelect: 'none'
                   }}
                   title={driverOnline ? 'Tap to Go Offline' : 'Tap to Go Online'}
                 >
                   <span
+                    className={driverOnline ? 'animate-pulse-dot' : ''}
                     style={{
-                      width: '7px',
-                      height: '7px',
+                      width: '8px',
+                      height: '8px',
                       borderRadius: '50%',
-                      background: '#FFFFFF',
-                      boxShadow: '0 0 6px #FFFFFF',
+                      background: driverOnline ? '#10B981' : '#94A3B8',
                       display: 'inline-block'
                     }}
                   />
@@ -2611,16 +2866,15 @@ export default function DriverApp() {
                 </button>
               </div>
 
-              {/* Row 2: Hero Typographic Earnings & Minimal Circular Goal Progress Ring */}
+              {/* Row 2: Hero Typographic Earnings & Minimal Goal Progress */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '16px 0',
+                  padding: '16px 0 4px',
                   borderTop: '1px solid var(--line)',
-                  borderBottom: '1px solid var(--line)',
-                  marginBottom: '16px'
+                  marginBottom: '0'
                 }}
               >
                 <div>
@@ -2670,53 +2924,6 @@ export default function DriverApp() {
                   </span>
                 </div>
               </div>
-
-              {/* Row 3: 3 Minimal Metric Graphic Pills */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '8px',
-                  marginBottom: '16px'
-                }}
-              >
-                <div style={{ background: 'var(--field)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '10.5px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
-                    Trips
-                  </span>
-                  <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)', marginTop: '2px', display: 'block' }}>
-                    {completedTripsCount}
-                  </b>
-                  <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 500 }}>
-                    Completed
-                  </span>
-                </div>
-
-                <div style={{ background: 'var(--field)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '10.5px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
-                    Duty Status
-                  </span>
-                  <b style={{ fontSize: '15px', fontWeight: 800, color: driverOnline ? '#16A34A' : '#DC2626', marginTop: '2px', display: 'block' }}>
-                    {driverOnline ? 'Online' : 'Offline'}
-                  </b>
-                  <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 500 }}>
-                    {driverOnline ? 'Available' : 'Paused'}
-                  </span>
-                </div>
-
-                <div style={{ background: 'var(--field)', borderRadius: '14px', padding: '10px 8px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '10.5px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', display: 'block' }}>
-                    Rating
-                  </span>
-                  <b style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)', marginTop: '2px', display: 'block' }}>
-                    {driverPartner?.rating || '5.0'} Rating
-                  </b>
-                  <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 500 }}>
-                    Pro Partner
-                  </span>
-                </div>
-              </div>
-
             </div>
 
             {/* Black Mark Penalty Alert (if any recorded) */}
@@ -2981,10 +3188,19 @@ export default function DriverApp() {
                 {todayTrips.map(t => {
                   const c = CATS[t.cat] || CATS.hourly;
                   const fare = Number(t.fare) || 600;
-                  const driverEarn = Math.round(fare * 0.70); // 30% platform commission deducted
+                  const extraKm = t.status === 'inprogress' ? (Number(extensionDistanceKm) || 0) : 0;
+                  const extFare = Math.round(extraKm * RATE_PER_KM);
+                  const isWaitingFree = waitingSeconds <= FREE_WAITING_LIMIT_SECONDS;
+                  const remainingFreeSeconds = Math.max(0, FREE_WAITING_LIMIT_SECONDS - waitingSeconds);
+                  const remainingFreeMinutes = Math.ceil(remainingFreeSeconds / 60);
+                  const billableWaitingSeconds = Math.max(0, waitingSeconds - FREE_WAITING_LIMIT_SECONDS);
+                  const billableWaitingMinutes = Math.ceil(billableWaitingSeconds / 60);
+                  const waitFare = t.status === 'inprogress' ? (billableWaitingMinutes * WAITING_RATE_PER_MIN) : 0;
+                  const liveTotalFare = fare + extFare + waitFare;
+                  const driverEarn = Math.round((t.status === 'inprogress' ? liveTotalFare : fare) * 0.70); // 30% platform commission deducted
 
                   return (
-                    <article key={t.id} className="card trip">
+                    <article key={t.id} className="card trip" style={{ borderRadius: '16px', border: '1px solid #F1F5F9', background: '#FFFFFF', boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.05)' }}>
                       <div className="trip-head" style={{ paddingBottom: '10px' }}>
                         <span className="grow">
                           <b>{c.name}</b> <span className="mut">· {t.qty || 1} {c.unit || 'hr'}</span>
@@ -3180,12 +3396,206 @@ export default function DriverApp() {
                         )}
 
                         {t.status === 'inprogress' && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
+                            {/* Feature Action Buttons: Additional Ride & Waiting Time */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                              {/* Feature A: + Additional Ride Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleAdditionalRide(t.id)}
+                                style={{
+                                  padding: '11px 12px',
+                                  borderRadius: '14px',
+                                  border: isAdditionalRideActive ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+                                  background: isAdditionalRideActive ? '#ECFDF5' : '#FFFFFF',
+                                  color: isAdditionalRideActive ? '#059669' : '#0F172A',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  gap: '4px',
+                                  cursor: 'pointer',
+                                  boxShadow: isAdditionalRideActive
+                                    ? '0 4px 12px rgba(16, 185, 129, 0.15)'
+                                    : '0 2px 6px rgba(0, 0, 0, 0.04)',
+                                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  textAlign: 'left'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {isAdditionalRideActive ? (
+                                      <span
+                                        className="animate-pulse-dot"
+                                        style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}
+                                      />
+                                    ) : (
+                                      <Icon name="navigation" size={15} color="#2563EB" />
+                                    )}
+                                    <span style={{ fontSize: '13px', fontWeight: 700 }}>
+                                      {isAdditionalRideActive ? 'Stop Extension' : '+ Additional Ride'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '11px', color: isAdditionalRideActive ? '#047857' : '#64748B', fontWeight: 500 }}>
+                                  {isAdditionalRideActive
+                                    ? `${formatDistanceKm(extraKm)} (+₹${extFare})`
+                                    : (extraKm > 0 ? `${formatDistanceKm(extraKm)} (+₹${extFare})` : 'Inner/pocket roads')}
+                                </span>
+                              </button>
+
+                              {/* Feature B: Waiting Time Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleWaiting(t.id)}
+                                style={{
+                                  padding: '11px 12px',
+                                  borderRadius: '14px',
+                                  border: isWaitingActive
+                                    ? (isWaitingFree ? '1.5px solid #F59E0B' : '1.5px solid #EF4444')
+                                    : '1px solid #E2E8F0',
+                                  background: isWaitingActive
+                                    ? (isWaitingFree ? '#FEF3C7' : '#FEF2F2')
+                                    : '#FFFFFF',
+                                  color: isWaitingActive
+                                    ? (isWaitingFree ? '#B45309' : '#DC2626')
+                                    : '#0F172A',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  gap: '4px',
+                                  cursor: 'pointer',
+                                  boxShadow: isWaitingActive
+                                    ? '0 4px 12px rgba(245, 158, 11, 0.15)'
+                                    : '0 2px 6px rgba(0, 0, 0, 0.04)',
+                                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  textAlign: 'left'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {isWaitingActive ? (
+                                      <span
+                                        className="animate-pulse-dot"
+                                        style={{
+                                          width: '8px',
+                                          height: '8px',
+                                          borderRadius: '50%',
+                                          background: isWaitingFree ? '#F59E0B' : '#EF4444',
+                                          display: 'inline-block'
+                                        }}
+                                      />
+                                    ) : (
+                                      <Icon name="clock" size={15} color="#D97706" />
+                                    )}
+                                    <span style={{ fontSize: '13px', fontWeight: 700 }}>
+                                      {isWaitingActive ? 'Stop Waiting' : (waitingSeconds > 0 ? 'Resume Waiting' : 'Start Waiting')}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '11px', color: isWaitingActive ? (isWaitingFree ? '#B45309' : '#B91C1C') : '#64748B', fontWeight: 500 }}>
+                                  {isWaitingActive
+                                    ? (isWaitingFree
+                                        ? `Free: ${remainingFreeMinutes}m left (${formatDurationSeconds(waitingSeconds)})`
+                                        : `Live: +${billableWaitingMinutes}m (+₹${waitFare})`)
+                                    : (waitingSeconds > 0
+                                        ? `${formatDurationSeconds(waitingSeconds)} (${isWaitingFree ? 'Free' : `+₹${waitFare}`})`
+                                        : 'Free: 60m first')}
+                                </span>
+                              </button>
+                            </div>
+
+                            {/* Real-Time Dynamic Bill Breakdown Card */}
+                            {(isAdditionalRideActive || isWaitingActive || extraKm > 0 || waitingSeconds > 0) && (
+                              <div
+                                style={{
+                                  background: '#F8FAFC',
+                                  border: '1px solid #F1F5F9',
+                                  borderRadius: '16px',
+                                  padding: '14px 16px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Live Bill Breakdown
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: '10.5px',
+                                      fontWeight: 600,
+                                      background: (isAdditionalRideActive || isWaitingActive) ? '#ECFDF5' : '#F1F5F9',
+                                      color: (isAdditionalRideActive || isWaitingActive) ? '#059669' : '#64748B',
+                                      padding: '2px 7px',
+                                      borderRadius: '999px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    {(isAdditionalRideActive || isWaitingActive) && (
+                                      <span className="animate-pulse-dot" style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
+                                    )}
+                                    <span>{(isAdditionalRideActive || isWaitingActive) ? 'Live Tracking' : 'Frozen'}</span>
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
+                                  <span>Base Booking Fare</span>
+                                  <b style={{ color: '#0F172A' }}>₹{fare}</b>
+                                </div>
+
+                                {(extraKm > 0 || isAdditionalRideActive) && (
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
+                                    <span>
+                                      Additional Ride ({formatDistanceKm(extraKm)} @ ₹{RATE_PER_KM}/km)
+                                    </span>
+                                    <b style={{ color: '#059669' }}>+₹{extFare}</b>
+                                  </div>
+                                )}
+
+                                {(waitingSeconds > 0 || isWaitingActive) && (
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
+                                    <span>
+                                      Waiting Time ({formatDurationSeconds(waitingSeconds)}{isWaitingFree ? ' · Free 60m' : ` · +${billableWaitingMinutes}m @ ₹${WAITING_RATE_PER_MIN}/m`})
+                                    </span>
+                                    <b style={{ color: waitFare > 0 ? '#DC2626' : '#059669' }}>
+                                      {waitFare > 0 ? `+₹${waitFare}` : 'Free (₹0)'}
+                                    </b>
+                                  </div>
+                                )}
+
+                                <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                  <div>
+                                    <b style={{ fontSize: '13.5px', color: '#0F172A' }}>Estimated Total Fare</b>
+                                    <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>
+                                      Driver Net (70%): ₹{driverEarn}
+                                    </span>
+                                  </div>
+                                  <b style={{ fontSize: '17px', color: '#0F172A', fontWeight: 800 }}>
+                                    ₹{liveTotalFare}
+                                  </b>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Route & End Trip Navigation Buttons */}
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button
                                 type="button"
                                 className="btn sm"
-                                style={{ flex: 1, background: 'var(--card)', border: '1.5px solid var(--line-strong)', color: 'var(--ink)', fontWeight: 750 }}
+                                style={{
+                                  flex: 1,
+                                  background: '#FFFFFF',
+                                  border: '1px solid #E2E8F0',
+                                  color: '#0F172A',
+                                  fontWeight: 650,
+                                  borderRadius: '12px',
+                                  padding: '11px 14px'
+                                }}
                                 onClick={() => handleGetDirections(t.drop_loc || 'Destination')}
                               >
                                 Route Map
@@ -3193,7 +3603,16 @@ export default function DriverApp() {
                               <button
                                 type="button"
                                 className="btn primary sm"
-                                style={{ flex: 1.5, background: 'var(--solid)', color: 'var(--on-solid)', border: '1.5px solid var(--solid)', fontWeight: 800 }}
+                                style={{
+                                  flex: 1.5,
+                                  background: '#0F172A',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  fontWeight: 800,
+                                  borderRadius: '12px',
+                                  padding: '11px 16px',
+                                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)'
+                                }}
                                 onClick={() => handleEndTripClick(t)}
                               >
                                 End Trip

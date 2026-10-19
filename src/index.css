@@ -6893,4 +6893,22 @@ body.app-offline-mode .action-btn {
   will-change: transform, opacity;
 }
 
+@keyframes pulseDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulseDot 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+
 
