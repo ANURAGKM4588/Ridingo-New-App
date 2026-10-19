@@ -5111,7 +5111,24 @@ export default function DriverApp() {
         </button>
       </nav>
 
-      {/* In-app floating banner removed: Push notifications only appear as real system notifications when app is minimized or closed */}
+      {/* Bottom-to-Top Slide-Up Popup Window for Incoming Ride Requests with 20s Auto-hide */}
+      {customPushTrip && (
+        <DriverCustomTripNotification
+          trip={customPushTrip}
+          onAccept={(tripId) => {
+            handleAccept(tripId);
+            setCustomPushTrip(null);
+          }}
+          onDecline={(tripId) => {
+            handleDecline(tripId);
+            setCustomPushTrip(null);
+          }}
+          onExpand={(trip) => {
+            setSelectedRequestDetails(trip);
+            setCustomPushTrip(null);
+          }}
+        />
+      )}
 
       {/* "View More" Full Details Modal for any trip request in the Trip Requests list */}
       {selectedRequestDetails && (

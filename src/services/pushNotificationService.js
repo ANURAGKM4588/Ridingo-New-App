@@ -3,7 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { playCustomTone, stopActiveTone, getSelectedCustomTune } from '../utils/audioTones';
-import { cleanLocationName } from '../utils/locationCleaner';
+import { cleanLocationName, getLocationUpToFirstComma } from '../utils/locationCleaner';
 
 /**
  * Universal Native Device Push & System Notification Engine for Ridingo
@@ -718,8 +718,8 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
   }
   recordNotificationSent(dedupKey);
 
-  const pickup = cleanLocationName(trip?.pickup || trip?.from) || 'Customer Pickup';
-  const drop = cleanLocationName(trip?.drop_loc || trip?.drop || trip?.to) || 'City Route';
+  const pickup = getLocationUpToFirstComma(trip?.pickup || trip?.from, 'Pickup Location');
+  const drop = getLocationUpToFirstComma(trip?.drop_loc || trip?.drop || trip?.to, 'Drop Location');
   const fare = Number(trip?.fare) || 600;
   const advance = Number(trip?.advance) || Math.round(fare * 0.3);
   const distance = trip?.distanceText || '12.4 km';
