@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1013815921601",
+    "project_id": "ridingo-bd466",
+    "storage_bucket": "ridingo-bd466.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1013815921601:android:6eb5782a150ea3b3233d40",
+        "android_client_info": {
+          "package_name": "com.ridingo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSl-GKwzyb4JBdUVLUZIc9lENKlg4NYhY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

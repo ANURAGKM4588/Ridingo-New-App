@@ -173,14 +173,26 @@ export function setupNotificationActionListeners() {
       LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
         console.info('[PushNotifications] User tapped notification action:', action);
         const extra = action?.notification?.extra || {};
+        const actionId = action?.actionId; // 'accept', 'reject', 'view', or 'tap'
+
+        if (actionId === 'reject') {
+          console.info('[PushNotifications] Driver rejected trip notification:', extra.tripId);
+          if (extra.tripId) {
+            dismissIncomingRideNotification(extra.tripId);
+          }
+          return;
+        }
+
         const isDriver = extra.source === 'RidingoDriver' || extra.tripId || action?.notification?.channelId === 'driver_dispatch_alerts';
         if (isDriver) {
           if (typeof window !== 'undefined' && typeof window.__ridingoSetView === 'function') {
-            window.__ridingoSetView('driver', extra);
+            window.__ridingoSetView('driver', { ...extra, actionId });
           } else if (typeof window !== 'undefined') {
             try {
               const url = new URL(window.location.href);
               url.searchParams.set('view', 'driver');
+              if (extra.tripId) url.searchParams.set('tripId', String(extra.tripId));
+              if (actionId) url.searchParams.set('action', actionId);
               window.location.href = url.toString();
             } catch (e) {}
           }
@@ -292,8 +304,9 @@ async function ensureNativeChannel() {
             {
               id: 'TRIP_DISPATCH_CARD',
               actions: [
-                { id: 'accept', title: 'Accept', foreground: true },
-                { id: 'view', title: 'View More', foreground: true }
+                { id: 'accept', title: '✅ Accept', foreground: true },
+                { id: 'reject', title: '❌ Reject', destructive: true, foreground: false },
+                { id: 'view', title: 'View Details', foreground: true }
               ]
             }
           ]
@@ -307,14 +320,16 @@ async function ensureNativeChannel() {
   }
 }
 
+let isPushRegistered = false;
+let pushListenersAttached = false;
+
 /**
- * Register Driver App with Apple Push Notification service (APNs)
- * Strictly for iOS.
+ * Register Driver App with Native Push Notification service (FCM for Android, APNs for iOS)
+ * Handles data-only push payloads and converts them to rich LocalNotifications with action buttons.
  */
-export async function registerDriverAPNsPush(onTripRequestReceived) {
+export async function registerDevicePushNotifications(onTripRequestReceived) {
   if (!Capacitor.isNativePlatform()) return null;
-  if (Capacitor.getPlatform() !== 'ios') return false;
-  if (isAPNsRegistered) return true;
+  if (isPushRegistered && pushListenersAttached) return true;
 
   try {
     let perm = await PushNotifications.checkPermissions();
@@ -324,37 +339,68 @@ export async function registerDriverAPNsPush(onTripRequestReceived) {
 
     if (perm?.receive === 'granted') {
       await PushNotifications.register();
-      isAPNsRegistered = true;
+      isPushRegistered = true;
 
-      if (!apnsListenersAttached) {
-        apnsListenersAttached = true;
+      if (!pushListenersAttached) {
+        pushListenersAttached = true;
 
         PushNotifications.addListener('registration', (token) => {
-          console.info('[APNs] Device Token successfully generated:', token?.value);
+          console.info('[PushNotifications] Device Push Token generated:', token?.value);
           try {
             if (token?.value) {
-              localStorage.setItem('ridingo_apns_device_token', token.value);
+              localStorage.setItem('ridingo_device_push_token', token.value);
+              localStorage.setItem('ridingo_fcm_token', token.value);
+              if (Capacitor.getPlatform() === 'ios') {
+                localStorage.setItem('ridingo_apns_device_token', token.value);
+              }
             }
           } catch (e) {}
         });
 
         PushNotifications.addListener('registrationError', (error) => {
-          console.warn('[APNs] Registration Error (safely handled):', error);
+          console.warn('[PushNotifications] Push Registration Error:', error);
         });
 
-        PushNotifications.addListener('pushNotificationReceived', (notification) => {
-          console.info('[APNs] Push notification received:', notification);
+        // Triggered when a data-only or standard push notification arrives
+        PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+          console.info('[PushNotifications] Push notification received:', notification);
           if (typeof navigator !== 'undefined' && navigator.vibrate) {
             try { navigator.vibrate([150, 75, 150, 75, 300]); } catch (e) {}
           }
+
           const data = notification?.data || {};
-          if ((data.type === 'TRIP_REQUESTED' || notification?.title?.includes('Booking')) && onTripRequestReceived) {
-            onTripRequestReceived(data.trip || data);
+          const isRideRequest =
+            data.type === 'NEW_RIDE_REQUEST' ||
+            data.type === 'TRIP_REQUESTED' ||
+            Boolean(data.tripId) ||
+            notification?.title?.includes('Booking') ||
+            notification?.title?.includes('Trip');
+
+          if (isRideRequest) {
+            const tripPayload = data.trip ? (typeof data.trip === 'string' ? JSON.parse(data.trip) : data.trip) : data;
+            const normalizedTrip = {
+              id: tripPayload.tripId || tripPayload.id || `trp_${Date.now()}`,
+              fare: tripPayload.fare || tripPayload.amount || 600,
+              advance: tripPayload.advance,
+              pickup: tripPayload.from || tripPayload.pickup || tripPayload.pickup_location,
+              drop_loc: tripPayload.to || tripPayload.drop || tripPayload.drop_location,
+              distanceText: tripPayload.distance || tripPayload.distanceText,
+              durationText: tripPayload.duration || tripPayload.durationText,
+              time: tripPayload.time || tripPayload.scheduled_time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              ...tripPayload
+            };
+
+            // Schedule the rich local notification with Accept & Reject action buttons
+            notifyIncomingRideRequest(normalizedTrip, { forcePush: true });
+
+            if (onTripRequestReceived) {
+              onTripRequestReceived(normalizedTrip);
+            }
           }
         });
 
         PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-          console.info('[APNs] User opened app from notification banner:', action);
+          console.info('[PushNotifications] User tapped push banner:', action);
           const data = action?.notification?.data || {};
           if (onTripRequestReceived) {
             onTripRequestReceived(data.trip || data);
@@ -365,10 +411,13 @@ export async function registerDriverAPNsPush(onTripRequestReceived) {
       return true;
     }
   } catch (err) {
-    console.warn('[APNs] Push notification setup error (safely caught):', err);
+    console.warn('[PushNotifications] Push registration error:', err);
   }
   return false;
 }
+
+// Backwards-compatible alias for existing imports
+export const registerDriverAPNsPush = registerDevicePushNotifications;
 
 /**
  * Background Task & App Lifecycle Handler
@@ -414,12 +463,11 @@ export async function requestDriverNotificationPermission() {
         console.warn('[PushNotifications] Local notification permission request error:', locErr);
       }
 
-      if (Capacitor.getPlatform() === 'ios' && granted) {
-        try {
-          await registerDriverAPNsPush();
-        } catch (pushErr) {
-          console.warn('[PushNotifications] APNs push registration error:', pushErr);
-        }
+      // Automatically register for push notifications on both Android & iOS
+      try {
+        await registerDevicePushNotifications();
+      } catch (pushErr) {
+        console.warn('[PushNotifications] Push notification registration error:', pushErr);
       }
 
       return granted;
@@ -676,9 +724,10 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
   const advance = Number(trip?.advance) || Math.round(fare * 0.3);
   const distance = trip?.distanceText || '12.4 km';
   const duration = trip?.durationText || '28 mins';
+  const time = trip?.time || trip?.scheduled_time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const title = `New Trip Request: ₹${fare}`;
-  const body = `Total Amount: ₹${fare} (₹${advance} Advance Paid)\nPickup: ${pickup}\nDestination: ${drop}\nRoute: ${distance} · ETA: ${duration}`;
+  const body = `Fare: ₹${fare} (₹${advance} Advance)\nFrom: ${pickup}\nTo: ${drop}\nTime: ${time} · ETA: ${duration}`;
 
   // Auditory chime for incoming dispatch
   playNativeAlertChime('alert');
@@ -702,7 +751,8 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
         pickup,
         drop,
         distance,
-        duration
+        duration,
+        time
       },
       onAction: (action) => {
         if (action === 'accept' && callbacks.onAccept) {
@@ -1014,3 +1064,22 @@ export async function sendUserNativeNotification(title, body, options = {}) {
 
   return false;
 }
+
+// Global debug test trigger for instantaneous testing from browser console or native webview
+if (typeof window !== 'undefined') {
+  window.__testRideNotification = async (customData = {}) => {
+    const testTrip = {
+      id: customData.tripId || `test_${Date.now()}`,
+      fare: customData.fare || 450,
+      advance: customData.advance || 135,
+      pickup: customData.from || customData.pickup || 'Kaloor Stadium, Kochi',
+      drop_loc: customData.to || customData.drop || 'Cochin International Airport',
+      distanceText: customData.distanceText || '26.8 km',
+      durationText: customData.durationText || '45 mins',
+      time: customData.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    console.info('[TestPush] Triggering test ride notification:', testTrip);
+    return notifyIncomingRideRequest(testTrip, { forcePush: true });
+  };
+}
+
