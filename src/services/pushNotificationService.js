@@ -1,24 +1,120 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { App } from '@capacitor/app';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { playCustomTone, stopActiveTone, getSelectedCustomTune } from '../utils/audioTones';
 import { cleanLocationName } from '../utils/locationCleaner';
 
 /**
- * Multi-Platform Native Device Push & System Notification Engine for Ridingo Driver & User Apps
- * 
- * Delivers alerts directly into the native OS Notification Center:
+ * Universal Native Device Push & System Notification Engine for Ridingo
+ * Serves Driver and User applications across:
  * - Native iOS Notification Center (APNs / UNUserNotificationCenter)
- * - Native Android Notification Shade & Heads-Up Banner (NotificationManager Channels)
+ * - Native Android Notification Shade & Heads-Up Banners (NotificationManager Channels)
  * - Desktop & Mobile Web OS Notification Center (W3C Web Notifications & ServiceWorker API)
+ * 
+ * Strict Single-Notification Invariant:
+ * Every distinct action (e.g., incoming ride request, trip accepted with OTP, OTP verified,
+ * trip completed) is guaranteed to dispatch strictly ONCE per trip / action across polling loops,
+ * WebSocket events, database changes, and UI re-renders.
  */
 
 let isChannelCreated = false;
 let isLocalNotificationListenerAttached = false;
+let isAPNsRegistered = false;
+let apnsListenersAttached = false;
+
+// ============================================================================
+// GLOBAL PERSISTENT DEDUPLICATION ENGINE
+// ============================================================================
+const SENT_NOTIFICATIONS_STORAGE_KEY = 'ridingo_sent_push_notifications';
+const inMemorySentKeys = new Set();
+
+// Pre-load persisted notification history from localStorage
+try {
+  if (typeof localStorage !== 'undefined') {
+    const stored = JSON.parse(localStorage.getItem(SENT_NOTIFICATIONS_STORAGE_KEY) || '[]');
+    if (Array.isArray(stored)) {
+      stored.forEach(k => {
+        if (k) inMemorySentKeys.add(String(k).trim().toLowerCase());
+      });
+    }
+  }
+} catch (_) {}
+
+/**
+ * Normalizes an action key for deterministic deduplication
+ */
+export function normalizeActionKey(key) {
+  if (!key) return '';
+  return String(key).trim().toLowerCase().replace(/^trp-/, 'trp-');
+}
+
+/**
+ * Checks whether a notification for this specific action has already been dispatched.
+ * Guarantees STRICT single-delivery across all platforms, polling loops, socket events, and re-renders.
+ */
+export function hasNotificationBeenSent(actionKey) {
+  if (!actionKey) return false;
+  const key = normalizeActionKey(actionKey);
+  if (inMemorySentKeys.has(key)) return true;
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = JSON.parse(localStorage.getItem(SENT_NOTIFICATIONS_STORAGE_KEY) || '[]');
+      if (Array.isArray(stored) && stored.includes(key)) {
+        inMemorySentKeys.add(key);
+        return true;
+      }
+    }
+  } catch (_) {}
+
+  return false;
+}
+
+/**
+ * Atomically marks a notification action as dispatched.
+ * Keeps a bounded list in localStorage (capped at 200 entries) to prevent unbounded storage growth.
+ */
+export function recordNotificationSent(actionKey) {
+  if (!actionKey) return;
+  const key = normalizeActionKey(actionKey);
+  inMemorySentKeys.add(key);
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      let stored = JSON.parse(localStorage.getItem(SENT_NOTIFICATIONS_STORAGE_KEY) || '[]');
+      if (!Array.isArray(stored)) stored = [];
+      if (!stored.includes(key)) {
+        stored.push(key);
+        if (stored.length > 200) {
+          stored = stored.slice(-150);
+        }
+        localStorage.setItem(SENT_NOTIFICATIONS_STORAGE_KEY, JSON.stringify(stored));
+      }
+    }
+  } catch (_) {}
+}
+
+/**
+ * Helper to clear deduplication cache (useful for tests or account resets)
+ */
+export function clearNotificationDeduplicationCache() {
+  inMemorySentKeys.clear();
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(SENT_NOTIFICATIONS_STORAGE_KEY);
+    }
+  } catch (_) {}
+}
+
+// ============================================================================
+// AUTHENTICATION & REGISTRATION GUARDS
+// ============================================================================
 
 /**
  * Strict authentication & registration guard checks
  * As requested: Notifications are strictly NOT allowed without login or registration complete.
- * If login/registration is complete, all background push notifications are allowed to run.
+ * If login/registration is complete, background push notifications are permitted.
  */
 export function isDriverLoginComplete() {
   try {
@@ -31,7 +127,6 @@ export function isDriverLoginComplete() {
         return notLoggedOut;
       }
     }
-    // Also check driver partner or active driver session
     const dp = localStorage.getItem('ridingo_driver_partner');
     if (dp) {
       try {
@@ -40,7 +135,6 @@ export function isDriverLoginComplete() {
       } catch (_) {}
       return true;
     }
-    // Check if background push is configured or default driver partner is active
     return true;
   } catch (e) {
     return true;
@@ -54,7 +148,6 @@ export function isUserLoginComplete() {
     if (!raw) return false;
     const session = JSON.parse(raw);
     if (!session || typeof session !== 'object') return false;
-    // Check if user has completed login or registration
     const hasIdentifier = Boolean(session.phone || session.email || session.userId || session.id);
     const notLoggedOut = session.loggedOut !== true;
     return hasIdentifier && notLoggedOut;
@@ -62,6 +155,10 @@ export function isUserLoginComplete() {
     return false;
   }
 }
+
+// ============================================================================
+// NOTIFICATION ACTION LISTENERS & ROUTING
+// ============================================================================
 
 /**
  * Setup notification action listener for Capacitor and Web ServiceWorker
@@ -74,7 +171,7 @@ export function setupNotificationActionListeners() {
   if (Capacitor.isNativePlatform()) {
     try {
       LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-        console.info('[LocalNotifications] User tapped notification action:', action);
+        console.info('[PushNotifications] User tapped notification action:', action);
         const extra = action?.notification?.extra || {};
         const isDriver = extra.source === 'RidingoDriver' || extra.tripId || action?.notification?.channelId === 'driver_dispatch_alerts';
         if (isDriver) {
@@ -90,11 +187,11 @@ export function setupNotificationActionListeners() {
         }
       });
     } catch (e) {
-      console.warn('[LocalNotifications] Listener error:', e);
+      console.warn('[PushNotifications] Listener error:', e);
     }
   }
 
-  // Also listen for messages from Service Worker notification clicks
+  // Listen for messages from Service Worker notification clicks
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     try {
       navigator.serviceWorker.addEventListener('message', (event) => {
@@ -110,6 +207,9 @@ export function setupNotificationActionListeners() {
   }
 }
 
+// ============================================================================
+// AUDIO CHIMES & HAPTICS
+// ============================================================================
 
 /**
  * Plays synthesized notification chime
@@ -145,13 +245,16 @@ export function playNativeAlertChime(type = 'alert') {
       osc2.start(now + 0.08);
       osc2.stop(now + 0.6);
     } else {
-      // Plays chosen copyright-free tone (Defaults to minimal 'toom toom')
       playCustomTone(getSelectedCustomTune());
     }
   } catch (e) {}
 }
 
 export { stopActiveTone };
+
+// ============================================================================
+// NATIVE CHANNELS & PLATFORM SETUP
+// ============================================================================
 
 /**
  * Initializes notification channels on native devices (Android 8.0+)
@@ -176,30 +279,21 @@ async function ensureNativeChannel() {
         id: 'user_trip_updates',
         name: 'Ridingo Trip Updates',
         description: 'Driver assignment, arrival, and live trip status updates',
-        importance: 5, // Maximum heads-up priority
-        visibility: 1, // Visible on lockscreen
+        importance: 5,
+        visibility: 1,
         vibration: true,
         lights: true,
         lightColor: '#FFC70A'
       });
 
-      // Register interactive action buttons for lockscreen & notification center
       try {
         await LocalNotifications.registerActionTypes({
           types: [
             {
               id: 'TRIP_DISPATCH_CARD',
               actions: [
-                {
-                  id: 'accept',
-                  title: 'Accept',
-                  foreground: true
-                },
-                {
-                  id: 'view',
-                  title: 'View More',
-                  foreground: true
-                }
+                { id: 'accept', title: 'Accept', foreground: true },
+                { id: 'view', title: 'View More', foreground: true }
               ]
             }
           ]
@@ -208,47 +302,30 @@ async function ensureNativeChannel() {
 
       isChannelCreated = true;
     } catch (e) {
-      console.warn('Channel creation error:', e);
+      console.warn('[PushNotifications] Channel creation error:', e);
     }
   }
 }
 
-import { App } from '@capacitor/app';
-import { PushNotifications } from '@capacitor/push-notifications';
-
-let isAPNsRegistered = false;
-let apnsListenersAttached = false;
-
 /**
  * Register Driver App with Apple Push Notification service (APNs)
- * Enables remote native notifications when app is minimized or phone is locked.
- * Note: APNs is strictly for iOS. On Android without google-services.json, PushNotifications.register()
- * throws an unhandled IllegalStateException which crashes the app when 'Allow' is tapped.
+ * Strictly for iOS.
  */
 export async function registerDriverAPNsPush(onTripRequestReceived) {
   if (!Capacitor.isNativePlatform()) return null;
-
-  // On Android devices, LocalNotifications channel handles heads-up alerts.
-  // Avoid calling PushNotifications.register() on Android to prevent Firebase initialization crash.
-  if (Capacitor.getPlatform() !== 'ios') {
-    return false;
-  }
-
+  if (Capacitor.getPlatform() !== 'ios') return false;
   if (isAPNsRegistered) return true;
 
   try {
-    // 1. Request APNs Push Permission
     let perm = await PushNotifications.checkPermissions();
     if (perm?.receive !== 'granted') {
       perm = await PushNotifications.requestPermissions();
     }
 
     if (perm?.receive === 'granted') {
-      // 2. Register with Apple Push Notification service
       await PushNotifications.register();
       isAPNsRegistered = true;
 
-      // 3. Attach listeners once only
       if (!apnsListenersAttached) {
         apnsListenersAttached = true;
 
@@ -265,21 +342,17 @@ export async function registerDriverAPNsPush(onTripRequestReceived) {
           console.warn('[APNs] Registration Error (safely handled):', error);
         });
 
-        // 4. Remote Push Received (Foreground or Background)
         PushNotifications.addListener('pushNotificationReceived', (notification) => {
-          console.info('[APNs] Push notification received in background/foreground:', notification);
-
+          console.info('[APNs] Push notification received:', notification);
           if (typeof navigator !== 'undefined' && navigator.vibrate) {
             try { navigator.vibrate([150, 75, 150, 75, 300]); } catch (e) {}
           }
-
           const data = notification?.data || {};
           if ((data.type === 'TRIP_REQUESTED' || notification?.title?.includes('Booking')) && onTripRequestReceived) {
             onTripRequestReceived(data.trip || data);
           }
         });
 
-        // 5. User taps APNs Banner from Lockscreen / Notification Center
         PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
           console.info('[APNs] User opened app from notification banner:', action);
           const data = action?.notification?.data || {};
@@ -298,9 +371,7 @@ export async function registerDriverAPNsPush(onTripRequestReceived) {
 }
 
 /**
- * Background Task & App Lifecycle Handler:
- * When the Driver App wakes up or transitions to the foreground,
- * checks for any pending active trip requests and syncs Supabase socket immediately.
+ * Background Task & App Lifecycle Handler
  */
 export function setupBackgroundNotificationHandler(onWakeupCheck) {
   if (Capacitor.isNativePlatform()) {
@@ -314,7 +385,6 @@ export function setupBackgroundNotificationHandler(onWakeupCheck) {
     } catch (e) {}
   }
 
-  // Web visibilitychange listener fallback
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && onWakeupCheck) {
@@ -325,13 +395,11 @@ export function setupBackgroundNotificationHandler(onWakeupCheck) {
 }
 
 /**
- * Request OS-level notification permissions
- * Ensures heads-up channel on Android and safely requests runtime permission.
+ * Request OS-level notification permissions for Driver App
  */
 export async function requestDriverNotificationPermission() {
-  // STRICT GUARD: Driver must have completed login or registration
   if (!isDriverLoginComplete()) {
-    console.info('[DriverNotifications] Permission request skipped: Driver login/registration incomplete.');
+    console.info('[PushNotifications] Driver notification permission skipped: Driver login incomplete.');
     return false;
   }
 
@@ -343,15 +411,14 @@ export async function requestDriverNotificationPermission() {
         const localResult = await LocalNotifications.requestPermissions();
         granted = localResult?.display === 'granted';
       } catch (locErr) {
-        console.warn('[DriverNotifications] Local notification permission request error:', locErr);
+        console.warn('[PushNotifications] Local notification permission request error:', locErr);
       }
 
-      // Only attempt remote push / APNs register on iOS where APNs is supported
       if (Capacitor.getPlatform() === 'ios' && granted) {
         try {
           await registerDriverAPNsPush();
         } catch (pushErr) {
-          console.warn('[DriverNotifications] APNs push registration error:', pushErr);
+          console.warn('[PushNotifications] APNs push registration error:', pushErr);
         }
       }
 
@@ -372,9 +439,8 @@ export async function requestDriverNotificationPermission() {
  * Request OS-level notification permissions for User App
  */
 export async function requestUserNotificationPermission() {
-  // STRICT GUARD: User must have completed login or registration
   if (!isUserLoginComplete()) {
-    console.info('[UserNotifications] Permission request skipped: User login/registration incomplete.');
+    console.info('[PushNotifications] User notification permission skipped: User login incomplete.');
     return false;
   }
 
@@ -386,7 +452,7 @@ export async function requestUserNotificationPermission() {
         const localResult = await LocalNotifications.requestPermissions();
         granted = localResult?.display === 'granted';
       } catch (locErr) {
-        console.warn('[UserNotifications] Local notification permission request error:', locErr);
+        console.warn('[PushNotifications] Local notification permission error:', locErr);
       }
       return granted;
     }
@@ -411,25 +477,28 @@ export async function getDriverNotificationPermission() {
   try {
     if (Capacitor.isNativePlatform()) {
       const status = await LocalNotifications.checkPermissions();
-      return status?.display || 'prompt'; // 'granted' | 'denied' | 'prompt'
+      return status?.display || 'prompt';
     }
     if (typeof window !== 'undefined' && 'Notification' in window) {
-      return Notification.permission; // 'granted' | 'denied' | 'default'
+      return Notification.permission;
     }
   } catch (e) {
-    console.warn('[DriverNotifications] Error checking notification permission:', e);
+    console.warn('[PushNotifications] Error checking notification permission:', e);
   }
   return 'denied';
 }
 
+// ============================================================================
+// CORE NATIVE NOTIFICATION DISPATCHERS
+// ============================================================================
+
 /**
- * Primary Native Notification Dispatcher:
+ * Primary Native Notification Dispatcher for Driver App:
  * Bypasses in-app UI and delivers notification directly to the native OS Notification Center
  */
 export async function sendDriverNativeNotification(title, body, options = {}) {
-  // STRICT GUARD: Driver must have completed login or registration
   if (!isDriverLoginComplete()) {
-    console.info('[DriverNotifications] Suppressed notification: Driver login or registration is not complete.');
+    console.info('[PushNotifications] Suppressed notification: Driver login incomplete.');
     return false;
   }
 
@@ -440,7 +509,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
     extra = {}
   } = options;
 
-  // 1. Hardware vibration reinforcement
+  // 1. Hardware vibration
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     try {
       if (type === 'payout') {
@@ -451,7 +520,7 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
     } catch (e) {}
   }
 
-  // 2. Native Device Notification (iOS Notification Center / Android Notification Tray)
+  // 2. Native Device Notification (Capacitor iOS & Android)
   if (Capacitor.isNativePlatform()) {
     try {
       await ensureNativeChannel();
@@ -480,16 +549,15 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
       });
       return true;
     } catch (err) {
-      console.warn('Native LocalNotifications.schedule error:', err);
+      console.warn('[PushNotifications] LocalNotifications.schedule error:', err);
     }
   }
 
-  // 4. Web / Desktop / PWA OS Notification Center Fallback
+  // 3. Web / Desktop / PWA OS Notification Center Fallback
   if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
       const appIconUrl = window.location?.origin ? `${window.location.origin}/App%20icon.png` : '/App icon.png';
       if (Notification.permission === 'granted') {
-        // If Service Worker registration is available, use showNotification for persistent OS shade display
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
           const reg = await navigator.serviceWorker.ready;
           if (reg && reg.showNotification) {
@@ -513,7 +581,6 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
           }
         }
 
-        // Direct OS Notification
         const n = new Notification(title, {
           body,
           icon: appIconUrl,
@@ -536,7 +603,6 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
         };
         return true;
       } else if (Notification.permission !== 'denied') {
-        // Request on the fly if user hasn't explicitly denied
         const perm = await Notification.requestPermission();
         if (perm === 'granted') {
           const n = new Notification(title, { body, icon: appIconUrl, tag });
@@ -557,37 +623,41 @@ export async function sendDriverNativeNotification(title, body, options = {}) {
         }
       }
     } catch (err) {
-      console.warn('Browser Notification error:', err);
+      console.warn('[PushNotifications] Browser Notification error:', err);
     }
   }
 
   return false;
 }
 
+// ============================================================================
+// SPECIALIZED ACTION-LEVEL DISPATCHES (STRICT SINGLE DELIVERY)
+// ============================================================================
+
 /**
- * Specialized Driver Alert Dispatches
- * Standardized corporate notification copy without emojis for clean OS presentation.
+ * 1. Incoming Ride Request Alert (Device Native System Notification)
+ * STRICT GUARANTEE: Exactly 1 notification per trip request ID.
+ * When multiple events arrive (Supabase polling loop + WebSocket TRIP_REQUESTED + postgres_changes),
+ * only the first trigger executes; subsequent duplicates are silently ignored.
+ * Different users or new trips with different IDs will cleanly trigger their own single notification.
  */
-
-// Strict single-notification tracking for incoming ride requests
-const notifiedIncomingTripIds = new Set();
-
-// 1. Incoming Ride Request Alert (Device Native System Notification)
 export function notifyIncomingRideRequest(trip, callbacks = {}) {
-  // STRICT GUARD: Driver must have completed login or registration
   if (!isDriverLoginComplete()) {
-    console.info('[DriverNotifications] Suppressed incoming trip alert: Driver login/registration incomplete.');
+    console.info('[PushNotifications] Suppressed incoming trip alert: Driver login incomplete.');
     return false;
   }
 
   const tripId = trip?.id;
   if (!tripId) return false;
 
-  // STRICT SINGLE NOTIFICATION GUARANTEE: Never show 2 or more notifications for the same request
-  if (notifiedIncomingTripIds.has(tripId)) {
+  const dedupKey = `trip_request_${normalizeActionKey(tripId)}`;
+
+  // STRICT SINGLE NOTIFICATION GUARANTEE
+  if (hasNotificationBeenSent(dedupKey)) {
     return false;
   }
-  notifiedIncomingTripIds.add(tripId);
+  // Atomically record immediately to defeat parallel race conditions
+  recordNotificationSent(dedupKey);
 
   const pickup = cleanLocationName(trip?.pickup || trip?.from) || 'Customer Pickup';
   const drop = cleanLocationName(trip?.drop_loc || trip?.drop || trip?.to) || 'City Route';
@@ -602,8 +672,8 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
   // Auditory chime for incoming dispatch
   playNativeAlertChime('alert');
 
-  // Derive stable notification ID from tripId so Android & iOS never create duplicate notification rows
-  const stableNotifId = Math.abs(tripId.split('').reduce((acc, c) => ((acc << 5) - acc) + c.charCodeAt(0), 0)) % 900000 + 10000;
+  // Stable notification ID derived deterministically from tripId
+  const stableNotifId = Math.abs(String(tripId).split('').reduce((acc, c) => ((acc << 5) - acc) + c.charCodeAt(0), 0)) % 900000 + 10000;
 
   return sendDriverNativeNotification(
     title,
@@ -634,55 +704,132 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
   );
 }
 
-// 2. Instant PhonePe Bank Payout / Withdrawal Credit Alert
+/**
+ * 2. Driver Trip Accepted & Start OTP Push Notification
+ * STRICT GUARANTEE: When the driver accepts the trip request, exactly 1 push notification
+ * is sent confirming acceptance and displaying the customer's Start OTP.
+ */
+export function notifyDriverTripAccepted(trip) {
+  if (!isDriverLoginComplete()) {
+    console.info('[PushNotifications] Suppressed driver trip accepted alert: Driver login incomplete.');
+    return false;
+  }
+
+  const tripId = trip?.id;
+  if (!tripId) return false;
+
+  const dedupKey = `driver_accepted_${normalizeActionKey(tripId)}`;
+  if (hasNotificationBeenSent(dedupKey)) {
+    return false;
+  }
+  recordNotificationSent(dedupKey);
+
+  const pickup = cleanLocationName(trip?.pickup || trip?.from) || 'Pickup Location';
+  const startOtp = trip?.startOtp || trip?.car?.startOtp || trip?.otp || '4821';
+  const fare = Number(trip?.fare) || 600;
+
+  const title = `Trip Accepted · Start OTP: ${startOtp}`;
+  const body = `Trip confirmed (₹${fare}). Customer Start OTP: ${startOtp}.\nPickup: ${pickup}. Navigate to pickup location.`;
+
+  // Gentle confirmation tone
+  try {
+    playCustomTone('soft_chime');
+  } catch (e) {}
+
+  const stableNotifId = Math.abs((String(tripId) + '_acc').split('').reduce((acc, c) => ((acc << 5) - acc) + c.charCodeAt(0), 0)) % 900000 + 20000;
+
+  return sendDriverNativeNotification(
+    title,
+    body,
+    {
+      id: stableNotifId,
+      tag: `trip_accepted_${tripId}`,
+      type: 'alert',
+      extra: {
+        tripId,
+        startOtp,
+        pickup,
+        fare
+      }
+    }
+  );
+}
+
+/**
+ * 3. Instant PhonePe Bank Payout / Withdrawal Credit Alert
+ */
 export function notifyPayoutSuccess(amount, bankDetails = {}, utr = '') {
   const bankAcc = bankDetails.bankAccount || bankDetails.accountNumber || '•••• 4521';
   const bankName = bankDetails.bankName || 'HDFC Bank';
   const refCode = utr || `UTR${Date.now().toString().slice(-8)}`;
+  const dedupKey = `payout_${refCode}`;
+  if (hasNotificationBeenSent(dedupKey)) return false;
+  recordNotificationSent(dedupKey);
+
   return sendDriverNativeNotification(
     `Payout Processed: ₹${Number(amount).toLocaleString('en-IN')}`,
     `Transferred to ${bankName} (${bankAcc}). Reference: ${refCode}. Funds available immediately.`,
     {
       id: Math.floor(Math.random() * 500000) + 500000,
-      tag: `payout_tx_${Date.now()}`,
+      tag: `payout_tx_${refCode}`,
       type: 'payout',
       extra: { amount, utr: refCode }
     }
   );
 }
 
-// 3. Pickup OTP Verified Alert
+/**
+ * 4. Pickup OTP Verified Alert
+ */
 export function notifyStartOtpVerified(trip) {
+  const tripId = trip?.id || 'active';
+  const dedupKey = `trip_otp_verified_${normalizeActionKey(tripId)}`;
+  if (hasNotificationBeenSent(dedupKey)) return false;
+  recordNotificationSent(dedupKey);
+
   return sendDriverNativeNotification(
     'Pickup OTP Verified',
     'Customer identity confirmed. Vehicle condition inspection unlocked.',
     {
       id: 2001,
-      tag: 'otp_verified_start',
+      tag: `otp_verified_${tripId}`,
       type: 'alert',
-      extra: { tripId: trip?.id }
+      extra: { tripId }
     }
   );
 }
 
-// 4. Trip Completed & Payment Settled Alert
+/**
+ * 5. Trip Completed & Payment Settled Alert
+ */
 export function notifyTripCompleted(trip, fare) {
+  const tripId = trip?.id || 'completed';
+  const dedupKey = `trip_completed_${normalizeActionKey(tripId)}`;
+  if (hasNotificationBeenSent(dedupKey)) return false;
+  recordNotificationSent(dedupKey);
+
   const earned = fare || trip?.fare || 650;
   return sendDriverNativeNotification(
     'Trip Completed',
     `₹${earned} earnings deposited into your Ridingo Driver wallet. Trip concluded.`,
     {
       id: 2002,
-      tag: 'trip_completed_fare',
+      tag: `trip_completed_${tripId}`,
       type: 'payout',
-      extra: { tripId: trip?.id, fare: earned }
+      extra: { tripId, fare: earned }
     }
   );
 }
 
-// 5. Driver Online / Radar Activated Alert
+/**
+ * 6. Driver Online / Radar Activated Alert
+ */
 export function notifyDriverOnlineStatus(isOnline) {
   if (!isOnline) return;
+  const dedupKey = `driver_online_${new Date().toISOString().slice(0, 10)}`;
+  if (hasNotificationBeenSent(dedupKey)) return false;
+  recordNotificationSent(dedupKey);
+
   return sendDriverNativeNotification(
     'Duty Status: Online',
     'Dispatch system active. Device will receive alerts for incoming ride requests.',
@@ -695,14 +842,13 @@ export function notifyDriverOnlineStatus(isOnline) {
 }
 
 /**
- * 6. Dismiss Incoming Ride Notification & Silence Tone
- * Cancels active tone immediately and removes delivered/pending OS notifications
+ * 7. Dismiss Incoming Ride Notification & Silence Tone
+ * Cancels active tone immediately and removes delivered/pending OS notifications from the shade.
+ * NOTE: Intentionally DOES NOT delete the trip deduplication key so that future polling intervals
+ * or component re-renders will NEVER re-trigger a second notification for this same trip request.
  */
 export async function dismissIncomingRideNotification(tripId = '') {
   try {
-    if (tripId) {
-      notifiedIncomingTripIds.delete(tripId);
-    }
     // 1. Immediately silence any active tone
     stopActiveTone();
 
@@ -722,82 +868,56 @@ export async function dismissIncomingRideNotification(tripId = '') {
           }
         }
       } catch (nativeErr) {
-        console.warn('[DriverNotifications] Error removing delivered notifications:', nativeErr);
+        console.warn('[PushNotifications] Error removing delivered notifications:', nativeErr);
       }
     }
   } catch (err) {
-    console.warn('[DriverNotifications] dismissIncomingRideNotification error:', err);
+    console.warn('[PushNotifications] dismissIncomingRideNotification error:', err);
   }
 }
 
-// Global deduplication cache for user push notifications
-const sentUserNotificationsCache = new Set();
-try {
-  if (typeof localStorage !== 'undefined') {
-    const savedSent = JSON.parse(localStorage.getItem('ridingo_sent_user_notifications') || '[]');
-    if (Array.isArray(savedSent)) {
-      savedSent.forEach(k => sentUserNotificationsCache.add(k));
-    }
-  }
-} catch (_) {}
-
 /**
- * 7. Send Device Default Native Notification for User App upon Driver Acceptance
+ * 8. Send Device Default Native Notification for User App upon Driver Acceptance
  * Enforces strict single-delivery deduplication so the user only receives one push notification.
  */
 export async function sendUserNativeNotification(title, body, options = {}) {
-  // STRICT GUARD: User must have completed login or registration
   if (!isUserLoginComplete()) {
-    console.info('[UserNotifications] Suppressed notification: User login or registration is not complete.');
+    console.info('[PushNotifications] Suppressed notification: User login incomplete.');
     return false;
   }
 
-  const tripKey = String(options.extra?.tripId || options.tag || '')
-    .trim()
-    .toLowerCase()
-    .replace(/^trp-/, '');
+  const rawTripId = String(options.extra?.tripId || options.tag || '').trim();
+  const tripKey = normalizeActionKey(rawTripId);
 
-  // 1. Strict deduplication check: If this trip accepted notification was already delivered, suppress it
+  // Strict deduplication check: If this trip accepted notification was already delivered, suppress it
   if (tripKey) {
-    const notifKey = `user_accepted_${tripKey}`;
-    if (sentUserNotificationsCache.has(notifKey)) {
-      console.info('[UserNotifications] Suppressed duplicate notification for trip:', tripKey);
+    const dedupKey = `user_accepted_${tripKey}`;
+    if (hasNotificationBeenSent(dedupKey)) {
+      console.info('[PushNotifications] Suppressed duplicate user notification for trip:', tripKey);
       return false;
     }
-    sentUserNotificationsCache.add(notifKey);
-
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const list = JSON.parse(localStorage.getItem('ridingo_sent_user_notifications') || '[]');
-        if (!list.includes(notifKey)) {
-          list.push(notifKey);
-          if (list.length > 50) list.shift();
-          localStorage.setItem('ridingo_sent_user_notifications', JSON.stringify(list));
-        }
-      }
-    } catch (_) {}
+    recordNotificationSent(dedupKey);
   }
 
   // Calculate stable deterministic notification ID so OS notification manager replaces rather than stacks
   const numericId = tripKey ? parseInt(tripKey.replace(/\D/g, '') || '1001', 10) : 1001;
   const stableId = options.id || (30000 + (numericId % 60000));
   const stableTag = options.tag || (tripKey ? `user_trip_assigned_${tripKey}` : `user_driver_assigned_${Date.now()}`);
-
   const { extra = {} } = options;
 
-  // 2. Play minimal gentle tone
+  // Gentle soft chime
   try {
     playCustomTone('soft_chime');
   } catch (e) {}
 
-  // 3. Vibration
+  // Hardware vibration
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     try {
       navigator.vibrate([100, 50, 150]);
     } catch (e) {}
   }
 
-  // 4. Native Device Notification (Capacitor iOS & Android)
+  // Native Device Notification (Capacitor iOS & Android)
   if (Capacitor.isNativePlatform()) {
     try {
       await ensureNativeChannel();
@@ -824,16 +944,15 @@ export async function sendUserNativeNotification(title, body, options = {}) {
       });
       return true;
     } catch (err) {
-      console.warn('[UserNotifications] LocalNotifications.schedule error:', err);
+      console.warn('[PushNotifications] LocalNotifications.schedule error:', err);
     }
   }
 
-  // 5. Web Browser Notification with stable tag to prevent multiple browser toasts
+  // Web Browser Notification with stable tag to prevent multiple browser toasts
   if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
       const appIconUrl = window.location?.origin ? `${window.location.origin}/App%20icon.png` : '/App icon.png';
       if (Notification.permission === 'granted') {
-        // If Service Worker registration is available, use showNotification
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
           const reg = await navigator.serviceWorker.ready;
           if (reg && reg.showNotification) {
@@ -884,4 +1003,3 @@ export async function sendUserNativeNotification(title, body, options = {}) {
 
   return false;
 }
-

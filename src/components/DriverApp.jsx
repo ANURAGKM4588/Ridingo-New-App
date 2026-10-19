@@ -17,6 +17,7 @@ import {
   requestDriverNotificationPermission,
   sendDriverNativeNotification,
   notifyIncomingRideRequest,
+  notifyDriverTripAccepted,
   notifyPayoutSuccess,
   notifyStartOtpVerified,
   notifyTripCompleted,
@@ -25,7 +26,7 @@ import {
   setupBackgroundNotificationHandler,
   playNativeAlertChime,
   dismissIncomingRideNotification
-} from '../services/driverNotificationService';
+} from '../services/pushNotificationService';
 import {
   AVAILABLE_TUNES,
   getSelectedCustomTune,

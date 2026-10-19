@@ -7,6 +7,7 @@ import { processPhonePeCashbackTransfer } from '../utils/phonepe';
 import { realtime } from '../utils/realtime';
 import {
   notifyIncomingRideRequest,
+  notifyDriverTripAccepted,
   sendUserNativeNotification,
   requestUserNotificationPermission,
   requestDriverNotificationPermission,
@@ -15,7 +16,7 @@ import {
   isDriverLoginComplete,
   isUserLoginComplete,
   setupNotificationActionListeners
-} from '../services/driverNotificationService';
+} from '../services/pushNotificationService';
 import { cleanLocationName } from '../utils/locationCleaner';
 import {
   isUserTrip,
@@ -1688,6 +1689,13 @@ export function AppProvider({ children }) {
 
     // Driver-specific confirmation feedback
     addToast('Ride accepted. Proceeding to pickup location.', 'check');
+
+    // Single native push notification for driver confirming trip accept with customer OTP
+    notifyDriverTripAccepted({
+      ...(currentTrip || {}),
+      id: tripId,
+      startOtp: targetOtp
+    });
 
     // Broadcast across realtime bus & update Supabase (User app will receive TRIP_ACCEPTED strictly once)
     realtime.acceptRide(tripId, driverObj, targetOtp);
