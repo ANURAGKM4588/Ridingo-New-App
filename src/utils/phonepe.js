@@ -86,7 +86,8 @@ export async function openPhonePeCheckout({
   name = 'Ridingo',
   description = 'On-demand Driver Services',
   prefill = {},
-  notes = {},
+  trip,
+  breakdown,
   onSuccess,
   onDismiss,
   onError
@@ -101,6 +102,8 @@ export async function openPhonePeCheckout({
       description,
       prefill,
       notes,
+      trip,
+      breakdown,
       onSuccess,
       onDismiss,
       onError

@@ -11,6 +11,12 @@ import {
   verifyPhonePePaymentStatus
 } from '../utils/phonepe';
 import { MAJOR_UPI_APPS, triggerUpiDeepLink } from '../utils/upiDeepLink';
+import {
+  autoShareTripInvoice,
+  generateTripInvoiceText,
+  shareInvoiceViaWhatsApp,
+  shareInvoiceViaEmail
+} from '../utils/tripInvoiceSharing';
 
 /**
  * Full-Screen Payment Options Sheet with PhonePe Gateway & Ridingo Wallet
@@ -232,7 +238,23 @@ export default function PhonePePgCheckout() {
 
   const amount = Number(activeSession.amount) || 200;
   const txnId = activeSession.transactionId || ('MT_' + Date.now().toString(36).toUpperCase());
-  const userName = activeSession?.prefill?.name || 'Customer';
+  const userName = activeSession?.prefill?.name || activeSession?.trip?.rider?.name || 'Customer';
+
+  // Itemized Ride Details & Invoice Breakdown (Base Fare, Extra Km, Waiting Charge, Advance)
+  const breakdown = activeSession?.breakdown;
+  const sessionTrip = activeSession?.trip;
+  const extraKm = Number(breakdown?.extraKm || sessionTrip?.extensionDistanceKm || sessionTrip?.additionalKm || 0);
+  const extensionFare = Number(breakdown?.extensionFare || sessionTrip?.extensionFare || (extraKm * 18) || 0);
+  const waitingMins = Number(breakdown?.waitingMinutes || sessionTrip?.waitingMinutes || 0);
+  const waitingFare = Number(breakdown?.waitingFare || sessionTrip?.waitingFare || (waitingMins * 2) || 0);
+  const baseFare = Number(breakdown?.baseFare || sessionTrip?.baseFare || sessionTrip?.originalBaseFare || Math.max(0, amount - extensionFare - waitingFare));
+  const advancePaid = Number(breakdown?.advancePaid || sessionTrip?.advance || sessionTrip?.advancePaid || 0);
+  const totalTripFare = Number(breakdown?.totalTripFare || (baseFare + extensionFare + waitingFare) || amount);
+
+  const hasItemizedDetails = Boolean(breakdown) || extraKm > 0 || waitingMins > 0 || advancePaid > 0;
+
+  const riderPhone = activeSession?.prefill?.phone || activeSession?.prefill?.contact || sessionTrip?.rider?.phone || appContext?.user?.phone || '';
+  const riderEmail = activeSession?.prefill?.email || sessionTrip?.rider?.email || appContext?.user?.email || '';
 
   // Real-time Ridingo Wallet Balance from AppContext
   const cleanBalance = Math.max(0, Number(appContext?.userBalance) || 0);
@@ -255,6 +277,34 @@ export default function PhonePePgCheckout() {
     const isWallet = paymentDetails.gateway === 'Ridingo Wallet' || paymentDetails.paymentMode === 'WALLET';
     setStatusMessage(isWallet ? 'Transaction Approved by Ridingo Wallet' : 'Transaction Approved by Gateway');
 
+    // Auto-share official trip invoice to customer WhatsApp (100% free) with Email fallback
+    try {
+      if (sessionTrip || breakdown || hasItemizedDetails) {
+        autoShareTripInvoice({
+          trip: sessionTrip,
+          invoiceData: {
+            tripId: activeSession?.notes?.tripId || sessionTrip?.id || txnId,
+            baseFare,
+            extraKm,
+            extensionFare,
+            waitingMinutes: waitingMins,
+            waitingFare,
+            totalTripFare,
+            advancePaid,
+            balancePayable: amount,
+            riderName: userName,
+            riderPhone,
+            riderEmail,
+            pickup: sessionTrip?.pickup?.name || sessionTrip?.pickup || activeSession?.pickup || 'Pickup Location',
+            drop: sessionTrip?.drop?.name || sessionTrip?.drop || activeSession?.drop || 'Destination'
+          },
+          preferredMethod: 'whatsapp'
+        });
+      }
+    } catch (e) {
+      console.warn('[PhonePePgCheckout] Auto share notice:', e);
+    }
+
     setTimeout(() => {
       const verifiedPayload = {
         gateway: isWallet ? 'Ridingo Wallet' : (paymentDetails.gateway || 'PhonePe'),
@@ -268,7 +318,7 @@ export default function PhonePePgCheckout() {
         activeSession.onSuccess(verifiedPayload);
       }
       setActiveSession(null);
-    }, 1100);
+    }, 1200);
   };
 
   // 1. Pay via Ridingo Wallet (Recommended 1-Tap Payment)
@@ -701,9 +751,101 @@ export default function PhonePePgCheckout() {
                 ₹{amount}
               </span>
               <span style={{ fontSize: '13px', color: theme.textMuted, fontWeight: 500 }}>
-                total payable amount
+                {hasItemizedDetails ? 'net balance payable' : 'total payable amount'}
               </span>
             </div>
+
+            {/* ITEMIZED INVOICE BREAKDOWN (Base Fare, Additional Ride, Waiting Charges, Advance) */}
+            {hasItemizedDetails && (
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  background: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.textMuted }}>
+                    Itemized Trip Bill Details
+                  </span>
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#10B981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '6px' }}>
+                    Transparent Pricing
+                  </span>
+                </div>
+
+                {/* Base Fare */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: theme.textPrimary }}>
+                  <span>Base Booked Fare</span>
+                  <span style={{ fontWeight: 650 }}>₹{baseFare}</span>
+                </div>
+
+                {/* Additional Trip Distance */}
+                {extraKm > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: theme.textPrimary }}>
+                    <span>
+                      Additional Ride (+{extraKm.toFixed(1)} km @ ₹18/km)
+                    </span>
+                    <span style={{ fontWeight: 650, color: '#D97706' }}>+₹{extensionFare}</span>
+                  </div>
+                )}
+
+                {/* Waiting Charge */}
+                {waitingMins > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: theme.textPrimary }}>
+                    <span>
+                      Waiting Charges ({waitingMins} mins @ ₹2/min)
+                    </span>
+                    <span style={{ fontWeight: 650, color: '#EF4444' }}>+₹{waitingFare}</span>
+                  </div>
+                )}
+
+                {/* Gross Total */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: theme.textMuted, paddingTop: '4px', borderTop: `1px dashed ${theme.cardBorder}` }}>
+                  <span>Gross Trip Fare</span>
+                  <span style={{ fontWeight: 600 }}>₹{totalTripFare}</span>
+                </div>
+
+                {/* Advance Deducted */}
+                {advancePaid > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#10B981', fontWeight: 600 }}>
+                    <span>Advance Booking Paid</span>
+                    <span>-₹{advancePaid}</span>
+                  </div>
+                )}
+
+                {/* Net Balance Due */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px', color: theme.textPrimary, fontWeight: 800, paddingTop: '6px', borderTop: `1px solid ${theme.cardBorder}` }}>
+                  <span>Net Balance Payable</span>
+                  <span style={{ color: '#2563EB' }}>₹{amount}</span>
+                </div>
+
+                {/* Auto delivery notice on customer's WhatsApp & Email */}
+                <div
+                  style={{
+                    marginTop: '4px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: isDark ? 'rgba(37, 99, 235, 0.12)' : 'rgba(37, 99, 235, 0.06)',
+                    fontSize: '11px',
+                    color: theme.textMuted,
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Icon name="check" size={13} color="#2563EB" />
+                  <span>
+                    Auto-shares official invoice to WhatsApp {riderPhone ? `(${riderPhone.slice(-4).padStart(riderPhone.length, '•')})` : ''} & Email upon payment.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* =========================================================

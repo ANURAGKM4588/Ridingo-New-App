@@ -2615,7 +2615,18 @@ export default function DriverApp() {
       prev.map(t => (t.id === tripId ? {
         ...t,
         status: 'completed',
-        completedAt: Date.now()
+        completedAt: Date.now(),
+        fare: paymentDetails?.fare || t.fare,
+        baseFare: paymentDetails?.baseFare || t.baseFare || t.fare,
+        extensionDistanceKm: paymentDetails?.extensionDistanceKm ?? t.extensionDistanceKm,
+        extensionFare: paymentDetails?.extensionFare ?? t.extensionFare,
+        waitingMinutes: paymentDetails?.waitingMinutes ?? t.waitingMinutes,
+        waitingFare: paymentDetails?.waitingFare ?? t.waitingFare,
+        advancePaid: paymentDetails?.advancePaid ?? t.advancePaid,
+        balancePaid: paymentDetails?.balancePaid ?? t.balancePaid,
+        invoiceText: paymentDetails?.invoiceText || t.invoiceText,
+        sharedToPhone: paymentDetails?.sharedToPhone,
+        sharedToEmail: paymentDetails?.sharedToEmail
       } : t))
     );
 

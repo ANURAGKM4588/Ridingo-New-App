@@ -1002,10 +1002,23 @@ export function AppProvider({ children }) {
       stopActiveTone();
     });
 
-    const unbindComp = realtime.on('TRIP_COMPLETED', ({ tripId }) => {
+    const unbindComp = realtime.on('TRIP_COMPLETED', ({ tripId, ...details }) => {
       const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
       setTrips(prev =>
-        prev.map(t => (isMatch(t.id) ? { ...t, status: 'completed' } : t))
+        prev.map(t => (isMatch(t.id) ? {
+          ...t,
+          status: 'completed',
+          fare: details.fare || t.fare,
+          baseFare: details.baseFare || t.baseFare || t.fare,
+          extensionDistanceKm: details.extensionDistanceKm ?? t.extensionDistanceKm,
+          extensionFare: details.extensionFare ?? t.extensionFare,
+          waitingMinutes: details.waitingMinutes ?? t.waitingMinutes,
+          waitingFare: details.waitingFare ?? t.waitingFare,
+          advancePaid: details.advancePaid ?? t.advancePaid,
+          balancePaid: details.balancePaid ?? t.balancePaid,
+          invoiceText: details.invoiceText || t.invoiceText,
+          completedAt: details.timestamp || Date.now()
+        } : t))
       );
       addNotification(
         'Trip Completed',
@@ -1018,9 +1031,22 @@ export function AppProvider({ children }) {
       setUTab('home');
     });
 
-    const unbindRideComp = realtime.on('RIDE_COMPLETED', ({ tripId }) => {
+    const unbindRideComp = realtime.on('RIDE_COMPLETED', ({ tripId, ...details }) => {
       setTrips(prev =>
-        prev.map(t => (t.id === tripId ? { ...t, status: 'completed' } : t))
+        prev.map(t => (t.id === tripId ? {
+          ...t,
+          status: 'completed',
+          fare: details.fare || t.fare,
+          baseFare: details.baseFare || t.baseFare || t.fare,
+          extensionDistanceKm: details.extensionDistanceKm ?? t.extensionDistanceKm,
+          extensionFare: details.extensionFare ?? t.extensionFare,
+          waitingMinutes: details.waitingMinutes ?? t.waitingMinutes,
+          waitingFare: details.waitingFare ?? t.waitingFare,
+          advancePaid: details.advancePaid ?? t.advancePaid,
+          balancePaid: details.balancePaid ?? t.balancePaid,
+          invoiceText: details.invoiceText || t.invoiceText,
+          completedAt: details.timestamp || Date.now()
+        } : t))
       );
       // Automatic dismissal of live tracking popup & return to home after payment settlement
       setLiveTrackingOpen(false);
@@ -1849,7 +1875,23 @@ export function AppProvider({ children }) {
     setUTab('home');
   };
 
-  const settleTripPayment = (tripId, { amount, fare, tip = 0, method = 'PhonePe UPI', isCash = false } = {}) => {
+  const settleTripPayment = (tripId, {
+    amount,
+    fare,
+    tip = 0,
+    method = 'PhonePe UPI',
+    isCash = false,
+    baseFare,
+    extensionDistanceKm,
+    extensionFare,
+    waitingMinutes,
+    waitingFare,
+    advancePaid,
+    balancePaid,
+    invoiceText,
+    sharedToPhone,
+    sharedToEmail
+  } = {}) => {
     if (settledTripIdsRef.current.has(tripId)) {
       console.info('[settleTripPayment] Trip already settled, preventing duplicate:', tripId);
       return;
@@ -1901,21 +1943,60 @@ export function AppProvider({ children }) {
         ...t,
         status: 'completed',
         completedAt: Date.now(),
+        fare: tripFare,
+        baseFare: baseFare || t.baseFare || t.fare,
+        extensionDistanceKm: extensionDistanceKm ?? t.extensionDistanceKm,
+        extensionFare: extensionFare ?? t.extensionFare,
+        waitingMinutes: waitingMinutes ?? t.waitingMinutes,
+        waitingFare: waitingFare ?? t.waitingFare,
+        advancePaid: advancePaid ?? t.advancePaid,
+        balancePaid: balancePaid ?? t.balancePaid,
+        invoiceText: invoiceText || t.invoiceText,
+        sharedToPhone,
+        sharedToEmail,
         finalSettlement: {
           total: amount || tripFare,
           driverEarnings,
           commission: companyCommission,
           tip,
           method,
-          isCash
+          isCash,
+          baseFare,
+          extensionDistanceKm,
+          extensionFare,
+          waitingMinutes,
+          waitingFare,
+          advancePaid,
+          balancePaid,
+          invoiceText,
+          sharedToPhone,
+          sharedToEmail
         }
       } : t))
     );
 
-    realtime.completeRide(tripId, { amount, fare, tip, isCash });
+    realtime.completeRide(tripId, {
+      amount: amount || tripFare,
+      fare: tripFare,
+      baseFare,
+      extensionDistanceKm,
+      extensionFare,
+      waitingMinutes,
+      waitingFare,
+      advancePaid,
+      balancePaid,
+      invoiceText,
+      tip,
+      isCash
+    });
     updateTripStatusInSupabase(tripId, 'completed', {
       done_ts: Date.now(),
-      fare: amount || tripFare
+      fare: amount || tripFare,
+      base_fare: baseFare,
+      extension_km: extensionDistanceKm,
+      extension_fare: extensionFare,
+      waiting_minutes: waitingMinutes,
+      waiting_fare: waitingFare
     });
 
     // Auto-redirect User App to home if currently viewing this completed trip

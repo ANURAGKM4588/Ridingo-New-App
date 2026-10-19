@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { generateLivePhonePeQrUrl } from '../utils/phonepe';
+import {
+  generateTripInvoiceText,
+  shareInvoiceViaWhatsApp,
+  shareInvoiceViaEmail,
+  autoShareTripInvoice
+} from '../utils/tripInvoiceSharing';
 
 export default function TripInvoiceModal({
   trip,
@@ -12,6 +18,8 @@ export default function TripInvoiceModal({
   const [customTip, setCustomTip] = useState('');
   const [showCashPenaltyDialog, setShowCashPenaltyDialog] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [copiedInvoice, setCopiedInvoice] = useState(false);
+  const [shareStatus, setShareStatus] = useState(null);
 
   // Dynamic Fare Calculations:
   // totalFare = baseFare + (extraKm * ratePerKm) + (billableWaitingMinutes * ratePerMinute);
@@ -26,11 +34,43 @@ export default function TripInvoiceModal({
 
   const baseFare = Number(trip?.originalBaseFare) || (Number(trip?.fare) ? Math.max(0, Number(trip?.fare) - extensionFare - waitingFare) : 600);
   const totalTripFare = baseFare + extensionFare + waitingFare;
+  const advancePaid = Number(trip?.advance) || 0;
+  const balancePayable = Math.max(0, totalTripFare - advancePaid);
 
   // Platform commission 30% -> Driver receives 70% earnings
   const driverEarningsNet = Math.round(totalTripFare * 0.70);
   const tipAmount = customTip !== '' ? (Number(customTip) || 0) : selectedTip;
   const totalDriverPayout = driverEarningsNet + tipAmount;
+
+  // Registered Customer & Driver Details
+  const customerName = trip?.rider?.name || trip?.userName || 'Customer';
+  const customerPhone = trip?.rider?.phone || trip?.userPhone || trip?.phone || '+91 98470 12345';
+  const customerEmail = trip?.rider?.email || trip?.userEmail || trip?.email || 'customer@ridingo.app';
+  const driverName = trip?.driver || trip?.car?.driverName || 'Verified Partner';
+  const driverPhone = trip?.driverPhone || trip?.car?.driverPhone || '';
+
+  const invoiceData = {
+    trip,
+    baseFare,
+    extraKm,
+    ratePerKm,
+    extensionFare,
+    waitingSeconds,
+    billableWaitingMinutes,
+    waitingRatePerMin,
+    waitingFare,
+    totalTripFare,
+    advancePaid,
+    balancePaid: balancePayable,
+    driverName,
+    driverPhone,
+    riderName: customerName,
+    riderPhone: customerPhone,
+    riderEmail: customerEmail,
+    paymentMethod: 'PhonePe Digital UPI'
+  };
+
+  const invoiceText = generateTripInvoiceText(invoiceData);
 
   // Live PhonePe UPI QR Code for settlement
   const qrData = generateLivePhonePeQrUrl({
@@ -41,6 +81,18 @@ export default function TripInvoiceModal({
 
   const handleSimulatePaymentSettlement = () => {
     setIsProcessingPayment(true);
+
+    // Auto-share invoice on customer's registered WhatsApp (100% free) with Email fallback
+    try {
+      autoShareTripInvoice({
+        trip,
+        invoiceData,
+        preferredMethod: 'whatsapp'
+      });
+    } catch (e) {
+      console.warn('[TripInvoiceModal] Auto share notice:', e);
+    }
+
     setTimeout(() => {
       setIsProcessingPayment(false);
       if (onDigitalPaymentSuccess) {
@@ -54,8 +106,13 @@ export default function TripInvoiceModal({
           waitingFare: waitingFare,
           driverEarnings: driverEarningsNet,
           tip: tipAmount,
+          advancePaid: advancePaid,
+          balancePaid: balancePayable,
           method: 'PhonePe QR',
-          gateway: 'PhonePe Escrow'
+          gateway: 'PhonePe Escrow',
+          invoiceText: invoiceText,
+          sharedToPhone: customerPhone,
+          sharedToEmail: customerEmail
         });
       }
     }, 1000);
@@ -157,7 +214,7 @@ export default function TripInvoiceModal({
               {waitingSeconds > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
                   <span>
-                    Waiting Time ({Math.floor(waitingSeconds / 60)}m{billableWaitingMinutes > 0 ? ` · ${billableWaitingMinutes}m billable` : ' · 60m Free'})
+                    Waiting Time ({Math.floor(waitingSeconds / 60)}m{billableWaitingMinutes > 0 ? ` · ${billableWaitingMinutes}m billable @ ₹${waitingRatePerMin}/m` : ' · 60m Free'})
                   </span>
                   <b style={{ color: waitingFare > 0 ? '#DC2626' : '#059669' }}>
                     {waitingFare > 0 ? `+₹${waitingFare}` : 'Free (₹0)'}
@@ -166,10 +223,139 @@ export default function TripInvoiceModal({
               )}
               <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <b style={{ color: '#0F172A', fontSize: '13.5px' }}>Total Booking Bill</b>
-                <b style={{ color: '#0F172A', fontSize: '15px' }}>₹{totalTripFare}</b>
+                <span style={{ color: '#0F172A', fontWeight: 600 }}>Gross Trip Total</span>
+                <b style={{ color: '#0F172A', fontSize: '14.5px' }}>₹{totalTripFare}</b>
+              </div>
+              {advancePaid > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2563EB', fontSize: '12.5px' }}>
+                  <span>Advance Already Paid</span>
+                  <b>-₹{advancePaid}</b>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '2px' }}>
+                <b style={{ color: '#0F172A', fontSize: '14px' }}>Net Balance Settled</b>
+                <b style={{ color: '#16A34A', fontSize: '16px', fontWeight: 850 }}>₹{balancePayable}</b>
               </div>
             </div>
+          </div>
+
+          {/* Customer Auto-Share & Free Delivery Card */}
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '14px 16px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.04)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                <b style={{ fontSize: '12px', color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Auto-Share Invoice to Customer
+                </b>
+              </div>
+              <span style={{ fontSize: '10.5px', color: '#059669', background: '#ECFDF5', padding: '2px 7px', borderRadius: '999px', fontWeight: 700 }}>
+                100% Free
+              </span>
+            </div>
+
+            <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.45 }}>
+              <div><b>{customerName}</b></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '2px', flexWrap: 'wrap' }}>
+                <span>📞 {customerPhone}</span>
+                <span>✉️ {customerEmail}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '2px' }}>
+              {/* WhatsApp Button (100% Free wa.me deep link, no API fees) */}
+              <button
+                type="button"
+                onClick={() => {
+                  shareInvoiceViaWhatsApp(customerPhone, invoiceText);
+                  setShareStatus('whatsapp');
+                }}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: '12px',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  color: '#059669',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease'
+                }}
+              >
+                <Icon name="whatsapp" size={15} color="#059669" />
+                <span>WhatsApp</span>
+              </button>
+
+              {/* Email Button (Free direct mailto fallback) */}
+              <button
+                type="button"
+                onClick={() => {
+                  shareInvoiceViaEmail(customerEmail, trip?.id, invoiceText);
+                  setShareStatus('email');
+                }}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: '12px',
+                  background: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  color: '#2563EB',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease'
+                }}
+              >
+                <Icon name="mail" size={15} color="#2563EB" />
+                <span>Send Email</span>
+              </button>
+            </div>
+
+            {/* Copy Full Invoice Button */}
+            <button
+              type="button"
+              onClick={async () => {
+                if (navigator.clipboard) {
+                  await navigator.clipboard.writeText(invoiceText);
+                  setCopiedInvoice(true);
+                  setTimeout(() => setCopiedInvoice(false), 2200);
+                }
+              }}
+              style={{
+                padding: '7px 10px',
+                borderRadius: '10px',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                color: '#475569',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px'
+              }}
+            >
+              <Icon name={copiedInvoice ? "check" : "copy"} size={13} color={copiedInvoice ? '#059669' : '#64748B'} />
+              <span>{copiedInvoice ? 'Invoice Text Copied!' : 'Copy Full Invoice Text'}</span>
+            </button>
           </div>
 
           {/* Driver Earnings Summary Card (Shows ONLY Driver's Earnings after 30% Commission) */}

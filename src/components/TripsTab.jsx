@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import { openPhonePeCheckout } from '../utils/phonepe';
 import { cleanLocationName, getLocationUpToFirstComma } from '../utils/locationCleaner';
+import { generateTripInvoiceText, shareInvoiceViaWhatsApp, shareInvoiceViaEmail, autoShareTripInvoice } from '../utils/tripInvoiceSharing';
 
 const CATS = {
   hourly: { name: 'Hourly', icon: 'hourly', unit: 'hr', units: 'hours' },
@@ -33,17 +34,45 @@ export default function TripsTab() {
   const [filter, setFilter] = useState('all');
 
   const handlePayRemaining = (trip) => {
-    const rem = Math.max(0, trip.fare - (trip.advance || Math.round(trip.fare * 0.3)));
+    const extraKm = Number(trip.extensionDistanceKm || trip.additionalKm || 0);
+    const extensionFare = Number(trip.extensionFare || (extraKm * 18) || 0);
+    const waitingMins = Number(trip.waitingMinutes || 0);
+    const waitingFare = Number(trip.waitingFare || (waitingMins * 2) || 0);
+    const baseFare = Number(trip.baseFare || trip.originalBaseFare || trip.fare || 0);
+    const totalCalculated = baseFare + extensionFare + waitingFare;
+    const advancePaid = Number(trip.advance || trip.advancePaid || Math.round(baseFare * 0.3));
+    const rem = Math.max(0, totalCalculated - advancePaid);
     if (rem <= 0) return;
+
+    const breakdown = {
+      tripId: trip.id,
+      bookingId: trip.id,
+      baseFare,
+      extraKm,
+      extensionFare,
+      waitingMinutes: waitingMins,
+      waitingFare,
+      totalTripFare: totalCalculated,
+      advancePaid,
+      balancePayable: rem,
+      riderName: user?.name || trip?.rider?.name || 'Customer',
+      riderPhone: user?.phone || trip?.rider?.phone || '',
+      riderEmail: user?.email || trip?.rider?.email || '',
+      pickup: trip?.pickup?.name || trip?.pickup || 'Pickup',
+      drop: trip?.drop?.name || trip?.drop || 'Destination',
+      driverName: trip?.driver?.name || 'Assigned Driver'
+    };
 
     openPhonePeCheckout({
       amount: rem,
       name: 'Ridingo Trip Final Settlement',
-      description: `Remaining balance for ${trip.id}`,
+      description: `Remaining balance for #${trip.id}`,
+      trip,
+      breakdown,
       prefill: {
-        name: user?.name,
-        email: user?.email,
-        phone: user?.phone
+        name: user?.name || trip?.rider?.name,
+        email: user?.email || trip?.rider?.email,
+        phone: user?.phone || trip?.rider?.phone
       },
       notes: {
         tripId: trip.id
@@ -51,7 +80,17 @@ export default function TripsTab() {
       onSuccess: (paymentRes) => {
         const pId = paymentRes.phonepe_payment_id || paymentRes.phonepe_transaction_id || ('pay_ppe_' + Date.now().toString(36));
         setTrips(prev =>
-          prev.map(t => (t.id === trip.id ? { ...t, balancePaid: true, balancePaymentId: pId } : t))
+          prev.map(t => (t.id === trip.id ? {
+            ...t,
+            balancePaid: true,
+            balancePaymentId: pId,
+            fare: totalCalculated,
+            baseFare,
+            extensionDistanceKm: extraKm,
+            extensionFare,
+            waitingMinutes: waitingMins,
+            waitingFare
+          } : t))
         );
         const newTx = {
           ts: Date.now(),
@@ -64,6 +103,20 @@ export default function TripsTab() {
         };
         setUtx(prev => [newTx, ...prev]);
         addToast(`Remaining ₹${rem} settled via PhonePe!`, 'check');
+
+        // Auto-share invoice via WhatsApp with Email fallback
+        try {
+          autoShareTripInvoice({
+            trip,
+            invoiceData: {
+              ...breakdown,
+              amountPaid: rem
+            },
+            preferredMethod: 'whatsapp'
+          });
+        } catch (e) {
+          console.warn('Invoice auto share error:', e);
+        }
       },
       onError: () => {
         addToast('Settlement cancelled or failed', 'warn');
@@ -378,6 +431,111 @@ export default function TripsTab() {
                   >
                     <span>Cancellation fee charged</span>
                     <b>₹{t.cancellationFee || t.cancelFee}</b>
+                  </div>
+                )}
+
+                {/* Completed Trip Invoice Breakdown & Free Auto-Share Buttons */}
+                {t.status === 'completed' && (
+                  <div style={{ marginTop: '10px', paddingTop: '9px', borderTop: '1px solid var(--line)' }}>
+                    <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '10px 12px', marginBottom: '8px', border: '1px solid #F1F5F9', fontSize: '12px', color: '#64748B' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                        <span>Base Booking Fare</span>
+                        <b style={{ color: '#0F172A' }}>₹{t.baseFare || (t.fare - (t.extensionFare || 0) - (t.waitingFare || 0))}</b>
+                      </div>
+                      {(t.extensionDistanceKm > 0 || t.extensionFare > 0) && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                          <span>Additional Ride ({t.extensionDistanceKm ? `${Number(t.extensionDistanceKm).toFixed(2)} km` : 'Extra km'} @ ₹18/km)</span>
+                          <b style={{ color: '#059669' }}>+₹{t.extensionFare || Math.round((Number(t.extensionDistanceKm) || 0) * 18)}</b>
+                        </div>
+                      )}
+                      {(t.waitingMinutes > 0 || t.waitingFare > 0) && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                          <span>Waiting Charge ({t.waitingMinutes ? `${t.waitingMinutes}m billable after 60m free` : 'Waiting'} @ ₹2/m)</span>
+                          <b style={{ color: '#DC2626' }}>+₹{t.waitingFare || (Number(t.waitingMinutes) * 2)}</b>
+                        </div>
+                      )}
+                      <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <b style={{ color: '#0F172A' }}>Total Settled Fare</b>
+                        <b style={{ color: '#16A34A', fontSize: '13px' }}>₹{t.fare}</b>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const inv = generateTripInvoiceText({
+                            trip: t,
+                            baseFare: t.baseFare || (t.fare - (t.extensionFare || 0) - (t.waitingFare || 0)),
+                            extraKm: Number(t.extensionDistanceKm) || 0,
+                            extensionFare: Number(t.extensionFare) || 0,
+                            waitingSeconds: Number(t.waitingSeconds) || 0,
+                            billableWaitingMinutes: Number(t.waitingMinutes) || 0,
+                            waitingFare: Number(t.waitingFare) || 0,
+                            totalTripFare: Number(t.fare) || 600,
+                            driverName: t.driver || 'Verified Partner',
+                            riderName: user?.name || 'Customer',
+                            riderPhone: user?.phone || t.rider?.phone || ''
+                          });
+                          shareInvoiceViaWhatsApp(user?.phone || t.rider?.phone, inv);
+                        }}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '999px',
+                          background: '#ECFDF5',
+                          border: '1px solid #A7F3D0',
+                          color: '#059669',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Icon name="whatsapp" size={13} color="#059669" />
+                        <span>WhatsApp Invoice</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const inv = generateTripInvoiceText({
+                            trip: t,
+                            baseFare: t.baseFare || (t.fare - (t.extensionFare || 0) - (t.waitingFare || 0)),
+                            extraKm: Number(t.extensionDistanceKm) || 0,
+                            extensionFare: Number(t.extensionFare) || 0,
+                            waitingSeconds: Number(t.waitingSeconds) || 0,
+                            billableWaitingMinutes: Number(t.waitingMinutes) || 0,
+                            waitingFare: Number(t.waitingFare) || 0,
+                            totalTripFare: Number(t.fare) || 600,
+                            driverName: t.driver || 'Verified Partner',
+                            riderName: user?.name || 'Customer',
+                            riderPhone: user?.phone || t.rider?.phone || ''
+                          });
+                          shareInvoiceViaEmail(user?.email || t.rider?.email, t.id, inv);
+                        }}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '999px',
+                          background: '#EFF6FF',
+                          border: '1px solid #BFDBFE',
+                          color: '#2563EB',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Icon name="mail" size={13} color="#2563EB" />
+                        <span>Email Invoice</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
