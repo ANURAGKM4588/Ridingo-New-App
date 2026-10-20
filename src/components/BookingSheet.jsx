@@ -134,6 +134,7 @@ export default function BookingSheet() {
   const [hasReviewedTerms, setHasReviewedTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [isShakingTerms, setIsShakingTerms] = useState(false);
+  const [shakingLocationField, setShakingLocationField] = useState(null); // 'pickup' | 'drop' | null
   const termsSectionRef = useRef(null);
 
   const triggerWaitingSectionShake = () => {
@@ -153,6 +154,32 @@ export default function BookingSheet() {
       termsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     if (addToast) addToast('Please review waiting charges & additional trip policy before paying.', 'info');
+  };
+
+  const triggerLocationShake = (field) => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate([35, 45, 35]);
+      } catch (_) {}
+    }
+    setShakingLocationField(field);
+    setTimeout(() => {
+      setShakingLocationField(null);
+    }, 550);
+
+    if (field === 'pickup') {
+      if (pickupInputRef.current) {
+        pickupInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        pickupInputRef.current.focus();
+      }
+      if (addToast) addToast('Please enter your pickup location (From) before paying.', 'alert');
+    } else if (field === 'drop') {
+      if (dropInputRef.current) {
+        dropInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        dropInputRef.current.focus();
+      }
+      if (addToast) addToast('Please enter your destination location (To) before paying.', 'alert');
+    }
   };
 
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
@@ -627,42 +654,42 @@ export default function BookingSheet() {
 
   const handleSubmit = () => {
     try {
-      let cleanPickup = pickup?.trim();
-      let pCoords = pickupCoords;
-
+      const cleanPickup = pickup?.trim();
       if (!cleanPickup) {
-        cleanPickup = 'Current Location (Pickup)';
-        pCoords = { lat: 11.2588, lng: 75.7804, name: cleanPickup, formatted: cleanPickup };
-        setPickup(cleanPickup);
-        setPickupCoords(pCoords);
-      } else if (!pCoords) {
+        triggerLocationShake('pickup');
+        return;
+      }
+
+      const cleanDrop = drop?.trim();
+      if (!cleanDrop) {
+        triggerLocationShake('drop');
+        return;
+      }
+
+      let pCoords = pickupCoords;
+      if (!pCoords) {
         if (pickupSuggestions.length > 0) {
           const item = pickupSuggestions[0];
-          cleanPickup = item.full || item.title || cleanPickup;
           pCoords = { lat: Number(item.lat) || 11.2588, lng: Number(item.lng) || 75.7804, name: item.title || cleanPickup, formatted: cleanPickup };
         } else {
           pCoords = { lat: 11.2588, lng: 75.7804, name: cleanPickup, formatted: cleanPickup };
         }
-        setPickup(cleanPickup);
         setPickupCoords(pCoords);
       }
 
-      let cleanDrop = drop?.trim();
       let dCoords = dropCoords;
-      if (cleanDrop && !dCoords) {
+      if (!dCoords) {
         if (dropSuggestions.length > 0) {
           const item = dropSuggestions[0];
-          cleanDrop = item.full || item.title || cleanDrop;
           dCoords = { lat: Number(item.lat) || 11.2600, lng: Number(item.lng) || 75.7900, name: item.title || cleanDrop, formatted: cleanDrop };
         } else {
           dCoords = { lat: 11.2600, lng: 75.7900, name: cleanDrop, formatted: cleanDrop };
         }
-        setDrop(cleanDrop);
         setDropCoords(dCoords);
       }
 
       const pickupLoc = cleanPickup;
-      const dropLoc = cleanDrop || (cat === 'airport' ? 'Airport Terminal' : 'As directed by passenger');
+      const dropLoc = cleanDrop;
 
       // Trigger PhonePe payment options popup sheet (navigates to payment page)
       openPhonePeCheckout({
@@ -935,7 +962,7 @@ export default function BookingSheet() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <label className="lab" htmlFor="bk-pickup" style={{ margin: 0 }}>
-                  Pickup location
+                  Pickup location (From) <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
                 </label>
               </div>
               <button
@@ -958,12 +985,12 @@ export default function BookingSheet() {
                 <span>{isDetectingCurrent ? 'Locating...' : 'Use current location'}</span>
               </button>
             </div>
-            <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'pickup' ? 9999 : 2 }}>
+            <div className={`loc-input-wrap ${shakingLocationField === 'pickup' ? 'shake-attention' : ''}`} style={{ position: 'relative', zIndex: activeSuggestField === 'pickup' ? 9999 : 2 }}>
               <input
                 ref={pickupInputRef}
                 className="inp"
                 id="bk-pickup"
-                placeholder="Where should the driver meet you?"
+                placeholder="Where should the driver meet you? (From)"
                 value={pickup}
                 onChange={e => handlePickupChange(e.target.value)}
                 autoComplete="off"
@@ -1028,11 +1055,11 @@ export default function BookingSheet() {
               )}
             </div>
 
-            {/* Destination (optional) */}
+            {/* Destination Location (To) */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <label className="lab" htmlFor="bk-drop" style={{ margin: 0 }}>
-                  Destination (optional)
+                  Destination location (To) <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
                 </label>
               </div>
               <button
@@ -1059,12 +1086,12 @@ export default function BookingSheet() {
                 <span>Choose on map</span>
               </button>
             </div>
-            <div className="loc-input-wrap" style={{ position: 'relative', zIndex: activeSuggestField === 'drop' ? 9999 : 1 }}>
+            <div className={`loc-input-wrap ${shakingLocationField === 'drop' ? 'shake-attention' : ''}`} style={{ position: 'relative', zIndex: activeSuggestField === 'drop' ? 9999 : 1 }}>
               <input
                 ref={dropInputRef}
                 className="inp"
                 id="bk-drop"
-                placeholder="Add if you know it"
+                placeholder="Where are you heading to? (To)"
                 value={drop}
                 onChange={e => handleDropChange(e.target.value)}
                 autoComplete="off"
@@ -1826,24 +1853,24 @@ export default function BookingSheet() {
                   type="button"
                   className="btn primary"
                   id="bk-submit-btn"
-                  aria-disabled={!hasReviewedTerms}
+                  aria-disabled={!hasReviewedTerms || !pickup?.trim() || !drop?.trim()}
                   style={{
                     height: '48px',
                     borderRadius: '14px',
                     padding: '0 22px',
                     fontWeight: 800,
                     fontSize: '14.5px',
-                    cursor: hasReviewedTerms ? 'pointer' : 'default',
-                    background: hasReviewedTerms ? 'var(--solid, #000000)' : '#94A3B8',
+                    cursor: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? 'pointer' : 'default',
+                    background: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? 'var(--solid, #000000)' : '#94A3B8',
                     color: '#FFFFFF',
-                    border: hasReviewedTerms ? '1.5px solid var(--solid, #000000)' : '1.5px solid #94A3B8',
-                    boxShadow: hasReviewedTerms ? '0 4px 14px rgba(0, 0, 0, 0.22)' : 'none',
+                    border: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? '1.5px solid var(--solid, #000000)' : '1.5px solid #94A3B8',
+                    boxShadow: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? '0 4px 14px rgba(0, 0, 0, 0.22)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     whiteSpace: 'nowrap',
-                    opacity: hasReviewedTerms ? 1 : 0.75,
+                    opacity: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? 1 : 0.75,
                     transition: 'all 0.2s ease'
                   }}
                   onClick={() => {
@@ -1851,9 +1878,25 @@ export default function BookingSheet() {
                       triggerWaitingSectionShake();
                       return;
                     }
+                    if (!pickup?.trim()) {
+                      triggerLocationShake('pickup');
+                      return;
+                    }
+                    if (!drop?.trim()) {
+                      triggerLocationShake('drop');
+                      return;
+                    }
                     handleSubmit();
                   }}
-                  title={!hasReviewedTerms ? 'Please review the waiting charges before paying.' : 'Pay Now'}
+                  title={
+                    !hasReviewedTerms
+                      ? 'Please review the waiting charges before paying.'
+                      : !pickup?.trim()
+                      ? 'Please enter Pickup location (From) before paying.'
+                      : !drop?.trim()
+                      ? 'Please enter Destination location (To) before paying.'
+                      : 'Pay Now'
+                  }
                 >
                   <span>Pay Now</span>
                   <Icon name="chevron-right" size={16} />
