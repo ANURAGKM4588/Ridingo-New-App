@@ -2773,204 +2773,439 @@ export default function DriverApp() {
                 transition: isPtrPulling ? 'none' : 'transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1)'
               }}
             >
-              {/* CLEAN APPLE CARD / IOS MINIMALIST OVERVIEW CARD */}
+              {/* ULTRA-MODERN MINIMALIST HERO DASHBOARD CARD */}
               <div
-                className="card stagger-1"
-              style={{
-                borderRadius: '24px',
-                padding: '20px',
-                marginBottom: '18px',
-                border: '1px solid var(--line)',
-                background: 'var(--card)',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
-              }}
-            >
-              {/* Row 1: Driver Profile Pill + Duty Status */}
-              <div
+                className="card stagger-1 driver-hero-dashboard-card"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '16px'
+                  borderRadius: '26px',
+                  padding: '22px 20px 20px',
+                  marginBottom: '18px',
+                  border: '1px solid var(--line)',
+                  background: 'var(--card)',
+                  boxShadow: '0 8px 30px -6px rgba(0, 0, 0, 0.05), 0 2px 8px -2px rgba(0, 0, 0, 0.03)',
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
-                  <div style={{ position: 'relative' }}>
-                    <div
+                {/* Subtle Ambient Radial Glow (Adapts dynamically to Online/Offline state) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '-40px',
+                    right: '-40px',
+                    width: '180px',
+                    height: '180px',
+                    borderRadius: '50%',
+                    background: driverOnline
+                      ? 'radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0) 70%)'
+                      : 'radial-gradient(circle, rgba(148, 163, 184, 0.08) 0%, rgba(148, 163, 184, 0) 70%)',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                    transition: 'background 0.35s ease'
+                  }}
+                />
+
+                {/* Section 1: Driver Identity & Duty Toggle Capsule */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    position: 'relative',
+                    zIndex: 1
+                  }}
+                >
+                  {/* Left: Avatar + Identity + Rating Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0 }}>
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div
+                        style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #FFC70A 0%, #F59E0B 100%)',
+                          color: '#111827',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '17px',
+                          fontWeight: 800,
+                          overflow: 'hidden',
+                          border: '2.5px solid var(--card)',
+                          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08)'
+                        }}
+                      >
+                        {driverPartner?.avatar ? (
+                          <img
+                            src={driverPartner.avatar}
+                            alt={driverPartner.name || 'Driver'}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                        ) : (
+                          'RK'
+                        )}
+                      </div>
+
+                      {/* Beacon Status Dot with breathing ping animation when Online */}
+                      <span
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          width: '13px',
+                          height: '13px',
+                          borderRadius: '50%',
+                          background: driverOnline ? '#10B981' : '#94A3B8',
+                          border: '2.5px solid var(--card)',
+                          boxShadow: driverOnline
+                            ? '0 0 0 2px rgba(16, 185, 129, 0.35)'
+                            : 'none',
+                          transition: 'all 0.3s ease'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                        <b
+                          style={{
+                            fontSize: '17px',
+                            fontWeight: 850,
+                            letterSpacing: '-0.02em',
+                            color: 'var(--ink)',
+                            lineHeight: 1.2
+                          }}
+                        >
+                          {driverPartner?.name?.split(' ')[0] || 'Ravi'}
+                        </b>
+
+                        {/* Minimal Rating Capsule with Gold Star */}
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3.5px',
+                            background: 'rgba(245, 158, 11, 0.12)',
+                            border: '1px solid rgba(245, 158, 11, 0.24)',
+                            color: '#D97706',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            padding: '2px 7px',
+                            borderRadius: '999px',
+                            lineHeight: 1
+                          }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="#F59E0B">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                          <span>{driverPartner?.rating || '5.0'}</span>
+                        </span>
+                      </div>
+
+                      {/* Subtitle location badge */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '12px',
+                          color: 'var(--muted)',
+                          fontWeight: 550,
+                          marginTop: '3px'
+                        }}
+                      >
+                        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75, marginRight: '3px' }}>
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          Kochi Central
+                        </span>
+                        <span style={{ opacity: 0.4 }}>•</span>
+                        <span style={{ color: 'var(--ink)', fontWeight: 650, fontSize: '11.5px' }}>Pro Driver</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Modern iOS Duty Status Toggle Button */}
+                  <button
+                    type="button"
+                    id="driver-duty-toggle-btn"
+                    onClick={async () => {
+                      const next = !driverOnline;
+                      setDriverOnline(next);
+                      if (next) {
+                        await requestDriverNotificationPermission();
+                        if (driverPartner?.nativeNotifs !== false) {
+                          notifyDriverOnlineStatus(true);
+                        }
+                      }
+                      addToast(
+                        next ? 'You are now Online! Receiving bookings.' : 'You went Offline. No bookings will be received.',
+                        next ? 'check' : 'info'
+                      );
+                      if (driverPartner?.haptic !== false && navigator.vibrate) {
+                        try { navigator.vibrate(40); } catch (e) {}
+                      }
+                    }}
+                    style={{
+                      background: driverOnline ? '#ECFDF5' : 'var(--field)',
+                      color: driverOnline ? '#059669' : 'var(--muted)',
+                      border: driverOnline ? '1.5px solid #A7F3D0' : '1.5px solid var(--line-strong)',
+                      fontSize: '12.5px',
+                      fontWeight: 750,
+                      letterSpacing: '-0.01em',
+                      padding: '7px 15px',
+                      borderRadius: '999px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      boxShadow: driverOnline
+                        ? '0 3px 12px rgba(16, 185, 129, 0.2)'
+                        : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                      transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+                      userSelect: 'none',
+                      flexShrink: 0
+                    }}
+                    title={driverOnline ? 'Tap to Go Offline' : 'Tap to Go Online'}
+                  >
+                    <span
                       style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '50%',
-                        background: 'var(--yellow)',
-                        color: '#111827',
+                        position: 'relative',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '17px',
-                        fontWeight: 800,
-                        overflow: 'hidden',
-                        border: '2px solid var(--surface)'
+                        width: '8px',
+                        height: '8px'
                       }}
                     >
-                      {driverPartner?.avatar ? (
-                        <img src={driverPartner.avatar} alt="Ravi" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : 'RK'}
-                    </div>
-                    <span
-                      style={{
-                        position: 'absolute',
-                        bottom: -1,
-                        right: -1,
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        background: driverOnline ? '#16A34A' : '#DC2626',
-                        border: '2px solid var(--card)',
-                        boxShadow: driverOnline ? '0 0 0 2px rgba(22, 163, 74, 0.35)' : '0 0 0 2px rgba(220, 38, 38, 0.35)',
-                        transition: 'background 0.25s ease'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <b style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink)' }}>
-                        {driverPartner?.name?.split(' ')[0] || 'Ravi Kumar'}
-                      </b>
+                      {driverOnline && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: '50%',
+                            background: '#10B981',
+                            animation: 'pulse-dot 1.8s infinite',
+                            opacity: 0.6
+                          }}
+                        />
+                      )}
                       <span
                         style={{
-                          background: 'rgba(250, 204, 21, 0.18)',
-                          color: 'var(--ink)',
-                          fontSize: '11px',
-                          fontWeight: 750,
-                          padding: '1px 6px',
-                          borderRadius: '6px'
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          background: driverOnline ? '#10B981' : '#94A3B8'
                         }}
-                      >
-                        Rating: {driverPartner?.rating || '4.8'}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>
-                      Pro Driver · Kochi Central
+                      />
                     </span>
-                  </div>
+                    <span>{driverOnline ? 'Online' : 'Offline'}</span>
+                  </button>
                 </div>
 
-                {/* Modern iOS-Style Minimal Pill Toggle / Status Chip */}
-                <button
-                  type="button"
-                  id="driver-duty-toggle-btn"
-                  onClick={async () => {
-                    const next = !driverOnline;
-                    setDriverOnline(next);
-                    if (next) {
-                      await requestDriverNotificationPermission();
-                      if (driverPartner?.nativeNotifs !== false) {
-                        notifyDriverOnlineStatus(true);
-                      }
-                    }
-                    addToast(
-                      next ? 'You are now Online! Receiving bookings.' : 'You went Offline. No bookings will be received.',
-                      next ? 'check' : 'info'
-                    );
-                    if (driverPartner?.haptic !== false && navigator.vibrate) {
-                      try { navigator.vibrate(40); } catch (e) {}
-                    }
-                  }}
+                {/* Subtle Refined Hairline Divider */}
+                <div
                   style={{
-                    background: driverOnline ? '#ECFDF5' : '#F1F5F9',
-                    color: driverOnline ? '#059669' : '#64748B',
-                    border: driverOnline ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    letterSpacing: '-0.01em',
-                    padding: '7px 14px',
-                    borderRadius: '999px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    cursor: 'pointer',
-                    boxShadow: driverOnline
-                      ? '0 2px 6px rgba(16, 185, 129, 0.12)'
-                      : 'none',
-                    transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-                    userSelect: 'none'
+                    height: '1px',
+                    background: 'linear-gradient(90deg, transparent 0%, var(--line) 15%, var(--line) 85%, transparent 100%)',
+                    margin: '18px 0 16px',
+                    position: 'relative',
+                    zIndex: 1
                   }}
-                  title={driverOnline ? 'Tap to Go Offline' : 'Tap to Go Online'}
-                >
-                  <span
-                    className={driverOnline ? 'animate-pulse-dot' : ''}
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: driverOnline ? '#10B981' : '#94A3B8',
-                      display: 'inline-block'
-                    }}
-                  />
-                  <span>{driverOnline ? 'Online' : 'Offline'}</span>
-                </button>
-              </div>
+                />
 
-              {/* Row 2: Hero Typographic Earnings & Minimal Goal Progress */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '16px 0 4px',
-                  borderTop: '1px solid var(--line)',
-                  marginBottom: '0'
-                }}
-              >
-                <div>
-                  <span
+                {/* Section 2: Hero Financial Telemetry Display */}
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  {/* Row A: Section Label + Quick Wallet Navigation Link */}
+                  <div
                     style={{
-                      fontSize: '11px',
-                      fontWeight: 750,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.07em',
-                      color: 'var(--muted)',
-                      display: 'block',
-                      marginBottom: '4px'
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '8px'
                     }}
                   >
-                    Today's Earnings
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <span
-                      style={{
-                        fontSize: '36px',
-                        fontWeight: 800,
-                        letterSpacing: '-0.03em',
-                        color: 'var(--ink)',
-                        fontFamily: 'var(--font-mono, monospace)',
-                        lineHeight: 1
-                      }}
-                    >
-                      ₹{todayEarnings.toLocaleString('en-IN')}
-                    </span>
-                    {todayEarnings > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span
                         style={{
-                          fontSize: '12px',
-                          fontWeight: 700,
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.08em',
+                          color: 'var(--muted)'
+                        }}
+                      >
+                        Today's Earnings
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setDTab('wallet')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        fontSize: '11.5px',
+                        fontWeight: 750,
+                        color: 'var(--ink)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        opacity: 0.85
+                      }}
+                      title="View Wallet Ledger"
+                    >
+                      <span>Wallet</span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14" />
+                        <path d="m13 6 6 6-6 6" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Row B: Hero Typographic Amount + Net Pill */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '9px', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                      <span
+                        style={{
+                          fontSize: '26px',
+                          fontWeight: 750,
+                          color: 'var(--muted)',
+                          marginRight: '2px',
+                          lineHeight: 1
+                        }}
+                      >
+                        ₹
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '38px',
+                          fontWeight: 900,
+                          letterSpacing: '-0.035em',
+                          color: 'var(--ink)',
+                          lineHeight: 1
+                        }}
+                      >
+                        {todayEarnings.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {todayEarnings > 0 ? (
+                      <span
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: 800,
                           color: '#16A34A',
                           background: 'rgba(34, 197, 94, 0.12)',
-                          padding: '2px 7px',
-                          borderRadius: '999px'
+                          border: '1px solid rgba(34, 197, 94, 0.25)',
+                          padding: '2.5px 8px',
+                          borderRadius: '999px',
+                          lineHeight: 1
                         }}
                       >
                         +70% Net
                       </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 650,
+                          color: 'var(--muted)',
+                          background: 'var(--field)',
+                          padding: '2px 7px',
+                          borderRadius: '6px'
+                        }}
+                      >
+                        Shift Active
+                      </span>
                     )}
                   </div>
-                  <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
-                    This month: <b>₹{todayEarnings.toLocaleString('en-IN')}</b> ({completedTripsCount} trips)
-                  </span>
+
+                  {/* Row C: Micro Telemetry Stat Capsules (This Month & Completed Trips) */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '10px'
+                    }}
+                  >
+                    {/* Stat Card 1: This Month */}
+                    <div
+                      style={{
+                        background: 'var(--field)',
+                        borderRadius: '14px',
+                        padding: '10px 12px',
+                        border: '1px solid var(--line)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          color: 'var(--muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em'
+                        }}
+                      >
+                        This Month
+                      </span>
+                      <b
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: 800,
+                          color: 'var(--ink)',
+                          letterSpacing: '-0.01em'
+                        }}
+                      >
+                        ₹{todayEarnings.toLocaleString('en-IN')}
+                      </b>
+                    </div>
+
+                    {/* Stat Card 2: Completed Trips */}
+                    <div
+                      style={{
+                        background: 'var(--field)',
+                        borderRadius: '14px',
+                        padding: '10px 12px',
+                        border: '1px solid var(--line)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          color: 'var(--muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em'
+                        }}
+                      >
+                        Completed
+                      </span>
+                      <b
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: 800,
+                          color: 'var(--ink)',
+                          letterSpacing: '-0.01em'
+                        }}
+                      >
+                        {completedTripsCount} {completedTripsCount === 1 ? 'Trip' : 'Trips'}
+                      </b>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
             {/* Black Mark Penalty Alert (if any recorded) */}
             {driverPartner?.blackMarks > 0 && (

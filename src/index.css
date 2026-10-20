@@ -1178,11 +1178,11 @@ body.standalone-app .map-picker-foot {
 }
 
 .nv.on {
-  color: #000000 !important;
+  color: #0D9488 !important;
 }
 
 .nv.on .nv-i svg {
-  color: #000000 !important;
+  color: #0D9488 !important;
 }
 
 [data-theme="dark"] .nv.on,
@@ -1190,7 +1190,7 @@ body.standalone-app .map-picker-foot {
 #col-u[data-theme="dark"] .nv.on,
 #col-d[data-theme="dark"] .nv.on,
 body.standalone-app[data-theme="dark"] .nv.on {
-  color: #FFFFFF !important;
+  color: #10B981 !important;
 }
 
 [data-theme="dark"] .nv.on .nv-i svg,
@@ -1198,7 +1198,7 @@ body.standalone-app[data-theme="dark"] .nv.on {
 #col-u[data-theme="dark"] .nv.on .nv-i svg,
 #col-d[data-theme="dark"] .nv.on .nv-i svg,
 body.standalone-app[data-theme="dark"] .nv.on .nv-i svg {
-  color: #FFFFFF !important;
+  color: #10B981 !important;
 }
 
 .nv.on::before {
@@ -1210,7 +1210,7 @@ body.standalone-app[data-theme="dark"] .nv.on .nv-i svg {
   height: 3px;
   margin-left: -18px;
   border-radius: 0 0 3px 3px;
-  background: var(--yellow);
+  background: #0D9488;
 }
 
 .nv:active {

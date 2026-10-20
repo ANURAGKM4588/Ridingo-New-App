@@ -17,6 +17,8 @@ import { shareTicketImageWithCaption } from '../services/installedUpiService';
 import { cleanLocationName, getLocationUpToFirstComma } from '../utils/locationCleaner';
 import { fetchGoogleRoadDirections } from '../services/googleMapsService';
 import { getActiveOfferBanners, subscribeToOfferBanners } from '../services/bannerService';
+import { POPULAR_DESTINATIONS } from '../data/popularDestinations';
+import PopularDestinationsModal from './PopularDestinationsModal';
 
 const CATS = {
   hourly: { name: 'Hourly', blurb: '2 to 12 hours', icon: 'hourly', from: '₹250 per hour' },
@@ -68,6 +70,8 @@ const OFFER_BANNERS = [
     headline: '5% Off Airport Rides',
     sub: 'Flight delay tracking with zero surge guarantee',
     cta: 'Claim 5% Off',
+    ctaBgColor: '#FFFFFF',
+    ctaTextColor: '#000000',
     icon: 'plane',
     promoCode: 'AIRPORT5',
     accentColor: '#10B981',
@@ -86,6 +90,8 @@ const OFFER_BANNERS = [
     headline: '35% Off City Driver',
     sub: 'Errands, meetings & shopping in your own car',
     cta: 'Claim 35% Off',
+    ctaBgColor: '#FFC70A',
+    ctaTextColor: '#000000',
     icon: 'hourly',
     promoCode: 'FIRST35',
     accentColor: '#F59E0B',
@@ -104,6 +110,8 @@ const OFFER_BANNERS = [
     headline: 'Flat ₹250 Off Highway Trips',
     sub: 'Scenic hill stations & outstation road drives',
     cta: 'Claim ₹250 Off',
+    ctaBgColor: '#FFFFFF',
+    ctaTextColor: '#000000',
     icon: 'route',
     promoCode: 'HIGHWAY250',
     accentColor: '#3B82F6',
@@ -147,6 +155,7 @@ export default function HomeTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [destinationsModalOpen, setDestinationsModalOpen] = useState(false);
   const searchWrapRef = useRef(null);
   const reviewsSliderRef = useRef(null);
   const isDraggingReviews = useRef(false);
@@ -1350,8 +1359,8 @@ Live GPS Tracking: ${trackUrl}`;
                         style={{
                           fontSize: '11.5px',
                           fontWeight: 800,
-                          color: '#000000',
-                          background: '#FFFFFF',
+                          color: currentBanner.ctaTextColor || '#000000',
+                          background: currentBanner.ctaBgColor || '#FFFFFF',
                           padding: '5px 14px',
                           borderRadius: '999px',
                           boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
@@ -1404,7 +1413,7 @@ Live GPS Tracking: ${trackUrl}`;
                     </p>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#000000', background: '#FFFFFF', padding: '4.5px 12px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: currentBanner.ctaTextColor || '#000000', background: currentBanner.ctaBgColor || '#FFFFFF', padding: '4.5px 12px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         {currentBanner.cta || 'Book Now'} ➔
                       </span>
                     </div>
@@ -1989,44 +1998,133 @@ Live GPS Tracking: ${trackUrl}`;
         })}
       </div>
 
-      {/* Popular Destinations Quick Book - Only most traveled places from history */}
-      {popularDestinationSuggestions.length > 0 && (
-        <>
-          <div className="sec stagger-5" style={{ marginTop: '22px' }}>
-            <h3>Popular destinations</h3>
-          </div>
+      {/* Popular Destinations Quick Book - CURATED SWIPE SECTION (Top 7) */}
+      <div className="sec stagger-5" style={{ marginTop: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div>
+          <h3 style={{ margin: 0, lineHeight: 1.2 }}>Popular destinations</h3>
+          <span style={{ fontSize: '11px', color: 'var(--muted, #71717A)', fontWeight: 500 }}>
+            Kerala · Tamil Nadu · Karnataka
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setDestinationsModalOpen(true)}
+          style={{
+            background: 'rgba(217, 119, 6, 0.08)',
+            border: 'none',
+            padding: '6px 10px',
+            borderRadius: '999px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: 'var(--yellow-dark, #D97706)',
+            fontWeight: 750,
+            fontSize: '12px',
+            cursor: 'pointer'
+          }}
+        >
+          <span>See all (21)</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14" />
+            <path d="m13 6 6 6-6 6" />
+          </svg>
+        </button>
+      </div>
 
-          <div className="rebook-list stagger-5">
-            {popularDestinationSuggestions.map((dest, idx) => (
-              <div key={dest.name || idx} className="rebook-card">
-                <span className="rebook-ic">
-                  <Icon name={dest.icon || 'mapPin'} size={18} />
-                </span>
-                <div className="rebook-left">
-                  <b className="rebook-dest">{dest.name}</b>
-                  <div className="rebook-meta">
-                    {dest.pickup && <span className="rebook-from">From {dest.pickup}</span>}
-                    {dest.pickup && <span className="rebook-dot">·</span>}
-                    <span className="rebook-cat">
-                      {dest.cat === 'airport' ? 'Airport transfer' : 'Quick booking'}
-                      {dest.count > 1 ? ` (${dest.count} trips)` : ''}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  className="btn sm rebook-btn"
-                  onClick={() => openBooking(dest.cat || 'hourly', dest.rawDestination)}
-                >
-                  <span>Book</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+      <div
+        className="stagger-5"
+        style={{
+          display: 'flex',
+          gap: '10px',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: '4px',
+          marginBottom: '22px',
+          marginLeft: '-4px',
+          marginRight: '-4px',
+          paddingLeft: '4px',
+          paddingRight: '4px'
+        }}
+      >
+        {POPULAR_DESTINATIONS.filter((d) => d.featured).slice(0, 7).map((item) => (
+          <div
+            key={item.id}
+            onClick={() => openBooking(item.bookingCat || 'outstation', item.destAddress)}
+            style={{
+              width: '136px',
+              height: '112px',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              position: 'relative',
+              flexShrink: 0,
+              cursor: 'pointer',
+              boxShadow: '0 3px 10px rgba(0,0,0,0.12)',
+              transition: 'transform 0.18s ease'
+            }}
+          >
+            <img
+              src={item.img}
+              alt={item.name}
+              loading="lazy"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block'
+              }}
+            />
+            {/* Top State Pill */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '6px',
+                left: '6px',
+                background: 'rgba(15, 23, 42, 0.78)',
+                backdropFilter: 'blur(3px)',
+                borderRadius: '999px',
+                padding: '2px 6px',
+                color: '#FFFFFF',
+                fontSize: '8.5px',
+                fontWeight: 700,
+                letterSpacing: '0.2px'
+              }}
+            >
+              {item.state}
+            </div>
+
+            {/* Gradient Overlay & Text */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.25) 55%, transparent 100%)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                padding: '8px 9px'
+              }}
+            >
+              <b style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.15 }}>
+                {item.name}
+              </b>
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  color: 'rgba(255,255,255,0.85)',
+                  marginTop: '2px',
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {item.sub}
+              </span>
+            </div>
           </div>
-        </>
-      )}
+        ))}
+      </div>
 
       {/* Customer Reviews Section */}
       <div className="sec" style={{ marginTop: '24px' }}>
@@ -2111,6 +2209,16 @@ Live GPS Tracking: ${trackUrl}`;
           addToast={addToast}
         />
       )}
+
+      {/* Popular Destinations Full Grid Modal */}
+      <PopularDestinationsModal
+        isOpen={destinationsModalOpen}
+        onClose={() => setDestinationsModalOpen(false)}
+        onSelectDestination={(cat, dest) => {
+          setDestinationsModalOpen(false);
+          openBooking(cat, dest);
+        }}
+      />
     </div>
   );
 }

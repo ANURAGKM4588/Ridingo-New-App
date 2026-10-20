@@ -819,21 +819,38 @@ export default function BookingSheet() {
           /* ---------- Booking Details Form (Full-Page Design) ---------- */
           <>
             {/* Full-Page App Bar Header with Back Button Only */}
-            <div className="sheet-sticky-top" style={{ borderBottom: '1px solid var(--line)', padding: 'max(14px, env(safe-area-inset-top, 0px)) 18px 14px' }}>
+            <div className="sheet-sticky-top" style={{ borderBottom: '1px solid var(--line, #F1F5F9)', padding: 'max(14px, env(safe-area-inset-top, 0px)) 18px 14px', background: 'var(--card, #FFFFFF)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                   <button
                     type="button"
                     className="iconbtn"
                     onClick={handleClose}
                     aria-label="Back"
-                    style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--field)', border: '1px solid var(--line)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)' }}
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: '#F1F5F9',
+                      border: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--ink, #0F172A)',
+                      cursor: 'pointer'
+                    }}
                   >
-                    <Icon name="arrow-left" size={18} />
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
                   </button>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1.2 }}>Book a Driver</h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>Professional driver on demand</p>
+                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 850, color: 'var(--ink, #0F172A)', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+                      Book a Driver
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#64748B', fontWeight: 500 }}>
+                      Professional driver on demand
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1163,637 +1180,812 @@ export default function BookingSheet() {
                 display: 'grid',
                 gridTemplateColumns: '1fr auto 1fr',
                 alignItems: 'center',
-                background: 'var(--field)',
-                borderRadius: '12px',
-                padding: '10px 18px',
-                marginTop: '12px',
-                marginBottom: '10px',
-                border: '1px solid var(--line)'
+                background: '#F8FAFC',
+                borderRadius: '16px',
+                padding: '14px 18px',
+                marginTop: '14px',
+                marginBottom: '16px',
+                border: '1px solid #F1F5F9'
               }}
             >
-              <div>
-                <span
+              {/* Left: Total Distance */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
                   style={{
-                    fontSize: '10.5px',
-                    fontWeight: 650,
-                    color: 'var(--muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    display: 'block',
-                    marginBottom: '2px'
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#0D9488',
+                    flexShrink: 0
                   }}
                 >
-                  Total Distance
-                </span>
-                <span
-                  style={{
-                    fontSize: '15px',
-                    fontWeight: 700,
-                    color: tripTelemetry.isCalculated && tripTelemetry.distanceText ? 'var(--ink)' : 'var(--muted)',
-                    letterSpacing: '-0.02em',
-                    display: 'block'
-                  }}
-                >
-                  {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
-                </span>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="6" r="3" />
+                    <path d="M6 15v-3a3 3 0 0 1 3-3h6a3 3 0 0 0 3-3V6" />
+                    <path d="m14 8 4-2-4-2" />
+                  </svg>
+                </div>
+                <div>
+                  <span
+                    style={{
+                      fontSize: '10.5px',
+                      fontWeight: 750,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      display: 'block',
+                      marginBottom: '2px'
+                    }}
+                  >
+                    TOTAL DISTANCE
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '17px',
+                      fontWeight: 800,
+                      color: tripTelemetry.isCalculated && tripTelemetry.distanceText ? 'var(--ink)' : 'var(--ink)',
+                      letterSpacing: '-0.02em',
+                      display: 'block',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
+                  </span>
+                </div>
               </div>
 
-              <div style={{ width: '1px', height: '26px', background: 'var(--line)', margin: '0 8px' }} />
+              {/* Divider */}
+              <div style={{ width: '1px', height: '36px', background: '#E2E8F0', margin: '0 8px' }} />
 
-              <div style={{ textAlign: 'right' }}>
-                <span
+              {/* Right: ETA */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '8px' }}>
+                <div
                   style={{
-                    fontSize: '10.5px',
-                    fontWeight: 650,
-                    color: 'var(--muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    display: 'block',
-                    marginBottom: '2px'
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#0D9488',
+                    flexShrink: 0
                   }}
                 >
-                  ETA
-                </span>
-                <span
-                  style={{
-                    fontSize: '15px',
-                    fontWeight: 700,
-                    color: tripTelemetry.isCalculated ? 'var(--ink)' : 'var(--muted)',
-                    letterSpacing: '-0.02em',
-                    display: 'block'
-                  }}
-                >
-                  {tripTelemetry.isCalculated && tripTelemetry.durationMins
-                    ? formatDurationMeasurement(tripTelemetry.durationMins)
-                    : (tripTelemetry.durationText && tripTelemetry.durationText !== '--'
-                        ? tripTelemetry.durationText.replace(/^~\s*/, '')
-                        : '--')}
-                </span>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <div>
+                  <span
+                    style={{
+                      fontSize: '10.5px',
+                      fontWeight: 750,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      display: 'block',
+                      marginBottom: '2px'
+                    }}
+                  >
+                    ETA
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '17px',
+                      fontWeight: 800,
+                      color: 'var(--ink)',
+                      letterSpacing: '-0.02em',
+                      display: 'block',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {tripTelemetry.isCalculated && tripTelemetry.durationMins
+                      ? formatDurationMeasurement(tripTelemetry.durationMins)
+                      : (tripTelemetry.durationText && tripTelemetry.durationText !== '--'
+                          ? tripTelemetry.durationText.replace(/^~\s*/, '')
+                          : '--')}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Hours Stepper (Only for hourly/daily/event) */}
             {!isFlat && (
-              <>
-                <div className="lab" style={{ marginTop: '10px' }}>
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)', display: 'block', marginBottom: '8px' }}>
                   {currentCat.units === 'hours' ? 'Hours' : 'Days'}
-                </div>
-                <div className="stepper">
+                </label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#F8FAFC',
+                    border: '1.5px solid #E2E8F0',
+                    borderRadius: '16px',
+                    padding: '8px 12px'
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => handleQtyChange(-1)}
                     disabled={qty <= (currentCat.min || 1)}
-                    aria-label="Less"
+                    aria-label="Less hours"
                     style={{
-                      background: 'var(--field)',
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
                       color: 'var(--ink)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '10px',
                       cursor: qty <= (currentCat.min || 1) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-                      opacity: qty <= (currentCat.min || 1) ? 0.4 : 1,
-                      display: 'grid',
-                      placeItems: 'center'
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                      opacity: qty <= (currentCat.min || 1) ? 0.35 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Icon name="minus" size={18} />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
                   </button>
-                  <b style={{ color: 'var(--ink)' }}>
+
+                  <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
                     {qty} {qty === 1 ? currentCat.unit : currentCat.units}
-                  </b>
+                  </span>
+
                   <button
                     type="button"
                     onClick={() => handleQtyChange(1)}
                     disabled={qty >= (currentCat.max || 12)}
-                    aria-label="More"
+                    aria-label="More hours"
                     style={{
-                      background: 'var(--field)',
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
                       color: 'var(--ink)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '10px',
                       cursor: qty >= (currentCat.max || 12) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-                      opacity: qty >= (currentCat.max || 12) ? 0.4 : 1,
-                      display: 'grid',
-                      placeItems: 'center'
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                      opacity: qty >= (currentCat.max || 12) ? 0.35 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Icon name="plus" size={18} />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
                   </button>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Date and time */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '6px' }}>
-              <div className="lab" style={{ margin: 0 }}>
-                Pickup date & time
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)', margin: 0 }}>
+                  Pickup date & time
+                </label>
+                <span style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: 800 }}>
+                  {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dateStr} - {timeStr}
+                </span>
               </div>
-              <span style={{ fontSize: '11.5px', color: 'var(--ink)', fontWeight: 700 }}>
-                {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : 'Scheduled'} · {timeStr}
-              </span>
-            </div>
 
-            {/* Quick Date & Time Presets Inline (Strictly Single-Line Horizontal Scroll) */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'nowrap',
-                gap: '8px',
-                overflowX: 'auto',
-                scrollbarWidth: 'none',
-                WebkitOverflowScrolling: 'touch',
-                paddingBottom: '4px',
-                width: '100%'
-              }}
-            >
-              <button
-                type="button"
-                className={`chip ${isToday ? 'on' : ''}`}
-                style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-                onClick={() => setSelectedDate(todayISO)}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                className={`chip ${isTomorrow ? 'on' : ''}`}
-                style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-                onClick={() => setSelectedDate(tomorrowISO)}
-              >
-                Tomorrow
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
-                onClick={() => addMinutesToTime(10)}
-              >
-                Now
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
-                onClick={() => addMinutesToTime(30)}
-              >
-                +30m
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
-                onClick={() => addMinutesToTime(60)}
-              >
-                +1h
-              </button>
-              <button
-                type="button"
-                className="chip"
-                style={{ fontSize: '12px', padding: '6px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}
-                onClick={() => addMinutesToTime(120)}
-              >
-                +2h
-              </button>
-            </div>
-
-            {/* Two-Column Interactive Inputs: Date & Time */}
-            <div className="two" style={{ marginTop: '8px', gap: '10px' }}>
-              {/* Date Field Container */}
+              {/* Quick Date & Time Presets Inline */}
               <div
                 style={{
-                  position: 'relative',
-                  width: '100%',
-                  background: 'var(--field)',
-                  borderRadius: '14px',
-                  border: isCustomDate ? '1.5px solid var(--ink)' : '1px solid var(--line)',
-                  padding: '9px 12px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  minHeight: '52px',
-                  boxSizing: 'border-box',
-                  cursor: 'pointer'
-                }}
-                onClick={() => {
-                  const el = document.getElementById('bk-date-input');
-                  if (el && typeof el.showPicker === 'function') {
-                    try { el.showPicker(); } catch (e) { el.focus(); }
-                  }
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  WebkitOverflowScrolling: 'touch',
+                  marginBottom: '12px',
+                  width: '100%'
                 }}
               >
-                <div style={{ color: 'var(--ink)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  <Icon name="calendar" size={17} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                  <span style={{ fontSize: '9.5px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    DATE
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {dateStr}
-                  </span>
-                </div>
-                <input
-                  id="bk-date-input"
-                  type="date"
-                  min={todayISO}
-                  value={selectedDate}
-                  onChange={(e) => {
-                    if (e.target.value) setSelectedDate(e.target.value);
-                  }}
+                <button
+                  type="button"
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
+                    flexShrink: 0,
+                    padding: '8px 18px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: isToday ? '#0F172A' : '#F1F5F9',
+                    color: isToday ? '#FFFFFF' : '#334155',
+                    fontSize: '13px',
+                    fontWeight: isToday ? 750 : 650,
                     cursor: 'pointer',
-                    zIndex: 2
+                    transition: 'all 0.15s ease'
                   }}
-                  aria-label="Select Pickup Date"
-                />
+                  onClick={() => setSelectedDate(todayISO)}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flexShrink: 0,
+                    padding: '8px 18px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: isTomorrow ? '#0F172A' : '#F1F5F9',
+                    color: isTomorrow ? '#FFFFFF' : '#334155',
+                    fontSize: '13px',
+                    fontWeight: isTomorrow ? 750 : 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => setSelectedDate(tomorrowISO)}
+                >
+                  Tomorrow
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flexShrink: 0,
+                    padding: '8px 18px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    fontSize: '13px',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => addMinutesToTime(10)}
+                >
+                  Now
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flexShrink: 0,
+                    padding: '8px 18px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    fontSize: '13px',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => addMinutesToTime(30)}
+                >
+                  +30m
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flexShrink: 0,
+                    padding: '8px 18px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    fontSize: '13px',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => addMinutesToTime(60)}
+                >
+                  +1h
+                </button>
               </div>
 
-              {/* Time Field Container */}
-              <div
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  background: 'var(--field)',
-                  borderRadius: '14px',
-                  border: '1px solid var(--line)',
-                  padding: '9px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  minHeight: '52px',
-                  boxSizing: 'border-box',
-                  cursor: 'pointer'
-                }}
-                onClick={() => {
-                  const el = document.getElementById('bk-time-input');
-                  if (el && typeof el.showPicker === 'function') {
-                    try { el.showPicker(); } catch (e) { el.focus(); }
-                  }
-                }}
-              >
-                <div style={{ color: 'var(--ink)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  <Icon name="clock" size={17} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                  <span style={{ fontSize: '9.5px', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    TIME
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)' }}>
-                    {timeStr}
-                  </span>
-                </div>
-                <input
-                  id="bk-time-input"
-                  type="time"
-                  value={selectedTime}
-                  onChange={(e) => {
-                    if (e.target.value) setSelectedTime(e.target.value);
-                  }}
+              {/* Two-Column Interactive Dropdown Inputs: Date & Time */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* Date Card */}
+                <div
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: 'pointer',
-                    zIndex: 2
+                    position: 'relative',
+                    background: '#F8FAFC',
+                    borderRadius: '16px',
+                    border: isCustomDate ? '1.5px solid var(--ink)' : '1px solid #E2E8F0',
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer'
                   }}
-                  aria-label="Select Pickup Time"
-                />
+                  onClick={() => {
+                    const el = document.getElementById('bk-date-input');
+                    if (el && typeof el.showPicker === 'function') {
+                      try { el.showPicker(); } catch (e) { el.focus(); }
+                    }
+                  }}
+                >
+                  <div style={{ color: '#334155', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                      <line x1="16" x2="16" y1="2" y2="6" />
+                      <line x1="8" x2="8" y1="2" y2="6" />
+                      <line x1="3" x2="21" y1="10" y2="10" />
+                    </svg>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      DATE
+                    </span>
+                    <span style={{ fontSize: '14.5px', fontWeight: 750, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dateStr}
+                    </span>
+                  </div>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                  <input
+                    id="bk-date-input"
+                    type="date"
+                    min={todayISO}
+                    value={selectedDate}
+                    onChange={(e) => {
+                      if (e.target.value) setSelectedDate(e.target.value);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer',
+                      zIndex: 2
+                    }}
+                    aria-label="Select Pickup Date"
+                  />
+                </div>
+
+                {/* Time Card */}
+                <div
+                  style={{
+                    position: 'relative',
+                    background: '#F8FAFC',
+                    borderRadius: '16px',
+                    border: '1px solid #E2E8F0',
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => {
+                    const el = document.getElementById('bk-time-input');
+                    if (el && typeof el.showPicker === 'function') {
+                      try { el.showPicker(); } catch (e) { el.focus(); }
+                    }
+                  }}
+                >
+                  <div style={{ color: '#334155', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      TIME
+                    </span>
+                    <span style={{ fontSize: '14.5px', fontWeight: 750, color: 'var(--ink)' }}>
+                      {timeStr}
+                    </span>
+                  </div>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                  <input
+                    id="bk-time-input"
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => {
+                      if (e.target.value) setSelectedTime(e.target.value);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer',
+                      zIndex: 2
+                    }}
+                    aria-label="Select Pickup Time"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Vehicle Gearbox Segment */}
-            <div className="lab" style={{ marginTop: '10px' }}>
-              Vehicle gearbox
-            </div>
-            <div className="seg" id="bk-trans" style={{ marginTop: '6px' }}>
-              {['Manual', 'Automatic', 'IMT'].map(x => (
-                <button
-                  key={x}
-                  type="button"
-                  className={trans === x ? 'on' : ''}
-                  onClick={() => setTrans(x)}
-                >
-                  {x}
-                </button>
-              ))}
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink, #0F172A)', display: 'block', marginBottom: '8px' }}>
+                Vehicle gearbox
+              </label>
+              <div
+                style={{
+                  background: '#F1F5F9',
+                  borderRadius: '14px',
+                  padding: '4px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                  gap: '4px',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}
+              >
+                {['Manual', 'Automatic', 'IMT'].map(x => {
+                  const isActive = trans === x;
+                  return (
+                    <button
+                      key={x}
+                      type="button"
+                      onClick={() => setTrans(x)}
+                      style={{
+                        height: '42px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: isActive ? '#FFFFFF' : 'transparent',
+                        color: isActive ? 'var(--ink, #0F172A)' : '#475569',
+                        fontSize: '13.5px',
+                        fontWeight: isActive ? 800 : 600,
+                        boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 0,
+                        padding: '0 4px',
+                        letterSpacing: '-0.01em'
+                      }}
+                    >
+                      {x}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Minimal Trip Invoice (Needful info only, no tax) */}
+            {/* FARE BREAKDOWN Card */}
             <div
               style={{
-                marginTop: '18px',
-                background: 'var(--field, #F8FAFC)',
-                border: '1px solid var(--line, #E2E8F0)',
-                borderRadius: '16px',
-                padding: '14px 16px',
+                background: 'var(--card, #FFFFFF)',
+                border: '1px solid #E2E8F0',
+                borderRadius: '20px',
+                padding: '14px 12px 16px',
+                marginBottom: '16px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px'
+                gap: '12px',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+                width: '100%',
+                boxSizing: 'border-box',
+                overflow: 'hidden'
               }}
             >
+              {/* Card Header: FARE BREAKDOWN + Duration Pill */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted, #64748B)' }}>
-                  Fare Breakdown
+                <span style={{ fontSize: '11px', fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748B' }}>
+                  FARE BREAKDOWN
                 </span>
                 <span
                   style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    color: 'var(--ink, #000000)',
-                    background: 'var(--card, #FFFFFF)',
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--line, #E2E8F0)'
+                    fontSize: '12px',
+                    fontWeight: 750,
+                    color: 'var(--ink)',
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    padding: '2.5px 12px',
+                    borderRadius: '999px'
                   }}
                 >
                   {isFlat ? 'Flat route' : `${qty} ${qty > 1 ? currentCat.units : currentCat.unit}`}
                 </span>
               </div>
 
-              {/* Redesigned Modern Minimalist Waiting & Additional Trip Policy Section */}
+              {/* 2-Column Side-by-Side Cards (Waiting & Additional Trip) with guaranteed boundary constraint */}
               <div
-                ref={termsSectionRef}
-                className={isShakingTerms ? 'shake-attention' : ''}
                 style={{
-                  background: hasReviewedTerms
-                    ? 'rgba(22, 163, 74, 0.04)'
-                    : isShakingTerms
-                    ? '#FFFBEB'
-                    : 'var(--card, #FFFFFF)',
-                  border: hasReviewedTerms
-                    ? '1.5px solid rgba(22, 163, 74, 0.35)'
-                    : isShakingTerms
-                    ? '1.5px solid #F59E0B'
-                    : '1px solid var(--line, #E2E8F0)',
-                  borderRadius: '16px',
-                  padding: '13px 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '11px',
-                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-                  boxShadow: isShakingTerms
-                    ? '0 0 0 3px rgba(245, 158, 11, 0.28)'
-                    : '0 2px 8px rgba(0, 0, 0, 0.02)'
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: '8px',
+                  width: '100%',
+                  boxSizing: 'border-box'
                 }}
               >
-                {/* Header row with Title and Status Badge */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div
+                {/* Card 1: Waiting Policy Card */}
+                <div
+                  style={{
+                    background: 'var(--card, #FFFFFF)',
+                    borderRadius: '16px',
+                    border: '1px solid #E2E8F0',
+                    padding: '12px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: '#FEF3C7',
+                          color: '#D97706',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      </div>
+                      <b style={{ fontSize: '13px', color: 'var(--ink)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Waiting
+                      </b>
+                    </div>
+                    <span
                       style={{
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: '8px',
-                        background: hasReviewedTerms ? 'rgba(22, 163, 74, 0.12)' : 'rgba(245, 158, 11, 0.14)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        fontSize: '9.5px',
+                        fontWeight: 800,
+                        padding: '2px 5px',
+                        borderRadius: '6px',
+                        background: '#DCFCE7',
+                        color: '#166534',
+                        whiteSpace: 'nowrap',
                         flexShrink: 0
                       }}
                     >
-                      <Icon
-                        name={hasReviewedTerms ? "check" : "info"}
-                        size={14}
-                        color={hasReviewedTerms ? "#16A34A" : "#D97706"}
-                      />
-                    </div>
-                    <div>
-                      <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em', display: 'block' }}>
-                        Waiting & Additional Trip Info
-                      </b>
-                      <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
-                        {hasReviewedTerms ? 'Accepted for this booking' : 'Review policy before paying'}
-                      </span>
-                    </div>
+                      60m Free
+                    </span>
                   </div>
 
-                  <span
-                    onClick={() => {
-                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                        try { navigator.vibrate(12); } catch (_) {}
-                      }
-                      setShowTermsModal(prev => !prev);
-                    }}
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 750,
-                      padding: '4px 10px',
-                      borderRadius: '999px',
-                      background: hasReviewedTerms ? 'rgba(22, 163, 74, 0.12)' : '#0F172A',
-                      color: hasReviewedTerms ? '#16A34A' : '#FFFFFF',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      userSelect: 'none',
-                      transition: 'all 0.18s ease'
-                    }}
-                  >
-                    <span>{hasReviewedTerms ? '✓ Accepted' : showTermsModal ? 'Close' : 'Details'}</span>
-                    <Icon name={showTermsModal ? "chevron-up" : "chevron-down"} size={11} color={hasReviewedTerms ? "#16A34A" : "#FFFFFF"} />
+                  <span style={{ fontSize: '10.5px', color: '#64748B', lineHeight: 1.25 }}>
+                    Review policy before paying
+                  </span>
+
+                  <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 650, color: 'var(--ink)' }}>₹</span>
+                    <span style={{ fontSize: '22px', fontWeight: 850, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                      2
+                    </span>
+                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#64748B', marginLeft: '3px' }}>
+                      / min
+                    </span>
+                  </div>
+
+                  <span style={{ fontSize: '10px', color: '#64748B', lineHeight: 1.2 }}>
+                    After 60 mins (₹120/hr)
                   </span>
                 </div>
 
-                {/* Minimalist 2-Column Charges Grid */}
+                {/* Card 2: Additional Trip Card */}
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '8px'
+                    background: 'var(--card, #FFFFFF)',
+                    borderRadius: '16px',
+                    border: '1px solid #E2E8F0',
+                    padding: '12px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
                   }}
                 >
-                  {/* Card 1: Waiting Charges */}
-                  <div
-                    style={{
-                      background: 'var(--field, #F8FAFC)',
-                      borderRadius: '12px',
-                      padding: '10px 12px',
-                      border: '1px solid var(--line, #F1F5F9)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Waiting</span>
-                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#DCFCE7', color: '#166534' }}>
-                        60m Free
-                      </span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: '#E0F2FE',
+                          color: '#0284C7',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 19 8.5 5" />
+                          <path d="M19 19 15.5 5" />
+                          <path d="M12 6v3" />
+                          <path d="M12 15v3" />
+                        </svg>
+                      </div>
+                      <b style={{ fontSize: '12px', color: 'var(--ink)', lineHeight: 1.15, wordBreak: 'break-word' }}>
+                        Additional Trip
+                      </b>
                     </div>
-                    <b style={{ fontSize: '13.5px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em' }}>
-                      ₹2 <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/ min</span>
-                    </b>
-                    <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', lineHeight: 1.25 }}>
-                      After 60 mins (₹120/hr)
+                    <span
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: 800,
+                        padding: '2px 5px',
+                        borderRadius: '6px',
+                        background: '#E0F2FE',
+                        color: '#0369A1',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}
+                    >
+                      Extra Km
                     </span>
                   </div>
 
-                  {/* Card 2: Extra Distance */}
-                  <div
-                    style={{
-                      background: 'var(--field, #F8FAFC)',
-                      borderRadius: '12px',
-                      padding: '10px 12px',
-                      border: '1px solid var(--line, #F1F5F9)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Additional Trip</span>
-                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#E0F2FE', color: '#0369A1' }}>
-                        Extra Km
-                      </span>
-                    </div>
-                    <b style={{ fontSize: '13.5px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em' }}>
-                      ₹18 <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/ km</span>
-                    </b>
-                    <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', lineHeight: 1.25 }}>
-                      Beyond booked route
+                  <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '20px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 650, color: 'var(--ink)' }}>₹</span>
+                    <span style={{ fontSize: '22px', fontWeight: 850, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                      18
+                    </span>
+                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#64748B', marginLeft: '3px' }}>
+                      / km
                     </span>
                   </div>
-                </div>
 
-                {/* Details Accordion / Notification Expansion */}
-                {showTermsModal && (
-                  <div
-                    style={{
-                      padding: '10px 12px',
-                      background: 'var(--field, #F8FAFC)',
-                      borderRadius: '12px',
-                      border: '1px solid var(--line, #E2E8F0)',
-                      fontSize: '11.5px',
-                      color: 'var(--ink, #0F172A)',
-                      lineHeight: 1.45,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px',
-                      animation: 'fadeIn 0.18s ease-out'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
-                      <Icon name="clock" size={13} color="#0284C7" />
-                      <span>Complimentary 60 mins waiting included upon driver arrival.</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
-                      <Icon name="route" size={13} color="#16A34A" />
-                      <span>Any additional travel distance beyond scheduled trip charged at ₹18/km.</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Confirmation Button */}
-                {!hasReviewedTerms ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasReviewedTerms(true);
-                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                        try { navigator.vibrate(15); } catch (_) {}
-                      }
-                      if (addToast) addToast('Policy acknowledged! Pay Now is unlocked.', 'check');
-                    }}
-                    style={{
-                      width: '100%',
-                      height: '38px',
-                      borderRadius: '10px',
-                      background: isShakingTerms ? '#EA580C' : '#0F172A',
-                      color: '#FFFFFF',
-                      fontSize: '12.5px',
-                      fontWeight: 750,
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      transition: 'all 0.18s ease'
-                    }}
-                  >
-                    <Icon name="check" size={13} color="#FFFFFF" />
-                    <span>I Acknowledge Waiting & Route Policy</span>
-                  </button>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#16A34A', fontWeight: 650 }}>
-                    <Icon name="check-circle" size={14} color="#16A34A" />
-                    <span>Policy acknowledged · Ready to proceed</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Driver Trip Fare */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
-                    Driver trip fare
-                  </span>
-                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
-                    Rate: {rateDesc}
+                  <span style={{ fontSize: '10px', color: '#64748B', lineHeight: 1.2 }}>
+                    Beyond booked route
                   </span>
                 </div>
-                <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
-                  ₹{tripBaseFare}
-                </span>
-              </div>
-
-              {/* Platform Fee */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
-                    Platform fee
-                  </span>
-                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
-                    App service & 24/7 matching
-                  </span>
-                </div>
-                <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
-                  ₹{platformFee}
-                </span>
-              </div>
-
-              {/* Other Fee (Not tax) */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
-                    Safety & dispatch fee
-                  </span>
-                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
-                    Ride safety & operational dispatch
-                  </span>
-                </div>
-                <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
-                  ₹{otherFee}
-                </span>
-              </div>
-
-              {/* Divider */}
-              <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '2px 0 0' }} />
-
-              {/* Total Fare */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink, #000000)' }}>
-                    Total Trip Fare
-                  </span>
-                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
-                    Driver gets ₹{remaining} after trip
-                  </span>
-                </div>
-                <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink, #000000)', fontFamily: 'var(--font-mono, monospace)' }}>
-                  ₹{fare}
-                </span>
               </div>
             </div>
+
+            {/* Full-Width Policy Acknowledgement Button */}
+            <div style={{ marginBottom: '18px' }} ref={termsSectionRef} className={isShakingTerms ? 'shake-attention' : ''}>
+              {!hasReviewedTerms ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasReviewedTerms(true);
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try { navigator.vibrate(15); } catch (_) {}
+                    }
+                    if (addToast) addToast('Policy acknowledged! Pay Now is unlocked.', 'check');
+                  }}
+                  style={{
+                    width: '100%',
+                    height: '52px',
+                    borderRadius: '14px',
+                    background: isShakingTerms ? '#EA580C' : '#0F172A',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    fontWeight: 750,
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '9px',
+                    boxShadow: isShakingTerms
+                      ? '0 0 0 3px rgba(234, 88, 12, 0.35)'
+                      : '0 4px 16px rgba(15, 23, 42, 0.22)',
+                    transition: 'all 0.18s ease'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span>I Acknowledge Waiting & Route Policy</span>
+                </button>
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: 'rgba(22, 163, 74, 0.08)',
+                    border: '1px solid rgba(22, 163, 74, 0.25)',
+                    fontSize: '13px',
+                    color: '#16A34A',
+                    fontWeight: 750
+                  }}
+                >
+                  <Icon name="check-circle" size={16} color="#16A34A" />
+                  <span>Waiting & Route Policy Acknowledged</span>
+                </div>
+              )}
+            </div>
+
+              {/* Fare Invoice Breakdown Card */}
+              <div
+                style={{
+                  background: 'var(--card, #FFFFFF)',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '18px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
+              >
+                {/* Driver Trip Fare */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
+                      Driver trip fare
+                    </span>
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
+                      Rate: {rateDesc}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    ₹{tripBaseFare}
+                  </span>
+                </div>
+
+                {/* Platform Fee */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
+                      Platform fee
+                    </span>
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
+                      App service & 24/7 matching
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    ₹{platformFee}
+                  </span>
+                </div>
+
+                {/* Other Fee (Not tax) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
+                      Safety & dispatch fee
+                    </span>
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
+                      Ride safety & operational dispatch
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    ₹{otherFee}
+                  </span>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '2px 0 0' }} />
+
+                {/* Total Fare */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink, #000000)' }}>
+                      Total Trip Fare
+                    </span>
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
+                      Driver gets ₹{remaining} after trip
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink, #000000)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    ₹{fare}
+                  </span>
+                </div>
+              </div>
 
             </div>
 

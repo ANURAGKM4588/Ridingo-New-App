@@ -166,6 +166,8 @@ export default function AdminPanel() {
     category: 'airport',
     serviceName: 'Airport Pickup & Drop',
     cta: 'Book Now',
+    ctaBgColor: '#FFFFFF',
+    ctaTextColor: '#000000',
     showCta: true,
     active: true,
     order: 1
@@ -211,6 +213,8 @@ export default function AdminPanel() {
       category: b.category || 'airport',
       serviceName: b.serviceName || 'Airport Pickup & Drop',
       cta: b.cta || 'Book Now',
+      ctaBgColor: b.ctaBgColor || '#FFFFFF',
+      ctaTextColor: b.ctaTextColor || '#000000',
       showCta: b.showCta !== false,
       active: b.active !== false,
       order: b.order || 1
@@ -2516,8 +2520,20 @@ export default function AdminPanel() {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '13px', color: T.ink, fontWeight: 700 }}>
-                              CTA Button: <strong style={{ color: T.ink, background: T.surfaceHover, padding: '2px 8px', borderRadius: '6px' }}>"{b.cta || 'Book Now'}"</strong>
+                            <span style={{ fontSize: '13px', color: T.ink, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              CTA Button:
+                              <strong
+                                style={{
+                                  color: b.ctaTextColor || '#000000',
+                                  background: b.ctaBgColor || '#FFFFFF',
+                                  padding: '3px 10px',
+                                  borderRadius: '8px',
+                                  border: `1px solid ${T.borderStrong}`,
+                                  boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+                                }}
+                              >
+                                "{b.cta || 'Book Now'}"
+                              </strong>
                             </span>
                             <span style={{ fontSize: '12px', color: T.inkMuted }}>
                               Tapping opens <strong>{srv.name}</strong> booking modal directly
@@ -3434,6 +3450,193 @@ export default function AdminPanel() {
                         style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '12px', border: `1px solid ${T.borderStrong}`, fontSize: '13px', outline: 'none', background: T.card }}
                       />
                     </div>
+
+                    {/* CTA Button Color Selection Feature */}
+                    <div style={{ marginTop: '4px', paddingTop: '14px', borderTop: `1px solid ${T.border}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                        <label style={{ fontSize: '11.5px', fontWeight: 800, color: T.ink, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          Button Color Selection (Theme & Branding)
+                        </label>
+                        <span style={{ fontSize: '11px', color: T.inkMuted }}>
+                          Pick preset palette or customize background & text
+                        </span>
+                      </div>
+
+                      {/* Quick Color Presets */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginBottom: '14px' }}>
+                        {[
+                          { id: 'white', label: 'Classic White', bg: '#FFFFFF', text: '#000000', border: 'rgba(0,0,0,0.15)' },
+                          { id: 'yellow', label: 'Taxi Yellow', bg: '#FFC70A', text: '#000000', border: 'transparent' },
+                          { id: 'green', label: 'Emerald Green', bg: '#10B981', text: '#FFFFFF', border: 'transparent' },
+                          { id: 'blue', label: 'Electric Blue', bg: '#3B82F6', text: '#FFFFFF', border: 'transparent' },
+                          { id: 'amber', label: 'Sunset Amber', bg: '#F59E0B', text: '#000000', border: 'transparent' },
+                          { id: 'red', label: 'Crimson Red', bg: '#EF4444', text: '#FFFFFF', border: 'transparent' },
+                          { id: 'violet', label: 'Royal Violet', bg: '#8B5CF6', text: '#FFFFFF', border: 'transparent' },
+                          { id: 'dark', label: 'Deep Obsidian', bg: '#0F172A', text: '#FFFFFF', border: 'rgba(255,255,255,0.2)' }
+                        ].map(preset => {
+                          const isSelected = (bannerForm.ctaBgColor || '#FFFFFF').toUpperCase() === preset.bg.toUpperCase() &&
+                                             (bannerForm.ctaTextColor || '#000000').toUpperCase() === preset.text.toUpperCase();
+                          return (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => setBannerForm(prev => ({
+                                ...prev,
+                                ctaBgColor: preset.bg,
+                                ctaTextColor: preset.text
+                              }))}
+                              style={{
+                                padding: '7px 10px',
+                                borderRadius: '10px',
+                                border: isSelected ? `2px solid ${T.taxi}` : `1px solid ${T.borderStrong}`,
+                                background: isSelected ? `${T.taxi}15` : T.card,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '50%',
+                                  background: preset.bg,
+                                  border: `1.5px solid ${preset.border || 'rgba(0,0,0,0.15)'}`,
+                                  flexShrink: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '10px',
+                                  color: preset.text,
+                                  fontWeight: 900
+                                }}
+                              >
+                                {isSelected ? '✓' : ''}
+                              </span>
+                              <span style={{ fontSize: '11.5px', fontWeight: isSelected ? 800 : 650, color: T.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {preset.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Custom Color Pickers (Background & Text) + Live Button Preview */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', alignItems: 'center' }}>
+                        {/* 1. Background Color Picker */}
+                        <div style={{ background: T.card, padding: '10px 12px', borderRadius: '12px', border: `1px solid ${T.borderStrong}` }}>
+                          <label style={{ fontSize: '11px', fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                            Button Background
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                              type="color"
+                              value={bannerForm.ctaBgColor || '#FFFFFF'}
+                              onChange={e => setBannerForm(prev => ({ ...prev, ctaBgColor: e.target.value }))}
+                              style={{
+                                width: '34px',
+                                height: '34px',
+                                padding: 0,
+                                borderRadius: '8px',
+                                border: `1px solid ${T.borderStrong}`,
+                                cursor: 'pointer',
+                                background: 'none'
+                              }}
+                              title="Pick custom button background color"
+                            />
+                            <input
+                              type="text"
+                              value={bannerForm.ctaBgColor || '#FFFFFF'}
+                              onChange={e => setBannerForm(prev => ({ ...prev, ctaBgColor: e.target.value }))}
+                              placeholder="#FFFFFF"
+                              style={{
+                                flex: 1,
+                                padding: '7px 10px',
+                                borderRadius: '8px',
+                                border: `1px solid ${T.borderStrong}`,
+                                fontSize: '12px',
+                                fontFamily: 'monospace',
+                                outline: 'none',
+                                background: T.surface,
+                                color: T.ink,
+                                fontWeight: 700
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 2. Text / Icon Color Picker */}
+                        <div style={{ background: T.card, padding: '10px 12px', borderRadius: '12px', border: `1px solid ${T.borderStrong}` }}>
+                          <label style={{ fontSize: '11px', fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                            Button Text & Icon
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                              type="color"
+                              value={bannerForm.ctaTextColor || '#000000'}
+                              onChange={e => setBannerForm(prev => ({ ...prev, ctaTextColor: e.target.value }))}
+                              style={{
+                                width: '34px',
+                                height: '34px',
+                                padding: 0,
+                                borderRadius: '8px',
+                                border: `1px solid ${T.borderStrong}`,
+                                cursor: 'pointer',
+                                background: 'none'
+                              }}
+                              title="Pick custom button text/icon color"
+                            />
+                            <input
+                              type="text"
+                              value={bannerForm.ctaTextColor || '#000000'}
+                              onChange={e => setBannerForm(prev => ({ ...prev, ctaTextColor: e.target.value }))}
+                              placeholder="#000000"
+                              style={{
+                                flex: 1,
+                                padding: '7px 10px',
+                                borderRadius: '8px',
+                                border: `1px solid ${T.borderStrong}`,
+                                fontSize: '12px',
+                                fontFamily: 'monospace',
+                                outline: 'none',
+                                background: T.surface,
+                                color: T.ink,
+                                fontWeight: 700
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 3. Live Preview of Resulting CTA Button */}
+                        <div style={{ background: T.card, padding: '10px 14px', borderRadius: '12px', border: `1px solid ${T.borderStrong}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                          <label style={{ fontSize: '11px', fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                            Button Preview
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <span
+                              style={{
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                color: bannerForm.ctaTextColor || '#000000',
+                                background: bannerForm.ctaBgColor || '#FFFFFF',
+                                padding: '6px 16px',
+                                borderRadius: '999px',
+                                boxShadow: '0 3px 10px rgba(0,0,0,0.18)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                border: `1px solid ${bannerForm.ctaBgColor === '#FFFFFF' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'}`
+                              }}
+                            >
+                              <span>{bannerForm.cta || 'Book Now'}</span>
+                              <span style={{ fontSize: '11px' }}>➔</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -3539,8 +3742,8 @@ export default function AdminPanel() {
                             style={{
                               fontSize: '11.5px',
                               fontWeight: 800,
-                              color: '#000000',
-                              background: '#FFFFFF',
+                              color: bannerForm.ctaTextColor || '#000000',
+                              background: bannerForm.ctaBgColor || '#FFFFFF',
                               padding: '5px 14px',
                               borderRadius: '999px',
                               boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
