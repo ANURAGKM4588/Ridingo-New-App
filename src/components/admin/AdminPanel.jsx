@@ -11,9 +11,30 @@ import {
   calculateCrmTelemetry
 } from '../../services/driverService';
 import { getLocalUserRegistry } from '../../services/userService';
+import {
+  getAllBanners,
+  saveOfferBanner,
+  deleteOfferBanner,
+  toggleBannerActive,
+  SERVICE_OPTIONS,
+  subscribeToOfferBanners
+} from '../../services/bannerService';
 
 // Clean minimal SVG icons (Replacing all emojis for a sleek modern UI)
 const Icons = {
+  Tag: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
+      <path d="M7 7h.01"/>
+    </svg>
+  ),
+  Image: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+      <circle cx="9" cy="9" r="2"/>
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+    </svg>
+  ),
   Grid: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>
@@ -136,6 +157,157 @@ export default function AdminPanel() {
   // Rejection modal state
   const [rejectModalDriverId, setRejectModalDriverId] = useState(null);
   const [rejectReasonInput, setRejectReasonInput] = useState('');
+
+  // Default Banner Form Preset - Multiple Image Slots (Mobile & iPad/Tablet), Target Service & CTA Button
+  const DEFAULT_BANNER_FORM = {
+    imageMobile: '',
+    imageTablet: '',
+    imageUrl: '',
+    category: 'airport',
+    serviceName: 'Airport Pickup & Drop',
+    cta: 'Book Now',
+    showCta: true,
+    active: true,
+    order: 1
+  };
+
+  // Banner Management State
+  const [banners, setBanners] = useState(getAllBanners);
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+  const [editingBannerId, setEditingBannerId] = useState(null);
+  const [bannerForm, setBannerForm] = useState(DEFAULT_BANNER_FORM);
+  const [bannerPreviewMode, setBannerPreviewMode] = useState('mobile'); // 'mobile' | 'tablet'
+  const mobileFileInputRef = useRef(null);
+  const tabletFileInputRef = useRef(null);
+
+  useEffect(() => {
+    const unsub = subscribeToOfferBanners((list) => {
+      if (Array.isArray(list)) {
+        setBanners(list);
+      }
+    });
+    return unsub;
+  }, []);
+
+  const handleOpenAddBanner = () => {
+    setEditingBannerId(null);
+    setBannerPreviewMode('mobile');
+    setBannerForm({
+      ...DEFAULT_BANNER_FORM,
+      order: banners.length + 1
+    });
+    setIsBannerModalOpen(true);
+  };
+
+  const handleOpenEditBanner = (b) => {
+    setEditingBannerId(b.id);
+    setBannerPreviewMode('mobile');
+    const mob = b.imageMobile || b.imageUrl || '';
+    const tab = b.imageTablet || b.imageUrl || '';
+    setBannerForm({
+      imageMobile: mob,
+      imageTablet: tab,
+      imageUrl: mob,
+      category: b.category || 'airport',
+      serviceName: b.serviceName || 'Airport Pickup & Drop',
+      cta: b.cta || 'Book Now',
+      showCta: b.showCta !== false,
+      active: b.active !== false,
+      order: b.order || 1
+    });
+    setIsBannerModalOpen(true);
+  };
+
+  const handleServiceSelect = (srvId) => {
+    const srv = SERVICE_OPTIONS.find(s => s.id === srvId) || SERVICE_OPTIONS[0];
+    setBannerForm(prev => ({
+      ...prev,
+      category: srv.id,
+      serviceName: srv.name
+    }));
+  };
+
+  const handleMobileImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3.5 * 1024 * 1024) {
+      if (addToast) addToast('Mobile banner exceeds 3.5MB limit. Please choose a smaller file.', 'alert');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const res = uploadEvent.target.result;
+      setBannerForm(prev => ({
+        ...prev,
+        imageMobile: res,
+        imageUrl: res,
+        imageTablet: prev.imageTablet || res
+      }));
+      if (addToast) addToast('Mobile banner (1000×400) loaded!', 'check');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleTabletImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4.5 * 1024 * 1024) {
+      if (addToast) addToast('iPad / Tablet banner exceeds 4.5MB limit. Please choose a smaller file.', 'alert');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const res = uploadEvent.target.result;
+      setBannerForm(prev => ({
+        ...prev,
+        imageTablet: res
+      }));
+      if (addToast) addToast('iPad / Tablet banner (1400×560) loaded!', 'check');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveBanner = async (e) => {
+    if (e) e.preventDefault();
+    const finalMobile = bannerForm.imageMobile || bannerForm.imageUrl || bannerForm.imageTablet;
+    const finalTablet = bannerForm.imageTablet || bannerForm.imageMobile || bannerForm.imageUrl;
+    if (!finalMobile && !finalTablet) {
+      if (addToast) addToast('Please upload or provide at least one offer banner image', 'alert');
+      return;
+    }
+    const srv = SERVICE_OPTIONS.find(s => s.id === bannerForm.category) || SERVICE_OPTIONS[0];
+    const payload = {
+      ...bannerForm,
+      id: editingBannerId || undefined,
+      imageMobile: finalMobile,
+      imageTablet: finalTablet,
+      imageUrl: finalMobile,
+      category: srv.id,
+      serviceName: srv.name,
+      headline: `${srv.name} Offer`,
+      title: `${srv.name} Offer Banner`
+    };
+    const res = await saveOfferBanner(payload);
+    setBanners(res.list);
+    setIsBannerModalOpen(false);
+    if (addToast) {
+      addToast(editingBannerId ? 'Offer banner updated with responsive mobile/tablet assets!' : 'New responsive offer banner published to app!', 'check');
+    }
+  };
+
+  const handleDeleteBanner = async (id) => {
+    if (window.confirm('Are you sure you want to delete this offer banner?')) {
+      const updated = await deleteOfferBanner(id);
+      setBanners(updated);
+      if (addToast) addToast('Offer banner removed', 'check');
+    }
+  };
+
+  const handleToggleBanner = async (id) => {
+    const updated = await toggleBannerActive(id);
+    setBanners(updated);
+    if (addToast) addToast('Banner visibility toggled', 'info');
+  };
 
   // Sync from Supabase on mount
   useEffect(() => {
@@ -296,87 +468,249 @@ export default function AdminPanel() {
       style={{
         display: 'flex',
         minHeight: '100vh',
-        width: '100vw',
+        width: '100%',
         background: T.canvas,
         color: T.ink,
         fontFamily: T.fontSans,
         WebkitFontSmoothing: 'antialiased',
         boxSizing: 'border-box',
-        overflowX: 'hidden'
+        overflowX: 'hidden',
+        overflowY: 'visible'
       }}
     >
       <style>{`
         /* ========================================================
            RESPONSIVE DESIGN SYSTEM:
-           - LAPTOP & DESKTOP (>=1024px): Full Landscape layouts
-           - TABLET (768px-1023px): Same Landscape Responsive as Laptop
-           - MOBILE (<768px): Strict Vertical Single-Column Layouts
+           - DESKTOP (>= 1024px): Left Sidebar + Main Viewport + Desktop Header
+           - VERTICAL / MOBILE / TABLET (< 1024px): Top Header only (Sidebar & Desktop Header removed)
            ======================================================== */
         .admin-root-container {
-          display: flex;
           min-height: 100vh;
-          width: 100vw;
+          width: 100%;
           background: #F9FAFB;
           color: #121316;
           box-sizing: border-box;
           overflow-x: hidden;
+          overflow-y: visible;
         }
 
-        .admin-sidebar {
-          width: 280px;
-          background: #FFFFFF;
-          border-right: 1px solid rgba(0, 0, 0, 0.06);
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          padding: 32px 20px;
-          flex-shrink: 0;
-          box-sizing: border-box;
-          transition: all 0.2s ease;
+        /* 1. DESKTOP / WIDE SCREEN LAYOUT (>= 1024px) */
+        @media (min-width: 1024px) {
+          .admin-root-container {
+            display: flex !important;
+            flex-direction: row !important;
+          }
+
+          /* Hide mobile top header on desktop */
+          .admin-mobile-header {
+            display: none !important;
+          }
+
+          /* Show sticky left sidebar on desktop */
+          .admin-sidebar {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 280px !important;
+            background: #FFFFFF !important;
+            border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+            padding: 32px 20px !important;
+            flex-shrink: 0 !important;
+            box-sizing: border-box !important;
+            position: sticky !important;
+            top: 0 !important;
+            height: 100vh !important;
+            overflow-y: auto !important;
+            transition: all 0.2s ease !important;
+            z-index: 50 !important;
+          }
+
+          .admin-main-viewport {
+            flex: 1 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-width: 0 !important;
+            min-height: 100vh !important;
+            overflow: visible !important;
+            box-sizing: border-box !important;
+          }
+
+          /* Show desktop sub-header */
+          .admin-header {
+            display: flex !important;
+            min-height: 76px !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+            background: #FFFFFF !important;
+            padding: 0 36px !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            flex-shrink: 0 !important;
+            box-sizing: border-box !important;
+          }
+
+          .admin-dashboard-body {
+            padding: 32px 36px !important;
+            flex: 1 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 28px !important;
+            box-sizing: border-box !important;
+          }
+
+          .admin-metrics-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 20px !important;
+          }
+
+          .admin-profile-expand-body {
+            display: grid !important;
+            grid-template-columns: 390px 1fr !important;
+            gap: 32px !important;
+            padding: 0 32px 28px !important;
+          }
+
+          .admin-simulator-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 36px !important;
+          }
         }
 
-        .admin-mobile-header {
-          display: none;
+        /* 2. VERTICAL FRAME / MOBILE & TABLET LAYOUT (< 1024px) */
+        @media (max-width: 1023px) {
+          .admin-root-container {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 100vh !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+          }
+
+          /* Strictly REMOVE sidebar in vertical frame */
+          .admin-sidebar {
+            display: none !important;
+          }
+
+          /* Strictly REMOVE desktop header in vertical frame (no duplicate header) */
+          .admin-header {
+            display: none !important;
+          }
+
+          /* Top Header acts as unified navigation */
+          .admin-mobile-header {
+            display: flex !important;
+            flex-direction: column !important;
+            background: #FFFFFF !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+            padding: 12px 16px 8px !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 100 !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .admin-mobile-nav-tabs {
+            display: flex !important;
+            overflow-x: auto !important;
+            gap: 8px !important;
+            padding: 10px 0 4px !important;
+            scrollbar-width: none !important;
+            -webkit-overflow-scrolling: touch !important;
+            width: 100% !important;
+          }
+
+          .admin-mobile-nav-tabs::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          /* Full width content */
+          .admin-main-viewport {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            flex: 1 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: visible !important;
+            box-sizing: border-box !important;
+          }
+
+          .admin-dashboard-body {
+            width: 100% !important;
+            padding: 18px 14px !important;
+            gap: 20px !important;
+            box-sizing: border-box !important;
+          }
+
+          .admin-metrics-grid {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .admin-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+            padding-bottom: 14px !important;
+          }
+
+          .admin-toolbar > div {
+            width: 100% !important;
+          }
+
+          .admin-profile-expand-card {
+            border-radius: 20px !important;
+            margin-bottom: 18px !important;
+          }
+
+          .admin-profile-expand-body {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+            padding: 0 16px 20px !important;
+          }
+
+          .admin-doc-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .admin-simulator-grid {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+
+          .admin-driver-item {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 14px !important;
+            padding: 16px !important;
+          }
+
+          .admin-driver-item-right {
+            width: 100% !important;
+            justify-content: space-between !important;
+            padding-top: 10px !important;
+            border-top: 1px dashed rgba(0,0,0,0.08) !important;
+          }
+
+          .admin-row-item {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            padding: 14px 16px !important;
+          }
+
+          .admin-row-item > div:last-child {
+            width: 100% !important;
+            justify-content: space-between !important;
+            padding-top: 8px !important;
+            border-top: 1px dashed rgba(0,0,0,0.08) !important;
+          }
         }
 
-        .admin-main-viewport {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-          overflow-y: auto;
-          box-sizing: border-box;
-        }
-
-        .admin-header {
-          min-height: 76px;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-          background: #FFFFFF;
-          padding: 0 36px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-shrink: 0;
-          box-sizing: border-box;
-        }
-
-        .admin-dashboard-body {
-          padding: 32px 36px;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 28px;
-          box-sizing: border-box;
-        }
-
-        /* METRICS: 4-Col Landscape on Laptop */
-        .admin-metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 20px;
-        }
-
-        /* TOOLBAR: Landscape Flex Row */
+        /* 3. SHARED COMPONENTS STYLES */
         .admin-toolbar {
           display: flex;
           align-items: center;
@@ -386,9 +720,6 @@ export default function AdminPanel() {
           flex-wrap: wrap;
         }
 
-        /* ========================================================
-           EXPANDED PROFILE CARD IN LANDSCAPE SIZE
-           ======================================================== */
         .admin-profile-expand-card {
           background: #FFFFFF;
           border-radius: 28px;
@@ -404,15 +735,6 @@ export default function AdminPanel() {
         @keyframes adminSlideDown {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 2-Column Landscape Layout for Laptop & Tablet */
-        .admin-profile-expand-body {
-          display: grid;
-          grid-template-columns: 390px 1fr;
-          gap: 32px;
-          padding: 0 32px 28px;
-          box-sizing: border-box;
         }
 
         .admin-profile-expand-left {
@@ -435,14 +757,6 @@ export default function AdminPanel() {
           gap: 12px;
         }
 
-        /* SIMULATOR: 2-Col Landscape */
-        .admin-simulator-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 36px;
-        }
-
-        /* DRIVER ROW */
         .admin-driver-item {
           padding: 18px 24px;
           border-radius: 20px;
@@ -468,140 +782,6 @@ export default function AdminPanel() {
           align-items: center;
           justify-content: space-between;
           box-sizing: border-box;
-        }
-
-        /* ========================================================
-           TABLET RESPONSIVE (768px <= width < 1024px)
-           Same Landscape design as Laptop
-           ======================================================== */
-        @media (min-width: 768px) and (max-width: 1023px) {
-          .admin-sidebar {
-            width: 230px;
-            padding: 24px 14px;
-          }
-          .admin-header {
-            padding: 0 24px;
-          }
-          .admin-dashboard-body {
-            padding: 24px 20px;
-            gap: 22px;
-          }
-          .admin-metrics-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-          }
-          .admin-profile-expand-body {
-            grid-template-columns: 320px 1fr; /* Landscape 2-column */
-            gap: 22px;
-            padding: 0 22px 24px;
-          }
-          .admin-simulator-grid {
-            grid-template-columns: 1fr 1fr; /* Landscape */
-            gap: 24px;
-          }
-        }
-
-        /* ========================================================
-           MOBILE DEVICE RESPONSIVE (<768px)
-           Strict Vertical Design for all components
-           ======================================================== */
-        @media (max-width: 767px) {
-          .admin-root-container {
-            flex-direction: column;
-          }
-          .admin-sidebar {
-            display: none;
-          }
-          .admin-mobile-header {
-            display: flex;
-            flex-direction: column;
-            background: #FFFFFF;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-            padding: 12px 16px 8px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-          }
-          .admin-mobile-nav-tabs {
-            display: flex;
-            overflow-x: auto;
-            gap: 8px;
-            padding: 10px 0 6px;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-          }
-          .admin-mobile-nav-tabs::-webkit-scrollbar {
-            display: none;
-          }
-          .admin-header {
-            min-height: auto;
-            padding: 16px 14px;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-          }
-          .admin-header > div:last-child {
-            width: 100%;
-            justify-content: space-between;
-          }
-          .admin-dashboard-body {
-            padding: 14px 12px;
-            gap: 18px;
-          }
-          .admin-metrics-grid {
-            grid-template-columns: 1fr; /* Vertical */
-            gap: 12px;
-          }
-          .admin-toolbar {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
-            padding-bottom: 14px;
-          }
-          .admin-toolbar > div {
-            width: 100%;
-          }
-          .admin-profile-expand-card {
-            border-radius: 20px;
-            margin-bottom: 18px;
-          }
-          .admin-profile-expand-body {
-            grid-template-columns: 1fr; /* VERTICAL SINGLE COLUMN ON MOBILE */
-            gap: 20px;
-            padding: 0 16px 20px;
-          }
-          .admin-doc-grid {
-            grid-template-columns: 1fr !important; /* Stack documents on mobile */
-          }
-          .admin-simulator-grid {
-            grid-template-columns: 1fr; /* Vertical */
-            gap: 24px;
-          }
-          .admin-driver-item {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 14px;
-            padding: 16px;
-          }
-          .admin-driver-item-right {
-            width: 100%;
-            justify-content: space-between;
-            padding-top: 10px;
-            border-top: 1px dashed rgba(0,0,0,0.08);
-          }
-          .admin-row-item {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 12px !important;
-            padding: 14px 16px !important;
-          }
-          .admin-row-item > div:last-child {
-            width: 100%;
-            justify-content: space-between;
-            padding-top: 8px;
-            border-top: 1px dashed rgba(0,0,0,0.08);
-          }
         }
       `}</style>
 
@@ -664,6 +844,7 @@ export default function AdminPanel() {
         <div className="admin-mobile-nav-tabs">
           {[
             { id: 'drivers', label: 'Drivers & KYC', badge: newCount > 0 ? `${newCount}` : null },
+            { id: 'banners', label: 'Offer Banners', badge: banners.filter(b => b.active).length ? `${banners.filter(b => b.active).length} Live` : null },
             { id: 'telemetry', label: 'Revenue Engine' },
             { id: 'trips', label: 'Live Telemetry', badge: telemetry.totalTrips },
             { id: 'users', label: 'Customers', badge: usersList.length }
@@ -721,7 +902,6 @@ export default function AdminPanel() {
         style={{
           background: T.card,
           borderRight: `1px solid ${T.border}`,
-          display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           flexShrink: 0,
@@ -828,6 +1008,7 @@ export default function AdminPanel() {
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {[
               { id: 'drivers', label: 'Drivers & KYC', badge: newCount > 0 ? `${newCount} New` : null },
+              { id: 'banners', label: 'Offer Banners & Slides', badge: `${banners.filter(b => b.active).length} Active` },
               { id: 'telemetry', label: 'Trip Revenue Engine' },
               { id: 'trips', label: 'Live Telemetry & Trips', badge: telemetry.totalTrips },
               { id: 'users', label: 'Customer Accounts', badge: usersList.length }
@@ -892,14 +1073,13 @@ export default function AdminPanel() {
       {/* ========================================================
           MAIN VIEWPORT: SPACIOUS, AIRY, UNCONGESTED
          ======================================================== */}
-      <main className="admin-main-viewport" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowY: 'auto' }}>
+      <main className="admin-main-viewport" style={{ flex: 1, minWidth: 0 }}>
         {/* Top Header Bar */}
         <header
           className="admin-header"
           style={{
             borderBottom: `1px solid ${T.border}`,
             background: T.card,
-            display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexShrink: 0
@@ -940,6 +1120,31 @@ export default function AdminPanel() {
               >
                 <span style={{ fontSize: '15px', fontWeight: 800 }}>+</span>
                 <span>Register Driver</span>
+              </button>
+            )}
+
+            {activeTab === 'banners' && (
+              <button
+                type="button"
+                onClick={handleOpenAddBanner}
+                style={{
+                  background: T.taxi,
+                  color: '#000000',
+                  border: 'none',
+                  borderRadius: '14px',
+                  padding: '10px 18px',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                  transition: 'opacity 0.15s ease'
+                }}
+              >
+                <span style={{ fontSize: '15px', fontWeight: 800 }}>+</span>
+                <span>Add Offer Banner</span>
               </button>
             )}
 
@@ -2163,6 +2368,223 @@ export default function AdminPanel() {
               </div>
             </div>
           )}
+
+          {/* ========================================================
+              TAB 5: OFFER BANNERS & SLIDES (MARKETING & NAVIGATION)
+             ======================================================== */}
+          {activeTab === 'banners' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Header Box */}
+              <div
+                style={{
+                  background: T.card,
+                  borderRadius: '24px',
+                  border: `1px solid ${T.border}`,
+                  padding: '28px 32px',
+                  boxShadow: T.shadowCard,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '20px',
+                  flexWrap: 'wrap'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <h2 style={{ fontFamily: T.fontDisplay, fontSize: '20px', fontWeight: 800, margin: 0, color: T.ink }}>
+                      Offer Banners & Promotional Slides
+                    </h2>
+                    <span
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: '999px',
+                        background: T.greenSoft,
+                        color: T.green,
+                        fontSize: '11px',
+                        fontWeight: 800
+                      }}
+                    >
+                      {banners.filter(b => b.active).length} Running Live
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '13px', color: T.inkMuted, margin: 0, maxWidth: '650px', lineHeight: 1.45 }}>
+                    Upload banner slides, assign promotional discounts, and choose which service booking page users navigate to when tapping the banner in the User App.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenAddBanner}
+                  style={{
+                    background: T.taxi,
+                    color: '#000000',
+                    border: 'none',
+                    borderRadius: '14px',
+                    padding: '12px 22px',
+                    fontWeight: 800,
+                    fontSize: '13.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(255, 199, 10, 0.35)',
+                    transition: 'transform 0.15s ease'
+                  }}
+                >
+                  <span style={{ fontSize: '16px', fontWeight: 900 }}>+</span>
+                  <span>Create Offer Banner Slide</span>
+                </button>
+              </div>
+
+              {/* Banners Grid / List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {banners.map((b, idx) => {
+                  const srv = SERVICE_OPTIONS.find(s => s.id === b.category) || SERVICE_OPTIONS[0];
+                  return (
+                    <div
+                      key={b.id || idx}
+                      style={{
+                        background: T.card,
+                        borderRadius: '20px',
+                        border: `1px solid ${b.active ? T.borderStrong : T.border}`,
+                        padding: '20px 24px',
+                        boxShadow: T.shadowCard,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '20px',
+                        opacity: b.active ? 1 : 0.65,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {/* Left: Thumbnail Preview & Content */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: 0, flex: 1 }}>
+                        {/* Slide Thumbnail */}
+                        <div
+                          style={{
+                            width: '110px',
+                            height: '70px',
+                            borderRadius: '14px',
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            background: (b.imageMobile || b.imageUrl || b.imageTablet)
+                              ? `url(${b.imageMobile || b.imageUrl || b.imageTablet}) center/cover no-repeat`
+                              : (b.bgGradient || 'linear-gradient(135deg, #0A0F1D 0%, #1E293B 100%)'),
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                          }}
+                        >
+                          {!(b.imageMobile || b.imageUrl || b.imageTablet) && (
+                            <span style={{ fontSize: '11px', color: '#FFFFFF', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>
+                              {b.tag || 'Slide'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Details */}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                background: srv.color,
+                                color: '#FFFFFF',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                padding: '3px 10px',
+                                borderRadius: '999px',
+                                letterSpacing: '0.02em',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <span>➔</span>
+                              <span>Target: {srv.name}</span>
+                            </span>
+                            <span style={{ fontSize: '11.5px', color: T.inkMuted, fontWeight: 600 }}>• Slide #{idx + 1}</span>
+
+                            {/* Responsive Assets Badges */}
+                            <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: T.surfaceHover, color: T.ink }}>
+                              📱 Mobile: {b.imageMobile || b.imageUrl ? '✓ 1000px' : 'Pending'}
+                            </span>
+                            <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: T.surfaceHover, color: b.imageTablet ? T.green : T.inkMuted }}>
+                              📱 iPad/Tablet: {b.imageTablet ? '✓ 1400px' : 'Auto-Scaled'}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '13px', color: T.ink, fontWeight: 700 }}>
+                              CTA Button: <strong style={{ color: T.ink, background: T.surfaceHover, padding: '2px 8px', borderRadius: '6px' }}>"{b.cta || 'Book Now'}"</strong>
+                            </span>
+                            <span style={{ fontSize: '12px', color: T.inkMuted }}>
+                              Tapping opens <strong>{srv.name}</strong> booking modal directly
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleBanner(b.id)}
+                          style={{
+                            padding: '7px 14px',
+                            borderRadius: '10px',
+                            border: `1px solid ${b.active ? T.greenBorder : T.borderStrong}`,
+                            background: b.active ? T.greenSoft : T.surface,
+                            color: b.active ? T.green : T.inkMuted,
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {b.active ? '● Live on App' : '○ Paused'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditBanner(b)}
+                          style={{
+                            padding: '7px 14px',
+                            borderRadius: '10px',
+                            border: `1px solid ${T.borderStrong}`,
+                            background: T.card,
+                            color: T.ink,
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBanner(b.id)}
+                          style={{
+                            padding: '7px 12px',
+                            borderRadius: '10px',
+                            border: `1px solid ${T.redBorder}`,
+                            background: T.redSoft,
+                            color: T.red,
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -2509,6 +2931,634 @@ export default function AdminPanel() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ========================================================
+          OFFER BANNER CREATE & EDIT MODAL
+         ======================================================== */}
+      {isBannerModalOpen && (
+        <div
+          onClick={() => setIsBannerModalOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: T.card,
+              borderRadius: '26px',
+              padding: '28px 32px',
+              maxWidth: '740px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: T.shadowElevated,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '22px'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${T.border}`, paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontFamily: T.fontDisplay, fontSize: '19px', fontWeight: 800, margin: '0 0 4px', color: T.ink }}>
+                  {editingBannerId ? 'Edit Responsive Offer Banner Slide' : 'Create Responsive Offer Banner Slide'}
+                </h3>
+                <span style={{ fontSize: '12.5px', color: T.inkMuted }}>
+                  Upload responsive graphics for mobile phones & tablets/iPads, assign target service, and configure CTA button.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBannerModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.inkMuted, display: 'flex', padding: '6px' }}
+              >
+                <Icons.Close />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBanner} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* 1. RESPONSIVE MULTI-IMAGE UPLOADING (Mobile Phones & iPads/Tablets) */}
+              <div style={{ background: T.surface, padding: '20px 22px', borderRadius: '20px', border: `1px solid ${T.border}` }}>
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 850, color: T.ink, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      1. Upload Banner Graphics (Mobile & Tablet)
+                    </label>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: T.inkDim, background: T.card, padding: '3px 9px', borderRadius: '8px', border: `1px solid ${T.borderStrong}` }}>
+                      Aspect Ratio: 2.5:1
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '12px', color: T.inkMuted, marginTop: '3px', display: 'block' }}>
+                    Upload separate image sizes to ensure flawless resolution on mobile smartphones and iPads/tablets without cropping.
+                  </span>
+                </div>
+
+                {/* Hidden File Inputs */}
+                <input
+                  type="file"
+                  ref={mobileFileInputRef}
+                  accept="image/*"
+                  onChange={handleMobileImageUpload}
+                  style={{ display: 'none' }}
+                />
+                <input
+                  type="file"
+                  ref={tabletFileInputRef}
+                  accept="image/*"
+                  onChange={handleTabletImageUpload}
+                  style={{ display: 'none' }}
+                />
+
+                {/* 2-Slot Grid: Mobile Phone + iPad/Tablet */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  
+                  {/* SLOT A: 📱 Mobile Phone Graphic */}
+                  <div
+                    style={{
+                      background: T.card,
+                      borderRadius: '16px',
+                      border: `1.5px solid ${bannerForm.imageMobile ? T.borderStrong : T.border}`,
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '15px' }}>📱</span>
+                        <b style={{ fontSize: '12.5px', color: T.ink }}>Mobile Phone Banner</b>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: bannerForm.imageMobile ? T.greenSoft : T.surfaceHover,
+                          color: bannerForm.imageMobile ? T.green : T.inkMuted
+                        }}
+                      >
+                        {bannerForm.imageMobile ? '✓ 1000×400 Ready' : '1000 × 400 px'}
+                      </span>
+                    </div>
+
+                    {bannerForm.imageMobile ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '100%',
+                            aspectRatio: '2.5 / 1',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            border: `1px solid ${T.borderStrong}`,
+                            background: '#090D1A',
+                            position: 'relative'
+                          }}
+                        >
+                          <img
+                            src={bannerForm.imageMobile}
+                            alt="Mobile Banner Preview"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => mobileFileInputRef.current?.click()}
+                            style={{
+                              flex: 1,
+                              padding: '7px 12px',
+                              borderRadius: '8px',
+                              border: `1px solid ${T.borderStrong}`,
+                              background: T.surface,
+                              color: T.ink,
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Replace Mobile Image
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBannerForm(prev => ({ ...prev, imageMobile: '', imageUrl: prev.imageTablet || '' }))}
+                            style={{
+                              padding: '7px 12px',
+                              borderRadius: '8px',
+                              border: `1px solid ${T.redBorder}`,
+                              background: T.redSoft,
+                              color: T.red,
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div
+                          onClick={() => mobileFileInputRef.current?.click()}
+                          style={{
+                            border: `2px dashed ${T.borderStrong}`,
+                            borderRadius: '12px',
+                            padding: '22px 14px',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            background: T.surface,
+                            transition: 'background 0.15s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px', color: T.inkMuted }}>
+                            <Icons.Image />
+                          </div>
+                          <b style={{ fontSize: '12.5px', color: T.ink, display: 'block' }}>
+                            Upload Mobile Graphic
+                          </b>
+                          <span style={{ fontSize: '11px', color: T.inkDim, marginTop: '2px', display: 'block' }}>
+                            Recommended: 1000 × 400 px (Max 3.5MB)
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="url"
+                            placeholder="Or paste mobile image URL..."
+                            value={bannerForm.imageMobile}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setBannerForm(prev => ({ ...prev, imageMobile: val, imageUrl: val, imageTablet: prev.imageTablet || val }));
+                            }}
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '8px 10px',
+                              borderRadius: '10px',
+                              border: `1px solid ${T.borderStrong}`,
+                              fontSize: '11.5px',
+                              outline: 'none',
+                              background: T.card
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SLOT B: 📱 iPad & Tablet Graphic */}
+                  <div
+                    style={{
+                      background: T.card,
+                      borderRadius: '16px',
+                      border: `1.5px solid ${bannerForm.imageTablet ? T.borderStrong : T.border}`,
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '15px' }}>📱</span>
+                        <b style={{ fontSize: '12.5px', color: T.ink }}>iPad & Tablet Banner</b>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: bannerForm.imageTablet ? T.greenSoft : T.surfaceHover,
+                          color: bannerForm.imageTablet ? T.green : T.inkMuted
+                        }}
+                      >
+                        {bannerForm.imageTablet ? '✓ 1400×560 Ready' : '1400 × 560 px'}
+                      </span>
+                    </div>
+
+                    {bannerForm.imageTablet ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '100%',
+                            aspectRatio: '2.5 / 1',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            border: `1px solid ${T.borderStrong}`,
+                            background: '#090D1A',
+                            position: 'relative'
+                          }}
+                        >
+                          <img
+                            src={bannerForm.imageTablet}
+                            alt="iPad/Tablet Banner Preview"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => tabletFileInputRef.current?.click()}
+                            style={{
+                              flex: 1,
+                              padding: '7px 12px',
+                              borderRadius: '8px',
+                              border: `1px solid ${T.borderStrong}`,
+                              background: T.surface,
+                              color: T.ink,
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Replace Tablet Image
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBannerForm(prev => ({ ...prev, imageTablet: '' }))}
+                            style={{
+                              padding: '7px 12px',
+                              borderRadius: '8px',
+                              border: `1px solid ${T.redBorder}`,
+                              background: T.redSoft,
+                              color: T.red,
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div
+                          onClick={() => tabletFileInputRef.current?.click()}
+                          style={{
+                            border: `2px dashed ${T.borderStrong}`,
+                            borderRadius: '12px',
+                            padding: '22px 14px',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            background: T.surface,
+                            transition: 'background 0.15s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px', color: T.inkMuted }}>
+                            <Icons.Image />
+                          </div>
+                          <b style={{ fontSize: '12.5px', color: T.ink, display: 'block' }}>
+                            Upload iPad / Tablet Graphic
+                          </b>
+                          <span style={{ fontSize: '11px', color: T.inkDim, marginTop: '2px', display: 'block' }}>
+                            Recommended: 1400 × 560 px (Auto-scales mobile if empty)
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="url"
+                            placeholder="Or paste tablet image URL..."
+                            value={bannerForm.imageTablet}
+                            onChange={e => setBannerForm(prev => ({ ...prev, imageTablet: e.target.value }))}
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '8px 10px',
+                              borderRadius: '10px',
+                              border: `1px solid ${T.borderStrong}`,
+                              fontSize: '11.5px',
+                              outline: 'none',
+                              background: T.card
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* 2. TARGET SERVICE NAVIGATION SELECTOR (User's primary requirement) */}
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 800, color: T.ink, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
+                  2. Select Target Service (Navigates to this service booking page when clicked)
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                  {SERVICE_OPTIONS.map(srv => {
+                    const isSelected = bannerForm.category === srv.id;
+                    return (
+                      <div
+                        key={srv.id}
+                        onClick={() => handleServiceSelect(srv.id)}
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: '14px',
+                          border: isSelected ? `2px solid ${srv.color}` : `1px solid ${T.borderStrong}`,
+                          background: isSelected ? `${srv.color}15` : T.card,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '16px' }}>
+                            {srv.id === 'airport' ? '✈️' : srv.id === 'hourly' ? '⏱️' : srv.id === 'daily' ? '☀️' : srv.id === 'outstation' ? '🛣️' : '🌙'}
+                          </span>
+                          {isSelected && (
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: srv.color }} />
+                          )}
+                        </div>
+                        <b style={{ fontSize: '13px', color: isSelected ? srv.color : T.ink, lineHeight: 1.25 }}>
+                          {srv.name}
+                        </b>
+                        <span style={{ fontSize: '11px', color: T.inkMuted }}>
+                          {srv.category}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. CTA BUTTON CONFIGURATION */}
+              <div style={{ background: T.surface, padding: '16px 20px', borderRadius: '18px', border: `1px solid ${T.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 800, color: T.ink, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
+                      3. CTA Button on Image
+                    </label>
+                    <span style={{ fontSize: '11.5px', color: T.inkMuted }}>
+                      Display a clean action pill button directly on the banner
+                    </span>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12.5px', fontWeight: 700, color: T.ink }}>
+                    <input
+                      type="checkbox"
+                      checked={bannerForm.showCta !== false}
+                      onChange={e => setBannerForm(prev => ({ ...prev, showCta: e.target.checked }))}
+                      style={{ accentColor: T.taxi, width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <span>Show CTA Button</span>
+                  </label>
+                </div>
+
+                {bannerForm.showCta !== false && (
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+                      Button Text Label
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Book Now, Claim Offer, Book Airport Ride"
+                      value={bannerForm.cta}
+                      onChange={e => setBannerForm(prev => ({ ...prev, cta: e.target.value }))}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '12px', border: `1px solid ${T.borderStrong}`, fontSize: '13px', outline: 'none', background: T.card }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 4. LIVE IN-APP PREVIEW (Device Switcher: Mobile Phone vs iPad/Tablet) */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                  <label style={{ fontSize: '11.5px', fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Live App Appearance Preview
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: T.surface, padding: '3px', borderRadius: '10px', border: `1px solid ${T.border}` }}>
+                    <button
+                      type="button"
+                      onClick={() => setBannerPreviewMode('mobile')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        background: bannerPreviewMode === 'mobile' ? T.card : 'transparent',
+                        color: bannerPreviewMode === 'mobile' ? T.ink : T.inkMuted,
+                        fontSize: '11px',
+                        fontWeight: 750,
+                        cursor: 'pointer',
+                        boxShadow: bannerPreviewMode === 'mobile' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                    >
+                      📱 Mobile Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBannerPreviewMode('tablet')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        background: bannerPreviewMode === 'tablet' ? T.card : 'transparent',
+                        color: bannerPreviewMode === 'tablet' ? T.ink : T.inkMuted,
+                        fontSize: '11px',
+                        fontWeight: 750,
+                        cursor: 'pointer',
+                        boxShadow: bannerPreviewMode === 'tablet' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                    >
+                      📱 iPad / Tablet Preview
+                    </button>
+                  </div>
+                </div>
+
+                {(() => {
+                  const previewImg = bannerPreviewMode === 'tablet'
+                    ? (bannerForm.imageTablet || bannerForm.imageMobile || bannerForm.imageUrl)
+                    : (bannerForm.imageMobile || bannerForm.imageUrl || bannerForm.imageTablet);
+
+                  return (
+                    <div
+                      style={{
+                        maxWidth: bannerPreviewMode === 'mobile' ? '410px' : '100%',
+                        margin: '0 auto',
+                        position: 'relative',
+                        aspectRatio: '2.5 / 1',
+                        minHeight: '144px',
+                        maxHeight: '230px',
+                        borderRadius: '24px',
+                        overflow: 'hidden',
+                        border: '1.5px solid rgba(255, 255, 255, 0.25)',
+                        background: previewImg ? '#090D1A' : 'linear-gradient(135deg, #061A15 0%, #0D2C24 45%, #0B1929 100%)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)'
+                      }}
+                    >
+                      {previewImg ? (
+                        <img
+                          src={previewImg}
+                          alt="Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                      ) : (
+                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: '13px' }}>
+                          Upload an image above to see live preview
+                        </div>
+                      )}
+
+                      {/* Gradient Scrim */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 50%, transparent 100%)',
+                          pointerEvents: 'none'
+                        }}
+                      />
+
+                      {/* Floating Bottom Bar: Target Service + CTA Button */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: '12px',
+                          left: '14px',
+                          right: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          zIndex: 2
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 750,
+                            color: '#FFFFFF',
+                            background: 'rgba(15, 23, 42, 0.72)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255, 255, 255, 0.25)',
+                            padding: '4px 10px',
+                            borderRadius: '999px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <span style={{ color: '#22C55E' }}>➔</span>
+                          <span>{bannerForm.serviceName}</span>
+                        </span>
+
+                        {bannerForm.showCta !== false && (
+                          <span
+                            style={{
+                              fontSize: '11.5px',
+                              fontWeight: 800,
+                              color: '#000000',
+                              background: '#FFFFFF',
+                              padding: '5px 14px',
+                              borderRadius: '999px',
+                              boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}
+                          >
+                            <span>{bannerForm.cta || 'Book Now'}</span>
+                            <span style={{ fontSize: '11px' }}>➔</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: `1px solid ${T.border}`, paddingTop: '16px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsBannerModalOpen(false)}
+                  style={{
+                    padding: '11px 20px',
+                    borderRadius: '12px',
+                    border: `1px solid ${T.borderStrong}`,
+                    background: T.surface,
+                    color: T.ink,
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '11px 24px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: T.taxi,
+                    color: '#000000',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(255, 199, 10, 0.35)'
+                  }}
+                >
+                  {editingBannerId ? 'Update & Publish to App' : 'Save & Publish to App'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

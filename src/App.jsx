@@ -76,8 +76,7 @@ class ErrorBoundary extends React.Component {
 }
 
 function MainApp() {
-  const app = useApp();
-  if (!app) return null;
+  const app = useApp() || {};
   const {
     view,
     setView,
@@ -97,7 +96,7 @@ function MainApp() {
     cancelTripByUser,
     termsConfirmationBanner,
     setTermsConfirmationBanner
-  } = useApp();
+  } = app;
 
   const handleUserPhoneRecovery = () => {
     setBookingOpen(false);
@@ -149,6 +148,20 @@ function MainApp() {
       });
     }
   }, [uTab]);
+
+  React.useEffect(() => {
+    if (view === 'admin') {
+      document.documentElement.classList.add('admin-mode-active');
+      document.body.classList.add('admin-mode-active');
+    } else {
+      document.documentElement.classList.remove('admin-mode-active');
+      document.body.classList.remove('admin-mode-active');
+    }
+    return () => {
+      document.documentElement.classList.remove('admin-mode-active');
+      document.body.classList.remove('admin-mode-active');
+    };
+  }, [view]);
 
   return (
     <div className="stage full-preview-stage" id="stage" data-view={view}>
@@ -293,7 +306,17 @@ function MainApp() {
 
         {/* CRM Admin Panel Full View */}
         {view === 'admin' && (
-          <section style={{ width: '100%', minHeight: '100vh', display: 'flex', background: '#0A0B0E' }}>
+          <section
+            className="admin-page-section"
+            style={{
+              width: '100%',
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#FBFBFA',
+              flex: 1
+            }}
+          >
             <ErrorBoundary fallbackMessage="Admin panel encountered a display issue.">
               <AdminPanel />
             </ErrorBoundary>

@@ -638,6 +638,49 @@ body.standalone-app .stage {
   overflow: hidden !important;
 }
 
+/* Admin Panel Dedicated Natural Scroll Behavior (Desktop, iPad, Tablet, Mobile) */
+html.admin-mode-active,
+body.admin-mode-active,
+html:has([data-view="admin"]),
+body:has([data-view="admin"]) {
+  position: static !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+}
+
+html.admin-mode-active .stage,
+body.admin-mode-active .stage,
+body.standalone-app .stage[data-view="admin"],
+.stage[data-view="admin"] {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.stage[data-view="admin"] .admin-page-section,
+html.admin-mode-active .admin-page-section {
+  width: 100% !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
+  flex: 1 !important;
+}
+
 body.standalone-app .col {
   position: absolute !important;
   inset: 0 !important;

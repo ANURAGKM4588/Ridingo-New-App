@@ -16,6 +16,7 @@ import TripTicketModal from './TripTicketModal';
 import { shareTicketImageWithCaption } from '../services/installedUpiService';
 import { cleanLocationName, getLocationUpToFirstComma } from '../utils/locationCleaner';
 import { fetchGoogleRoadDirections } from '../services/googleMapsService';
+import { getActiveOfferBanners, subscribeToOfferBanners } from '../services/bannerService';
 
 const CATS = {
   hourly: { name: 'Hourly', blurb: '2 to 12 hours', icon: 'hourly', from: '₹250 per hour' },
@@ -459,11 +460,26 @@ export default function HomeTab() {
   const userMinimizedTripIdsRef = useRef(new Set());
   const [ticketModalTrip, setTicketModalTrip] = useState(null);
 
+  // Dynamic Offer Banners loaded from Admin Panel / Banner Service
+  const [offerBanners, setOfferBanners] = useState(getActiveOfferBanners);
+
+  useEffect(() => {
+    const unsub = subscribeToOfferBanners((allBanners) => {
+      const active = (allBanners || []).filter(b => b.active !== false);
+      if (active.length > 0) {
+        setOfferBanners(active);
+      }
+    });
+    return unsub;
+  }, []);
+
   // Offer Banner Direction-Aware Carousel State
   const [[bannerPage, bannerDirection], setBannerPage] = useState([0, 0]);
   const [bannerAutoPlay, setBannerAutoPlay] = useState(true);
   const isDraggingBannerRef = useRef(false);
-  const activeBannerIdx = ((bannerPage % OFFER_BANNERS.length) + OFFER_BANNERS.length) % OFFER_BANNERS.length;
+  const activeBannersCount = offerBanners.length || 1;
+  const activeBannerIdx = ((bannerPage % activeBannersCount) + activeBannersCount) % activeBannersCount;
+  const currentBanner = offerBanners[activeBannerIdx] || offerBanners[0] || {};
 
   const paginateBanner = (newDirection) => {
     setBannerPage([bannerPage + newDirection, newDirection]);
@@ -471,12 +487,12 @@ export default function HomeTab() {
 
   // Auto-advance offer banners with direction
   useEffect(() => {
-    if (!bannerAutoPlay) return;
+    if (!bannerAutoPlay || offerBanners.length <= 1) return;
     const interval = setInterval(() => {
       paginateBanner(1);
     }, 4800);
     return () => clearInterval(interval);
-  }, [bannerAutoPlay, bannerPage]);
+  }, [bannerAutoPlay, bannerPage, offerBanners.length]);
 
   // Popular Destination Suggestions derived dynamically from user's booking history
   const popularDestinationSuggestions = useMemo(() => {
@@ -1202,7 +1218,10 @@ Live GPS Tracking: ${trackUrl}`;
             position: 'relative',
             borderRadius: '24px',
             overflow: 'hidden',
-            height: '152px',
+            aspectRatio: '2.5 / 1',
+            minHeight: '144px',
+            maxHeight: '260px',
+            width: '100%',
             boxShadow: '0 6px 24px -4px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.05)',
             cursor: 'grab'
           }}
@@ -1263,7 +1282,10 @@ Live GPS Tracking: ${trackUrl}`;
               }}
               onClick={() => {
                 if (isDraggingBannerRef.current) return;
-                openBooking(OFFER_BANNERS[activeBannerIdx].category);
+                if (currentBanner.promoCode && addToast) {
+                  addToast(`Offer applied: ${currentBanner.promoCode}`, 'check');
+                }
+                openBooking(currentBanner.category || 'hourly', currentBanner.customDestination || null);
               }}
               style={{
                 position: 'absolute',
@@ -1271,209 +1293,170 @@ Live GPS Tracking: ${trackUrl}`;
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: OFFER_BANNERS[activeBannerIdx].bgGradient,
-                border: `1.5px solid ${OFFER_BANNERS[activeBannerIdx].accentBorder}`,
                 borderRadius: '24px',
-                padding: '16px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
                 overflow: 'hidden',
                 touchAction: 'pan-y',
-                cursor: 'grab'
+                cursor: 'pointer',
+                background: (currentBanner.imageMobile || currentBanner.imageUrl || currentBanner.imageTablet)
+                  ? '#090D1A'
+                  : (currentBanner.bgGradient || 'linear-gradient(135deg, #061A15 0%, #0D2C24 45%, #0B1929 100%)'),
+                border: `1.5px solid ${currentBanner.accentBorder || 'rgba(255, 255, 255, 0.2)'}`
               }}
             >
-              {/* Modern Ambient Radial Glow in Corner */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '-40px',
-                  right: '-30px',
-                  width: '160px',
-                  height: '160px',
-                  borderRadius: '50%',
-                  background: OFFER_BANNERS[activeBannerIdx].tagBg,
-                  opacity: 0.28,
-                  filter: 'blur(42px)',
-                  pointerEvents: 'none'
-                }}
-              />
+              {(currentBanner.imageMobile || currentBanner.imageTablet || currentBanner.imageUrl) ? (
+                /* ========================================================
+                   FULLY DESIGNED BANNER SLIDE (Image-First with CTA Button)
+                   Responsive Art Direction for Mobile vs iPad/Tablet
+                   ======================================================== */
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  <picture style={{ width: '100%', height: '100%', display: 'block' }}>
+                    {currentBanner.imageTablet && (
+                      <source media="(min-width: 640px)" srcSet={currentBanner.imageTablet} />
+                    )}
+                    <img
+                      src={currentBanner.imageMobile || currentBanner.imageUrl || currentBanner.imageTablet}
+                      alt={currentBanner.serviceName || 'Special Offer Banner'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block'
+                      }}
+                    />
+                  </picture>
 
-              {/* Decorative Subtle Background Circuit/Road Curve Lines */}
-              <svg
-                width="200"
-                height="148"
-                viewBox="0 0 200 148"
-                fill="none"
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  opacity: 0.08,
-                  pointerEvents: 'none',
-                  zIndex: 0
-                }}
-              >
-                <circle cx="150" cy="74" r="80" stroke="#FFFFFF" strokeWidth="1.5" strokeDasharray="4 4" />
-                <circle cx="150" cy="74" r="50" stroke="#FFFFFF" strokeWidth="1.5" />
-                <path d="M0 148 Q 100 80 200 148" stroke="#FFFFFF" strokeWidth="1.5" />
-              </svg>
-
-              {/* Left Column: Professional Branding, Badges, Headline, Description & CTA */}
-              <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
-                {/* Brand Header Line: Brand Category Tag + Discount Badge + Voucher - Single Line */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'nowrap', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                  <span
+                  {/* Soft bottom scrim to ensure CTA button & badge are always crisp */}
+                  <div
                     style={{
-                      fontSize: '9px',
-                      fontWeight: 850,
-                      letterSpacing: '0.08em',
-                      color: 'rgba(255, 255, 255, 0.75)',
-                      textTransform: 'uppercase',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 45%, transparent 100%)',
+                      pointerEvents: 'none'
                     }}
-                  >
-                    {OFFER_BANNERS[activeBannerIdx].brandTag}
-                  </span>
-                  <span style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: '10px', flexShrink: 0 }}>•</span>
-                  <span
+                  />
+
+                  {/* Floating Bottom Navigation Bar on the Banner Image */}
+                  <div
                     style={{
-                      background: OFFER_BANNERS[activeBannerIdx].tagBg,
-                      color: OFFER_BANNERS[activeBannerIdx].tagColor,
-                      fontSize: '9.5px',
-                      fontWeight: 900,
-                      letterSpacing: '0.04em',
-                      padding: '2.5px 8px',
-                      borderRadius: '999px',
-                      display: 'inline-flex',
+                      position: 'absolute',
+                      bottom: '12px',
+                      left: '14px',
+                      right: '14px',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.22)',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      zIndex: 2
                     }}
                   >
-                    <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: OFFER_BANNERS[activeBannerIdx].tagColor }} />
-                    {OFFER_BANNERS[activeBannerIdx].tag}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '9.5px',
-                      fontWeight: 800,
-                      fontFamily: 'monospace',
-                      color: 'rgba(255, 255, 255, 0.95)',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      border: '1px dashed rgba(255, 255, 255, 0.35)',
-                      padding: '2px 6px',
-                      borderRadius: '5px',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
-                    }}
-                  >
-                    {OFFER_BANNERS[activeBannerIdx].promoCode}
-                  </span>
-                </div>
+                    {/* Linked Target Service Indicator Badge */}
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 750,
+                        color: '#FFFFFF',
+                        background: 'rgba(15, 23, 42, 0.72)',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 255, 255, 0.25)',
+                        padding: '4px 10px',
+                        borderRadius: '999px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        letterSpacing: '0.02em',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '65%'
+                      }}
+                    >
+                      <span style={{ color: currentBanner.tagBg || '#22C55E' }}>➔</span>
+                      <span>{currentBanner.serviceName || 'Book Service'}</span>
+                    </span>
 
-                {/* Headline - Shows full content without cut-off */}
-                <h4
+                    {/* Prominent CTA Button on the Image */}
+                    {currentBanner.showCta !== false && (
+                      <span
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: 800,
+                          color: '#000000',
+                          background: '#FFFFFF',
+                          padding: '5px 14px',
+                          borderRadius: '999px',
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}
+                      >
+                        <span>{currentBanner.cta || 'Book Now'}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14" />
+                          <path d="m13 6 6 6-6 6" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Fallback layout when no image is uploaded */
+                <div
                   style={{
-                    margin: '0 0 2px 0',
-                    fontSize: '15px',
-                    fontWeight: 800,
-                    color: '#FFFFFF',
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.25,
-                    whiteSpace: 'normal',
-                    display: 'block'
+                    position: 'relative',
+                    width: '100%',
+                    height: '100%',
+                    padding: '16px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxSizing: 'border-box'
                   }}
                 >
-                  {OFFER_BANNERS[activeBannerIdx].headline}
-                </h4>
+                  <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 850, color: 'rgba(255, 255, 255, 0.75)', textTransform: 'uppercase' }}>
+                        {currentBanner.brandTag || 'RIDINGO SPECIAL'}
+                      </span>
+                      <span style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: '10px' }}>•</span>
+                      <span style={{ background: currentBanner.tagBg || '#10B981', color: '#FFFFFF', fontSize: '9.5px', fontWeight: 900, padding: '2.5px 8px', borderRadius: '999px' }}>
+                        {currentBanner.tag || 'SPECIAL OFFER'}
+                      </span>
+                    </div>
 
-                {/* Subtitle / Value Proposition - Shows full content without cut-off */}
-                <p
-                  style={{
-                    margin: '0 0 8px 0',
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: 'rgba(255, 255, 255, 0.82)',
-                    lineHeight: 1.3,
-                    whiteSpace: 'normal',
-                    display: 'block'
-                  }}
-                >
-                  {OFFER_BANNERS[activeBannerIdx].sub}
-                </p>
+                    <h4 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.25 }}>
+                      {currentBanner.headline}
+                    </h4>
 
-                {/* Bottom Row: CTA Button + Trust Guarantee - Strictly Single Line */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 800,
-                      color: '#000000',
-                      background: '#FFFFFF',
-                      padding: '4.5px 12px',
-                      borderRadius: '999px',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      transition: 'transform 0.15s ease'
-                    }}
-                  >
-                    {OFFER_BANNERS[activeBannerIdx].cta}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12h14" />
-                      <path d="m13 6 6 6-6 6" />
-                    </svg>
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      color: 'rgba(255, 255, 255, 0.72)',
-                      letterSpacing: '-0.01em',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
-                    }}
-                  >
-                    {OFFER_BANNERS[activeBannerIdx].trustText}
-                  </span>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '11px', fontWeight: 500, color: 'rgba(255, 255, 255, 0.82)', lineHeight: 1.3 }}>
+                      {currentBanner.sub}
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#000000', background: '#FFFFFF', padding: '4.5px 12px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        {currentBanner.cta || 'Book Now'} ➔
+                      </span>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: currentBanner.tagBg || '#10B981' }}>
+                        ➔ {currentBanner.serviceName}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ width: '58px', height: '58px', borderRadius: '18px', background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255, 255, 255, 0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', flexShrink: 0, marginLeft: '14px', zIndex: 1 }}>
+                    <Icon name={currentBanner.icon || 'star'} size={28} />
+                  </div>
                 </div>
-              </div>
-
-              {/* Right Column: Premium Frosted Emblem with Glow */}
-              <div
-                style={{
-                  width: '58px',
-                  height: '58px',
-                  borderRadius: '18px',
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1.5px solid rgba(255, 255, 255, 0.22)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#FFFFFF',
-                  flexShrink: 0,
-                  marginLeft: '14px',
-                  zIndex: 1,
-                  boxShadow: `0 8px 24px -2px ${OFFER_BANNERS[activeBannerIdx].ambientGlow}`
-                }}
-              >
-                <Icon name={OFFER_BANNERS[activeBannerIdx].icon} size={28} />
-              </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
 
         {/* Carousel Dots Indicator: Interactive with dynamic active width */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '9px' }}>
-          {OFFER_BANNERS.map((banner, idx) => {
+          {offerBanners.map((banner, idx) => {
             const isActive = idx === activeBannerIdx;
             return (
               <button
@@ -1484,7 +1467,7 @@ Live GPS Tracking: ${trackUrl}`;
                   const dir = idx > activeBannerIdx ? 1 : -1;
                   setBannerPage([idx, dir]);
                 }}
-                aria-label={`Go to ${banner.tag}`}
+                aria-label={`Go to ${banner.tag || banner.headline}`}
                 style={{
                   width: isActive ? '22px' : '6px',
                   height: '5px',
