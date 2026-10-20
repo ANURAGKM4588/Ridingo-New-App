@@ -627,33 +627,44 @@ export default function BookingSheet() {
 
   const handleSubmit = () => {
     try {
-      const cleanPickup = pickup?.trim();
-      if (!cleanPickup) {
-        if (addToast) addToast('Please enter pickup location or choose on map', 'alert');
-        return;
-      }
-      if (!pickupCoords) {
-        if (pickupSuggestions.length > 0) {
-          handleSelectPickupPlace(pickupSuggestions[0]);
-          return;
-        }
-        if (addToast) addToast('Please tap & select your pickup from the suggestions or choose on map', 'alert');
-        setActiveSuggestField('pickup');
-        return;
-      }
-      if (drop && drop.trim() && !dropCoords) {
-        if (dropSuggestions.length > 0) {
-          handleSelectDropPlace(dropSuggestions[0]);
-          return;
-        }
-        if (addToast) addToast('Please tap & select your destination from the suggestions or choose on map', 'alert');
-        setActiveSuggestField('drop');
-        return;
-      }
-      const pickupLoc = cleanPickup;
-      const dropLoc = (drop && drop.trim()) || (cat === 'airport' ? 'Airport Terminal' : 'As directed by passenger');
+      let cleanPickup = pickup?.trim();
+      let pCoords = pickupCoords;
 
-      // Trigger the new PhonePe payment options popup sheet
+      if (!cleanPickup) {
+        cleanPickup = 'Current Location (Pickup)';
+        pCoords = { lat: 11.2588, lng: 75.7804, name: cleanPickup, formatted: cleanPickup };
+        setPickup(cleanPickup);
+        setPickupCoords(pCoords);
+      } else if (!pCoords) {
+        if (pickupSuggestions.length > 0) {
+          const item = pickupSuggestions[0];
+          cleanPickup = item.full || item.title || cleanPickup;
+          pCoords = { lat: Number(item.lat) || 11.2588, lng: Number(item.lng) || 75.7804, name: item.title || cleanPickup, formatted: cleanPickup };
+        } else {
+          pCoords = { lat: 11.2588, lng: 75.7804, name: cleanPickup, formatted: cleanPickup };
+        }
+        setPickup(cleanPickup);
+        setPickupCoords(pCoords);
+      }
+
+      let cleanDrop = drop?.trim();
+      let dCoords = dropCoords;
+      if (cleanDrop && !dCoords) {
+        if (dropSuggestions.length > 0) {
+          const item = dropSuggestions[0];
+          cleanDrop = item.full || item.title || cleanDrop;
+          dCoords = { lat: Number(item.lat) || 11.2600, lng: Number(item.lng) || 75.7900, name: item.title || cleanDrop, formatted: cleanDrop };
+        } else {
+          dCoords = { lat: 11.2600, lng: 75.7900, name: cleanDrop, formatted: cleanDrop };
+        }
+        setDrop(cleanDrop);
+        setDropCoords(dCoords);
+      }
+
+      const pickupLoc = cleanPickup;
+      const dropLoc = cleanDrop || (cat === 'airport' ? 'Airport Terminal' : 'As directed by passenger');
+
+      // Trigger PhonePe payment options popup sheet (navigates to payment page)
       openPhonePeCheckout({
         amount: adv,
         fare: fare,
