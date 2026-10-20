@@ -1223,9 +1223,19 @@ export async function searchGooglePlaces(query, callback, options = {}) {
             };
           });
 
-          const ranked = rankAndFilterPlaces(formatted, clean).slice(0, 20);
-          placesMemoryCache.set(lower, ranked);
-          callback(ranked);
+          // Preserve all Google predictions without skipping any location; sort exact/prefix matches to top
+          const sorted = [...formatted].sort((a, b) => {
+            const aTitle = (a.title || '').toLowerCase();
+            const bTitle = (b.title || '').toLowerCase();
+            const aStarts = aTitle.startsWith(lower);
+            const bStarts = bTitle.startsWith(lower);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return 0;
+          });
+
+          placesMemoryCache.set(lower, sorted);
+          callback(sorted);
           return;
         }
 
@@ -1295,9 +1305,19 @@ export async function searchGooglePlaces(query, callback, options = {}) {
               };
             });
 
-          const ranked = rankAndFilterPlaces(googleResults, clean).slice(0, 20);
-          placesMemoryCache.set(lower, ranked);
-          callback(ranked);
+          // Preserve all Google REST results without skipping any location
+          const sorted = [...googleResults].sort((a, b) => {
+            const aTitle = (a.title || '').toLowerCase();
+            const bTitle = (b.title || '').toLowerCase();
+            const aStarts = aTitle.startsWith(lower);
+            const bStarts = bTitle.startsWith(lower);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return 0;
+          });
+
+          placesMemoryCache.set(lower, sorted);
+          callback(sorted);
           return;
         }
       }

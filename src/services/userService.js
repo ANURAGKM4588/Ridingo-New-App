@@ -468,10 +468,10 @@ export function isUpcomingFutureTrip(trip) {
  */
 export function isTripTrackingUnlocked(trip) {
   if (!trip) return false;
-  if (['inprogress', 'pickup_arrived', 'ready_to_start'].includes(trip.status)) {
+  if (['inprogress', 'pickup_arrived', 'ready_to_start', 'accepted'].includes(trip.status)) {
     return true;
   }
-  if (['requested', 'accepted', 'scheduled'].includes(trip.status)) {
+  if (['requested', 'scheduled'].includes(trip.status)) {
     const schedTs = getTripScheduledTimestamp(trip);
     const diffMs = schedTs - Date.now();
     // Tracking allowed only within 1 hour before trip time or immediate trips

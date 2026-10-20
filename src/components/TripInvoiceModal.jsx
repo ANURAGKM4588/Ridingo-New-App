@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import { generateLivePhonePeQrUrl } from '../utils/phonepe';
 import {
   generateTripInvoiceText,
-  shareInvoiceViaWhatsApp,
-  shareInvoiceViaEmail,
   autoShareTripInvoice
 } from '../utils/tripInvoiceSharing';
 
@@ -18,8 +16,29 @@ export default function TripInvoiceModal({
   const [customTip, setCustomTip] = useState('');
   const [showCashPenaltyDialog, setShowCashPenaltyDialog] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [copiedInvoice, setCopiedInvoice] = useState(false);
-  const [shareStatus, setShareStatus] = useState(null);
+  const [hasReviewedWaitingTerms, setHasReviewedWaitingTerms] = useState(false);
+  const [showWaitingTermsModal, setShowWaitingTermsModal] = useState(false);
+  const [paymentConfirmationBanner, setPaymentConfirmationBanner] = useState(null);
+  const [isShakingTerms, setIsShakingTerms] = useState(false);
+  const termsSectionRef = useRef(null);
+
+  const triggerWaitingSectionShake = () => {
+    // 1. Light tactile vibration
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate([35, 45, 35]);
+      } catch (_) {}
+    }
+    // 2. Trigger subtle shake animation
+    setIsShakingTerms(true);
+    setTimeout(() => {
+      setIsShakingTerms(false);
+    }, 550);
+    // 3. Smooth scroll into view
+    if (termsSectionRef.current) {
+      termsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
 
   // Dynamic Fare Calculations:
   // totalFare = baseFare + (extraKm * ratePerKm) + (billableWaitingMinutes * ratePerMinute);
@@ -81,6 +100,7 @@ export default function TripInvoiceModal({
 
   const handleSimulatePaymentSettlement = () => {
     setIsProcessingPayment(true);
+    setPaymentConfirmationBanner('Terms Accepted: Waiting charges policy reviewed and confirmed for this trip.');
 
     // Auto-share invoice on customer's registered WhatsApp (100% free) with Email fallback
     try {
@@ -197,9 +217,230 @@ export default function TripInvoiceModal({
 
           {/* Itemized Trip Bill Breakdown */}
           <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '14px 16px', border: '1px solid #F1F5F9' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
-              Invoice Fare Breakdown
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em' }}>
+                Invoice Fare Breakdown
+              </span>
+              <span style={{ fontSize: '11px', color: '#64748B' }}>
+                Trip #{trip?.id || 'TRP'}
+              </span>
+            </div>
+
+            {/* Redesigned Modern Minimalist Waiting & Additional Trip Policy Section */}
+            <div
+              ref={termsSectionRef}
+              className={isShakingTerms ? 'shake-attention' : ''}
+              style={{
+                background: hasReviewedWaitingTerms
+                  ? 'rgba(22, 163, 74, 0.04)'
+                  : isShakingTerms
+                  ? '#FFFBEB'
+                  : 'var(--card, #FFFFFF)',
+                border: hasReviewedWaitingTerms
+                  ? '1.5px solid rgba(22, 163, 74, 0.35)'
+                  : isShakingTerms
+                  ? '1.5px solid #F59E0B'
+                  : '1px solid var(--line, #E2E8F0)',
+                borderRadius: '16px',
+                padding: '13px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '11px',
+                marginBottom: '14px',
+                transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+                boxShadow: isShakingTerms
+                  ? '0 0 0 3px rgba(245, 158, 11, 0.28)'
+                  : '0 2px 8px rgba(0, 0, 0, 0.02)'
+              }}
+            >
+              {/* Header row with Title and Status Badge */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      width: '26px',
+                      height: '26px',
+                      borderRadius: '8px',
+                      background: hasReviewedWaitingTerms ? 'rgba(22, 163, 74, 0.12)' : 'rgba(245, 158, 11, 0.14)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Icon
+                      name={hasReviewedWaitingTerms ? "check" : "info"}
+                      size={14}
+                      color={hasReviewedWaitingTerms ? "#16A34A" : "#D97706"}
+                    />
+                  </div>
+                  <div>
+                    <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em', display: 'block' }}>
+                      Waiting & Additional Trip Info
+                    </b>
+                    <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
+                      {hasReviewedWaitingTerms ? 'Accepted for this settlement' : 'Review policy before settling'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try { navigator.vibrate(12); } catch (_) {}
+                    }
+                    setShowWaitingTermsModal(prev => !prev);
+                  }}
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 750,
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    background: hasReviewedWaitingTerms ? 'rgba(22, 163, 74, 0.12)' : '#0F172A',
+                    color: hasReviewedWaitingTerms ? '#16A34A' : '#FFFFFF',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    userSelect: 'none',
+                    transition: 'all 0.18s ease'
+                  }}
+                >
+                  <span>{hasReviewedWaitingTerms ? '✓ Accepted' : showWaitingTermsModal ? 'Close' : 'Details'}</span>
+                  <Icon name={showWaitingTermsModal ? "chevron-up" : "chevron-down"} size={11} color={hasReviewedWaitingTerms ? "#16A34A" : "#FFFFFF"} />
+                </button>
+              </div>
+
+              {/* Minimalist 2-Column Charges Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '8px'
+                }}
+              >
+                {/* Card 1: Waiting Charges */}
+                <div
+                  style={{
+                    background: 'var(--field, #F8FAFC)',
+                    borderRadius: '12px',
+                    padding: '10px 12px',
+                    border: '1px solid var(--line, #F1F5F9)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Waiting</span>
+                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#DCFCE7', color: '#166534' }}>
+                      60m Free
+                    </span>
+                  </div>
+                  <b style={{ fontSize: '13.5px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em' }}>
+                    ₹2 <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/ min</span>
+                  </b>
+                  <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', lineHeight: 1.25 }}>
+                    After 60 mins (₹120/hr)
+                  </span>
+                </div>
+
+                {/* Card 2: Extra Distance */}
+                <div
+                  style={{
+                    background: 'var(--field, #F8FAFC)',
+                    borderRadius: '12px',
+                    padding: '10px 12px',
+                    border: '1px solid var(--line, #F1F5F9)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Additional Trip</span>
+                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#E0F2FE', color: '#0369A1' }}>
+                      Extra Km
+                    </span>
+                  </div>
+                  <b style={{ fontSize: '13.5px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em' }}>
+                    ₹18 <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/ km</span>
+                  </b>
+                  <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', lineHeight: 1.25 }}>
+                    Beyond booked route
+                  </span>
+                </div>
+              </div>
+
+              {/* Details Accordion / Notification Expansion */}
+              {showWaitingTermsModal && (
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    background: 'var(--field, #F8FAFC)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--line, #E2E8F0)',
+                    fontSize: '11.5px',
+                    color: 'var(--ink, #0F172A)',
+                    lineHeight: 1.45,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    animation: 'fadeIn 0.18s ease-out'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                    <Icon name="clock" size={13} color="#0284C7" />
+                    <span>Complimentary 60 mins waiting included upon driver arrival.</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                    <Icon name="route" size={13} color="#16A34A" />
+                    <span>Any additional travel distance beyond scheduled trip charged at ₹18/km.</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Confirmation Button */}
+              {!hasReviewedWaitingTerms ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHasReviewedWaitingTerms(true);
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try { navigator.vibrate(15); } catch (_) {}
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: isShakingTerms ? '#EA580C' : '#0F172A',
+                    color: '#FFFFFF',
+                    fontSize: '12.5px',
+                    fontWeight: 750,
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.18s ease'
+                  }}
+                >
+                  <Icon name="check" size={13} color="#FFFFFF" />
+                  <span>I Acknowledge Waiting & Route Policy</span>
+                </button>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#16A34A', fontWeight: 650 }}>
+                  <Icon name="check-circle" size={14} color="#16A34A" />
+                  <span>Policy acknowledged · Ready to settle</span>
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
                 <span>Base Trip Fare</span>
@@ -245,124 +486,6 @@ export default function TripInvoiceModal({
             </div>
           </div>
 
-          {/* Customer Auto-Share & Free Delivery Card */}
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: '16px',
-              padding: '14px 16px',
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.04)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-                <b style={{ fontSize: '12px', color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Auto-Share Invoice to Customer
-                </b>
-              </div>
-              <span style={{ fontSize: '10.5px', color: '#059669', background: '#ECFDF5', padding: '2px 7px', borderRadius: '999px', fontWeight: 700 }}>
-                100% Free
-              </span>
-            </div>
-
-            <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.45 }}>
-              <div><b>{customerName}</b></div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '2px', flexWrap: 'wrap' }}>
-                <span>📞 {customerPhone}</span>
-                <span>✉️ {customerEmail}</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '2px' }}>
-              {/* WhatsApp Button (100% Free wa.me deep link, no API fees) */}
-              <button
-                type="button"
-                onClick={() => {
-                  shareInvoiceViaWhatsApp(customerPhone, invoiceText);
-                  setShareStatus('whatsapp');
-                }}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: '12px',
-                  background: '#ECFDF5',
-                  border: '1px solid #A7F3D0',
-                  color: '#059669',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s ease'
-                }}
-              >
-                <Icon name="whatsapp" size={15} color="#059669" />
-                <span>WhatsApp</span>
-              </button>
-
-              {/* Email Button (Free direct mailto fallback) */}
-              <button
-                type="button"
-                onClick={() => {
-                  shareInvoiceViaEmail(customerEmail, trip?.id, invoiceText);
-                  setShareStatus('email');
-                }}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: '12px',
-                  background: '#EFF6FF',
-                  border: '1px solid #BFDBFE',
-                  color: '#2563EB',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s ease'
-                }}
-              >
-                <Icon name="mail" size={15} color="#2563EB" />
-                <span>Send Email</span>
-              </button>
-            </div>
-
-            {/* Copy Full Invoice Button */}
-            <button
-              type="button"
-              onClick={async () => {
-                if (navigator.clipboard) {
-                  await navigator.clipboard.writeText(invoiceText);
-                  setCopiedInvoice(true);
-                  setTimeout(() => setCopiedInvoice(false), 2200);
-                }
-              }}
-              style={{
-                padding: '7px 10px',
-                borderRadius: '10px',
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                color: '#475569',
-                fontSize: '11.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '5px'
-              }}
-            >
-              <Icon name={copiedInvoice ? "check" : "copy"} size={13} color={copiedInvoice ? '#059669' : '#64748B'} />
-              <span>{copiedInvoice ? 'Invoice Text Copied!' : 'Copy Full Invoice Text'}</span>
-            </button>
-          </div>
 
           {/* Driver Earnings Summary Card (Shows ONLY Driver's Earnings after 30% Commission) */}
           <div style={{ background: 'var(--card, #FFFFFF)', borderRadius: '16px', padding: '16px', border: '1px solid var(--line, #E2E8F0)', boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.05)' }}>
@@ -474,24 +597,34 @@ export default function TripInvoiceModal({
           <button
             type="button"
             disabled={isProcessingPayment}
-            onClick={handleSimulatePaymentSettlement}
+            aria-disabled={!hasReviewedWaitingTerms}
+            onClick={() => {
+              if (isProcessingPayment) return;
+              if (!hasReviewedWaitingTerms) {
+                triggerWaitingSectionShake();
+                return;
+              }
+              handleSimulatePaymentSettlement();
+            }}
             style={{
               width: '100%',
               padding: '15px',
               borderRadius: '14px',
-              background: '#000000',
+              background: hasReviewedWaitingTerms ? '#000000' : '#94A3B8',
               color: '#FFFFFF',
               fontSize: '15px',
               fontWeight: 800,
-              border: 'none',
-              cursor: isProcessingPayment ? 'wait' : 'pointer',
+              border: hasReviewedWaitingTerms ? 'none' : '1px solid #94A3B8',
+              cursor: isProcessingPayment ? 'not-allowed' : hasReviewedWaitingTerms ? 'pointer' : 'default',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-              opacity: isProcessingPayment ? 0.7 : 1
+              boxShadow: hasReviewedWaitingTerms ? '0 4px 14px rgba(0, 0, 0, 0.25)' : 'none',
+              opacity: isProcessingPayment ? 0.7 : hasReviewedWaitingTerms ? 1 : 0.75,
+              transition: 'all 0.2s ease'
             }}
+            title={!hasReviewedWaitingTerms ? 'Please review the waiting charges before paying.' : 'Payment Received · Settle'}
           >
             {isProcessingPayment ? (
               <span>Settling Payment...</span>
@@ -599,6 +732,204 @@ export default function TripInvoiceModal({
           </div>
         </div>
       )}
-    </div>
-  );
-}
+
+      {/* Waiting Charges Terms Review Modal */}
+        {showWaitingTermsModal && (
+          <div
+            className="modal-overlay"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 100085,
+              background: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(5px)',
+              WebkitBackdropFilter: 'blur(5px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px'
+            }}
+            onClick={() => setShowWaitingTermsModal(false)}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '420px',
+                background: 'var(--card, #FFFFFF)',
+                borderRadius: '24px',
+                padding: '24px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                color: 'var(--ink, #0F172A)',
+                position: 'relative',
+                animation: 'scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: 'rgba(234, 88, 12, 0.12)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Icon name="info" size={18} color="#EA580C" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800 }}>Waiting Charges & Policy</h3>
+                    <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>Please review waiting charges before paying</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowWaitingTermsModal(false)}
+                  style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    background: 'var(--field, #F1F5F9)',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'var(--muted, #64748B)'
+                  }}
+                  aria-label="Close"
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+
+              {/* Policy items */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', lineHeight: 1.45, marginBottom: '20px' }}>
+                <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <Icon name="clock" size={15} color="#0284C7" />
+                    <b style={{ fontSize: '13px', color: '#0F172A' }}>First 60 Minutes Free</b>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#475569' }}>
+                    Every customer gets <b>60 minutes of complimentary waiting time</b> included without any extra cost.
+                  </p>
+                </div>
+
+                <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FEE2E2' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <Icon name="alert-circle" size={15} color="#DC2626" />
+                    <b style={{ fontSize: '13px', color: '#991B1B' }}>Additional Waiting: ₹2 / min</b>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#7F1D1D' }}>
+                    Beyond 60 minutes, extra waiting is billed at <b>₹2 per minute (₹120/hour)</b> and reflected transparently on the final invoice.
+                  </p>
+                </div>
+              </div>
+
+              {/* Accept button */}
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  setHasReviewedWaitingTerms(true);
+                  setShowWaitingTermsModal(false);
+                }}
+                style={{
+                  width: '100%',
+                  height: '46px',
+                  borderRadius: '14px',
+                  background: '#000000',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '14.5px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.2)'
+                }}
+              >
+                <Icon name="check" size={16} color="#FFFFFF" />
+                <span>I Review & Accept Terms</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Banner at Bottom Confirming Acceptance of Terms */}
+        {paymentConfirmationBanner && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+              left: '16px',
+              right: '16px',
+              maxWidth: '400px',
+              margin: '0 auto',
+              zIndex: 100090,
+              background: '#0F172A',
+              color: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+              animation: 'slideUp 0.25s ease',
+              border: '1px solid rgba(255, 255, 255, 0.12)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              <div
+                style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  background: '#16A34A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Icon name="check" size={14} color="#FFFFFF" />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <b style={{ fontSize: '13px', display: 'block', color: '#FFFFFF' }}>Terms Accepted</b>
+                <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block' }}>
+                  {paymentConfirmationBanner}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPaymentConfirmationBanner(null)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: 'none',
+                color: '#FFFFFF',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+              aria-label="Dismiss banner"
+            >
+              <Icon name="x" size={12} color="#FFFFFF" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }

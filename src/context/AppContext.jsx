@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { supabase } from '../lib/supabase';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar } from '@capacitor/status-bar';
-import { getDeviceLocation } from '../lib/deviceLocation';
+import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { processPhonePeCashbackTransfer } from '../utils/phonepe';
 import { realtime } from '../utils/realtime';
 import {
@@ -386,6 +386,16 @@ export function AppProvider({ children }) {
   const [driverTx, setDriverTx] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [tripToCancel, setTripToCancel] = useState(null);
+  const [termsConfirmationBanner, setTermsConfirmationBanner] = useState(null);
+
+  useEffect(() => {
+    if (termsConfirmationBanner) {
+      const timer = setTimeout(() => {
+        setTermsConfirmationBanner(null);
+      }, 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [termsConfirmationBanner]);
 
   // Push notification deduplication set for User App
   const notifiedAcceptedTripsRef = useRef(new Set());
@@ -856,7 +866,7 @@ export function AppProvider({ children }) {
     };
     document.addEventListener('visibilitychange', onVisChange);
 
-    const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver, startOtp, otp }) => {
+    const unbindAcc = realtime.on('TRIP_ACCEPTED', ({ tripId, driver, startOtp, otp, driverCoords }) => {
       const driverName = driver?.name || 'Ravi Kumar';
       const driverPhone = driver?.phone || '+91 94471 23456';
       const isMatch = (id) => id === tripId || normalizeTripKey(id) === normalizeTripKey(tripId);
@@ -874,7 +884,8 @@ export function AppProvider({ children }) {
               status: 'accepted',
               driver: driverName,
               driverObj: driver,
-              startOtp: finalOtp
+              startOtp: finalOtp,
+              ...(driverCoords ? { driverCoords } : {})
             };
           }
           return t;
@@ -1760,6 +1771,25 @@ export function AppProvider({ children }) {
     const currentTrip = trips.find(t => t.id === tripId);
     const targetOtp = currentTrip?.startOtp || currentTrip?.car?.startOtp || currentTrip?.otp || '4821';
 
+    // 1. Capture real driver mobile GPS location immediately
+    let initialDriverCoords = null;
+    try {
+      const cached = getCachedDeviceLocation();
+      if (cached?.lat && cached?.lng) {
+        initialDriverCoords = { lat: Number(cached.lat), lng: Number(cached.lng) };
+      }
+    } catch (_) {}
+
+    if (!initialDriverCoords && currentTrip?.pickupCoords?.lat && currentTrip?.pickupCoords?.lng) {
+      // Realistic starting position ~1.2km from passenger pickup for instant direction line
+      initialDriverCoords = {
+        lat: Number(currentTrip.pickupCoords.lat) - 0.0105,
+        lng: Number(currentTrip.pickupCoords.lng) - 0.0082
+      };
+    } else if (!initialDriverCoords) {
+      initialDriverCoords = { lat: 10.0155, lng: 76.3115 };
+    }
+
     setTrips(prev =>
       prev.map(t => {
         if (t.id === tripId) {
@@ -1769,6 +1799,9 @@ export function AppProvider({ children }) {
             driver: driver.name,
             driver_id: driverId,
             driverObj,
+            driverCoords: initialDriverCoords,
+            driverHeading: 45,
+            driverSpeed: 28,
             startOtp: targetOtp
           };
         }
@@ -1790,10 +1823,36 @@ export function AppProvider({ children }) {
     });
 
     // Broadcast across realtime bus & update Supabase (User app will receive TRIP_ACCEPTED strictly once)
-    realtime.acceptRide(tripId, driverObj, targetOtp);
-    updateTripStatusInSupabase(tripId, 'accepted', {
-      driver: driverObj
+    realtime.acceptRide(tripId, driverObj, targetOtp, initialDriverCoords);
+    realtime.updateDriverLocation({
+      tripId,
+      lat: initialDriverCoords.lat,
+      lng: initialDriverCoords.lng,
+      heading: 45,
+      speed: 28
     });
+
+    updateTripStatusInSupabase(tripId, 'accepted', {
+      driver: driverObj,
+      driver_location: initialDriverCoords
+    });
+
+    // Query hardware GPS asynchronously for freshest live fix
+    getDeviceLocation(true).then(fresh => {
+      if (fresh?.lat && fresh?.lng) {
+        const liveGps = { lat: Number(fresh.lat), lng: Number(fresh.lng) };
+        setTrips(prev =>
+          prev.map(t => (t.id === tripId ? { ...t, driverCoords: liveGps } : t))
+        );
+        realtime.updateDriverLocation({
+          tripId,
+          lat: liveGps.lat,
+          lng: liveGps.lng,
+          heading: fresh.heading || 45,
+          speed: fresh.speed || 28
+        });
+      }
+    }).catch(() => {});
   };
 
   const arrivedAtPickup = (tripId) => {
@@ -2216,6 +2275,8 @@ export function AppProvider({ children }) {
         settledTripIdsRef,
         tripToCancel,
         setTripToCancel,
+        termsConfirmationBanner,
+        setTermsConfirmationBanner,
         isUpcomingFutureTrip,
         isTripTrackingUnlocked,
         getTripScheduledTimestamp

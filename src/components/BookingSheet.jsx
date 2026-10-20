@@ -110,7 +110,8 @@ export default function BookingSheet() {
     trips,
     isUserTrip,
     setActiveTrackingTripId,
-    setLiveTrackingOpen
+    setLiveTrackingOpen,
+    setTermsConfirmationBanner
   } = useApp();
 
   const activeOngoingTrip = (trips || []).find(t =>
@@ -130,6 +131,30 @@ export default function BookingSheet() {
   const [driverEarlyBuffer, setDriverEarlyBuffer] = useState('30m'); // '15m' | '30m' | '45m' | 'exact'
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmedTrip, setConfirmedTrip] = useState(null);
+  const [hasReviewedTerms, setHasReviewedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [isShakingTerms, setIsShakingTerms] = useState(false);
+  const termsSectionRef = useRef(null);
+
+  const triggerWaitingSectionShake = () => {
+    // 1. Light tactile vibration
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate([35, 45, 35]);
+      } catch (_) {}
+    }
+    // 2. Trigger subtle shake animation
+    setIsShakingTerms(true);
+    setTimeout(() => {
+      setIsShakingTerms(false);
+    }, 550);
+    // 3. Smooth scroll into view
+    if (termsSectionRef.current) {
+      termsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (addToast) addToast('Please review waiting charges & additional trip policy before paying.', 'info');
+  };
+
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
   const [mapPickerTarget, setMapPickerTarget] = useState('drop');
   const [isDetectingCurrent, setIsDetectingCurrent] = useState(false);
@@ -318,7 +343,7 @@ export default function BookingSheet() {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
     const clean = (val || '').trim();
-    if (clean.length >= 2) {
+    if (clean.length >= 1) {
       setActiveSuggestField('pickup');
       const currentSeq = ++searchSeqRef.current;
       searchDebounceRef.current = setTimeout(() => {
@@ -331,7 +356,7 @@ export default function BookingSheet() {
           },
           { userCoords: dropCoords || pickupCoords }
         );
-      }, 100);
+      }, 60);
     } else {
       setPickupSuggestions([]);
       setActiveSuggestField(null);
@@ -345,7 +370,7 @@ export default function BookingSheet() {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
     const clean = (val || '').trim();
-    if (clean.length >= 2) {
+    if (clean.length >= 1) {
       setActiveSuggestField('drop');
       const currentSeq = ++searchSeqRef.current;
       searchDebounceRef.current = setTimeout(() => {
@@ -358,7 +383,7 @@ export default function BookingSheet() {
           },
           { userCoords: pickupCoords || dropCoords }
         );
-      }, 100);
+      }, 60);
     } else {
       setDropSuggestions([]);
       setActiveSuggestField(null);
@@ -608,11 +633,19 @@ export default function BookingSheet() {
         return;
       }
       if (!pickupCoords) {
+        if (pickupSuggestions.length > 0) {
+          handleSelectPickupPlace(pickupSuggestions[0]);
+          return;
+        }
         if (addToast) addToast('Please tap & select your pickup from the suggestions or choose on map', 'alert');
         setActiveSuggestField('pickup');
         return;
       }
       if (drop && drop.trim() && !dropCoords) {
+        if (dropSuggestions.length > 0) {
+          handleSelectDropPlace(dropSuggestions[0]);
+          return;
+        }
         if (addToast) addToast('Please tap & select your destination from the suggestions or choose on map', 'alert');
         setActiveSuggestField('drop');
         return;
@@ -660,6 +693,12 @@ export default function BookingSheet() {
             durationText: tripTelemetry.isCalculated ? tripTelemetry.durationText : null,
             eta: tripTelemetry.isCalculated ? tripTelemetry.etaText : null
           });
+          if (setTermsConfirmationBanner) {
+            setTermsConfirmationBanner({
+              tripId: pId,
+              text: 'Waiting charges policy (60 mins free, ₹2/min thereafter) confirmed for this ride.'
+            });
+          }
           addToast(`Paid ₹${adv} via ${methodLabel}! Driver scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
         onDismiss: () => {
@@ -931,9 +970,9 @@ export default function BookingSheet() {
               </button>
 
               {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'pickup' && Boolean(pickup?.trim()?.length >= 2) && pickupSuggestions.length > 0 && (
-                <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
-                  {pickupSuggestions.slice(0, 10).map((item, idx) => (
+              {activeSuggestField === 'pickup' && Boolean(pickup?.trim()?.length >= 1) && pickupSuggestions.length > 0 && (
+                <div className="location-suggest-dropdown" style={{ zIndex: 9999, maxHeight: '280px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  {pickupSuggestions.map((item, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -1032,9 +1071,9 @@ export default function BookingSheet() {
               </button>
 
               {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'drop' && Boolean(drop?.trim()?.length >= 2) && dropSuggestions.length > 0 && (
-                <div className="location-suggest-dropdown" style={{ zIndex: 9999 }}>
-                  {dropSuggestions.slice(0, 10).map((item, idx) => (
+              {activeSuggestField === 'drop' && Boolean(drop?.trim()?.length >= 1) && dropSuggestions.length > 0 && (
+                <div className="location-suggest-dropdown" style={{ zIndex: 9999, maxHeight: '280px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  {dropSuggestions.map((item, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -1442,6 +1481,218 @@ export default function BookingSheet() {
                 </span>
               </div>
 
+              {/* Redesigned Modern Minimalist Waiting & Additional Trip Policy Section */}
+              <div
+                ref={termsSectionRef}
+                className={isShakingTerms ? 'shake-attention' : ''}
+                style={{
+                  background: hasReviewedTerms
+                    ? 'rgba(22, 163, 74, 0.04)'
+                    : isShakingTerms
+                    ? '#FFFBEB'
+                    : 'var(--card, #FFFFFF)',
+                  border: hasReviewedTerms
+                    ? '1.5px solid rgba(22, 163, 74, 0.35)'
+                    : isShakingTerms
+                    ? '1.5px solid #F59E0B'
+                    : '1px solid var(--line, #E2E8F0)',
+                  borderRadius: '16px',
+                  padding: '13px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '11px',
+                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: isShakingTerms
+                    ? '0 0 0 3px rgba(245, 158, 11, 0.28)'
+                    : '0 2px 8px rgba(0, 0, 0, 0.02)'
+                }}
+              >
+                {/* Header row with Title and Status Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '8px',
+                        background: hasReviewedTerms ? 'rgba(22, 163, 74, 0.12)' : 'rgba(245, 158, 11, 0.14)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Icon
+                        name={hasReviewedTerms ? "check" : "info"}
+                        size={14}
+                        color={hasReviewedTerms ? "#16A34A" : "#D97706"}
+                      />
+                    </div>
+                    <div>
+                      <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em', display: 'block' }}>
+                        Waiting & Additional Trip Info
+                      </b>
+                      <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
+                        {hasReviewedTerms ? 'Accepted for this booking' : 'Review policy before paying'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span
+                    onClick={() => {
+                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                        try { navigator.vibrate(12); } catch (_) {}
+                      }
+                      setShowTermsModal(prev => !prev);
+                    }}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 750,
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      background: hasReviewedTerms ? 'rgba(22, 163, 74, 0.12)' : '#0F172A',
+                      color: hasReviewedTerms ? '#16A34A' : '#FFFFFF',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      userSelect: 'none',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <span>{hasReviewedTerms ? '✓ Accepted' : showTermsModal ? 'Close' : 'Details'}</span>
+                    <Icon name={showTermsModal ? "chevron-up" : "chevron-down"} size={11} color={hasReviewedTerms ? "#16A34A" : "#FFFFFF"} />
+                  </span>
+                </div>
+
+                {/* Minimalist 2-Column Charges Grid */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px'
+                  }}
+                >
+                  {/* Card 1: Waiting Charges */}
+                  <div
+                    style={{
+                      background: 'var(--field, #F8FAFC)',
+                      borderRadius: '12px',
+                      padding: '10px 12px',
+                      border: '1px solid var(--line, #F1F5F9)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Waiting</span>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#DCFCE7', color: '#166534' }}>
+                        60m Free
+                      </span>
+                    </div>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em' }}>
+                      ₹2 <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/ min</span>
+                    </b>
+                    <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', lineHeight: 1.25 }}>
+                      After 60 mins (₹120/hr)
+                    </span>
+                  </div>
+
+                  {/* Card 2: Extra Distance */}
+                  <div
+                    style={{
+                      background: 'var(--field, #F8FAFC)',
+                      borderRadius: '12px',
+                      padding: '10px 12px',
+                      border: '1px solid var(--line, #F1F5F9)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Additional Trip</span>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#E0F2FE', color: '#0369A1' }}>
+                        Extra Km
+                      </span>
+                    </div>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink, #0F172A)', letterSpacing: '-0.01em' }}>
+                      ₹18 <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/ km</span>
+                    </b>
+                    <span style={{ fontSize: '10.5px', color: 'var(--muted, #64748B)', lineHeight: 1.25 }}>
+                      Beyond booked route
+                    </span>
+                  </div>
+                </div>
+
+                {/* Details Accordion / Notification Expansion */}
+                {showTermsModal && (
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      background: 'var(--field, #F8FAFC)',
+                      borderRadius: '12px',
+                      border: '1px solid var(--line, #E2E8F0)',
+                      fontSize: '11.5px',
+                      color: 'var(--ink, #0F172A)',
+                      lineHeight: 1.45,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      animation: 'fadeIn 0.18s ease-out'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                      <Icon name="clock" size={13} color="#0284C7" />
+                      <span>Complimentary 60 mins waiting included upon driver arrival.</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                      <Icon name="route" size={13} color="#16A34A" />
+                      <span>Any additional travel distance beyond scheduled trip charged at ₹18/km.</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Confirmation Button */}
+                {!hasReviewedTerms ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasReviewedTerms(true);
+                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                        try { navigator.vibrate(15); } catch (_) {}
+                      }
+                      if (addToast) addToast('Policy acknowledged! Pay Now is unlocked.', 'check');
+                    }}
+                    style={{
+                      width: '100%',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: isShakingTerms ? '#EA580C' : '#0F172A',
+                      color: '#FFFFFF',
+                      fontSize: '12.5px',
+                      fontWeight: 750,
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <Icon name="check" size={13} color="#FFFFFF" />
+                    <span>I Acknowledge Waiting & Route Policy</span>
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#16A34A', fontWeight: 650 }}>
+                    <Icon name="check-circle" size={14} color="#16A34A" />
+                    <span>Policy acknowledged · Ready to proceed</span>
+                  </div>
+                )}
+              </div>
+
               {/* Driver Trip Fare */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
@@ -1564,26 +1815,36 @@ export default function BookingSheet() {
                   type="button"
                   className="btn primary"
                   id="bk-submit-btn"
+                  aria-disabled={!hasReviewedTerms}
                   style={{
                     height: '48px',
                     borderRadius: '14px',
                     padding: '0 22px',
                     fontWeight: 800,
                     fontSize: '14.5px',
-                    cursor: 'pointer',
-                    background: 'var(--solid, #000000)',
-                    color: 'var(--on-solid, #FFFFFF)',
-                    border: '1.5px solid var(--solid, #000000)',
-                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
+                    cursor: hasReviewedTerms ? 'pointer' : 'default',
+                    background: hasReviewedTerms ? 'var(--solid, #000000)' : '#94A3B8',
+                    color: '#FFFFFF',
+                    border: hasReviewedTerms ? '1.5px solid var(--solid, #000000)' : '1.5px solid #94A3B8',
+                    boxShadow: hasReviewedTerms ? '0 4px 14px rgba(0, 0, 0, 0.22)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    opacity: hasReviewedTerms ? 1 : 0.75,
+                    transition: 'all 0.2s ease'
                   }}
-                  onClick={handleSubmit}
+                  onClick={() => {
+                    if (!hasReviewedTerms) {
+                      triggerWaitingSectionShake();
+                      return;
+                    }
+                    handleSubmit();
+                  }}
+                  title={!hasReviewedTerms ? 'Please review the waiting charges before paying.' : 'Pay Now'}
                 >
-                  <span>Pay Advance</span>
+                  <span>Pay Now</span>
                   <Icon name="chevron-right" size={16} />
                 </button>
               </div>
@@ -1591,6 +1852,151 @@ export default function BookingSheet() {
           </>
         )}
       </div>
+
+      {/* Waiting Charges & Trip Terms Review Modal */}
+      {showTermsModal && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100080,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={() => setShowTermsModal(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '430px',
+              background: 'var(--card, #FFFFFF)',
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+              color: 'var(--ink, #0F172A)',
+              position: 'relative',
+              animation: 'scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    background: 'rgba(234, 88, 12, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <Icon name="info" size={18} color="#EA580C" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: 'var(--ink, #0F172A)' }}>
+                    Waiting Charges & Terms
+                  </h3>
+                  <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
+                    Please review waiting charges before paying
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'var(--field, #F1F5F9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--muted, #64748B)'
+                }}
+                aria-label="Close dialog"
+              >
+                <Icon name="x" size={15} />
+              </button>
+            </div>
+
+            {/* Terms Content List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', lineHeight: 1.45, marginBottom: '20px' }}>
+              <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon name="clock" size={15} color="#0284C7" />
+                  <b style={{ fontSize: '13px', color: '#0F172A' }}>60 Minutes Free Waiting</b>
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#475569' }}>
+                  Your trip booking includes <b>60 minutes of complimentary waiting time</b> after the driver arrives at your pickup location.
+                </p>
+              </div>
+
+              <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FEE2E2' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon name="alert-circle" size={15} color="#DC2626" />
+                  <b style={{ fontSize: '13px', color: '#991B1B' }}>Additional Waiting: ₹2 / min</b>
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#7F1D1D' }}>
+                  Beyond the initial 60 minutes free window, waiting charges accrue at <b>₹2 per minute (₹120/hr)</b> and will be included in the final bill.
+                </p>
+              </div>
+
+              <div style={{ padding: '12px 14px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #DCFCE7' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon name="route" size={15} color="#166534" />
+                  <b style={{ fontSize: '13px', color: '#166534' }}>Distance Extension & Tolls</b>
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#14532D' }}>
+                  Extra travel distance beyond the scheduled route is charged at ₹18/km. Parking and toll charges are payable as actuals.
+                </p>
+              </div>
+            </div>
+
+            {/* Review & Accept Button */}
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                setHasReviewedTerms(true);
+                setShowTermsModal(false);
+                if (addToast) addToast('Waiting charges terms accepted. Pay Now is unlocked!', 'check');
+              }}
+              style={{
+                width: '100%',
+                height: '48px',
+                borderRadius: '14px',
+                background: '#000000',
+                color: '#FFFFFF',
+                fontWeight: 800,
+                fontSize: '14.5px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.22)'
+              }}
+            >
+              <Icon name="check" size={16} color="#FFFFFF" />
+              <span>I Review & Accept Terms</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <MapPickerModal
         isOpen={mapPickerOpen}

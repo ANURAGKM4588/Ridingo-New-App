@@ -86,12 +86,14 @@ export async function openPhonePeCheckout({
   name = 'Ridingo',
   description = 'On-demand Driver Services',
   prefill = {},
+  notes = {},
   trip,
   breakdown,
   onSuccess,
   onDismiss,
-  onError
-}) {
+  onError,
+  ...rest
+} = {}) {
   const txnId = transactionId || ('ppe_txn_' + Date.now().toString(36));
 
   if (customPaymentSheetHandler) {
@@ -106,7 +108,8 @@ export async function openPhonePeCheckout({
       breakdown,
       onSuccess,
       onDismiss,
-      onError
+      onError,
+      ...rest
     });
     return;
   }

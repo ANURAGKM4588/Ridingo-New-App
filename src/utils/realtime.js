@@ -348,9 +348,9 @@ class RealtimeHub {
     this.emit('TRIP_REQUESTED', trip);
   }
 
-  acceptRide(tripId, driver, startOtp) {
+  acceptRide(tripId, driver, startOtp, driverCoords = null) {
     this._clearActiveTrip(tripId, 'accepted');
-    this.emit('TRIP_ACCEPTED', { tripId, driver, startOtp, timestamp: Date.now() });
+    this.emit('TRIP_ACCEPTED', { tripId, driver, startOtp, driverCoords, timestamp: Date.now() });
   }
 
   declineRide(tripId) {

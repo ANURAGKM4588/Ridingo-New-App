@@ -219,8 +219,33 @@ export default function GooglePlacesSearchInput({
       setIsLoading(true);
       const clean = text.trim();
 
-      // If a valid Google Places API Key is provided, query Google Places REST API
-      const key = apiKey || (typeof process !== 'undefined' ? process.env?.GOOGLE_PLACES_API_KEY : '');
+      // 1. Google Maps JS SDK AutocompleteService (Zero-CORS, sub-50ms latency)
+      if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
+        try {
+          const autoService = new window.google.maps.places.AutocompleteService();
+          autoService.getPlacePredictions(
+            { input: clean, componentRestrictions: { country: country || 'in' } },
+            (predictions, status) => {
+              if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions?.length > 0) {
+                const mapped = predictions.map((p) => ({
+                  placeId: p.place_id,
+                  title: p.structured_formatting?.main_text || p.description.split(',')[0],
+                  subtitle: p.structured_formatting?.secondary_text || '',
+                  address: p.description,
+                  isMock: false
+                }));
+                setSuggestions(mapped);
+                setIsOpen(true);
+                setIsLoading(false);
+                return;
+              }
+            }
+          );
+        } catch (_) {}
+      }
+
+      // 2. If a valid Google Places API Key is provided, query Google Places REST API
+      const key = apiKey || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_MAPS_API_KEY) || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
       if (key && !key.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
         try {
           const endpoint = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(

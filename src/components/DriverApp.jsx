@@ -5,6 +5,7 @@ import { realtime } from '../utils/realtime';
 import {
   checkLocationPermissions,
   requestLocationPermissions,
+  getCurrentDevicePosition,
   watchDevicePosition,
   clearDeviceWatch
 } from '../services/nativeLocationService';
@@ -1161,6 +1162,7 @@ export default function DriverApp() {
   const [paymentCompletionModal, setPaymentCompletionModal] = useState(null);
   const [expandedHistoryTripId, setExpandedHistoryTripId] = useState(null);
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
+  const [dismissedPopupTripIds, setDismissedPopupTripIds] = useState(() => new Set());
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
   const [driverCustomTune, setDriverCustomTune] = useState(getSelectedCustomTune());
   const [mediaModalState, setMediaModalState] = useState({
@@ -1422,11 +1424,15 @@ export default function DriverApp() {
           return;
         }
       } catch (_) {}
+      if (dismissedPopupTripIds.has(incomingTripRequest.id) || minimizedRequestTripId === incomingTripRequest.id) {
+        setCustomPushTrip(null);
+        return;
+      }
       setCustomPushTrip(incomingTripRequest);
     } else {
       setCustomPushTrip(null);
     }
-  }, [incomingTripRequest?.id, incomingTripRequest?.status]);
+  }, [incomingTripRequest?.id, incomingTripRequest?.status, dismissedPopupTripIds, minimizedRequestTripId]);
 
   // Listen to custom push notification dispatch from pushNotificationService
   useEffect(() => {
@@ -1437,6 +1443,7 @@ export default function DriverApp() {
           const declined = JSON.parse(localStorage.getItem('ridingo_declined_trips') || '[]');
           if (declined.includes(trip.id)) return;
         } catch (_) {}
+        if (dismissedPopupTripIds.has(trip.id) || minimizedRequestTripId === trip.id) return;
         setCustomPushTrip(trip);
       }
     };
@@ -1444,7 +1451,7 @@ export default function DriverApp() {
     return () => {
       window.removeEventListener('RIDINGO_SHOW_CUSTOM_DRIVER_NOTIFICATION', handleCustomPushEvent);
     };
-  }, []);
+  }, [dismissedPopupTripIds, minimizedRequestTripId]);
 
   // Scroll-linked pull-to-refresh state & refs for Driver Home Page (dTab === 'dash' only)
   const [ptrPullDist, setPtrPullDist] = useState(0);
@@ -1777,6 +1784,19 @@ export default function DriverApp() {
     // Continuous Real GPS Tracking via Capacitor Geolocation on Mobile or HTML5 Geolocation on Web
     const startTracking = async () => {
       try {
+        // Immediately fetch and emit first position without waiting for watch interval
+        try {
+          const firstPos = await getCurrentDevicePosition({ timeout: 4000, maximumAge: 5000 });
+          if (firstPos?.coords) {
+            emitLocation(
+              firstPos.coords.latitude,
+              firstPos.coords.longitude,
+              firstPos.coords.heading || 0,
+              firstPos.coords.speed ? Math.round(firstPos.coords.speed * 3.6) : 0
+            );
+          }
+        } catch (_) {}
+
         const id = await watchDevicePosition(
           { enableHighAccuracy: true, timeout: 5000, maximumAge: 3000 },
           (pos) => {
@@ -1931,7 +1951,7 @@ export default function DriverApp() {
 
         const latest = unhandledActive[0];
         if (latest && (!incomingTripRequest || incomingTripRequest.id !== latest.id)) {
-          if (minimizedRequestTripId !== latest.id) {
+          if (minimizedRequestTripId !== latest.id && !dismissedPopupTripIds.has(latest.id)) {
             setIncomingTripRequest(latest);
           }
         }
@@ -1946,7 +1966,7 @@ export default function DriverApp() {
     syncActiveTrips();
     const interval = setInterval(syncActiveTrips, 2000);
     return () => clearInterval(interval);
-  }, [incomingTripRequest?.id, minimizedRequestTripId, syncTripsFromSupabase, trips]);
+  }, [incomingTripRequest?.id, minimizedRequestTripId, dismissedPopupTripIds, syncTripsFromSupabase, trips]);
 
   const hasBankAccount = Boolean(driverPartner?.bankAccount && driverPartner?.bankName);
 
@@ -2417,6 +2437,21 @@ export default function DriverApp() {
 
     if (acceptTrip) {
       acceptTrip(tripId);
+    }
+  };
+
+  // Dismiss popup window without declining: Keeps request showcased in the Home Page Trip Requests list
+  const handleDismissPopup = (tripId) => {
+    triggerTactileHaptic('tick');
+    stopActiveTone();
+    if (tripId) {
+      dismissIncomingRideNotification(tripId);
+      setMinimizedRequestTripId(tripId);
+      setDismissedPopupTripIds(prev => new Set([...prev, tripId]));
+    }
+    setCustomPushTrip(null);
+    if (incomingTripRequest?.id === tripId) {
+      setIncomingTripRequest(null);
     }
   };
 
@@ -3407,274 +3442,320 @@ export default function DriverApp() {
                         )}
 
                         {t.status === 'inprogress' && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-                            {/* Stacked Minimal Action Strips (Uber / Lyft Driver style) */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
+
+                            {/* ── Compact Action Strips ── */}
                             <div
                               style={{
                                 background: '#FFFFFF',
                                 border: '1px solid #E2E8F0',
-                                borderRadius: '16px',
-                                overflow: 'hidden',
-                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+                                borderRadius: '14px',
+                                overflow: 'hidden'
                               }}
                             >
-                              {/* Row 1: Additional Trip Action Strip */}
+                              {/* Additional Trip Strip */}
                               <div
                                 style={{
-                                  padding: '11px 14px',
+                                  padding: '10px 12px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  gap: '12px',
+                                  gap: '10px',
                                   background: isAdditionalRideActive ? '#F0FDF4' : '#FFFFFF',
-                                  transition: 'background 0.2s ease'
+                                  transition: 'background 0.15s ease'
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                                   <div
                                     style={{
-                                      width: '36px',
-                                      height: '36px',
-                                      borderRadius: '10px',
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '8px',
                                       background: isAdditionalRideActive ? '#DCFCE7' : '#F1F5F9',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      flexShrink: 0
+                                      flexShrink: 0,
+                                      transition: 'background 0.15s ease'
                                     }}
                                   >
-                                    <Icon
-                                      name="route"
-                                      size={17}
-                                      color={isAdditionalRideActive ? '#15803D' : '#475569'}
-                                    />
+                                    <Icon name="route" size={15} color={isAdditionalRideActive ? '#15803D' : '#64748B'} />
                                   </div>
-
                                   <div style={{ minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <b style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
                                         Additional Trip
-                                      </b>
+                                      </span>
                                       {isAdditionalRideActive && (
                                         <span
                                           style={{
-                                            fontSize: '10px',
-                                            fontWeight: 700,
+                                            fontSize: '9px',
+                                            fontWeight: 800,
+                                            letterSpacing: '0.3px',
+                                            textTransform: 'uppercase',
                                             color: '#15803D',
                                             background: '#DCFCE7',
-                                            padding: '1px 6px',
-                                            borderRadius: '999px',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            lineHeight: '14px'
                                           }}
                                         >
-                                          <span
-                                            className="animate-pulse-dot"
-                                            style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10B981' }}
-                                          />
-                                          Active
+                                          LIVE
                                         </span>
                                       )}
                                     </div>
-                                    <div style={{ fontSize: '11.5px', marginTop: '1px' }}>
+                                    <div style={{ fontSize: '11.5px', marginTop: '1px', fontWeight: 600 }}>
                                       {isAdditionalRideActive || extraKm > 0 ? (
-                                        <span style={{ fontWeight: 700, color: '#059669' }}>
-                                          +{formatDistanceKm(extraKm)} (+₹{extFare})
+                                        <span style={{ color: '#059669' }}>
+                                          +{formatDistanceKm(extraKm)} · +₹{extFare}
                                         </span>
                                       ) : (
-                                        <span style={{ color: '#64748B' }}>Standard rate ₹{RATE_PER_KM}/km</span>
+                                        <span style={{ color: '#94A3B8', fontWeight: 500 }}>₹{RATE_PER_KM}/km</span>
                                       )}
                                     </div>
                                   </div>
                                 </div>
-
                                 <button
                                   type="button"
                                   onClick={() => handleToggleAdditionalRide(t.id)}
                                   style={{
-                                    padding: '7px 14px',
-                                    borderRadius: '999px',
-                                    border: isAdditionalRideActive ? 'none' : '1px solid #CBD5E1',
+                                    padding: '6px 16px',
+                                    borderRadius: '8px',
+                                    border: isAdditionalRideActive ? 'none' : '1.5px solid #E2E8F0',
                                     background: isAdditionalRideActive ? '#DC2626' : '#FFFFFF',
                                     color: isAdditionalRideActive ? '#FFFFFF' : '#0F172A',
                                     fontSize: '12px',
-                                    fontWeight: 700,
+                                    fontWeight: 800,
                                     cursor: 'pointer',
                                     flexShrink: 0,
-                                    boxShadow: isAdditionalRideActive ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
+                                    letterSpacing: '0.2px',
                                     transition: 'all 0.15s ease'
                                   }}
                                 >
-                                  {isAdditionalRideActive ? 'Stop Extra' : '+ Add Extra'}
+                                  {isAdditionalRideActive ? 'STOP' : 'START'}
                                 </button>
                               </div>
 
-                              {/* Subtle 1px Divider */}
-                              <div style={{ height: '1px', background: '#F1F5F9', margin: '0 14px' }} />
+                              {/* Divider */}
+                              <div style={{ height: '1px', background: '#F1F5F9' }} />
 
-                              {/* Row 2: Waiting Timer Action Strip */}
+                              {/* Waiting Timer Strip */}
                               <div
                                 style={{
-                                  padding: '11px 14px',
+                                  padding: '10px 12px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  gap: '12px',
+                                  gap: '10px',
                                   background: isWaitingActive
                                     ? (isWaitingFree ? '#FFFBEB' : '#FEF2F2')
                                     : '#FFFFFF',
-                                  transition: 'background 0.2s ease'
+                                  transition: 'background 0.15s ease'
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                                   <div
                                     style={{
-                                      width: '36px',
-                                      height: '36px',
-                                      borderRadius: '10px',
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '8px',
                                       background: isWaitingActive
                                         ? (isWaitingFree ? '#FEF3C7' : '#FEE2E2')
                                         : '#F1F5F9',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      flexShrink: 0
+                                      flexShrink: 0,
+                                      transition: 'background 0.15s ease'
                                     }}
                                   >
                                     <Icon
                                       name="clock"
-                                      size={17}
-                                      color={isWaitingActive ? (isWaitingFree ? '#B45309' : '#DC2626') : '#475569'}
+                                      size={15}
+                                      color={isWaitingActive ? (isWaitingFree ? '#B45309' : '#DC2626') : '#64748B'}
                                     />
                                   </div>
-
                                   <div style={{ minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <b style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
-                                        Waiting Timer
-                                      </b>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
+                                        Waiting
+                                      </span>
                                       {isWaitingActive && (
                                         <span
                                           style={{
-                                            fontSize: '10px',
-                                            fontWeight: 700,
+                                            fontSize: '9px',
+                                            fontWeight: 800,
+                                            letterSpacing: '0.3px',
+                                            textTransform: 'uppercase',
                                             color: isWaitingFree ? '#B45309' : '#DC2626',
                                             background: isWaitingFree ? '#FEF3C7' : '#FEE2E2',
-                                            padding: '1px 6px',
-                                            borderRadius: '999px',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            lineHeight: '14px'
                                           }}
                                         >
-                                          <span
-                                            className="animate-pulse-dot"
-                                            style={{
-                                              width: '4px',
-                                              height: '4px',
-                                              borderRadius: '50%',
-                                              background: isWaitingFree ? '#F59E0B' : '#EF4444'
-                                            }}
-                                          />
-                                          {isWaitingFree ? 'Free 60m' : 'Chargeable'}
+                                          {isWaitingFree ? 'FREE' : 'PAID'}
+                                        </span>
+                                      )}
+                                      {!isWaitingActive && waitingSeconds > 0 && (
+                                        <span
+                                          style={{
+                                            fontSize: '9px',
+                                            fontWeight: 800,
+                                            letterSpacing: '0.3px',
+                                            textTransform: 'uppercase',
+                                            color: '#64748B',
+                                            background: '#F1F5F9',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            lineHeight: '14px'
+                                          }}
+                                        >
+                                          PAUSED
                                         </span>
                                       )}
                                     </div>
-                                    <div style={{ fontSize: '11.5px', marginTop: '1px' }}>
+                                    <div style={{ fontSize: '11.5px', marginTop: '1px', fontWeight: 600 }}>
                                       {isWaitingActive || waitingSeconds > 0 ? (
-                                        <span
-                                          style={{
-                                            fontWeight: 700,
-                                            color: isWaitingFree ? '#B45309' : '#DC2626'
-                                          }}
-                                        >
-                                          {formatDurationSeconds(waitingSeconds)}{' '}
-                                          {isWaitingFree ? '(Complimentary)' : `(+₹${waitFare})`}
+                                        <span style={{ color: isWaitingFree ? '#B45309' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                                          {formatDurationSeconds(waitingSeconds)}
+                                          {' · '}
+                                          {isWaitingFree
+                                            ? `${remainingFreeMinutes}m free left`
+                                            : `+₹${waitFare}`
+                                          }
                                         </span>
                                       ) : (
-                                        <span style={{ color: '#64748B' }}>
-                                          First 60 mins free · then ₹{WAITING_RATE_PER_MIN}/min
+                                        <span style={{ color: '#94A3B8', fontWeight: 500 }}>
+                                          60 min free · then ₹{WAITING_RATE_PER_MIN}/min
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                 </div>
-
                                 <button
                                   type="button"
                                   onClick={() => handleToggleWaiting(t.id)}
                                   style={{
-                                    padding: '7px 14px',
-                                    borderRadius: '999px',
-                                    border: isWaitingActive ? 'none' : '1px solid #CBD5E1',
+                                    padding: '6px 16px',
+                                    borderRadius: '8px',
+                                    border: isWaitingActive ? 'none' : '1.5px solid #E2E8F0',
                                     background: isWaitingActive ? '#DC2626' : '#FFFFFF',
                                     color: isWaitingActive ? '#FFFFFF' : '#0F172A',
                                     fontSize: '12px',
-                                    fontWeight: 700,
+                                    fontWeight: 800,
                                     cursor: 'pointer',
                                     flexShrink: 0,
-                                    boxShadow: isWaitingActive ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
+                                    letterSpacing: '0.2px',
                                     transition: 'all 0.15s ease'
                                   }}
                                 >
-                                  {isWaitingActive ? 'Stop Wait' : '+ Start Wait'}
+                                  {isWaitingActive ? 'STOP' : 'START'}
                                 </button>
                               </div>
                             </div>
 
-                            {/* Minimal Live Bill Breakdown (Zero clutter) */}
-                            {(isAdditionalRideActive || isWaitingActive || extraKm > 0 || waitingSeconds > 0) && (
-                              <div
-                                style={{
-                                  background: '#F8FAFC',
-                                  border: '1px solid #F1F5F9',
-                                  borderRadius: '12px',
-                                  padding: '10px 12px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '6px',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
-                                  <span>Base Booking Fare</span>
-                                  <b style={{ color: '#0F172A' }}>₹{fare}</b>
+                            {/* ── Live Fare Breakdown (Always visible during trip) ── */}
+                            <div
+                              style={{
+                                background: '#F8FAFC',
+                                border: '1px solid #E2E8F0',
+                                borderRadius: '14px',
+                                padding: '12px',
+                                fontSize: '12.5px'
+                              }}
+                            >
+                              {/* Header */}
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginBottom: '10px'
+                              }}>
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  letterSpacing: '0.5px',
+                                  textTransform: 'uppercase',
+                                  color: '#64748B'
+                                }}>
+                                  Live Fare
+                                </span>
+                                {(isAdditionalRideActive || isWaitingActive) && (
+                                  <span style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    background: '#10B981',
+                                    display: 'inline-block'
+                                  }}
+                                    className="animate-pulse-dot"
+                                  />
+                                )}
+                              </div>
+
+                              {/* Line Items */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ color: '#64748B' }}>Base fare</span>
+                                  <span style={{ fontWeight: 700, color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>₹{fare}</span>
                                 </div>
 
                                 {(extraKm > 0 || isAdditionalRideActive) && (
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
-                                    <span>Extra ({formatDistanceKm(extraKm)} @ ₹{RATE_PER_KM}/km)</span>
-                                    <b style={{ color: '#059669' }}>+₹{extFare}</b>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ color: '#64748B' }}>
+                                      Extra · {formatDistanceKm(extraKm)} × ₹{RATE_PER_KM}
+                                    </span>
+                                    <span style={{ fontWeight: 700, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>+₹{extFare}</span>
                                   </div>
                                 )}
 
                                 {(waitingSeconds > 0 || isWaitingActive) && (
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
-                                    <span>Wait ({formatDurationSeconds(waitingSeconds)}{isWaitingFree ? ' · Free' : ` · +${billableWaitingMinutes}m`})</span>
-                                    <b style={{ color: waitFare > 0 ? '#DC2626' : '#059669' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ color: '#64748B' }}>
+                                      Waiting · {formatDurationSeconds(waitingSeconds)}
+                                    </span>
+                                    <span style={{
+                                      fontWeight: 700,
+                                      color: waitFare > 0 ? '#DC2626' : '#059669',
+                                      fontVariantNumeric: 'tabular-nums'
+                                    }}>
                                       {waitFare > 0 ? `+₹${waitFare}` : 'Free'}
-                                    </b>
-                                  </div>
-                                )}
-
-                                <div style={{ height: '1px', background: '#E2E8F0', margin: '2px 0' }} />
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                  <div>
-                                    <span style={{ fontWeight: 650, color: '#0F172A' }}>Estimated Total</span>
-                                    <span style={{ fontSize: '10.5px', color: '#64748B', display: 'block' }}>
-                                      Driver Net (70%): ₹{driverEarn}
                                     </span>
                                   </div>
-                                  <b style={{ fontSize: '15px', color: '#0F172A', fontWeight: 800 }}>
-                                    ₹{liveTotalFare}
-                                  </b>
-                                </div>
+                                )}
                               </div>
-                            )}
 
-                            {/* Route & End Trip Navigation Buttons */}
+                              {/* Divider */}
+                              <div style={{ height: '1px', background: '#E2E8F0', margin: '8px 0' }} />
+
+                              {/* Total */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>Total</span>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: '#94A3B8',
+                                    fontWeight: 600,
+                                    display: 'block',
+                                    marginTop: '1px'
+                                  }}>
+                                    You earn ₹{driverEarn} (70%)
+                                  </span>
+                                </div>
+                                <span style={{
+                                  fontSize: '20px',
+                                  fontWeight: 900,
+                                  color: '#0F172A',
+                                  letterSpacing: '-0.5px',
+                                  fontVariantNumeric: 'tabular-nums'
+                                }}>
+                                  ₹{liveTotalFare}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* ── Route & End Trip Buttons ── */}
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button
                                 type="button"
@@ -3682,11 +3763,12 @@ export default function DriverApp() {
                                 style={{
                                   flex: 1,
                                   background: '#FFFFFF',
-                                  border: '1px solid #E2E8F0',
+                                  border: '1.5px solid #E2E8F0',
                                   color: '#0F172A',
-                                  fontWeight: 650,
+                                  fontWeight: 700,
                                   borderRadius: '12px',
-                                  padding: '11px 14px'
+                                  padding: '11px 14px',
+                                  fontSize: '13px'
                                 }}
                                 onClick={() => handleGetDirections(t.drop_loc || 'Destination')}
                               >
@@ -3703,7 +3785,8 @@ export default function DriverApp() {
                                   fontWeight: 800,
                                   borderRadius: '12px',
                                   padding: '11px 16px',
-                                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)'
+                                  fontSize: '13px',
+                                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)'
                                 }}
                                 onClick={() => handleEndTripClick(t)}
                               >
@@ -5633,6 +5716,9 @@ export default function DriverApp() {
           onDecline={(tripId) => {
             handleDecline(tripId);
             setCustomPushTrip(null);
+          }}
+          onDismiss={(tripId) => {
+            handleDismissPopup(tripId);
           }}
           onExpand={(trip) => {
             setSelectedRequestDetails(trip);
