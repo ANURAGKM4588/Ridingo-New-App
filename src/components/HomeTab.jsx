@@ -1335,48 +1335,17 @@ Live GPS Tracking: ${trackUrl}`;
                     }}
                   />
 
-                  {/* Floating Bottom Navigation Bar on the Banner Image */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: '12px',
-                      left: '14px',
-                      right: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                      zIndex: 2
-                    }}
-                  >
-                    {/* Linked Target Service Indicator Badge */}
-                    <span
+                  {/* Action CTA Button on the Image (Book Now / Claim Now) */}
+                  {currentBanner.showCta !== false && (
+                    <div
                       style={{
-                        fontSize: '11px',
-                        fontWeight: 750,
-                        color: '#FFFFFF',
-                        background: 'rgba(15, 23, 42, 0.72)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.25)',
-                        padding: '4px 10px',
-                        borderRadius: '999px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        letterSpacing: '0.02em',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '65%'
+                        position: 'absolute',
+                        bottom: '12px',
+                        right: '14px',
+                        zIndex: 2,
+                        pointerEvents: 'none'
                       }}
                     >
-                      <span style={{ color: currentBanner.tagBg || '#22C55E' }}>➔</span>
-                      <span>{currentBanner.serviceName || 'Book Service'}</span>
-                    </span>
-
-                    {/* Prominent CTA Button on the Image */}
-                    {currentBanner.showCta !== false && (
                       <span
                         style={{
                           fontSize: '11.5px',
@@ -1389,8 +1358,7 @@ Live GPS Tracking: ${trackUrl}`;
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '5px',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0
+                          whiteSpace: 'nowrap'
                         }}
                       >
                         <span>{currentBanner.cta || 'Book Now'}</span>
@@ -1399,8 +1367,8 @@ Live GPS Tracking: ${trackUrl}`;
                           <path d="m13 6 6 6-6 6" />
                         </svg>
                       </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Fallback layout when no image is uploaded */
@@ -1438,9 +1406,6 @@ Live GPS Tracking: ${trackUrl}`;
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 800, color: '#000000', background: '#FFFFFF', padding: '4.5px 12px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         {currentBanner.cta || 'Book Now'} ➔
-                      </span>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: currentBanner.tagBg || '#10B981' }}>
-                        ➔ {currentBanner.serviceName}
                       </span>
                     </div>
                   </div>

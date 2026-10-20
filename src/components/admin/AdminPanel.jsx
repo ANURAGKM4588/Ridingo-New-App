@@ -3344,10 +3344,10 @@ export default function AdminPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                   <div>
                     <label style={{ fontSize: '12px', fontWeight: 800, color: T.ink, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
-                      3. CTA Button on Image
+                      3. CTA Button on Image (Book Now / Claim Now)
                     </label>
                     <span style={{ fontSize: '11.5px', color: T.inkMuted }}>
-                      Display a clean action pill button directly on the banner
+                      Select which action button is displayed directly on the banner
                     </span>
                   </div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12.5px', fontWeight: 700, color: T.ink }}>
@@ -3362,17 +3362,78 @@ export default function AdminPanel() {
                 </div>
 
                 {bannerForm.showCta !== false && (
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
-                      Button Text Label
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Book Now, Claim Offer, Book Airport Ride"
-                      value={bannerForm.cta}
-                      onChange={e => setBannerForm(prev => ({ ...prev, cta: e.target.value }))}
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '12px', border: `1px solid ${T.borderStrong}`, fontSize: '13px', outline: 'none', background: T.card }}
-                    />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Quick 1-Tap Selectors: Book Now vs Claim Now */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => setBannerForm(prev => ({ ...prev, cta: 'Book Now' }))}
+                        style={{
+                          flex: '1 1 140px',
+                          padding: '11px 18px',
+                          borderRadius: '12px',
+                          border: bannerForm.cta === 'Book Now' ? `2px solid ${T.taxi}` : `1.5px solid ${T.borderStrong}`,
+                          background: bannerForm.cta === 'Book Now' ? '#FFFBEB' : T.card,
+                          color: bannerForm.cta === 'Book Now' ? '#000000' : T.ink,
+                          fontSize: '13px',
+                          fontWeight: bannerForm.cta === 'Book Now' ? 850 : 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          boxShadow: bannerForm.cta === 'Book Now' ? '0 2px 8px rgba(255, 199, 10, 0.25)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: '15px' }}>⚡</span>
+                        <span>Book Now</span>
+                        {bannerForm.cta === 'Book Now' && (
+                          <span style={{ fontSize: '12px', color: '#16A34A', fontWeight: 900 }}>✓</span>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBannerForm(prev => ({ ...prev, cta: 'Claim Now' }))}
+                        style={{
+                          flex: '1 1 140px',
+                          padding: '11px 18px',
+                          borderRadius: '12px',
+                          border: bannerForm.cta === 'Claim Now' ? `2px solid ${T.taxi}` : `1.5px solid ${T.borderStrong}`,
+                          background: bannerForm.cta === 'Claim Now' ? '#FFFBEB' : T.card,
+                          color: bannerForm.cta === 'Claim Now' ? '#000000' : T.ink,
+                          fontSize: '13px',
+                          fontWeight: bannerForm.cta === 'Claim Now' ? 850 : 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          boxShadow: bannerForm.cta === 'Claim Now' ? '0 2px 8px rgba(255, 199, 10, 0.25)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: '15px' }}>🎁</span>
+                        <span>Claim Now</span>
+                        {bannerForm.cta === 'Claim Now' && (
+                          <span style={{ fontSize: '12px', color: '#16A34A', fontWeight: 900 }}>✓</span>
+                        )}
+                      </button>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+                        Custom Button Text (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Book Now or Claim Now"
+                        value={bannerForm.cta}
+                        onChange={e => setBannerForm(prev => ({ ...prev, cta: e.target.value }))}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '12px', border: `1px solid ${T.borderStrong}`, fontSize: '13px', outline: 'none', background: T.card }}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -3464,40 +3525,16 @@ export default function AdminPanel() {
                         }}
                       />
 
-                      {/* Floating Bottom Bar: Target Service + CTA Button */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: '12px',
-                          left: '14px',
-                          right: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                          zIndex: 2
-                        }}
-                      >
-                        <span
+                      {/* Floating Bottom-Right CTA Button (Only Book Now / Claim Now) */}
+                      {bannerForm.showCta !== false && (
+                        <div
                           style={{
-                            fontSize: '11px',
-                            fontWeight: 750,
-                            color: '#FFFFFF',
-                            background: 'rgba(15, 23, 42, 0.72)',
-                            backdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255, 255, 255, 0.25)',
-                            padding: '4px 10px',
-                            borderRadius: '999px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px'
+                            position: 'absolute',
+                            bottom: '12px',
+                            right: '14px',
+                            zIndex: 2
                           }}
                         >
-                          <span style={{ color: '#22C55E' }}>➔</span>
-                          <span>{bannerForm.serviceName}</span>
-                        </span>
-
-                        {bannerForm.showCta !== false && (
                           <span
                             style={{
                               fontSize: '11.5px',
@@ -3515,8 +3552,8 @@ export default function AdminPanel() {
                             <span>{bannerForm.cta || 'Book Now'}</span>
                             <span style={{ fontSize: '11px' }}>➔</span>
                           </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
