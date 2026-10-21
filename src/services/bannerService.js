@@ -234,9 +234,14 @@ export async function saveOfferBanner(bannerData) {
   // Broadcast event for live updates
   broadcastBannersUpdated(updatedList);
 
-  // Attempt sync to Supabase if table is configured
+  // Attempt sync to Supabase
   try {
     if (supabase) {
+      await supabase.from('profiles').update({
+        name: 'RIDINGO_OFFER_BANNERS',
+        preferences: { banners: updatedList },
+        updated_at: new Date().toISOString()
+      }).eq('phone', '+919999999999').catch(() => {});
       await supabase.from('offer_banners').upsert(banner, { onConflict: 'id' }).catch(() => {});
     }
   } catch (err) {
@@ -263,6 +268,11 @@ export async function deleteOfferBanner(id) {
 
   try {
     if (supabase) {
+      await supabase.from('profiles').update({
+        name: 'RIDINGO_OFFER_BANNERS',
+        preferences: { banners: updatedList },
+        updated_at: new Date().toISOString()
+      }).eq('phone', '+919999999999').catch(() => {});
       await supabase.from('offer_banners').delete().eq('id', id).catch(() => {});
     }
   } catch (err) {}
@@ -284,6 +294,17 @@ export async function toggleBannerActive(id) {
   }
 
   broadcastBannersUpdated(updatedList);
+
+  try {
+    if (supabase) {
+      await supabase.from('profiles').update({
+        name: 'RIDINGO_OFFER_BANNERS',
+        preferences: { banners: updatedList },
+        updated_at: new Date().toISOString()
+      }).eq('phone', '+919999999999').catch(() => {});
+    }
+  } catch (err) {}
+
   return updatedList;
 }
 
@@ -334,6 +355,20 @@ export function subscribeToOfferBanners(callback) {
           callback(event.data.banners);
         }
       };
+    }
+  } catch (e) {}
+
+  // Fetch real-time cloud banners from Supabase on subscribe
+  try {
+    if (supabase) {
+      supabase.from('profiles').select('preferences').eq('phone', '+919999999999').single().then(({ data, error }) => {
+        if (!error && data?.preferences?.banners && Array.isArray(data.preferences.banners) && data.preferences.banners.length > 0) {
+          try {
+            localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(data.preferences.banners));
+          } catch (e) {}
+          callback(data.preferences.banners);
+        }
+      }).catch(() => {});
     }
   } catch (e) {}
 
