@@ -1180,193 +1180,125 @@ export default function BookingSheet() {
                 display: 'grid',
                 gridTemplateColumns: '1fr auto 1fr',
                 alignItems: 'center',
-                background: '#F8FAFC',
-                borderRadius: '16px',
-                padding: '14px 18px',
-                marginTop: '14px',
-                marginBottom: '16px',
-                border: '1px solid #F1F5F9'
+                background: 'var(--field)',
+                borderRadius: '12px',
+                padding: '10px 18px',
+                marginTop: '12px',
+                marginBottom: '10px',
+                border: '1px solid var(--line)'
               }}
             >
-              {/* Left: Total Distance */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div
+              <div>
+                <span
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#0D9488',
-                    flexShrink: 0
+                    fontSize: '10.5px',
+                    fontWeight: 650,
+                    color: 'var(--muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    display: 'block',
+                    marginBottom: '2px'
                   }}
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="6" cy="18" r="3" />
-                    <circle cx="18" cy="6" r="3" />
-                    <path d="M6 15v-3a3 3 0 0 1 3-3h6a3 3 0 0 0 3-3V6" />
-                    <path d="m14 8 4-2-4-2" />
-                  </svg>
-                </div>
-                <div>
-                  <span
-                    style={{
-                      fontSize: '10.5px',
-                      fontWeight: 750,
-                      color: '#64748B',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      display: 'block',
-                      marginBottom: '2px'
-                    }}
-                  >
-                    TOTAL DISTANCE
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '17px',
-                      fontWeight: 800,
-                      color: tripTelemetry.isCalculated && tripTelemetry.distanceText ? 'var(--ink)' : 'var(--ink)',
-                      letterSpacing: '-0.02em',
-                      display: 'block',
-                      lineHeight: 1.1
-                    }}
-                  >
-                    {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
-                  </span>
-                </div>
+                  Total Distance
+                </span>
+                <span
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: tripTelemetry.isCalculated && tripTelemetry.distanceText ? 'var(--ink)' : 'var(--muted)',
+                    letterSpacing: '-0.02em',
+                    display: 'block'
+                  }}
+                >
+                  {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
+                </span>
               </div>
 
-              {/* Divider */}
-              <div style={{ width: '1px', height: '36px', background: '#E2E8F0', margin: '0 8px' }} />
+              <div style={{ width: '1px', height: '26px', background: 'var(--line)', margin: '0 8px' }} />
 
-              {/* Right: ETA */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '8px' }}>
-                <div
+              <div style={{ textAlign: 'right' }}>
+                <span
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#0D9488',
-                    flexShrink: 0
+                    fontSize: '10.5px',
+                    fontWeight: 650,
+                    color: 'var(--muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    display: 'block',
+                    marginBottom: '2px'
                   }}
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                </div>
-                <div>
-                  <span
-                    style={{
-                      fontSize: '10.5px',
-                      fontWeight: 750,
-                      color: '#64748B',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      display: 'block',
-                      marginBottom: '2px'
-                    }}
-                  >
-                    ETA
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '17px',
-                      fontWeight: 800,
-                      color: 'var(--ink)',
-                      letterSpacing: '-0.02em',
-                      display: 'block',
-                      lineHeight: 1.1
-                    }}
-                  >
-                    {tripTelemetry.isCalculated && tripTelemetry.durationMins
-                      ? formatDurationMeasurement(tripTelemetry.durationMins)
-                      : (tripTelemetry.durationText && tripTelemetry.durationText !== '--'
-                          ? tripTelemetry.durationText.replace(/^~\s*/, '')
-                          : '--')}
-                  </span>
-                </div>
+                  ETA
+                </span>
+                <span
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: tripTelemetry.isCalculated ? 'var(--ink)' : 'var(--muted)',
+                    letterSpacing: '-0.02em',
+                    display: 'block'
+                  }}
+                >
+                  {tripTelemetry.isCalculated && tripTelemetry.durationMins
+                    ? formatDurationMeasurement(tripTelemetry.durationMins)
+                    : (tripTelemetry.durationText && tripTelemetry.durationText !== '--'
+                        ? tripTelemetry.durationText.replace(/^~\s*/, '')
+                        : '--')}
+                </span>
               </div>
             </div>
 
             {/* Hours Stepper (Only for hourly/daily/event) */}
             {!isFlat && (
-              <div style={{ marginBottom: '18px' }}>
-                <label style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)', display: 'block', marginBottom: '8px' }}>
+              <>
+                <div className="lab" style={{ marginTop: '10px' }}>
                   {currentCat.units === 'hours' ? 'Hours' : 'Days'}
-                </label>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: '#F8FAFC',
-                    border: '1.5px solid #E2E8F0',
-                    borderRadius: '16px',
-                    padding: '8px 12px'
-                  }}
-                >
+                </div>
+                <div className="stepper">
                   <button
                     type="button"
                     onClick={() => handleQtyChange(-1)}
                     disabled={qty <= (currentCat.min || 1)}
-                    aria-label="Less hours"
+                    aria-label="Less"
                     style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '12px',
-                      background: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
+                      background: 'var(--field)',
                       color: 'var(--ink)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '10px',
                       cursor: qty <= (currentCat.min || 1) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                      opacity: qty <= (currentCat.min || 1) ? 0.35 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s ease'
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                      opacity: qty <= (currentCat.min || 1) ? 0.4 : 1,
+                      display: 'grid',
+                      placeItems: 'center'
                     }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    <Icon name="minus" size={18} />
                   </button>
-
-                  <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
+                  <b style={{ color: 'var(--ink)' }}>
                     {qty} {qty === 1 ? currentCat.unit : currentCat.units}
-                  </span>
-
+                  </b>
                   <button
                     type="button"
                     onClick={() => handleQtyChange(1)}
                     disabled={qty >= (currentCat.max || 12)}
-                    aria-label="More hours"
+                    aria-label="More"
                     style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '12px',
-                      background: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
+                      background: 'var(--field)',
                       color: 'var(--ink)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '10px',
                       cursor: qty >= (currentCat.max || 12) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                      opacity: qty >= (currentCat.max || 12) ? 0.35 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s ease'
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                      opacity: qty >= (currentCat.max || 12) ? 0.4 : 1,
+                      display: 'grid',
+                      placeItems: 'center'
                     }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    <Icon name="plus" size={18} />
                   </button>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Date and time */}
@@ -1656,196 +1588,135 @@ export default function BookingSheet() {
               </div>
             </div>
 
-            {/* FARE BREAKDOWN Card */}
+            {/* Waiting & Additional Trip Section (Single-Line Design) */}
             <div
               style={{
                 background: 'var(--card, #FFFFFF)',
                 border: '1px solid #E2E8F0',
-                borderRadius: '20px',
-                padding: '14px 12px 16px',
+                borderRadius: '16px',
+                padding: '12px 14px',
                 marginBottom: '16px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+                gap: '10px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
                 width: '100%',
-                boxSizing: 'border-box',
-                overflow: 'hidden'
+                boxSizing: 'border-box'
               }}
             >
-              {/* Card Header: FARE BREAKDOWN + Duration Pill */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748B' }}>
-                  FARE BREAKDOWN
-                </span>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 750,
-                    color: 'var(--ink)',
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    padding: '2.5px 12px',
-                    borderRadius: '999px'
-                  }}
-                >
-                  {isFlat ? 'Flat route' : `${qty} ${qty > 1 ? currentCat.units : currentCat.unit}`}
-                </span>
-              </div>
-
-              {/* 2-Column Side-by-Side Cards (Waiting & Additional Trip) with guaranteed boundary constraint */}
+              {/* Row 1: Waiting */}
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '8px',
-                  width: '100%',
-                  boxSizing: 'border-box'
+                  whiteSpace: 'nowrap'
                 }}
               >
-                {/* Card 1: Waiting Policy Card */}
-                <div
-                  style={{
-                    background: 'var(--card, #FFFFFF)',
-                    borderRadius: '16px',
-                    border: '1px solid #E2E8F0',
-                    padding: '12px 10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: '#FEF3C7',
-                          color: '#D97706',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                      </div>
-                      <b style={{ fontSize: '13px', color: 'var(--ink)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Waiting
-                      </b>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: '9.5px',
-                        fontWeight: 800,
-                        padding: '2px 5px',
-                        borderRadius: '6px',
-                        background: '#DCFCE7',
-                        color: '#166534',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0
-                      }}
-                    >
-                      60m Free
-                    </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: '#FEF3C7',
+                      color: '#D97706',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
                   </div>
-
-                  <span style={{ fontSize: '10.5px', color: '#64748B', lineHeight: 1.25 }}>
-                    Review policy before paying
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
+                    Waiting
                   </span>
-
-                  <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 650, color: 'var(--ink)' }}>₹</span>
-                    <span style={{ fontSize: '22px', fontWeight: 850, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                      2
-                    </span>
-                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#64748B', marginLeft: '3px' }}>
-                      / min
-                    </span>
-                  </div>
-
-                  <span style={{ fontSize: '10px', color: '#64748B', lineHeight: 1.2 }}>
-                    After 60 mins (₹120/hr)
+                  <span
+                    style={{
+                      fontSize: '9.5px',
+                      fontWeight: 750,
+                      padding: '2px 6px',
+                      borderRadius: '6px',
+                      background: '#DCFCE7',
+                      color: '#166534'
+                    }}
+                  >
+                    60m Free
                   </span>
                 </div>
 
-                {/* Card 2: Additional Trip Card */}
-                <div
-                  style={{
-                    background: 'var(--card, #FFFFFF)',
-                    borderRadius: '16px',
-                    border: '1px solid #E2E8F0',
-                    padding: '12px 10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: '#E0F2FE',
-                          color: '#0284C7',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 19 8.5 5" />
-                          <path d="M19 19 15.5 5" />
-                          <path d="M12 6v3" />
-                          <path d="M12 15v3" />
-                        </svg>
-                      </div>
-                      <b style={{ fontSize: '12px', color: 'var(--ink)', lineHeight: 1.15, wordBreak: 'break-word' }}>
-                        Additional Trip
-                      </b>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: '9.5px',
-                        fontWeight: 800,
-                        padding: '2px 5px',
-                        borderRadius: '6px',
-                        background: '#E0F2FE',
-                        color: '#0369A1',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0
-                      }}
-                    >
-                      Extra Km
-                    </span>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
+                    ₹2<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/min</span>
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
+                    (after 60m)
+                  </span>
+                </div>
+              </div>
 
-                  <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '20px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 650, color: 'var(--ink)' }}>₹</span>
-                    <span style={{ fontSize: '22px', fontWeight: 850, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                      18
-                    </span>
-                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#64748B', marginLeft: '3px' }}>
-                      / km
-                    </span>
-                  </div>
+              {/* Divider */}
+              <div style={{ height: '1px', background: '#F1F5F9', width: '100%' }} />
 
-                  <span style={{ fontSize: '10px', color: '#64748B', lineHeight: 1.2 }}>
-                    Beyond booked route
+              {/* Row 2: Additional Trip */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: '#E0F2FE',
+                      color: '#0284C7',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 19 8.5 5" />
+                      <path d="M19 19 15.5 5" />
+                      <path d="M12 6v3" />
+                      <path d="M12 15v3" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
+                    Additional Trip
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '9.5px',
+                      fontWeight: 750,
+                      padding: '2px 6px',
+                      borderRadius: '6px',
+                      background: '#E0F2FE',
+                      color: '#0369A1'
+                    }}
+                  >
+                    Extra Km
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
+                    ₹18<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/km</span>
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
+                    (extra route)
                   </span>
                 </div>
               </div>
