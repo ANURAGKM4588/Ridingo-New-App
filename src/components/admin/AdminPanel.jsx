@@ -231,44 +231,58 @@ export default function AdminPanel() {
     }));
   };
 
+  const compressImage = (file, maxW, maxH, quality, onDone) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        let targetW = w;
+        let targetH = h;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          targetW = Math.round(w * ratio);
+          targetH = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+        const compressed = canvas.toDataURL('image/jpeg', quality);
+        onDone(compressed);
+      };
+      img.onerror = () => onDone(e.target.result);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleMobileImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3.5 * 1024 * 1024) {
-      if (addToast) addToast('Mobile banner exceeds 3.5MB limit. Please choose a smaller file.', 'alert');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const res = uploadEvent.target.result;
+    compressImage(file, 1000, 400, 0.82, (res) => {
       setBannerForm(prev => ({
         ...prev,
         imageMobile: res,
         imageUrl: res,
         imageTablet: prev.imageTablet || res
       }));
-      if (addToast) addToast('Mobile banner (1000×400) loaded!', 'check');
-    };
-    reader.readAsDataURL(file);
+      if (addToast) addToast('Mobile banner (1000×400) optimized & loaded!', 'check');
+    });
   };
 
   const handleTabletImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 4.5 * 1024 * 1024) {
-      if (addToast) addToast('iPad / Tablet banner exceeds 4.5MB limit. Please choose a smaller file.', 'alert');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const res = uploadEvent.target.result;
+    compressImage(file, 1400, 560, 0.82, (res) => {
       setBannerForm(prev => ({
         ...prev,
         imageTablet: res
       }));
-      if (addToast) addToast('iPad / Tablet banner (1400×560) loaded!', 'check');
-    };
-    reader.readAsDataURL(file);
+      if (addToast) addToast('iPad / Tablet banner (1400×560) optimized & loaded!', 'check');
+    });
   };
 
   const handleSaveBanner = async (e) => {
@@ -284,7 +298,7 @@ export default function AdminPanel() {
       ...bannerForm,
       id: editingBannerId || undefined,
       imageMobile: finalMobile,
-      imageTablet: finalTablet,
+      imageTablet: (finalTablet && finalTablet !== finalMobile) ? finalTablet : '',
       imageUrl: finalMobile,
       category: srv.id,
       serviceName: srv.name,

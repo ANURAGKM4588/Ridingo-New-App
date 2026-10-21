@@ -328,7 +328,7 @@ function broadcastBannersUpdated(banners) {
 }
 
 /**
- * Hook or subscriber for reactive banner updates
+ * Hook or subscriber for reactive banner updates with real-time cloud sync
  */
 export function subscribeToOfferBanners(callback) {
   if (typeof window === 'undefined') return () => {};
@@ -341,7 +341,7 @@ export function subscribeToOfferBanners(callback) {
     if (e.key === LOCAL_BANNERS_KEY && e.newValue) {
       try {
         const parsed = JSON.parse(e.newValue);
-        callback(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) callback(parsed);
       } catch (err) {}
     }
   };
@@ -358,26 +358,110 @@ export function subscribeToOfferBanners(callback) {
     }
   } catch (e) {}
 
-  // Fetch real-time cloud banners from Supabase on subscribe
-  try {
-    if (supabase) {
-      supabase.from('profiles').select('preferences').eq('phone', '+919999999999').single().then(({ data, error }) => {
+  // Fetch real-time cloud banners from Supabase REST & client
+  const fetchCloudBanners = async () => {
+    try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 6000) : null;
+
+      const res = await fetch('https://xxmcjgonsxpjrgdxchwl.supabase.co/rest/v1/profiles?phone=eq.%2B919999999999&select=preferences', {
+        headers: {
+          'apikey': 'sb_publishable_xsxb_nMEozSSKCReR_DzkA_aXJIp--c',
+          'Authorization': 'Bearer sb_publishable_xsxb_nMEozSSKCReR_DzkA_aXJIp--c'
+        },
+        signal: controller ? controller.signal : undefined
+      });
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const rows = await res.json();
+        const banners = rows?.[0]?.preferences?.banners;
+        if (Array.isArray(banners) && banners.length > 0) {
+          try {
+            localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(banners));
+          } catch (e) {}
+          callback(banners);
+          return;
+        }
+      }
+    } catch (err) {
+      // Direct REST failed or timed out, attempt supabase-js client fallback
+    }
+
+    try {
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('preferences')
+          .eq('phone', '+919999999999')
+          .single();
         if (!error && data?.preferences?.banners && Array.isArray(data.preferences.banners) && data.preferences.banners.length > 0) {
           try {
             localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(data.preferences.banners));
           } catch (e) {}
           callback(data.preferences.banners);
         }
-      }).catch(() => {});
+      }
+    } catch (e) {}
+  };
+
+  // Immediate cloud fetch
+  fetchCloudBanners();
+
+  // Supabase Realtime channel subscription for instant pushes from Admin Panel
+  let realtimeChannel = null;
+  try {
+    if (supabase && typeof supabase.channel === 'function') {
+      realtimeChannel = supabase
+        .channel('ridingo-banner-realtime-sub')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'profiles',
+            filter: 'phone=eq.+919999999999'
+          },
+          (payload) => {
+            const banners = payload?.new?.preferences?.banners;
+            if (Array.isArray(banners) && banners.length > 0) {
+              try {
+                localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(banners));
+              } catch (e) {}
+              callback(banners);
+            }
+          }
+        )
+        .subscribe();
     }
-  } catch (e) {}
+  } catch (err) {
+    console.warn('[BannerService] Realtime channel subscription notice:', err);
+  }
+
+  // Periodic polling every 20 seconds to guarantee live freshness across network changes
+  const pollTimer = setInterval(fetchCloudBanners, 20000);
+
+  // Re-fetch immediately when app comes into foreground / window focus
+  const handleVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      fetchCloudBanners();
+    }
+  };
 
   window.addEventListener(BANNERS_EVENT_KEY, handleCustomEvent);
   window.addEventListener('storage', handleStorage);
+  window.addEventListener('focus', fetchCloudBanners);
+  document.addEventListener('visibilitychange', handleVisibility);
 
   return () => {
     window.removeEventListener(BANNERS_EVENT_KEY, handleCustomEvent);
     window.removeEventListener('storage', handleStorage);
+    window.removeEventListener('focus', fetchCloudBanners);
+    document.removeEventListener('visibilitychange', handleVisibility);
+    clearInterval(pollTimer);
     if (bc) bc.close();
+    if (realtimeChannel && typeof realtimeChannel.unsubscribe === 'function') {
+      realtimeChannel.unsubscribe().catch(() => {});
+    }
   };
 }
