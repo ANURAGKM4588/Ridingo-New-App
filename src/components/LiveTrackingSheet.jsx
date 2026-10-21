@@ -656,26 +656,21 @@ Please contact the passenger or emergency services (112) immediately!`;
                 </div>
               </div>
 
-              {/* Cancel Trip Button */}
+              {/* Free Instant Cancel Request Button (No cancellation policy popup required when no driver accepted) */}
               <div style={{ marginTop: '4px' }}>
                 <button
                   type="button"
                   onClick={() => {
-                    if (setTripToCancel) {
-                      setTripToCancel(trip);
-                    } else if (cancelTripByUser) {
-                      cancelTripByUser(trip.id);
-                      if (setActiveTrackingTripId) setActiveTrackingTripId(null);
-                      setLiveTrackingOpen(false);
+                    if (cancelTripByUser) {
+                      cancelTripByUser(trip.id, { feeOverride: 0 });
                     } else if (declineTrip) {
                       declineTrip(trip.id);
-                      if (setActiveTrackingTripId) setActiveTrackingTripId(null);
-                      setLiveTrackingOpen(false);
                     } else {
                       setTrips(prev => prev.filter(t => t.id !== trip.id));
-                      if (setActiveTrackingTripId) setActiveTrackingTripId(null);
-                      setLiveTrackingOpen(false);
                     }
+                    if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+                    setLiveTrackingOpen(false);
+                    if (addToast) addToast('Trip request cancelled freely. No cancellation fee.', 'check');
                   }}
                   style={{
                     width: '100%',
@@ -833,6 +828,34 @@ Please contact the passenger or emergency services (112) immediately!`;
                   <span>Emergency SOS</span>
                 </button>
               </div>
+
+              {/* Cancel Accepted Trip (Triggers cancellation policy popup with fine) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (setTripToCancel) {
+                    setTripToCancel(trip);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 0 2px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#EF4444',
+                  fontSize: '12.5px',
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Icon name="x" size={13} color="#EF4444" />
+                <span>Cancel Ride (Cancellation policy applies)</span>
+              </button>
             </div>
           ) : (
             /* ==========================================================

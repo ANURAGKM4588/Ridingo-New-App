@@ -2090,10 +2090,17 @@ export function AppProvider({ children }) {
   // User/Customer cancel ride logic: Cancels the trip globally for all drivers with platform cancellation fee deduction
   const cancelTripByUser = (tripId, { feeOverride } = {}) => {
     const targetTrip = (trips || []).find(t => t.id === tripId);
-    const isDriverAssigned = targetTrip && ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled'].includes(targetTrip.status);
+    const isDriverAssigned = targetTrip && (
+      Boolean(targetTrip.driver) ||
+      Boolean(targetTrip.driverId) ||
+      Boolean(targetTrip.driver_id) ||
+      ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled', 'on_the_way', 'arrived', 'started', 'in_progress'].includes(targetTrip.status)
+    );
 
-    // Platform cancellation fee: ₹100 if driver already dispatched/assigned, ₹50 nominal platform fee if searching/unassigned
-    const cancelFee = typeof feeOverride === 'number' ? feeOverride : (isDriverAssigned ? 100 : 50);
+    // Platform cancellation policy:
+    // - Trip NOT accepted by any driver: 100% FREE CANCELLATION (cancelFee = 0, full refund of advance)
+    // - Trip ACCEPTED by driver: ₹100 driver cancellation penalty / platform fee applies
+    const cancelFee = typeof feeOverride === 'number' ? feeOverride : (isDriverAssigned ? 100 : 0);
     const advancePaid = Number(targetTrip?.advance) || 0;
     const refundAmount = Math.max(0, advancePaid - cancelFee);
 
@@ -2107,12 +2114,15 @@ export function AppProvider({ children }) {
             type: 'refund',
             amount: refundAmount,
             title: `Trip Refund · ${tripId}`,
-            sub: `₹${advancePaid} advance minus ₹${cancelFee} platform fee`,
+            sub: cancelFee > 0
+              ? `₹${advancePaid} advance minus ₹${cancelFee} cancellation fine`
+              : `₹${advancePaid} full advance refund (free cancellation)`,
             gateway: 'PhonePe Escrow'
           },
           ...prev
         ]);
-      } else {
+      }
+      if (cancelFee > 0) {
         const shortfall = cancelFee - advancePaid;
         if (shortfall > 0) {
           setUtx(prev => [
@@ -2121,23 +2131,23 @@ export function AppProvider({ children }) {
               ts: Date.now(),
               type: 'fee',
               amount: -shortfall,
-              title: `Cancellation Fee · ${tripId}`,
-              sub: `Platform cancellation fee (exceeded advance)`,
+              title: `Cancellation Fine · ${tripId}`,
+              sub: `Driver cancellation fine (exceeded advance)`,
               gateway: 'Ridingo Platform'
             },
             ...prev
           ]);
         }
       }
-    } else {
+    } else if (cancelFee > 0) {
       setUtx(prev => [
         {
           id: 'tx-fee-' + Date.now(),
           ts: Date.now(),
           type: 'fee',
           amount: -cancelFee,
-          title: `Cancellation Fee · ${tripId}`,
-          sub: isDriverAssigned ? 'Platform fee (driver dispatched)' : 'Platform cancellation fee',
+          title: `Cancellation Fine · ${tripId}`,
+          sub: 'Cancellation fine (driver accepted)',
           gateway: 'Ridingo Platform'
         },
         ...prev

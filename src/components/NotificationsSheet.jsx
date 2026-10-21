@@ -288,25 +288,41 @@ function MinimalNotifCard({
 
   return (
     <motion.div
-      layout="position"
-      initial={{ opacity: 0, y: 8 }}
+      layout
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
       animate={{
         opacity: isClearingAll ? 0 : 1,
-        x: isClearingAll ? -24 : 0,
-        y: 0,
+        scale: isClearingAll ? 0.92 : 1,
+        height: isClearingAll ? 0 : 'auto',
+        marginBottom: isClearingAll ? 0 : 8,
+        paddingTop: isClearingAll ? 0 : 12,
+        paddingBottom: isClearingAll ? 0 : 12,
+        borderWidth: isClearingAll ? 0 : 1,
         transition: {
-          duration: isClearingAll ? 0.22 : 0.2,
-          delay: isClearingAll ? index * 0.03 : 0,
-          ease: [0.2, 0, 0, 1]
+          duration: isClearingAll ? 0.32 : 0.22,
+          ease: [0.16, 1, 0.3, 1]
         }
       }}
       exit={{
         opacity: 0,
-        x: -24,
-        transition: { duration: 0.18, ease: 'easeIn' }
+        scale: 0.92,
+        height: 0,
+        marginBottom: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
+        borderWidth: 0,
+        transition: {
+          duration: 0.28,
+          ease: [0.16, 1, 0.3, 1]
+        }
+      }}
+      transition={{
+        layout: { duration: 0.32, ease: [0.16, 1, 0.3, 1] }
       }}
       onClick={() => onToggleExpand(note.id)}
       style={{
+        boxSizing: 'border-box',
+        overflow: 'hidden',
         borderRadius: '14px',
         padding: '12px 14px',
         marginBottom: '8px',
@@ -314,7 +330,6 @@ function MinimalNotifCard({
         background: isRead ? 'var(--field, #F8FAFC)' : 'var(--card, #FFFFFF)',
         border: isRead ? '1px solid var(--line, #F1F5F9)' : '1px solid var(--line-strong, #E2E8F0)',
         boxShadow: isRead ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.05)',
-        transition: 'background 0.18s ease, border-color 0.18s ease',
         position: 'relative'
       }}
     >
@@ -587,7 +602,7 @@ export default function NotificationsSheet() {
     deleteNotif(id);
   };
 
-  // Light, smooth clearing animation:
+  // Smooth, fluid clearing animation:
   const handleClearAll = () => {
     if (!unotes || unotes.length === 0 || isClearingAll) return;
     setIsClearingAll(true);
@@ -595,11 +610,12 @@ export default function NotificationsSheet() {
       try { navigator.vibrate(15); } catch (_) {}
     }
 
+    // Give cards 320ms to smoothly collapse their height & scale before removing data
     setTimeout(() => {
       clearAllNotifs();
       setExpandedId(null);
       setIsClearingAll(false);
-    }, 240);
+    }, 320);
   };
 
   const handleClaimOffer = (note) => {
@@ -622,14 +638,17 @@ export default function NotificationsSheet() {
   };
 
   const hasNotes = unotes && unotes.length > 0;
-  const showList = hasNotes && !isClearingAll;
+  // Keep list mounted during isClearingAll so height-decreasing collapse animation executes smoothly
+  const showList = hasNotes || isClearingAll;
 
   return (
     <>
       <div className="layer on" id="u-notifs-layer" style={{ zIndex: 90 }}>
         <div className="scrim" onClick={handleClose} />
 
-        <div
+        <motion.div
+          layout
+          transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
           className="sheet"
           role="dialog"
           aria-modal="true"
@@ -639,7 +658,8 @@ export default function NotificationsSheet() {
             borderTopLeftRadius: '22px',
             borderTopRightRadius: '22px',
             overflow: 'hidden',
-            background: 'var(--card, #FFFFFF)'
+            background: 'var(--card, #FFFFFF)',
+            transition: 'height 0.34s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.34s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
           {/* Minimal Modern Header */}
@@ -741,12 +761,14 @@ export default function NotificationsSheet() {
             </div>
           </div>
 
-          {/* Body with Light Animation */}
-          <div
+          {/* Body with Fluid Smooth Animation */}
+          <motion.div
+            layout
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="sheet-scroll-body"
             style={{
               padding: '12px 16px 24px',
-              minHeight: '260px',
+              minHeight: '220px',
               maxHeight: '75vh',
               position: 'relative'
             }}
@@ -755,45 +777,50 @@ export default function NotificationsSheet() {
               {showList ? (
                 <motion.div
                   key="notifications-list"
+                  layout
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                   initial={{ opacity: 1 }}
                   animate={{ opacity: 1 }}
                   exit={{
                     opacity: 0,
-                    transition: { duration: 0.16, ease: 'easeOut' }
+                    transition: { duration: 0.2, ease: 'easeOut' }
                   }}
                   style={{
                     display: 'flex',
                     flexDirection: 'column'
                   }}
                 >
-                  {unotes.map((n, idx) => (
-                    <MinimalNotifCard
-                      key={n.id}
-                      note={n}
-                      index={idx}
-                      isExpanded={expandedId === n.id}
-                      onToggleExpand={handleToggleExpand}
-                      onClaimOffer={handleClaimOffer}
-                      onViewOfferDetails={handleViewOfferDetails}
-                      onDismiss={handleDismissSingle}
-                      isClearingAll={isClearingAll}
-                    />
-                  ))}
+                  <AnimatePresence initial={false}>
+                    {unotes.map((n, idx) => (
+                      <MinimalNotifCard
+                        key={n.id}
+                        note={n}
+                        index={idx}
+                        isExpanded={expandedId === n.id}
+                        onToggleExpand={handleToggleExpand}
+                        onClaimOffer={handleClaimOffer}
+                        onViewOfferDetails={handleViewOfferDetails}
+                        onDismiss={handleDismissSingle}
+                        isClearingAll={isClearingAll}
+                      />
+                    ))}
+                  </AnimatePresence>
                 </motion.div>
               ) : (
                 /* Light & Smooth Empty State */
                 <motion.div
                   key="notifications-empty"
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  layout
+                  initial={{ opacity: 0, y: 10, scale: 0.97 }}
                   animate={{
                     opacity: 1,
                     y: 0,
                     scale: 1,
-                    transition: { duration: 0.24, ease: [0.2, 0, 0, 1] }
+                    transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] }
                   }}
                   exit={{ opacity: 0 }}
                   style={{
-                    padding: '48px 16px',
+                    padding: '44px 16px',
                     textAlign: 'center',
                     display: 'flex',
                     flexDirection: 'column',
@@ -850,8 +877,8 @@ export default function NotificationsSheet() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Offer Details Modal */}

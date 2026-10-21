@@ -841,10 +841,26 @@ Live GPS Tracking: ${trackUrl}`;
 
   const handleCancelRequest = (tripOrId) => {
     const tripObj = typeof tripOrId === 'object' ? tripOrId : (trips || []).find(t => t.id === tripOrId);
-    if (tripObj && setTripToCancel) {
-      setTripToCancel(tripObj);
-    } else if (cancelTripByUser) {
-      cancelTripByUser(tripOrId?.id || tripOrId);
+    if (!tripObj) return;
+
+    const isDriverAssigned = Boolean(
+      tripObj.driver ||
+      tripObj.driverId ||
+      tripObj.driver_id ||
+      ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled', 'on_the_way', 'arrived', 'started', 'in_progress'].includes(tripObj.status)
+    );
+
+    if (isDriverAssigned) {
+      // Driver accepted: SHOW CANCELLATION POLICY POPUP WITH FINE
+      if (setTripToCancel) setTripToCancel(tripObj);
+    } else {
+      // Driver not accepted: FREE CANCELLATION, NO CANCELLATION POLICY POPUP
+      if (cancelTripByUser) {
+        cancelTripByUser(tripObj.id, { feeOverride: 0 });
+      }
+      if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+      setLiveTrackingOpen(false);
+      addToast('Trip request cancelled freely. No cancellation fee.', 'check');
     }
   };
   const rawFirst = user?.firstName || (user?.name ? user.name.trim().split(' ')[0] : 'there');

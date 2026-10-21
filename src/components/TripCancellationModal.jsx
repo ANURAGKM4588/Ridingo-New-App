@@ -5,8 +5,8 @@ import { cleanLocationName } from '../utils/locationCleaner';
 export default function TripCancellationModal({ trip, onConfirm, onClose }) {
   if (!trip) return null;
 
-  const isDriverAssigned = ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled'].includes(trip.status);
-  const cancelFee = isDriverAssigned ? 100 : 50;
+  const isDriverAssigned = Boolean(trip.driver || trip.driverId || trip.driver_id || ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled', 'on_the_way', 'arrived', 'started', 'in_progress'].includes(trip.status));
+  const cancelFee = isDriverAssigned ? 100 : 0;
   const advancePaid = Number(trip.advance) || 0;
   const refundAmount = Math.max(0, advancePaid - cancelFee);
   const driverName = (typeof trip.driver === 'string' ? trip.driver : trip.driver?.name) || trip.driverObj?.name || 'Assigned Driver';

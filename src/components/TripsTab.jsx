@@ -395,7 +395,20 @@ export default function TripsTab() {
                         className="btn ghost"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (setTripToCancel) setTripToCancel(t);
+                          const isDriverAssigned = Boolean(
+                            t.driver ||
+                            t.driverId ||
+                            t.driver_id ||
+                            ['accepted', 'pickup_arrived', 'ready_to_start', 'scheduled', 'on_the_way', 'arrived', 'started', 'in_progress'].includes(t.status)
+                          );
+                          if (isDriverAssigned) {
+                            if (setTripToCancel) setTripToCancel(t);
+                          } else {
+                            if (cancelTripByUser) cancelTripByUser(t.id, { feeOverride: 0 });
+                            if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+                            setLiveTrackingOpen(false);
+                            addToast('Trip request cancelled freely. No cancellation fee.', 'check');
+                          }
                         }}
                         style={{
                           padding: '4px 12px',

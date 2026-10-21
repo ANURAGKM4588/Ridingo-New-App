@@ -93,9 +93,7 @@ function MainApp() {
     setLiveTrackingOpen,
     tripToCancel,
     setTripToCancel,
-    cancelTripByUser,
-    termsConfirmationBanner,
-    setTermsConfirmationBanner
+    cancelTripByUser
   } = app;
 
   const handleUserPhoneRecovery = () => {
@@ -228,78 +226,6 @@ function MainApp() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Confirmation Banner at Bottom Confirming Acceptance of Terms */}
-                  {termsConfirmationBanner && (
-                    <div
-                      className="terms-accepted-bottom-banner"
-                      style={{
-                        position: 'fixed',
-                        bottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
-                        left: '16px',
-                        right: '16px',
-                        maxWidth: '430px',
-                        margin: '0 auto',
-                        zIndex: 100060,
-                        background: '#0F172A',
-                        color: '#FFFFFF',
-                        borderRadius: '16px',
-                        padding: '12px 16px',
-                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.45)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: '#16A34A',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}
-                        >
-                          <Icon name="check" size={15} color="#FFFFFF" />
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <b style={{ fontSize: '13px', display: 'block', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
-                            Terms Confirmed & Accepted
-                          </b>
-                          <span style={{ fontSize: '11.5px', color: '#94A3B8', display: 'block', lineHeight: 1.25 }}>
-                            {termsConfirmationBanner.text || 'Waiting charges policy reviewed and confirmed for this trip.'}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setTermsConfirmationBanner(null)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.15)',
-                          border: 'none',
-                          color: '#FFFFFF',
-                          width: '26px',
-                          height: '26px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          flexShrink: 0
-                        }}
-                        aria-label="Dismiss confirmation banner"
-                      >
-                        <Icon name="x" size={13} color="#FFFFFF" />
-                      </button>
-                    </div>
-                  )}
                 </ErrorBoundary>
               </div>
             </div>

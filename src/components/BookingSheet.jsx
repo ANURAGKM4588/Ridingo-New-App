@@ -789,12 +789,6 @@ export default function BookingSheet() {
             durationText: tripTelemetry.isCalculated ? tripTelemetry.durationText : null,
             eta: tripTelemetry.isCalculated ? tripTelemetry.etaText : null
           });
-          if (setTermsConfirmationBanner) {
-            setTermsConfirmationBanner({
-              tripId: pId,
-              text: 'Waiting charges policy (60 mins free, ₹2/min thereafter) confirmed for this ride.'
-            });
-          }
           addToast(`Paid ₹${adv} via ${methodLabel}! Driver scheduled for ${dateStr} · ${timeStr}.`, 'check');
         },
         onDismiss: () => {
