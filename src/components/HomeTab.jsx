@@ -59,69 +59,6 @@ const REVIEWS = [
   }
 ];
 
-const OFFER_BANNERS = [
-  {
-    id: 'airport-cashback',
-    category: 'airport',
-    brandTag: 'RIDINGO · AIRPORT',
-    tag: '5% CASHBACK',
-    tagBg: '#10B981',
-    tagColor: '#FFFFFF',
-    headline: '5% Off Airport Rides',
-    sub: 'Flight delay tracking with zero surge guarantee',
-    cta: 'Claim 5% Off',
-    ctaBgColor: '#FFFFFF',
-    ctaTextColor: '#000000',
-    icon: 'plane',
-    promoCode: 'AIRPORT5',
-    accentColor: '#10B981',
-    accentBorder: 'rgba(16, 185, 129, 0.4)',
-    bgGradient: 'linear-gradient(135deg, #061A15 0%, #0D2C24 45%, #0B1929 100%)',
-    ambientGlow: 'rgba(16, 185, 129, 0.25)',
-    trustText: 'Verified Flight Drivers'
-  },
-  {
-    id: 'hourly-discount',
-    category: 'hourly',
-    brandTag: 'RIDINGO · DRIVER',
-    tag: '35% OFF',
-    tagBg: '#F59E0B',
-    tagColor: '#000000',
-    headline: '35% Off City Driver',
-    sub: 'Errands, meetings & shopping in your own car',
-    cta: 'Claim 35% Off',
-    ctaBgColor: '#FFC70A',
-    ctaTextColor: '#000000',
-    icon: 'hourly',
-    promoCode: 'FIRST35',
-    accentColor: '#F59E0B',
-    accentBorder: 'rgba(245, 158, 11, 0.4)',
-    bgGradient: 'linear-gradient(135deg, #1A1102 0%, #2A1A05 45%, #18181B 100%)',
-    ambientGlow: 'rgba(245, 158, 11, 0.25)',
-    trustText: '100% Background-Checked'
-  },
-  {
-    id: 'outstation-discount',
-    category: 'outstation',
-    brandTag: 'RIDINGO · HIGHWAY',
-    tag: 'FLAT ₹250 OFF',
-    tagBg: '#3B82F6',
-    tagColor: '#FFFFFF',
-    headline: 'Flat ₹250 Off Highway Trips',
-    sub: 'Scenic hill stations & outstation road drives',
-    cta: 'Claim ₹250 Off',
-    ctaBgColor: '#FFFFFF',
-    ctaTextColor: '#000000',
-    icon: 'route',
-    promoCode: 'HIGHWAY250',
-    accentColor: '#3B82F6',
-    accentBorder: 'rgba(59, 130, 246, 0.4)',
-    bgGradient: 'linear-gradient(135deg, #091326 0%, #102246 45%, #131722 100%)',
-    ambientGlow: 'rgba(59, 130, 246, 0.25)',
-    trustText: 'Experienced Highway Drivers'
-  }
-];
-
 export default function HomeTab() {
   const {
     user,
@@ -979,14 +916,14 @@ Live GPS Tracking: ${trackUrl}`;
 
   return (
     <div>
-      {/* Top Bar with Brand Logo and Notification Bell (Fixed during pull-to-refresh & active loading, scrolls naturally otherwise) */}
+      {/* Top Bar with Brand Logo and Notification Bell (Scrolls naturally with page content) */}
       <div
         className="home-fixed-top-bar"
         style={{
-          position: (isPulling || isRefreshing || pullDist > 0) ? 'sticky' : 'relative',
-          top: 0,
-          zIndex: 75,
-          background: 'var(--surface)',
+          position: 'relative',
+          top: 'auto',
+          zIndex: 10,
+          background: 'transparent',
           marginLeft: '-18px',
           marginRight: '-18px',
           paddingLeft: '18px',
@@ -996,9 +933,7 @@ Live GPS Tracking: ${trackUrl}`;
           marginBottom: '2px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)'
+          alignItems: 'center'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -1225,13 +1160,15 @@ Live GPS Tracking: ${trackUrl}`;
         <div
           style={{
             position: 'relative',
-            borderRadius: '24px',
+            borderRadius: '20px',
             overflow: 'hidden',
             aspectRatio: '2.5 / 1',
             minHeight: '144px',
             maxHeight: '260px',
             width: '100%',
-            boxShadow: '0 6px 24px -4px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.05)',
+            boxShadow: 'none',
+            border: 'none',
+            background: 'transparent',
             cursor: 'grab'
           }}
         >
@@ -1302,22 +1239,21 @@ Live GPS Tracking: ${trackUrl}`;
                 left: 0,
                 right: 0,
                 bottom: 0,
-                borderRadius: '24px',
+                borderRadius: '20px',
                 overflow: 'hidden',
                 touchAction: 'pan-y',
                 cursor: 'pointer',
-                background: (currentBanner.imageMobile || currentBanner.imageUrl || currentBanner.imageTablet)
-                  ? '#090D1A'
-                  : (currentBanner.bgGradient || 'linear-gradient(135deg, #061A15 0%, #0D2C24 45%, #0B1929 100%)'),
-                border: `1.5px solid ${currentBanner.accentBorder || 'rgba(255, 255, 255, 0.2)'}`
+                background: 'transparent',
+                border: 'none',
+                boxShadow: 'none'
               }}
             >
               {(currentBanner.imageMobile || currentBanner.imageTablet || currentBanner.imageUrl) ? (
                 /* ========================================================
-                   FULLY DESIGNED BANNER SLIDE (Image-First with CTA Button)
-                   Responsive Art Direction for Mobile vs iPad/Tablet
+                   FULLY DESIGNED BANNER SLIDE (Image-First pure graphic)
+                   No black stroke, no dark scrim, pure uploaded banner asset
                    ======================================================== */
-                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: '20px', overflow: 'hidden' }}>
                   <picture style={{ width: '100%', height: '100%', display: 'block' }}>
                     {currentBanner.imageTablet && (
                       <source media="(min-width: 640px)" srcSet={currentBanner.imageTablet} />
@@ -1329,23 +1265,16 @@ Live GPS Tracking: ${trackUrl}`;
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
-                        display: 'block'
+                        display: 'block',
+                        borderRadius: '20px',
+                        border: 'none',
+                        outline: 'none'
                       }}
                     />
                   </picture>
 
-                  {/* Soft bottom scrim to ensure CTA button & badge are always crisp */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 45%, transparent 100%)',
-                      pointerEvents: 'none'
-                    }}
-                  />
-
-                  {/* Action CTA Button on the Image (Book Now / Claim Now) */}
-                  {currentBanner.showCta !== false && (
+                  {/* Optional CTA Button on the Image ONLY when explicitly enabled */}
+                  {currentBanner.showCta && (
                     <div
                       style={{
                         position: 'absolute',
