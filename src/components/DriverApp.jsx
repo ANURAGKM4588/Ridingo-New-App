@@ -3481,7 +3481,7 @@ export default function DriverApp() {
                   const driverEarn = Math.round((t.status === 'inprogress' ? liveTotalFare : fare) * 0.70); // 30% platform commission deducted
 
                   return (
-                    <article key={t.id} className="card trip" style={{ borderRadius: '16px', border: '1px solid #F1F5F9', background: '#FFFFFF', boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.05)' }}>
+                    <article key={t.id} className="card trip" style={{ borderRadius: '16px', border: '1px solid var(--line, #F1F5F9)', background: 'var(--card, #FFFFFF)', boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.05)' }}>
                       <div className="trip-head" style={{ paddingBottom: '10px' }}>
                         <span className="grow">
                           <b>{c.name}</b> <span className="mut">· {t.qty || 1} {c.unit || 'hr'}</span>
@@ -3706,7 +3706,7 @@ export default function DriverApp() {
                                       width: '32px',
                                       height: '32px',
                                       borderRadius: '8px',
-                                      background: isAdditionalRideActive ? '#DCFCE7' : '#F1F5F9',
+                                      background: isAdditionalRideActive ? 'rgba(34, 197, 94, 0.2)' : 'var(--field, #F1F5F9)',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
@@ -3714,11 +3714,11 @@ export default function DriverApp() {
                                       transition: 'background 0.15s ease'
                                     }}
                                   >
-                                    <Icon name="route" size={15} color={isAdditionalRideActive ? '#15803D' : '#64748B'} />
+                                    <Icon name="route" size={15} color={isAdditionalRideActive ? '#15803D' : 'var(--muted, #64748B)'} />
                                   </div>
                                   <div style={{ minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                      <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
+                                      <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 700 }}>
                                         Additional Trip
                                       </span>
                                       {isAdditionalRideActive && (
@@ -3745,7 +3745,7 @@ export default function DriverApp() {
                                           +{formatDistanceKm(extraKm)} · +₹{extFare}
                                         </span>
                                       ) : (
-                                        <span style={{ color: '#94A3B8', fontWeight: 500 }}>₹{RATE_PER_KM}/km</span>
+                                        <span style={{ color: 'var(--muted, #94A3B8)', fontWeight: 500 }}>₹{RATE_PER_KM}/km</span>
                                       )}
                                     </div>
                                   </div>
@@ -3756,9 +3756,9 @@ export default function DriverApp() {
                                   style={{
                                     padding: '6px 16px',
                                     borderRadius: '8px',
-                                    border: isAdditionalRideActive ? 'none' : '1.5px solid #E2E8F0',
-                                    background: isAdditionalRideActive ? '#DC2626' : '#FFFFFF',
-                                    color: isAdditionalRideActive ? '#FFFFFF' : '#0F172A',
+                                    border: isAdditionalRideActive ? 'none' : '1.5px solid var(--line, #E2E8F0)',
+                                    background: isAdditionalRideActive ? '#DC2626' : 'var(--card, #FFFFFF)',
+                                    color: isAdditionalRideActive ? '#FFFFFF' : 'var(--ink, #0F172A)',
                                     fontSize: '12px',
                                     fontWeight: 800,
                                     cursor: 'pointer',
@@ -3772,7 +3772,7 @@ export default function DriverApp() {
                               </div>
 
                               {/* Divider */}
-                              <div style={{ height: '1px', background: '#F1F5F9' }} />
+                              <div style={{ height: '1px', background: 'var(--line, #F1F5F9)' }} />
 
                               {/* Waiting Timer Strip */}
                               <div
@@ -3783,8 +3783,8 @@ export default function DriverApp() {
                                   justifyContent: 'space-between',
                                   gap: '10px',
                                   background: isWaitingActive
-                                    ? (isWaitingFree ? '#FFFBEB' : '#FEF2F2')
-                                    : '#FFFFFF',
+                                    ? (isWaitingFree ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.12)')
+                                    : 'var(--card, #FFFFFF)',
                                   transition: 'background 0.15s ease'
                                 }}
                               >
@@ -3795,8 +3795,8 @@ export default function DriverApp() {
                                       height: '32px',
                                       borderRadius: '8px',
                                       background: isWaitingActive
-                                        ? (isWaitingFree ? '#FEF3C7' : '#FEE2E2')
-                                        : '#F1F5F9',
+                                        ? (isWaitingFree ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)')
+                                        : 'var(--field, #F1F5F9)',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
@@ -3807,12 +3807,12 @@ export default function DriverApp() {
                                     <Icon
                                       name="clock"
                                       size={15}
-                                      color={isWaitingActive ? (isWaitingFree ? '#B45309' : '#DC2626') : '#64748B'}
+                                      color={isWaitingActive ? (isWaitingFree ? '#B45309' : '#DC2626') : 'var(--muted, #64748B)'}
                                     />
                                   </div>
                                   <div style={{ minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                      <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: 700 }}>
+                                      <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 700 }}>
                                         Waiting
                                       </span>
                                       {isWaitingActive && (
@@ -3839,8 +3839,8 @@ export default function DriverApp() {
                                             fontWeight: 800,
                                             letterSpacing: '0.3px',
                                             textTransform: 'uppercase',
-                                            color: '#64748B',
-                                            background: '#F1F5F9',
+                                            color: 'var(--muted, #64748B)',
+                                            background: 'var(--field, #F1F5F9)',
                                             padding: '2px 6px',
                                             borderRadius: '4px',
                                             lineHeight: '14px'
@@ -3861,7 +3861,7 @@ export default function DriverApp() {
                                           }
                                         </span>
                                       ) : (
-                                        <span style={{ color: '#94A3B8', fontWeight: 500 }}>
+                                        <span style={{ color: 'var(--muted, #94A3B8)', fontWeight: 500 }}>
                                           60 min free · then ₹{WAITING_RATE_PER_MIN}/min
                                         </span>
                                       )}
@@ -3874,9 +3874,9 @@ export default function DriverApp() {
                                   style={{
                                     padding: '6px 16px',
                                     borderRadius: '8px',
-                                    border: isWaitingActive ? 'none' : '1.5px solid #E2E8F0',
-                                    background: isWaitingActive ? '#DC2626' : '#FFFFFF',
-                                    color: isWaitingActive ? '#FFFFFF' : '#0F172A',
+                                    border: isWaitingActive ? 'none' : '1.5px solid var(--line, #E2E8F0)',
+                                    background: isWaitingActive ? '#DC2626' : 'var(--card, #FFFFFF)',
+                                    color: isWaitingActive ? '#FFFFFF' : 'var(--ink, #0F172A)',
                                     fontSize: '12px',
                                     fontWeight: 800,
                                     cursor: 'pointer',
@@ -3893,8 +3893,8 @@ export default function DriverApp() {
                             {/* ── Live Fare Breakdown (Always visible during trip) ── */}
                             <div
                               style={{
-                                background: '#F8FAFC',
-                                border: '1px solid #E2E8F0',
+                                background: 'var(--field, #F8FAFC)',
+                                border: '1px solid var(--line, #E2E8F0)',
                                 borderRadius: '14px',
                                 padding: '12px',
                                 fontSize: '12.5px'
@@ -3912,7 +3912,7 @@ export default function DriverApp() {
                                   fontWeight: 800,
                                   letterSpacing: '0.5px',
                                   textTransform: 'uppercase',
-                                  color: '#64748B'
+                                  color: 'var(--muted, #64748B)'
                                 }}>
                                   Live Fare
                                 </span>
@@ -3932,13 +3932,13 @@ export default function DriverApp() {
                               {/* Line Items */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{ color: '#64748B' }}>Base fare</span>
-                                  <span style={{ fontWeight: 700, color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>₹{fare}</span>
+                                  <span style={{ color: 'var(--muted, #64748B)' }}>Base fare</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--ink, #0F172A)', fontVariantNumeric: 'tabular-nums' }}>₹{fare}</span>
                                 </div>
 
                                 {(extraKm > 0 || isAdditionalRideActive) && (
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ color: '#64748B' }}>
+                                    <span style={{ color: 'var(--muted, #64748B)' }}>
                                       Extra · {formatDistanceKm(extraKm)} × ₹{RATE_PER_KM}
                                     </span>
                                     <span style={{ fontWeight: 700, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>+₹{extFare}</span>
@@ -3947,7 +3947,7 @@ export default function DriverApp() {
 
                                 {(waitingSeconds > 0 || isWaitingActive) && (
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ color: '#64748B' }}>
+                                    <span style={{ color: 'var(--muted, #64748B)' }}>
                                       Waiting · {formatDurationSeconds(waitingSeconds)}
                                     </span>
                                     <span style={{
@@ -3962,15 +3962,15 @@ export default function DriverApp() {
                               </div>
 
                               {/* Divider */}
-                              <div style={{ height: '1px', background: '#E2E8F0', margin: '8px 0' }} />
+                              <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '8px 0' }} />
 
                               {/* Total */}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>Total</span>
+                                  <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink, #0F172A)' }}>Total</span>
                                   <span style={{
                                     fontSize: '10px',
-                                    color: '#94A3B8',
+                                    color: 'var(--muted, #94A3B8)',
                                     fontWeight: 600,
                                     display: 'block',
                                     marginTop: '1px'
@@ -3981,7 +3981,7 @@ export default function DriverApp() {
                                 <span style={{
                                   fontSize: '20px',
                                   fontWeight: 900,
-                                  color: '#0F172A',
+                                  color: 'var(--ink, #0F172A)',
                                   letterSpacing: '-0.5px',
                                   fontVariantNumeric: 'tabular-nums'
                                 }}>
@@ -3997,9 +3997,9 @@ export default function DriverApp() {
                                 className="btn sm"
                                 style={{
                                   flex: 1,
-                                  background: '#FFFFFF',
-                                  border: '1.5px solid #E2E8F0',
-                                  color: '#0F172A',
+                                  background: 'var(--card, #FFFFFF)',
+                                  border: '1.5px solid var(--line, #E2E8F0)',
+                                  color: 'var(--ink, #0F172A)',
                                   fontWeight: 700,
                                   borderRadius: '12px',
                                   padding: '11px 14px',
@@ -4014,8 +4014,8 @@ export default function DriverApp() {
                                 className="btn primary sm"
                                 style={{
                                   flex: 1.5,
-                                  background: '#0F172A',
-                                  color: '#FFFFFF',
+                                  background: 'var(--solid, #0F172A)',
+                                  color: 'var(--on-solid, #FFFFFF)',
                                   border: 'none',
                                   fontWeight: 800,
                                   borderRadius: '12px',

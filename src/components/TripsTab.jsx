@@ -437,32 +437,32 @@ export default function TripsTab() {
                 {/* Completed Trip Invoice Breakdown & Free Auto-Share Buttons */}
                 {t.status === 'completed' && (
                   <div style={{ marginTop: '10px', paddingTop: '9px', borderTop: '1px solid var(--line)' }}>
-                    <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '10px 12px', marginBottom: '8px', border: '1px solid #F1F5F9', fontSize: '12px', color: '#64748B' }}>
+                    <div style={{ background: 'var(--field)', borderRadius: '12px', padding: '10px 12px', marginBottom: '8px', border: '1px solid var(--line)', fontSize: '12px', color: 'var(--muted)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
                         <span>Base Booking Fare</span>
-                        <b style={{ color: '#0F172A' }}>₹{t.baseFare || (t.fare - (t.extensionFare || 0) - (t.waitingFare || 0))}</b>
+                        <b style={{ color: 'var(--ink)' }}>₹{t.baseFare || (t.fare - (t.extensionFare || 0) - (t.waitingFare || 0))}</b>
                       </div>
                       {(t.extensionDistanceKm > 0 || t.extensionFare > 0) && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: '8px', background: '#F0FDF4', border: '1px solid #DCFCE7', marginBottom: '4px' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#166534', fontWeight: 600 }}>
-                            <Icon name="route" size={12} color="#166534" />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: '8px', background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.25)', marginBottom: '4px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#16A34A', fontWeight: 600 }}>
+                            <Icon name="route" size={12} color="#16A34A" />
                             <span>Additional Trip ({t.extensionDistanceKm ? `${Number(t.extensionDistanceKm).toFixed(2)} km` : 'Extra km'} @ ₹18/km)</span>
                           </span>
-                          <b style={{ color: '#15803D', fontSize: '12px' }}>+₹{t.extensionFare || Math.round((Number(t.extensionDistanceKm) || 0) * 18)}</b>
+                          <b style={{ color: '#16A34A', fontSize: '12px' }}>+₹{t.extensionFare || Math.round((Number(t.extensionDistanceKm) || 0) * 18)}</b>
                         </div>
                       )}
                       {(t.waitingMinutes > 0 || t.waitingFare > 0) && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FEE2E2', marginBottom: '4px' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#991B1B', fontWeight: 600 }}>
-                            <Icon name="clock" size={12} color="#991B1B" />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', marginBottom: '4px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#EF4444', fontWeight: 600 }}>
+                            <Icon name="clock" size={12} color="#EF4444" />
                             <span>Waiting Charge ({t.waitingMinutes ? `${t.waitingMinutes}m billable` : 'Waiting'} @ ₹2/m)</span>
                           </span>
-                          <b style={{ color: '#DC2626', fontSize: '12px' }}>+₹{t.waitingFare || (Number(t.waitingMinutes) * 2)}</b>
+                          <b style={{ color: '#EF4444', fontSize: '12px' }}>+₹{t.waitingFare || (Number(t.waitingMinutes) * 2)}</b>
                         </div>
                       )}
-                      <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+                      <div style={{ height: '1px', background: 'var(--line)', margin: '4px 0' }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <b style={{ color: '#0F172A' }}>Total Settled Fare</b>
+                        <b style={{ color: 'var(--ink)' }}>Total Settled Fare</b>
                         <b style={{ color: '#16A34A', fontSize: '13px' }}>₹{t.fare}</b>
                       </div>
                     </div>
@@ -490,9 +490,9 @@ export default function TripsTab() {
                         style={{
                           padding: '5px 12px',
                           borderRadius: '999px',
-                          background: '#ECFDF5',
-                          border: '1px solid #A7F3D0',
-                          color: '#059669',
+                          background: 'rgba(16, 185, 129, 0.12)',
+                          border: '1px solid rgba(16, 185, 129, 0.28)',
+                          color: '#10B981',
                           fontSize: '11.5px',
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -501,7 +501,7 @@ export default function TripsTab() {
                           gap: '5px'
                         }}
                       >
-                        <Icon name="whatsapp" size={13} color="#059669" />
+                        <Icon name="whatsapp" size={13} color="#10B981" />
                         <span>WhatsApp Invoice</span>
                       </button>
 
@@ -527,9 +527,9 @@ export default function TripsTab() {
                         style={{
                           padding: '5px 12px',
                           borderRadius: '999px',
-                          background: '#EFF6FF',
-                          border: '1px solid #BFDBFE',
-                          color: '#2563EB',
+                          background: 'rgba(59, 130, 246, 0.12)',
+                          border: '1px solid rgba(59, 130, 246, 0.28)',
+                          color: '#3B82F6',
                           fontSize: '11.5px',
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -538,7 +538,7 @@ export default function TripsTab() {
                           gap: '5px'
                         }}
                       >
-                        <Icon name="mail" size={13} color="#2563EB" />
+                        <Icon name="mail" size={13} color="#3B82F6" />
                         <span>Email Invoice</span>
                       </button>
                     </div>

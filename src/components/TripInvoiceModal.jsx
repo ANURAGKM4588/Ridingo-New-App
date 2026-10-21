@@ -216,12 +216,12 @@ export default function TripInvoiceModal({
 
 
           {/* Itemized Trip Bill Breakdown */}
-          <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '14px 16px', border: '1px solid #F1F5F9' }}>
+          <div style={{ background: 'var(--field, #F8FAFC)', borderRadius: '16px', padding: '14px 16px', border: '1px solid var(--line, #F1F5F9)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted, #64748B)', letterSpacing: '0.05em' }}>
                 Invoice Fare Breakdown
               </span>
-              <span style={{ fontSize: '11px', color: '#64748B' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
                 Trip #{trip?.id || 'TRP'}
               </span>
             </div>
@@ -232,9 +232,9 @@ export default function TripInvoiceModal({
               className={isShakingTerms ? 'shake-attention' : ''}
               style={{
                 background: hasReviewedWaitingTerms
-                  ? 'rgba(22, 163, 74, 0.04)'
+                  ? 'rgba(22, 163, 74, 0.08)'
                   : isShakingTerms
-                  ? '#FFFBEB'
+                  ? 'rgba(245, 158, 11, 0.14)'
                   : 'var(--card, #FFFFFF)',
                 border: hasReviewedWaitingTerms
                   ? '1.5px solid rgba(22, 163, 74, 0.35)'
@@ -298,8 +298,8 @@ export default function TripInvoiceModal({
                     fontWeight: 750,
                     padding: '4px 10px',
                     borderRadius: '999px',
-                    background: hasReviewedWaitingTerms ? 'rgba(22, 163, 74, 0.12)' : '#0F172A',
-                    color: hasReviewedWaitingTerms ? '#16A34A' : '#FFFFFF',
+                    background: hasReviewedWaitingTerms ? 'rgba(22, 163, 74, 0.12)' : 'var(--solid, #0F172A)',
+                    color: hasReviewedWaitingTerms ? '#16A34A' : 'var(--on-solid, #FFFFFF)',
                     border: 'none',
                     cursor: 'pointer',
                     display: 'inline-flex',
@@ -310,7 +310,7 @@ export default function TripInvoiceModal({
                   }}
                 >
                   <span>{hasReviewedWaitingTerms ? '✓ Accepted' : showWaitingTermsModal ? 'Close' : 'Details'}</span>
-                  <Icon name={showWaitingTermsModal ? "chevron-up" : "chevron-down"} size={11} color={hasReviewedWaitingTerms ? "#16A34A" : "#FFFFFF"} />
+                  <Icon name={showWaitingTermsModal ? "chevron-up" : "chevron-down"} size={11} color={hasReviewedWaitingTerms ? "#16A34A" : "var(--on-solid, #FFFFFF)"} />
                 </button>
               </div>
 
@@ -336,7 +336,7 @@ export default function TripInvoiceModal({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Waiting</span>
-                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#DCFCE7', color: '#166534' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.16)', color: '#16A34A' }}>
                       60m Free
                     </span>
                   </div>
@@ -362,7 +362,7 @@ export default function TripInvoiceModal({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--muted, #64748B)' }}>Additional Trip</span>
-                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: '#E0F2FE', color: '#0369A1' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.16)', color: '#0284C7' }}>
                       Extra Km
                     </span>
                   </div>
@@ -418,8 +418,8 @@ export default function TripInvoiceModal({
                     width: '100%',
                     height: '38px',
                     borderRadius: '10px',
-                    background: isShakingTerms ? '#EA580C' : '#0F172A',
-                    color: '#FFFFFF',
+                    background: isShakingTerms ? '#EA580C' : 'var(--solid, #0F172A)',
+                    color: 'var(--on-solid, #FFFFFF)',
                     fontSize: '12.5px',
                     fontWeight: 750,
                     border: 'none',
@@ -431,7 +431,7 @@ export default function TripInvoiceModal({
                     transition: 'all 0.18s ease'
                   }}
                 >
-                  <Icon name="check" size={13} color="#FFFFFF" />
+                  <Icon name="check" size={13} color="var(--on-solid, #FFFFFF)" />
                   <span>I Acknowledge Waiting & Route Policy</span>
                 </button>
               ) : (
@@ -442,36 +442,36 @@ export default function TripInvoiceModal({
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted, #64748B)' }}>
                 <span>Base Trip Fare</span>
-                <b style={{ color: '#0F172A' }}>₹{baseFare}</b>
+                <b style={{ color: 'var(--ink, #0F172A)' }}>₹{baseFare}</b>
               </div>
               {extraKm > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', borderRadius: '10px', background: '#F0FDF4', border: '1px solid #DCFCE7' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#166534', fontWeight: 600 }}>
-                    <Icon name="route" size={13} color="#166534" />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.25)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#16A34A', fontWeight: 600 }}>
+                    <Icon name="route" size={13} color="#16A34A" />
                     <span>Additional Trip (+{extraKm.toFixed(2)} km @ ₹{ratePerKm}/km)</span>
                   </span>
-                  <b style={{ color: '#15803D', fontSize: '12.5px' }}>+₹{extensionFare}</b>
+                  <b style={{ color: '#16A34A', fontSize: '12.5px' }}>+₹{extensionFare}</b>
                 </div>
               )}
               {waitingSeconds > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', borderRadius: '10px', background: waitingFare > 0 ? '#FEF2F2' : '#FFFBEB', border: waitingFare > 0 ? '1px solid #FEE2E2' : '1px solid #FEF3C7' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: waitingFare > 0 ? '#991B1B' : '#92400E', fontWeight: 600 }}>
-                    <Icon name="clock" size={13} color={waitingFare > 0 ? '#991B1B' : '#92400E'} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', borderRadius: '10px', background: waitingFare > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)', border: waitingFare > 0 ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(245, 158, 11, 0.25)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: waitingFare > 0 ? '#EF4444' : '#F59E0B', fontWeight: 600 }}>
+                    <Icon name="clock" size={13} color={waitingFare > 0 ? '#EF4444' : '#F59E0B'} />
                     <span>
                       Waiting Time ({Math.floor(waitingSeconds / 60)}m{billableWaitingMinutes > 0 ? ` · ${billableWaitingMinutes}m billable @ ₹${waitingRatePerMin}/m` : ' · 60m Free'})
                     </span>
                   </span>
-                  <b style={{ color: waitingFare > 0 ? '#DC2626' : '#059669', fontSize: '12.5px' }}>
+                  <b style={{ color: waitingFare > 0 ? '#EF4444' : '#16A34A', fontSize: '12.5px' }}>
                     {waitingFare > 0 ? `+₹${waitingFare}` : 'Free'}
                   </b>
                 </div>
               )}
-              <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+              <div style={{ height: '1px', background: 'var(--line, #E2E8F0)', margin: '4px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#0F172A', fontWeight: 600 }}>Gross Trip Total</span>
-                <b style={{ color: '#0F172A', fontSize: '14.5px' }}>₹{totalTripFare}</b>
+                <span style={{ color: 'var(--ink, #0F172A)', fontWeight: 600 }}>Gross Trip Total</span>
+                <b style={{ color: 'var(--ink, #0F172A)', fontSize: '14.5px' }}>₹{totalTripFare}</b>
               </div>
               {advancePaid > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2563EB', fontSize: '12.5px' }}>
@@ -480,7 +480,7 @@ export default function TripInvoiceModal({
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '2px' }}>
-                <b style={{ color: '#0F172A', fontSize: '14px' }}>Net Balance Settled</b>
+                <b style={{ color: 'var(--ink, #0F172A)', fontSize: '14px' }}>Net Balance Settled</b>
                 <b style={{ color: '#16A34A', fontSize: '16px', fontWeight: 850 }}>₹{balancePayable}</b>
               </div>
             </div>
@@ -610,11 +610,11 @@ export default function TripInvoiceModal({
               width: '100%',
               padding: '15px',
               borderRadius: '14px',
-              background: hasReviewedWaitingTerms ? '#000000' : '#94A3B8',
-              color: '#FFFFFF',
+              background: hasReviewedWaitingTerms ? 'var(--solid, #000000)' : 'var(--muted, #94A3B8)',
+              color: 'var(--on-solid, #FFFFFF)',
               fontSize: '15px',
               fontWeight: 800,
-              border: hasReviewedWaitingTerms ? 'none' : '1px solid #94A3B8',
+              border: hasReviewedWaitingTerms ? 'none' : '1px solid var(--line, #94A3B8)',
               cursor: isProcessingPayment ? 'not-allowed' : hasReviewedWaitingTerms ? 'pointer' : 'default',
               display: 'flex',
               alignItems: 'center',
@@ -630,7 +630,7 @@ export default function TripInvoiceModal({
               <span>Settling Payment...</span>
             ) : (
               <>
-                <Icon name="check" size={18} color="#FFFFFF" />
+                <Icon name="check" size={18} color="var(--on-solid, #FFFFFF)" />
                 <span>Payment Received · Settle ₹{totalDriverPayout}</span>
               </>
             )}
@@ -809,22 +809,22 @@ export default function TripInvoiceModal({
 
               {/* Policy items */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', lineHeight: 1.45, marginBottom: '20px' }}>
-                <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+                <div style={{ padding: '12px 14px', background: 'var(--field, #F8FAFC)', borderRadius: '14px', border: '1px solid var(--line, #E2E8F0)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     <Icon name="clock" size={15} color="#0284C7" />
-                    <b style={{ fontSize: '13px', color: '#0F172A' }}>First 60 Minutes Free</b>
+                    <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>First 60 Minutes Free</b>
                   </div>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#475569' }}>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted, #475569)' }}>
                     Every customer gets <b>60 minutes of complimentary waiting time</b> included without any extra cost.
                   </p>
                 </div>
 
-                <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FEE2E2' }}>
+                <div style={{ padding: '12px 14px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '14px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     <Icon name="alert-circle" size={15} color="#DC2626" />
-                    <b style={{ fontSize: '13px', color: '#991B1B' }}>Additional Waiting: ₹2 / min</b>
+                    <b style={{ fontSize: '13px', color: '#EF4444' }}>Additional Waiting: ₹2 / min</b>
                   </div>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#7F1D1D' }}>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted, #7F1D1D)' }}>
                     Beyond 60 minutes, extra waiting is billed at <b>₹2 per minute (₹120/hour)</b> and reflected transparently on the final invoice.
                   </p>
                 </div>
@@ -842,8 +842,8 @@ export default function TripInvoiceModal({
                   width: '100%',
                   height: '46px',
                   borderRadius: '14px',
-                  background: '#000000',
-                  color: '#FFFFFF',
+                  background: 'var(--solid, #000000)',
+                  color: 'var(--on-solid, #FFFFFF)',
                   fontWeight: 800,
                   fontSize: '14.5px',
                   border: 'none',
@@ -855,7 +855,7 @@ export default function TripInvoiceModal({
                   boxShadow: '0 4px 14px rgba(0,0,0,0.2)'
                 }}
               >
-                <Icon name="check" size={16} color="#FFFFFF" />
+                <Icon name="check" size={16} color="var(--on-solid, #FFFFFF)" />
                 <span>I Review & Accept Terms</span>
               </button>
             </div>

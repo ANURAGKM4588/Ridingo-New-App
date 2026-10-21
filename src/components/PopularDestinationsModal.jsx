@@ -65,7 +65,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
             maxWidth: '430px',
             height: '92vh',
             maxHeight: '92vh',
-            background: 'var(--bg, #FFFFFF)',
+            background: 'var(--sheet, #FFFFFF)',
             borderTopLeftRadius: '24px',
             borderTopRightRadius: '24px',
             display: 'flex',
@@ -86,7 +86,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              borderBottom: '1px solid rgba(0,0,0,0.06)'
+              borderBottom: '1px solid var(--line, rgba(0,0,0,0.06))'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -98,8 +98,8 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                  background: 'var(--surface-sunken, #F4F4F5)',
+                  border: '1px solid var(--line, rgba(0, 0, 0, 0.08))',
+                  background: 'var(--field, #F4F4F5)',
                   color: 'var(--ink, #18181B)',
                   display: 'flex',
                   alignItems: 'center',
@@ -127,7 +127,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                 height: '32px',
                 borderRadius: '50%',
                 border: 'none',
-                background: 'rgba(0,0,0,0.05)',
+                background: 'var(--field, rgba(0,0,0,0.05))',
                 color: 'var(--muted, #71717A)',
                 display: 'flex',
                 alignItems: 'center',
@@ -146,11 +146,11 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                background: 'var(--surface-sunken, #F4F4F5)',
+                background: 'var(--field, #F4F4F5)',
                 borderRadius: '14px',
                 padding: '8px 12px',
                 gap: '8px',
-                border: '1px solid rgba(0, 0, 0, 0.06)'
+                border: '1px solid var(--line, rgba(0, 0, 0, 0.06))'
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted, #71717A)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -212,9 +212,9 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                   style={{
                     padding: '6px 14px',
                     borderRadius: '999px',
-                    border: active ? 'none' : '1px solid rgba(0, 0, 0, 0.1)',
-                    background: active ? '#0F172A' : 'var(--surface-sunken, #F4F4F5)',
-                    color: active ? '#FFFFFF' : 'var(--ink, #3F3F46)',
+                    border: active ? 'none' : '1px solid var(--line, rgba(0, 0, 0, 0.1))',
+                    background: active ? 'var(--solid, #0F172A)' : 'var(--field, #F4F4F5)',
+                    color: active ? 'var(--on-solid, #FFFFFF)' : 'var(--ink, #3F3F46)',
                     fontWeight: active ? 700 : 550,
                     fontSize: '12px',
                     whiteSpace: 'nowrap',
@@ -230,7 +230,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                     style={{
                       fontSize: '10px',
                       opacity: active ? 0.9 : 0.6,
-                      background: active ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.08)',
+                      background: active ? 'rgba(255,255,255,0.2)' : 'rgba(128,128,128,0.15)',
                       padding: '1px 5px',
                       borderRadius: '8px'
                     }}
@@ -269,9 +269,9 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                     key={item.id}
                     onClick={() => onSelectDestination(item.bookingCat, item)}
                     style={{
-                      background: 'var(--surface, #FFFFFF)',
+                      background: 'var(--card, #FFFFFF)',
                       borderRadius: '16px',
-                      border: '1px solid rgba(0, 0, 0, 0.08)',
+                      border: '1px solid var(--line, rgba(0, 0, 0, 0.08))',
                       overflow: 'hidden',
                       display: 'flex',
                       flexDirection: 'column',
@@ -318,13 +318,14 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                           position: 'absolute',
                           top: '8px',
                           right: '8px',
-                          background: 'rgba(255, 255, 255, 0.92)',
+                          background: 'var(--card, rgba(255, 255, 255, 0.92))',
                           backdropFilter: 'blur(4px)',
-                          color: '#0F172A',
+                          color: 'var(--ink, #0F172A)',
                           fontSize: '10px',
                           fontWeight: 750,
                           padding: '2px 6px',
                           borderRadius: '8px',
+                          border: '1px solid var(--line, rgba(0,0,0,0.08))',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '2px',
@@ -392,7 +393,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           paddingTop: '6px',
-                          borderTop: '1px dashed rgba(0, 0, 0, 0.08)'
+                          borderTop: '1px dashed var(--line, rgba(0, 0, 0, 0.08))'
                         }}
                       >
                         <span
@@ -412,7 +413,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                           style={{
                             fontSize: '10.5px',
                             fontWeight: 750,
-                            color: 'var(--solid, #0F172A)',
+                            color: 'var(--ink, #0F172A)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '2px'

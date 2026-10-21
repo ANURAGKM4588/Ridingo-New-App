@@ -84,7 +84,7 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 750, color: 'var(--ink, #0F172A)' }}>
                 Offer Details
               </h3>
-              <span style={{ fontSize: '11px', color: '#64748B' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
                 Promotion Terms
               </span>
             </div>
@@ -98,12 +98,12 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
               width: '30px',
               height: '30px',
               borderRadius: '50%',
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
+              background: 'var(--field, #F8FAFC)',
+              border: '1px solid var(--line, #E2E8F0)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#0F172A',
+              color: 'var(--ink, #0F172A)',
               cursor: 'pointer'
             }}
           >
@@ -152,10 +152,10 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
 
         {/* Terms list */}
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink, #0F172A)', marginBottom: '6px' }}>
             Terms & Conditions
           </div>
-          <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '11.5px', color: '#64748B', lineHeight: 1.5 }}>
+          <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '11.5px', color: 'var(--muted, #64748B)', lineHeight: 1.5 }}>
             {terms.map((t, idx) => (
               <li key={idx} style={{ marginBottom: '3px' }}>{t}</li>
             ))}
@@ -173,7 +173,7 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
             fontWeight: 700,
             fontSize: '13px',
             background: 'var(--solid, #000000)',
-            color: '#FFFFFF',
+            color: 'var(--on-solid, #FFFFFF)',
             border: 'none',
             cursor: 'pointer',
             display: 'flex',
@@ -268,9 +268,9 @@ function MinimalNotifCard({
         padding: '12px 14px',
         marginBottom: '8px',
         cursor: 'pointer',
-        background: isRead ? '#F8FAFC' : '#FFFFFF',
-        border: isRead ? '1px solid #F1F5F9' : '1px solid #E2E8F0',
-        boxShadow: isRead ? 'none' : '0 1px 3px rgba(15, 23, 42, 0.03)',
+        background: isRead ? 'var(--field, #F8FAFC)' : 'var(--card, #FFFFFF)',
+        border: isRead ? '1px solid var(--line, #F1F5F9)' : '1px solid var(--line-strong, #E2E8F0)',
+        boxShadow: isRead ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.05)',
         transition: 'background 0.18s ease, border-color 0.18s ease',
         position: 'relative'
       }}
@@ -283,8 +283,8 @@ function MinimalNotifCard({
             width: '34px',
             height: '34px',
             borderRadius: '50%',
-            background: isRead ? '#F1F5F9' : badgeBg,
-            color: isRead ? '#94A3B8' : badgeColor,
+            background: isRead ? 'var(--chip, #F1F5F9)' : badgeBg,
+            color: isRead ? 'var(--muted, #94A3B8)' : badgeColor,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -315,7 +315,7 @@ function MinimalNotifCard({
                 style={{
                   fontSize: '13.5px',
                   fontWeight: isRead ? 600 : 700,
-                  color: isRead ? '#334155' : '#0F172A',
+                  color: isRead ? 'var(--muted, #334155)' : 'var(--ink, #0F172A)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -349,7 +349,7 @@ function MinimalNotifCard({
               style={{
                 margin: '3px 0 0',
                 fontSize: '12px',
-                color: isRead ? '#94A3B8' : '#64748B',
+                color: 'var(--muted, #64748B)',
                 lineHeight: 1.35,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -374,7 +374,7 @@ function MinimalNotifCard({
                   style={{
                     margin: '6px 0 0',
                     fontSize: '12.5px',
-                    color: '#475569',
+                    color: 'var(--muted, #475569)',
                     lineHeight: 1.45
                   }}
                 >
@@ -400,8 +400,8 @@ function MinimalNotifCard({
                         borderRadius: '8px',
                         fontSize: '11.5px',
                         fontWeight: 650,
-                        background: '#0F172A',
-                        color: '#FFFFFF',
+                        background: 'var(--solid, #0F172A)',
+                        color: 'var(--on-solid, #FFFFFF)',
                         border: 'none',
                         cursor: 'pointer',
                         display: 'inline-flex',
@@ -429,9 +429,9 @@ function MinimalNotifCard({
                         borderRadius: '8px',
                         fontSize: '11.5px',
                         fontWeight: 600,
-                        background: '#F1F5F9',
-                        color: '#475569',
-                        border: '1px solid #E2E8F0',
+                        background: 'var(--field, #F1F5F9)',
+                        color: 'var(--ink, #475569)',
+                        border: '1px solid var(--line, #E2E8F0)',
                         cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
@@ -604,8 +604,8 @@ export default function NotificationsSheet() {
             className="sheet-sticky-top"
             style={{
               padding: '12px 18px 12px',
-              borderBottom: '1px solid #F1F5F9',
-              background: '#FFFFFF'
+              borderBottom: '1px solid var(--line, #F1F5F9)',
+              background: 'var(--sheet, #FFFFFF)'
             }}
           >
             {/* Grab Handle */}
@@ -614,7 +614,7 @@ export default function NotificationsSheet() {
                 width: '36px',
                 height: '4px',
                 borderRadius: '999px',
-                background: '#E2E8F0',
+                background: 'var(--line-strong, #E2E8F0)',
                 margin: '0 auto 10px',
                 opacity: 0.9
               }}
@@ -627,7 +627,7 @@ export default function NotificationsSheet() {
                     margin: 0,
                     fontSize: '17px',
                     fontWeight: 750,
-                    color: '#0F172A',
+                    color: 'var(--ink, #0F172A)',
                     letterSpacing: '-0.02em'
                   }}
                 >
@@ -638,8 +638,8 @@ export default function NotificationsSheet() {
                     style={{
                       fontSize: '11px',
                       fontWeight: 700,
-                      color: unreadCount > 0 ? '#059669' : '#64748B',
-                      background: unreadCount > 0 ? '#DCFCE7' : '#F1F5F9',
+                      color: unreadCount > 0 ? '#059669' : 'var(--muted, #64748B)',
+                      background: unreadCount > 0 ? '#DCFCE7' : 'var(--field, #F1F5F9)',
                       padding: '1.5px 7px',
                       borderRadius: '999px',
                       letterSpacing: '0.01em'
@@ -661,13 +661,13 @@ export default function NotificationsSheet() {
                       padding: '4px 6px',
                       fontSize: '12px',
                       fontWeight: 500,
-                      color: '#64748B',
+                      color: 'var(--muted, #64748B)',
                       cursor: 'pointer',
                       borderRadius: '6px',
                       transition: 'color 0.15s ease'
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = '#64748B')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted, #64748B)')}
                   >
                     Clear all
                   </button>
@@ -682,12 +682,12 @@ export default function NotificationsSheet() {
                     width: '30px',
                     height: '30px',
                     borderRadius: '50%',
-                    background: '#F8FAFC',
-                    border: '1px solid #F1F5F9',
+                    background: 'var(--field, #F8FAFC)',
+                    border: '1px solid var(--line, #F1F5F9)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#0F172A',
+                    color: 'var(--ink, #0F172A)',
                     cursor: 'pointer',
                     transition: 'background 0.15s ease'
                   }}
@@ -771,9 +771,9 @@ export default function NotificationsSheet() {
                       width: '46px',
                       height: '46px',
                       borderRadius: '50%',
-                      background: '#F8FAFC',
-                      border: '1px solid #E2E8F0',
-                      color: '#94A3B8',
+                      background: 'var(--field, #F8FAFC)',
+                      border: '1px solid var(--line, #E2E8F0)',
+                      color: 'var(--muted, #94A3B8)',
                       display: 'grid',
                       placeItems: 'center',
                       marginBottom: '12px',
@@ -797,7 +797,7 @@ export default function NotificationsSheet() {
                     style={{
                       margin: 0,
                       fontSize: '12px',
-                      color: '#64748B',
+                      color: 'var(--muted, #64748B)',
                       lineHeight: 1.45,
                       maxWidth: '240px'
                     }}

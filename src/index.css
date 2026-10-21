@@ -6910,10 +6910,13 @@ body[data-theme="dark"] .onboarding-continue-btn {
   border-color: #0F172A;
 }
 .bk-picker-card-icon {
-  color: #334155;
+  color: #000000;
   display: flex;
   align-items: center;
   flex-shrink: 0;
+}
+.bk-picker-card-icon svg {
+  color: #000000;
 }
 .bk-picker-card-label {
   font-size: 10px;
@@ -6944,8 +6947,10 @@ body[data-theme="dark"] .onboarding-continue-btn {
   border-color: var(--yellow, #FFC70A);
 }
 [data-theme="dark"] .bk-picker-card-icon,
-:root[data-theme="dark"] .bk-picker-card-icon {
-  color: var(--yellow, #FFC70A);
+:root[data-theme="dark"] .bk-picker-card-icon,
+[data-theme="dark"] .bk-picker-card-icon svg,
+:root[data-theme="dark"] .bk-picker-card-icon svg {
+  color: #FFFFFF !important;
 }
 [data-theme="dark"] .bk-picker-card-label,
 :root[data-theme="dark"] .bk-picker-card-label {
