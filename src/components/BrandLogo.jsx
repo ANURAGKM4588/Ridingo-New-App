@@ -16,8 +16,9 @@ export default function BrandLogo({ height = 24, width = 96, center = false, cla
   const computeIsDriver = () => {
     if (typeof isDriverProp === 'boolean') return isDriverProp;
     if (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'driver') return true;
+    if (appContext?.view === 'driver') return true;
     if (wrapRef.current) {
-      if (wrapRef.current.closest('.driver-app-root, .driver-onboarding-modal, #driver-app, .standalone-driver, [data-app="driver"]')) {
+      if (wrapRef.current.closest('.driver-app-root, .driver-onboarding-modal, #driver-app, #col-d, .standalone-driver, [data-app="driver"]')) {
         return true;
       }
     }
@@ -27,6 +28,8 @@ export default function BrandLogo({ height = 24, width = 96, center = false, cla
       }
     }
     if (typeof window !== 'undefined') {
+      const port = (window.location.port || '');
+      if (port === '5174') return true;
       const search = (window.location.search || '').toLowerCase();
       const path = (window.location.pathname || '').toLowerCase();
       const hash = (window.location.hash || '').toLowerCase();
@@ -38,6 +41,11 @@ export default function BrandLogo({ height = 24, width = 96, center = false, cla
   };
 
   const [isDriver, setIsDriver] = useState(computeIsDriver);
+
+  // Sync isDriver if prop, appContext.view, or DOM changes
+  useEffect(() => {
+    setIsDriver(computeIsDriver());
+  }, [isDriverProp, appContext?.view]);
 
   // Determine dark mode state based on scoped container or global theme
   const computeIsDark = () => {

@@ -4812,8 +4812,8 @@ export default function DriverApp() {
                         />
                       ) : (
                         <img
-                          src="/App icon.png"
-                          alt="Ridingo"
+                          src="/Drivers/Drivers App icon.png"
+                          alt="Ridingo Driver"
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       )}
@@ -5335,11 +5335,11 @@ export default function DriverApp() {
             {/* 10. Footer: App Version & Sign Out Button */}
             <div className="stagger-6" style={{ textAlign: 'center', padding: '16px 0 12px', width: '100%' }}>
               <BrandLogo
-                height={20}
-                width={80}
+                height={24}
+                width={96}
                 center
                 isDriver={true}
-                style={{ opacity: 0.8, marginBottom: '8px' }}
+                style={{ opacity: 0.9, marginBottom: '8px' }}
               />
 
               <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--muted)', fontWeight: 500 }}>

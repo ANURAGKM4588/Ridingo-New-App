@@ -139,19 +139,31 @@ function compileStandaloneHtml(appType, appName) {
 `;
   html = html.replace('</head>', `${headInjection}\n</head>`);
 
-  // If driver app, replace user logos and icons with driver logos and icons
+  // Cleanly isolate splash logos: Driver app gets ONLY driver logos, User app gets ONLY user logos
   if (!isUser) {
+    // Completely remove user app splash logos from driver app HTML
+    html = html.replace(/<img[^>]*class="[^"]*splash-user[^"]*"[^>]*\/?>/gi, '');
     html = html.replace(/href="\/App icon\.png"/g, 'href="/Drivers/Drivers App icon.png"');
     html = html.replace(/href="\.\/App icon\.png"/g, 'href="./Drivers/Drivers App icon.png"');
     html = html.replace(/src="\/Ridingo White\.png"/g, 'src="/Drivers/Logo Drivers-01.png"');
     html = html.replace(/src="\/Ridingo Black\.png"/g, 'src="/Drivers/Logo Drivers-02.png"');
     html = html.replace(/src="\.\/Ridingo White\.png"/g, 'src="./Drivers/Logo Drivers-01.png"');
     html = html.replace(/src="\.\/Ridingo Black\.png"/g, 'src="./Drivers/Logo Drivers-02.png"');
+  } else {
+    // Completely remove driver app splash logos from user app HTML
+    html = html.replace(/<img[^>]*class="[^"]*splash-driver[^"]*"[^>]*\/?>/gi, '');
   }
 
-  // Pre-apply standalone class to html and body tags
-  html = html.replace(/<html([^>]*)>/i, `<html$1 class="standalone-app standalone-${appType}">`);
-  html = html.replace(/<body([^>]*)>/i, `<body$1 class="standalone-app standalone-${appType}">`);
+  // Pre-apply standalone class cleanly to html and body tags (avoiding duplicate class attributes)
+  html = html.replace(/<html([^>]*)class="([^"]*)"([^>]*)>/i, `<html$1class="$2 standalone-app standalone-${appType}"$3>`);
+  if (!html.includes(`standalone-${appType}`)) {
+    html = html.replace(/<html([^>]*)>/i, `<html$1 class="standalone-app standalone-${appType}">`);
+  }
+
+  html = html.replace(/<body([^>]*)class="([^"]*)"([^>]*)>/i, `<body$1class="$2 standalone-${appType}"$3>`);
+  if (!html.includes(`class="standalone-app standalone-${appType}"`)) {
+    html = html.replace(/<body([^>]*)>/i, `<body$1 class="standalone-app standalone-${appType}">`);
+  }
 
   return html;
 }

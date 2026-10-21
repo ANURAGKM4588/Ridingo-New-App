@@ -150,6 +150,22 @@ function MainApp() {
   }, [uTab]);
 
   React.useEffect(() => {
+    if (view === 'driver') {
+      document.documentElement.classList.add('standalone-driver');
+      document.documentElement.classList.remove('standalone-user');
+      if (document.body) {
+        document.body.classList.add('standalone-driver');
+        document.body.classList.remove('standalone-user');
+      }
+    } else if (view === 'user') {
+      document.documentElement.classList.add('standalone-user');
+      document.documentElement.classList.remove('standalone-driver');
+      if (document.body) {
+        document.body.classList.add('standalone-user');
+        document.body.classList.remove('standalone-driver');
+      }
+    }
+
     if (view === 'admin') {
       document.documentElement.classList.add('admin-mode-active');
       document.body.classList.add('admin-mode-active');

@@ -30,13 +30,16 @@
           }
 
           // Initialize clean full-screen preview state
+          var port = (window.location.port || '');
           var search = (window.location.search || '').toLowerCase();
           var path = (window.location.pathname || '').toLowerCase();
+          var hash = (window.location.hash || '').toLowerCase();
           var isDriver = (typeof window !== 'undefined' && window.RIDINGO_TARGET === 'driver') ||
+            port === '5174' ||
             search.includes('app=driver') ||
             search.includes('view=driver') ||
             path.includes('/driver') ||
-            (window.location.hash || '').toLowerCase().includes('driver');
+            hash.includes('driver');
 
           document.documentElement.classList.add('standalone-app');
           if (isDriver) {
@@ -93,55 +96,61 @@
         transform: translateY(-8px);
       }
 
+      /* App Splash Logo - Sized cleanly for maximum crispness & readability */
       .app-splash-logo {
-        height: 44px;
+        height: 58px;
         width: auto;
-        max-width: 220px;
+        max-width: 280px;
         object-fit: contain;
-        display: none;
+        display: none !important;
         animation: splashLogoEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
-      /* Light mode: Black logo */
-      .app-splash-logo.splash-driver {
-        display: none !important;
-      }
-      .app-splash-overlay .splash-logo-light.splash-user {
-        display: block;
-      }
-
-      /* Dark mode: White logo */
-      [data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user,
-      html[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user,
-      body[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user {
-        display: none !important;
-      }
-
-      [data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
-      html[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
-      body[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user {
-        display: block !important;
-      }
-
-      /* Driver App Splash Rules */
+      /* =========================================================================
+         DRIVER APP SPLASH RULES: Strictly NEVER show user logos in Driver App
+         ========================================================================= */
       .standalone-driver .app-splash-logo.splash-user,
       html.standalone-driver .app-splash-logo.splash-user,
       body.standalone-driver .app-splash-logo.splash-user {
         display: none !important;
       }
-      .standalone-driver .app-splash-overlay .splash-logo-light.splash-driver,
-      html.standalone-driver .app-splash-overlay .splash-logo-light.splash-driver,
-      body.standalone-driver .app-splash-overlay .splash-logo-light.splash-driver {
+
+      /* Driver App Light Mode: Black Driver Logo */
+      html.standalone-driver:not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-driver,
+      body.standalone-driver:not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-driver {
         display: block !important;
       }
-      .standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-driver,
-      html.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-driver,
-      body.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-driver {
-        display: none !important;
-      }
-      .standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-driver,
+
+      /* Driver App Dark Mode: White Driver Logo */
       html.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-driver,
       body.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-driver {
+        display: block !important;
+      }
+
+      /* =========================================================================
+         USER APP SPLASH RULES: Strictly NEVER show driver logos in User App
+         ========================================================================= */
+      .app-splash-logo.splash-driver,
+      html:not(.standalone-driver) .app-splash-logo.splash-driver,
+      body:not(.standalone-driver) .app-splash-logo.splash-driver,
+      html.standalone-user .app-splash-logo.splash-driver,
+      body.standalone-user .app-splash-logo.splash-driver {
+        display: none !important;
+      }
+
+      /* User App Light Mode: Black User Logo */
+      html:not(.standalone-driver):not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user,
+      body:not(.standalone-driver):not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user,
+      html.standalone-user:not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user,
+      body.standalone-user:not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user {
+        display: block !important;
+      }
+
+      /* User App Dark Mode: White User Logo */
+      html:not(.standalone-driver)[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
+      body:not(.standalone-driver)[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
+      html.standalone-user[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
+      body.standalone-user[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user {
         display: block !important;
       }
 

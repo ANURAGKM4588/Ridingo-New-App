@@ -427,6 +427,20 @@ p {
   content: url('/Ridingo White.png');
 }
 
+.standalone-driver .ridingo-brand-logo,
+.driver-app-root .ridingo-brand-logo,
+#col-d .ridingo-brand-logo {
+  content: url('/Drivers/Logo Drivers-02.png') !important;
+}
+
+[data-theme="dark"].standalone-driver .ridingo-brand-logo,
+.standalone-driver [data-theme="dark"] .ridingo-brand-logo,
+[data-theme="dark"] .standalone-driver .ridingo-brand-logo,
+[data-theme="dark"] .driver-app-root .ridingo-brand-logo,
+#col-d[data-theme="dark"] .ridingo-brand-logo {
+  content: url('/Drivers/Logo Drivers-01.png') !important;
+}
+
 .app-icon-img {
   width: 36px;
   height: 36px;
