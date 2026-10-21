@@ -857,7 +857,7 @@ export default function BookingSheet() {
             </div>
 
             {/* Scrollable Body: All details with smooth scroll animation */}
-            <div className="sheet-scroll-body">
+            <div className="sheet-scroll-body" style={{ paddingTop: '14px' }}>
 
             {/* Category Chips - Horizontal Scrolling Style */}
             <div
@@ -871,6 +871,7 @@ export default function BookingSheet() {
                 WebkitOverflowScrolling: 'touch',
                 scrollbarWidth: 'none',
                 gap: '8px',
+                marginTop: '0px',
                 marginBottom: '16px',
                 paddingBottom: '4px'
               }}
