@@ -668,7 +668,7 @@ let googleMapsScriptLoadingPromise = null;
  * when an API key is configured.
  */
 export function loadGoogleMapsSdk(apiKey = GOOGLE_MAPS_API_KEY) {
-  if (typeof window === 'undefined') return Promise.reject('Window is undefined');
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is undefined'));
   if (window.google && window.google.maps) {
     return Promise.resolve(window.google.maps);
   }
@@ -678,24 +678,33 @@ export function loadGoogleMapsSdk(apiKey = GOOGLE_MAPS_API_KEY) {
   }
 
   googleMapsScriptLoadingPromise = new Promise((resolve) => {
-    // If running in mock mode or no API key, resolve gracefully with null
-    if (isMockMode() || !apiKey) {
-      console.info('[GoogleMaps] Operating in Mock Testing Mode (No API billing incurred)');
-      resolve(null);
+    // 1. Check if script tag is already in DOM (e.g. loaded by index.html)
+    const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+    if (existing) {
+      if (window.google?.maps) {
+        resolve(window.google.maps);
+        return;
+      }
+      existing.addEventListener('load', () => resolve(window.google?.maps || null));
+      existing.addEventListener('error', () => resolve(null));
+      setTimeout(() => {
+        if (window.google?.maps) resolve(window.google.maps);
+      }, 500);
       return;
     }
 
+    const effectiveKey = apiKey || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
     const script = document.createElement('script');
     script.id = 'ridingo-google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(effectiveKey)}&libraries=places,geometry`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
       console.info('[GoogleMaps] Official Google Maps JS SDK loaded successfully');
-      resolve(window.google.maps);
+      resolve(window.google?.maps || null);
     };
     script.onerror = (err) => {
-      console.warn('[GoogleMaps] Failed to load Google Maps SDK, falling back to mock mode:', err);
+      console.warn('[GoogleMaps] Failed to load Google Maps SDK:', err);
       resolve(null);
     };
     document.head.appendChild(script);

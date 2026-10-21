@@ -1,15 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import L from 'leaflet';
-import Icon from './Icon';
 import {
-  GOOGLE_MAP_TILES,
-  openInGoogleMaps,
+  loadGoogleMapsSdk,
+  GOOGLE_MAPS_DARK_STYLE,
   fetchGoogleRoadDirections,
-  getCachedRoadDirections,
   decodeGooglePolyline
 } from '../services/googleMapsService';
 
-// Fallback geographic route waypoints for authentic Google Maps display
+// Fallback geographic route waypoints
 export const ROUTE_COORDS = [
   { lat: 10.0245, lng: 76.3075, name: 'Edappally Toll (Pickup)' },
   { lat: 10.0210, lng: 76.3088, name: 'Metro Corridor' },
@@ -22,9 +19,6 @@ export const ROUTE_COORDS = [
 export const ROUTE_PTS_MODAL = ROUTE_COORDS.map((c, i) => ({ x: 50 + i * 55, y: 220 - i * 32, name: c.name }));
 export const ROUTE_PTS_MINI = ROUTE_COORDS.map((c, i) => ({ x: 60 + i * 50, y: 150 - i * 22, name: c.name }));
 
-/**
- * Calculates vehicle position and rotation angle along the active road polyline
- */
 export function getRouteTelemetry(pts = ROUTE_COORDS, prog = 0.42) {
   prog = Math.max(0.01, Math.min(0.99, prog));
   const validPts = Array.isArray(pts) && pts.length >= 2 ? pts : ROUTE_COORDS;
@@ -60,27 +54,24 @@ export function getRouteTelemetry(pts = ROUTE_COORDS, prog = 0.42) {
 }
 
 /**
- * Stock Google Maps Live Tracking Component
- * Powered by Google Maps Directions API & Road Network Routing
- * Renders real road-following polyline, official markers, and live vehicle orientation.
+ * Official Google Maps Live Tracking Component
+ * Powered by Google Maps JavaScript API & Google Directions API
+ * Renders authentic Google Maps UI, road-following Polyline from overview_polyline.points,
+ * official Google markers, and live driver GPS location orientation.
  */
 export default function GraphicLiveMap({
   trip,
   isModal = false,
   height,
-  progress = 0.45,
-  speed = 38,
   onOpenModal
 }) {
   const mapHeight = height || (isModal ? 280 : 150);
   const containerRef = useRef(null);
-  const mapRef = useRef(null);
-  const tileLayerRef = useRef(null);
-  const carMarkerRef = useRef(null);
-  const originMarkerRef = useRef(null);
+  const googleMapRef = useRef(null);
+  const routePolylineRef = useRef(null);
+  const driverMarkerRef = useRef(null);
+  const pickupMarkerRef = useRef(null);
   const destMarkerRef = useRef(null);
-  const polylineOuterRef = useRef(null);
-  const polylineInnerRef = useRef(null);
 
   const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
   const isOnTrip = trip?.status === 'inprogress';
@@ -91,23 +82,29 @@ export default function GraphicLiveMap({
     if (trip?.pickupCoords?.lat && trip?.pickupCoords?.lng) {
       return { lat: Number(trip.pickupCoords.lat), lng: Number(trip.pickupCoords.lng) };
     }
+    if (trip?.car?.pickupCoords?.lat && trip?.car?.pickupCoords?.lng) {
+      return { lat: Number(trip.car.pickupCoords.lat), lng: Number(trip.car.pickupCoords.lng) };
+    }
     return { lat: 10.0245, lng: 76.3075 };
-  }, [trip?.pickupCoords?.lat, trip?.pickupCoords?.lng]);
+  }, [trip?.pickupCoords, trip?.car?.pickupCoords]);
 
   // Passenger Drop / Destination Coordinates
   const dropCoords = useMemo(() => {
     if (trip?.dropCoords?.lat && trip?.dropCoords?.lng) {
       return { lat: Number(trip.dropCoords.lat), lng: Number(trip.dropCoords.lng) };
     }
+    if (trip?.car?.dropCoords?.lat && trip?.car?.dropCoords?.lng) {
+      return { lat: Number(trip.car.dropCoords.lat), lng: Number(trip.car.dropCoords.lng) };
+    }
     return {
       lat: Number(pickupCoords.lat) + 0.012,
       lng: Number(pickupCoords.lng) + 0.009
     };
-  }, [trip?.dropCoords?.lat, trip?.dropCoords?.lng, pickupCoords.lat, pickupCoords.lng]);
+  }, [trip?.dropCoords, trip?.car?.dropCoords, pickupCoords.lat, pickupCoords.lng]);
 
-  // Dynamic Route Origin & Destination:
-  // Phase 1 (Driver Accepted -> Arrived): Route is Driver Mobile GPS -> Pickup Location
-  // Phase 2 (Trip Started after inspection): Route is Pickup Location -> Passenger Destination
+  // Dynamic Route Origin & Destination for Route Direction:
+  // - Phase 1 (Driver Accepted -> Arrived): Route is Driver Mobile GPS -> Pickup Location
+  // - Phase 2 (Trip Started): Route is Pickup Location -> Destination
   const originCoords = useMemo(() => {
     if (isApproachingPickup) {
       if (driverLive?.lat && driverLive?.lng) {
@@ -142,18 +139,6 @@ export default function GraphicLiveMap({
     return trip?.drop_loc || trip?.drop || 'Destination';
   }, [isApproachingPickup, trip?.pickup, trip?.drop_loc, trip?.drop]);
 
-  // Initial road points: checks pre-attached trip points or instant cache (NEVER starts with a 2-point straight line)
-  const [routePoints, setRoutePoints] = useState(() => {
-    const cached = getCachedRoadDirections(originCoords, destCoords, originName, destName);
-    if (cached?.points && cached.points.length > 2) {
-      return cached.points;
-    }
-    if (Array.isArray(trip?.routePoints) && trip.routePoints.length > 2 && !isApproachingPickup) {
-      return trip.routePoints;
-    }
-    return null;
-  });
-
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     if (typeof document !== 'undefined') {
       return document.documentElement.getAttribute('data-theme') === 'dark' ||
@@ -162,13 +147,18 @@ export default function GraphicLiveMap({
     return false;
   });
 
-  // Observe theme changes across the app
+  // Track app light/dark theme preference and update Google Map styling
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const checkDark = () => {
       const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
         document.body?.getAttribute('data-theme') === 'dark';
       setIsDarkTheme(dark);
+      if (googleMapRef.current && window.google?.maps) {
+        googleMapRef.current.setOptions({
+          styles: dark ? GOOGLE_MAPS_DARK_STYLE : []
+        });
+      }
     };
     checkDark();
     const observer = new MutationObserver(checkDark);
@@ -179,11 +169,118 @@ export default function GraphicLiveMap({
     return () => observer.disconnect();
   }, []);
 
-  // Fetch standard driving route using Google Maps Directions Service
-  // Re-fetches automatically whenever trip status transitions (Accepted -> In Progress) or origin/dest changes
+  const [mapInstance, setMapInstance] = useState(null);
+  const routeCasingPolylineRef = useRef(null);
+
+  const carLat = driverLive?.lat || originCoords.lat || 10.0245;
+  const carLng = driverLive?.lng || originCoords.lng || 76.3075;
+  const carAngle = trip?.driverHeading !== undefined ? trip.driverHeading : 0;
+
+  // 1. Initialize Official Google Maps Map Instance
   useEffect(() => {
+    let isCancelled = false;
+
+    async function initGoogleMap() {
+      if (!containerRef.current) return;
+      const google = await loadGoogleMapsSdk().catch(() => window.google?.maps);
+      if (isCancelled || !google || !containerRef.current) return;
+
+      const centerLat = (originCoords.lat + destCoords.lat) / 2;
+      const centerLng = (originCoords.lng + destCoords.lng) / 2;
+
+      // Authentic Google Maps Map Instance
+      const map = new google.Map(containerRef.current, {
+        center: { lat: centerLat, lng: centerLng },
+        zoom: 14,
+        mapTypeId: google.MapTypeId.ROADMAP,
+        disableDefaultUI: false,
+        zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        gestureHandling: isModal ? 'auto' : 'none',
+        styles: isDarkTheme ? GOOGLE_MAPS_DARK_STYLE : []
+      });
+      googleMapRef.current = map;
+      setMapInstance(map);
+
+      // Official Google Maps Pickup Marker
+      pickupMarkerRef.current = new google.Marker({
+        position: { lat: pickupCoords.lat, lng: pickupCoords.lng },
+        map,
+        title: 'Pickup Location',
+        zIndex: 10,
+        icon: {
+          url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+          scaledSize: new google.Size(36, 36)
+        }
+      });
+
+      // Official Google Maps Destination Marker (rendered during active ride)
+      destMarkerRef.current = new google.Marker({
+        position: { lat: dropCoords.lat, lng: dropCoords.lng },
+        map: isApproachingPickup ? null : map,
+        title: 'Destination',
+        zIndex: 10,
+        icon: {
+          url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+          scaledSize: new google.Size(36, 36)
+        }
+      });
+
+      // Official Google Maps Driver Vehicle Live Marker with directional symbol arrow
+      driverMarkerRef.current = new google.Marker({
+        position: { lat: carLat, lng: carLng },
+        map,
+        title: 'Driver Location',
+        zIndex: 20,
+        icon: {
+          path: google.SymbolPath.FORWARD_CLOSED_ARROW,
+          scale: 6,
+          rotation: carAngle,
+          fillColor: '#1A73E8',
+          fillOpacity: 1,
+          strokeWeight: 2.5,
+          strokeColor: '#FFFFFF'
+        }
+      });
+    }
+
+    initGoogleMap();
+
+    return () => {
+      isCancelled = true;
+      if (routeCasingPolylineRef.current) {
+        routeCasingPolylineRef.current.setMap(null);
+        routeCasingPolylineRef.current = null;
+      }
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setMap(null);
+        routePolylineRef.current = null;
+      }
+      if (driverMarkerRef.current) {
+        driverMarkerRef.current.setMap(null);
+        driverMarkerRef.current = null;
+      }
+      if (pickupMarkerRef.current) {
+        pickupMarkerRef.current.setMap(null);
+        pickupMarkerRef.current = null;
+      }
+      if (destMarkerRef.current) {
+        destMarkerRef.current.setMap(null);
+        destMarkerRef.current = null;
+      }
+      googleMapRef.current = null;
+      setMapInstance(null);
+    };
+  }, []);
+
+  // 2. Fetch and Draw Route Directions using Google Maps Directions API & overview_polyline.points
+  useEffect(() => {
+    if (!mapInstance || !window.google?.maps) return;
     let isSubscribed = true;
-    async function loadRoadRoute() {
+
+    async function updateRouteDirection() {
       try {
         const result = await fetchGoogleRoadDirections({
           origin: originName,
@@ -192,258 +289,123 @@ export default function GraphicLiveMap({
           destCoords: destCoords
         });
 
-        // Use overview_polyline.points from Google Maps Directions API response to draw accurate road polyline
-        let roadPoints = [];
+        if (!isSubscribed || !mapInstance) return;
+
+        // Use overview_polyline.points from Google Maps Directions API response
+        let points = [];
         const overviewPoints = result?.overview_polyline?.points || result?.overview_polyline;
         if (typeof overviewPoints === 'string') {
-          roadPoints = decodeGooglePolyline(overviewPoints);
+          points = decodeGooglePolyline(overviewPoints);
         } else if (Array.isArray(overviewPoints)) {
-          roadPoints = overviewPoints;
+          points = overviewPoints;
         } else if (Array.isArray(result?.points)) {
-          roadPoints = result.points;
+          points = result.points;
         }
 
-        if (isSubscribed && roadPoints && roadPoints.length >= 2) {
-          if (trip && isOnTrip) trip.routePoints = roadPoints;
-          setRoutePoints(roadPoints);
+        if (points.length >= 2 && window.google?.maps) {
+          const google = window.google.maps;
+
+          // Clear previous polylines
+          if (routeCasingPolylineRef.current) {
+            routeCasingPolylineRef.current.setMap(null);
+          }
+          if (routePolylineRef.current) {
+            routePolylineRef.current.setMap(null);
+          }
+
+          const polyPath = points.map(p => new google.LatLng(Number(p.lat), Number(p.lng)));
+
+          // A. Google Maps Navigation Route Casing (darker road contour)
+          routeCasingPolylineRef.current = new google.Polyline({
+            path: polyPath,
+            geodesic: true,
+            strokeColor: isDarkTheme ? '#1E3A8A' : '#1558B0',
+            strokeOpacity: 0.9,
+            strokeWeight: 7,
+            zIndex: 1,
+            map: mapInstance
+          });
+
+          // B. Google Maps Navigation Route Line with official road direction forward arrows
+          routePolylineRef.current = new google.Polyline({
+            path: polyPath,
+            geodesic: true,
+            strokeColor: isDarkTheme ? '#3B82F6' : '#1A73E8',
+            strokeOpacity: 1,
+            strokeWeight: 4.5,
+            zIndex: 2,
+            icons: [{
+              icon: {
+                path: google.SymbolPath.FORWARD_OPEN_ARROW,
+                scale: 2,
+                strokeColor: '#FFFFFF',
+                strokeWeight: 1.5
+              },
+              offset: '25px',
+              repeat: '70px'
+            }],
+            map: mapInstance
+          });
+
+          // Fit bounds so route between driver / pickup and destination is centered and clearly visible
+          const bounds = new google.LatLngBounds();
+          polyPath.forEach(pt => bounds.extend(pt));
+          if (driverMarkerRef.current?.getPosition()) {
+            bounds.extend(driverMarkerRef.current.getPosition());
+          }
+          mapInstance.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
         }
       } catch (err) {
-        console.warn('[GraphicLiveMap] Error fetching Google Maps Directions:', err);
+        console.warn('[GraphicLiveMap] Google Directions route error:', err);
       }
     }
-    loadRoadRoute();
+
+    updateRouteDirection();
+
     return () => { isSubscribed = false; };
   }, [
+    mapInstance,
     trip?.id,
     trip?.status,
     isApproachingPickup,
-    isOnTrip,
-    originName,
-    destName,
     originCoords.lat,
     originCoords.lng,
     destCoords.lat,
-    destCoords.lng
+    destCoords.lng,
+    isDarkTheme
   ]);
 
-  // Real Driver Mobile GPS location (or initial pickup position)
-  const carLat = driverLive?.lat || originCoords.lat || 10.0245;
-  const carLng = driverLive?.lng || originCoords.lng || 76.3075;
-  const carAngle = trip?.driverHeading !== undefined ? trip.driverHeading : 0;
-
-  // Icon Generators for Google Maps Markers
-  const createPickupPinIcon = () => L.divIcon({
-    className: 'gmap-pickup-marker',
-    html: `
-      <div style="display:flex; flex-direction:column; align-items:center; transform:translateY(-14px);">
-        <svg width="24" height="30" viewBox="0 0 24 30" fill="none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 7.8 12 18 12 18s12-10.2 12-18c0-6.63-5.37-12-12-12z" fill="#0F9D58"/>
-          <circle cx="12" cy="11.5" r="4.5" fill="#FFFFFF"/>
-          <circle cx="12" cy="11.5" r="2.2" fill="#0F9D58"/>
-        </svg>
-      </div>
-    `,
-    iconSize: [24, 30],
-    iconAnchor: [12, 28]
-  });
-
-  const createDropPinIcon = () => L.divIcon({
-    className: 'gmap-dest-marker',
-    html: `
-      <div style="display:flex; flex-direction:column; align-items:center; transform:translateY(-14px);">
-        <svg width="24" height="30" viewBox="0 0 24 30" fill="none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 7.8 12 18 12 18s12-10.2 12-18c0-6.63-5.37-12-12-12z" fill="#EA4335"/>
-          <circle cx="12" cy="11.5" r="4.5" fill="#FFFFFF"/>
-          <circle cx="12" cy="11.5" r="2.2" fill="#B31412"/>
-        </svg>
-      </div>
-    `,
-    iconSize: [24, 30],
-    iconAnchor: [12, 28]
-  });
-
-  const createDriverOriginDotIcon = () => L.divIcon({
-    className: 'gmap-driver-origin-dot',
-    html: `<div style="width:10px; height:10px; border-radius:50%; background:#1A73E8; border:2px solid #FFFFFF; box-shadow:0 1px 5px rgba(0,0,0,0.35);"></div>`,
-    iconSize: [10, 10],
-    iconAnchor: [5, 5]
-  });
-
-  // Initialize Map once container is ready
+  // 3. Keep markers synchronized if coordinates change
   useEffect(() => {
-    if (!containerRef.current) return;
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
+    if (!mapInstance || !window.google?.maps) return;
+    const google = window.google.maps;
+    if (pickupMarkerRef.current) {
+      pickupMarkerRef.current.setPosition(new google.LatLng(pickupCoords.lat, pickupCoords.lng));
     }
-
-    const firstPt = originCoords;
-    const lastPt = destCoords;
-    const centerLat = (firstPt.lat + lastPt.lat) / 2;
-    const centerLng = (firstPt.lng + lastPt.lng) / 2;
-
-    const map = L.map(containerRef.current, {
-      center: [centerLat, centerLng],
-      zoom: isModal ? 13 : 13,
-      zoomControl: false,
-      attributionControl: false,
-      scrollWheelZoom: isModal,
-      dragging: isModal,
-      touchZoom: isModal,
-      doubleClickZoom: isModal
-    });
-    mapRef.current = map;
-
-    // Google Maps Tile Layer
-    const googleCfg = GOOGLE_MAP_TILES.roadmap;
-    const gLayer = L.tileLayer(googleCfg.url, {
-      subdomains: googleCfg.subdomains,
-      maxZoom: googleCfg.maxZoom,
-      attribution: googleCfg.attribution
-    }).addTo(map);
-    tileLayerRef.current = gLayer;
-
-    // Standard Google Maps Directions Route Polyline
-    // STRICT RULE: Only render polyline when actual multi-point road path is loaded (>2 coordinates)
-    // NEVER render a 2-point straight line!
-    const hasRoadRoute = Array.isArray(routePoints) && routePoints.length > 2;
-    const latlngs = hasRoadRoute ? routePoints.map(p => [p.lat, p.lng]) : [];
-    
-    // Google Maps subtle road casing for contrast
-    const polyOuter = L.polyline(latlngs, {
-      color: isDarkTheme ? '#1E3A8A' : '#1A73E8',
-      weight: 7,
-      opacity: 0.35,
-      lineJoin: 'round',
-      lineCap: 'round'
-    }).addTo(map);
-    polylineOuterRef.current = polyOuter;
-
-    // Standard Google Maps driving blue route
-    const polyInner = L.polyline(latlngs, {
-      color: isDarkTheme ? '#3B82F6' : '#4285F4',
-      weight: 5,
-      opacity: 0.95,
-      lineJoin: 'round',
-      lineCap: 'round'
-    }).addTo(map);
-    polylineInnerRef.current = polyInner;
-
-    // Origin Marker (Hidden/Dot during driver approach since Car Puck is at origin; Green Pickup pin when trip starts)
-    const originIcon = isApproachingPickup ? createDriverOriginDotIcon() : createPickupPinIcon();
-    originMarkerRef.current = L.marker([firstPt.lat, firstPt.lng], {
-      icon: originIcon,
-      opacity: isApproachingPickup ? 0 : 1
-    }).addTo(map);
-
-    // Destination Marker (Green Pickup pin during driver approach; Red Destination pin when trip starts)
-    const destIcon = isApproachingPickup ? createPickupPinIcon() : createDropPinIcon();
-    destMarkerRef.current = L.marker([lastPt.lat, lastPt.lng], { icon: destIcon }).addTo(map);
-
-    // Live Driver Vehicle Puck (Google Maps Live Navigation Arrow + Pulsing Radar)
-    const carAccentColor = isOnTrip ? '#22C55E' : '#EAB308';
-    const carIcon = L.divIcon({
-      className: 'gmap-car-marker',
-      html: `
-        <div style="position:relative; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
-          <div style="position:absolute; inset:-3px; border-radius:50%; background:${carAccentColor}33; animation:pulse 2s infinite;"></div>
-          <div style="transform: rotate(${carAngle || 0}deg); width:28px; height:28px; background:#0F172A; border:2px solid ${carAccentColor}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,0.35); transition: transform 0.25s ease;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="${carAccentColor}">
-              <polygon points="12 2 19 21 12 17 5 21 12 2"/>
-            </svg>
-          </div>
-        </div>
-      `,
-      iconSize: [34, 34],
-      iconAnchor: [17, 17]
-    });
-    carMarkerRef.current = L.marker([carLat, carLng], { icon: carIcon }).addTo(map);
-
-    // Fit map bounds smoothly
-    if (latlngs.length >= 2) {
-      map.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
-    } else {
-      map.fitBounds(L.latLngBounds([
-        [originCoords.lat, originCoords.lng],
-        [destCoords.lat, destCoords.lng]
-      ]), { padding: [24, 24] });
+    if (destMarkerRef.current) {
+      destMarkerRef.current.setPosition(new google.LatLng(dropCoords.lat, dropCoords.lng));
+      destMarkerRef.current.setMap(isApproachingPickup ? null : mapInstance);
     }
+  }, [mapInstance, pickupCoords, dropCoords, isApproachingPickup]);
 
-    // Invalidate size after container settles
-    const tId = setTimeout(() => {
-      try {
-        if (mapRef.current) {
-          mapRef.current.invalidateSize();
-          if (latlngs.length >= 2) {
-            mapRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
-          } else {
-            mapRef.current.fitBounds(L.latLngBounds([
-              [originCoords.lat, originCoords.lng],
-              [destCoords.lat, destCoords.lng]
-            ]), { padding: [24, 24] });
-          }
-        }
-      } catch (_) {}
-    }, 150);
-
-    return () => {
-      clearTimeout(tId);
-      map.remove();
-      mapRef.current = null;
-    };
-  }, []);
-
-  // Real-time vehicle GPS tracking updates
+  // 4. Smooth driver vehicle GPS location & rotation updates
   useEffect(() => {
-    if (!carMarkerRef.current || !carLat || !carLng) return;
+    if (!driverMarkerRef.current || !window.google?.maps) return;
     try {
-      carMarkerRef.current.setLatLng([carLat, carLng]);
-      const el = carMarkerRef.current.getElement();
-      if (el) {
-        const iconDiv = el.querySelector('div > div:nth-child(2)');
-        if (iconDiv) {
-          iconDiv.style.transform = `rotate(${carAngle}deg)`;
-        }
-      }
+      const google = window.google.maps;
+      driverMarkerRef.current.setPosition(new google.LatLng(carLat, carLng));
+      driverMarkerRef.current.setIcon({
+        path: google.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 6,
+        rotation: carAngle,
+        fillColor: '#1A73E8',
+        fillOpacity: 1,
+        strokeWeight: 2.5,
+        strokeColor: '#FFFFFF'
+      });
     } catch (_) {}
   }, [carLat, carLng, carAngle]);
 
-  // Update polyline and markers when routePoints update or trip status transitions
-  // STRICT RULE: Only draw polyline if routePoints has > 2 coordinates (real road curve, never a 2-point straight line)
-  useEffect(() => {
-    if (!mapRef.current || !routePoints || routePoints.length <= 2) return;
-    const latlngs = routePoints.map(p => [p.lat, p.lng]);
-    if (polylineOuterRef.current) {
-      polylineOuterRef.current.setLatLngs(latlngs);
-    }
-    if (polylineInnerRef.current) {
-      polylineInnerRef.current.setLatLngs(latlngs);
-    }
-    const first = routePoints[0];
-    const last = routePoints[routePoints.length - 1];
-    if (originMarkerRef.current && first) {
-      originMarkerRef.current.setLatLng([first.lat, first.lng]);
-      originMarkerRef.current.setIcon(isApproachingPickup ? createDriverOriginDotIcon() : createPickupPinIcon());
-      originMarkerRef.current.setOpacity(isApproachingPickup ? 0 : 1);
-    }
-    if (destMarkerRef.current && last) {
-      destMarkerRef.current.setLatLng([last.lat, last.lng]);
-      destMarkerRef.current.setIcon(isApproachingPickup ? createPickupPinIcon() : createDropPinIcon());
-    }
-    try {
-      mapRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
-    } catch (e) {}
-  }, [routePoints, isApproachingPickup]);
-
-  // Update polyline colors when theme changes
-  useEffect(() => {
-    if (polylineOuterRef.current) {
-      polylineOuterRef.current.setStyle({ color: isDarkTheme ? '#1E3A8A' : '#1A73E8' });
-    }
-    if (polylineInnerRef.current) {
-      polylineInnerRef.current.setStyle({ color: isDarkTheme ? '#3B82F6' : '#4285F4' });
-    }
-  }, [isDarkTheme]);
 
   return (
     <div
@@ -455,76 +417,15 @@ export default function GraphicLiveMap({
         overflow: 'hidden',
         border: '1px solid var(--line)',
         boxShadow: isDarkTheme ? '0 2px 12px rgba(0, 0, 0, 0.35)' : '0 2px 10px rgba(0, 0, 0, 0.04)',
-        background: isDarkTheme ? '#141519' : '#EDEEF2'
+        background: isDarkTheme ? '#242F3E' : '#E5E3DF'
       }}
       onClick={!isModal && onOpenModal ? onOpenModal : undefined}
     >
-      {/* Map Leaflet Container with theme class */}
+      {/* Official Google Maps Viewport Container */}
       <div
         ref={containerRef}
-        className={`gmap-container ${isDarkTheme ? 'gmap-dark-mode' : 'gmap-light-mode'}`}
         style={{ width: '100%', height: '100%' }}
       />
-
-      {/* Minimal Top-Right Status Badge (Zero AI Clutter, only in full modal) */}
-      {isModal && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            zIndex: 400,
-            background: isDarkTheme ? 'rgba(15, 23, 42, 0.82)' : 'rgba(255, 255, 255, 0.92)',
-            backdropFilter: 'blur(8px)',
-            color: isDarkTheme ? '#F8FAFC' : '#0F172A',
-            fontSize: '11px',
-            fontWeight: 800,
-            padding: '4px 10px',
-            borderRadius: '999px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5.5px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            border: '1px solid var(--line)',
-            pointerEvents: 'none',
-            letterSpacing: '0.02em'
-          }}
-        >
-          <span
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: isOnTrip ? '#22C55E' : '#EAB308',
-              boxShadow: `0 0 6px ${isOnTrip ? '#22C55E' : '#EAB308'}`
-            }}
-          />
-          <span>{isOnTrip ? 'Live Trip' : isApproachingPickup ? 'Driver On Way' : 'Live Route'}</span>
-        </div>
-      )}
-
-      {/* Stock Google Maps Zoom Controls only in full modal */}
-      {isModal && (
-        <div className="gmap-stock-zoom-ctrl" style={{ bottom: '12px', right: '10px' }} onClick={e => e.stopPropagation()}>
-          <button
-            type="button"
-            className="gmap-stock-zoom-btn"
-            onClick={() => mapRef.current?.zoomIn()}
-            title="Zoom in"
-          >
-            +
-          </button>
-          <div className="gmap-stock-zoom-divider" />
-          <button
-            type="button"
-            className="gmap-stock-zoom-btn"
-            onClick={() => mapRef.current?.zoomOut()}
-            title="Zoom out"
-          >
-            −
-          </button>
-        </div>
-      )}
     </div>
   );
 }
