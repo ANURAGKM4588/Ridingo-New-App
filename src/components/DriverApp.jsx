@@ -2702,6 +2702,19 @@ export default function DriverApp() {
   const completedTrips = trips.filter(t => t.status === 'completed');
   const completedTripsCount = completedTrips.length;
   const todayEarnings = driverTx.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+  const thisMonthEarnings = driverTx
+    .filter(t => {
+      if (t.amount <= 0) return false;
+      if (!t.time) return true;
+      try {
+        const d = new Date(t.time);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      } catch (_) {
+        return true;
+      }
+    })
+    .reduce((sum, t) => sum + t.amount, 0) || todayEarnings;
 
   return (
     <div className="inner" style={{ flex: 1, minHeight: 0, height: '100%', borderRadius: 0, display: 'flex', flexDirection: 'column' }}>
@@ -2770,338 +2783,294 @@ export default function DriverApp() {
             <div
               className="driver-scroll-body"
               style={{
+                maxWidth: '540px',
+                margin: '0 auto',
+                width: '100%',
+                boxSizing: 'border-box',
                 transition: isPtrPulling ? 'none' : 'transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1)'
               }}
             >
-              {/* ULTRA-MODERN MINIMALIST HERO DASHBOARD CARD */}
+              {/* Card 1: Driver Profile & Duty Status Card */}
               <div
-                className="card stagger-1 driver-hero-dashboard-card"
+                className="card stagger-1"
                 style={{
-                  borderRadius: '26px',
-                  padding: '22px 20px 20px',
-                  marginBottom: '18px',
+                  borderRadius: '24px',
+                  padding: '16px 18px',
+                  marginBottom: '14px',
                   border: '1px solid var(--line)',
                   background: 'var(--card)',
-                  boxShadow: '0 8px 30px -6px rgba(0, 0, 0, 0.05), 0 2px 8px -2px rgba(0, 0, 0, 0.03)',
+                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   position: 'relative',
                   overflow: 'hidden'
                 }}
               >
-                {/* Subtle Ambient Radial Glow (Adapts dynamically to Online/Offline state) */}
+                {/* Subtle Ambient Radial Glow */}
                 <div
                   style={{
                     position: 'absolute',
-                    top: '-40px',
-                    right: '-40px',
-                    width: '180px',
-                    height: '180px',
+                    top: '-25px',
+                    right: '-25px',
+                    width: '120px',
+                    height: '120px',
                     borderRadius: '50%',
                     background: driverOnline
                       ? 'radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0) 70%)'
-                      : 'radial-gradient(circle, rgba(148, 163, 184, 0.08) 0%, rgba(148, 163, 184, 0) 70%)',
+                      : 'radial-gradient(circle, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0) 70%)',
                     pointerEvents: 'none',
                     zIndex: 0,
                     transition: 'background 0.35s ease'
                   }}
                 />
 
-                {/* Section 1: Driver Identity & Duty Toggle Capsule */}
+                {/* Left: Avatar + Identity + Rating Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0, position: 'relative', zIndex: 1 }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #FFC70A 0%, #F59E0B 100%)',
+                        color: '#111827',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '17px',
+                        fontWeight: 800,
+                        overflow: 'hidden',
+                        border: '2px solid var(--card)',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                      }}
+                    >
+                      {driverPartner?.avatar ? (
+                        <img
+                          src={driverPartner.avatar}
+                          alt={driverPartner.name || 'Driver'}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                      ) : (
+                        'RK'
+                      )}
+                    </div>
+
+                    {/* Beacon Status Dot */}
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: '-1px',
+                        right: '-1px',
+                        width: '13px',
+                        height: '13px',
+                        borderRadius: '50%',
+                        background: driverOnline ? '#10B981' : '#94A3B8',
+                        border: '2.5px solid var(--card)',
+                        boxShadow: driverOnline
+                          ? '0 0 0 2px rgba(16, 185, 129, 0.35)'
+                          : 'none',
+                        transition: 'all 0.3s ease'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                      <b
+                        style={{
+                          fontSize: '18px',
+                          fontWeight: 850,
+                          letterSpacing: '-0.02em',
+                          color: 'var(--ink)',
+                          lineHeight: 1.2
+                        }}
+                      >
+                        {driverPartner?.name?.split(' ')[0] || 'Ravi'}
+                      </b>
+
+                      {/* Minimal Rating Capsule with Gold Star */}
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3.5px',
+                          background: 'rgba(245, 158, 11, 0.12)',
+                          border: '1px solid rgba(245, 158, 11, 0.24)',
+                          color: '#D97706',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          padding: '2px 7px',
+                          borderRadius: '999px',
+                          lineHeight: 1
+                        }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="#F59E0B">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                        <span>{driverPartner?.rating || '5'}</span>
+                      </span>
+                    </div>
+
+                    {/* Subtitle location badge (no Pro Driver badge) */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '12px',
+                        color: 'var(--muted)',
+                        fontWeight: 550,
+                        marginTop: '3px'
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                      <span>Kochi Central</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Modern iOS Duty Status Toggle Switch */}
+                <div
+                  id="driver-duty-toggle-btn"
+                  role="switch"
+                  aria-checked={driverOnline}
+                  onClick={async () => {
+                    const next = !driverOnline;
+                    setDriverOnline(next);
+                    if (next) {
+                      await requestDriverNotificationPermission();
+                      if (driverPartner?.nativeNotifs !== false) {
+                        notifyDriverOnlineStatus(true);
+                      }
+                    }
+                    addToast(
+                      next ? 'You are now Online! Receiving bookings.' : 'You went Offline. No bookings will be received.',
+                      next ? 'check' : 'info'
+                    );
+                    if (driverPartner?.haptic !== false && navigator.vibrate) {
+                      try { navigator.vibrate(40); } catch (e) {}
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    padding: '6px 10px',
+                    borderRadius: '999px',
+                    background: driverOnline ? 'rgba(16, 185, 129, 0.08)' : 'var(--field)',
+                    border: driverOnline ? '1.5px solid rgba(16, 185, 129, 0.35)' : '1.5px solid var(--line)',
+                    transition: 'all 0.22s ease',
+                    position: 'relative',
+                    zIndex: 1
+                  }}
+                  title={driverOnline ? 'Tap to Go Offline' : 'Tap to Go Online'}
+                >
+                  <span
+                    style={{
+                      fontSize: '12.5px',
+                      fontWeight: 800,
+                      color: driverOnline ? '#10B981' : 'var(--muted)',
+                      letterSpacing: '-0.01em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: driverOnline ? '#10B981' : 'var(--muted)',
+                        boxShadow: driverOnline ? '0 0 0 2.5px rgba(16, 185, 129, 0.25)' : 'none',
+                        animation: driverOnline ? 'pulse 1.4s infinite' : 'none'
+                      }}
+                    />
+                    {driverOnline ? 'Online' : 'Offline'}
+                  </span>
+
+                  {/* iOS Style Toggle Switch Track & Thumb */}
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '24px',
+                      borderRadius: '999px',
+                      background: driverOnline ? '#10B981' : 'var(--bar, #D1D5DB)',
+                      boxShadow: driverOnline
+                        ? '0 2px 10px rgba(16, 185, 129, 0.38)'
+                        : 'none',
+                      position: 'relative',
+                      transition: 'background 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease',
+                      flexShrink: 0
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: '2px',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: '#FFFFFF',
+                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
+                        transform: driverOnline ? 'translateX(18px)' : 'translateX(0px)',
+                        transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Today's Earnings Card */}
+              <div
+                className="card stagger-1"
+                style={{
+                  borderRadius: '24px',
+                  padding: '20px 18px',
+                  marginBottom: '16px',
+                  border: '1px solid var(--line)',
+                  background: 'var(--card)',
+                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
+                }}
+              >
+                {/* Section Label */}
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: 'var(--muted)'
+                  }}
+                >
+                  Today's Earnings
+                </span>
+
+                {/* Main Row: Big Earnings Number + Shift Active pill on left, Wallet button on right */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    position: 'relative',
-                    zIndex: 1
+                    marginTop: '6px',
+                    marginBottom: '16px',
+                    gap: '10px'
                   }}
                 >
-                  {/* Left: Avatar + Identity + Rating Badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0 }}>
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <div
-                        style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #FFC70A 0%, #F59E0B 100%)',
-                          color: '#111827',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '17px',
-                          fontWeight: 800,
-                          overflow: 'hidden',
-                          border: '2.5px solid var(--card)',
-                          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08)'
-                        }}
-                      >
-                        {driverPartner?.avatar ? (
-                          <img
-                            src={driverPartner.avatar}
-                            alt={driverPartner.name || 'Driver'}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                          />
-                        ) : (
-                          'RK'
-                        )}
-                      </div>
-
-                      {/* Beacon Status Dot with breathing ping animation when Online */}
-                      <span
-                        style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          right: 0,
-                          width: '13px',
-                          height: '13px',
-                          borderRadius: '50%',
-                          background: driverOnline ? '#10B981' : '#94A3B8',
-                          border: '2.5px solid var(--card)',
-                          boxShadow: driverOnline
-                            ? '0 0 0 2px rgba(16, 185, 129, 0.35)'
-                            : 'none',
-                          transition: 'all 0.3s ease'
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                        <b
-                          style={{
-                            fontSize: '17px',
-                            fontWeight: 850,
-                            letterSpacing: '-0.02em',
-                            color: 'var(--ink)',
-                            lineHeight: 1.2
-                          }}
-                        >
-                          {driverPartner?.name?.split(' ')[0] || 'Ravi'}
-                        </b>
-
-                        {/* Minimal Rating Capsule with Gold Star */}
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3.5px',
-                            background: 'rgba(245, 158, 11, 0.12)',
-                            border: '1px solid rgba(245, 158, 11, 0.24)',
-                            color: '#D97706',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            padding: '2px 7px',
-                            borderRadius: '999px',
-                            lineHeight: 1
-                          }}
-                        >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="#F59E0B">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                          </svg>
-                          <span>{driverPartner?.rating || '5.0'}</span>
-                        </span>
-                      </div>
-
-                      {/* Subtitle location badge (clean without Pro Driver badge) */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '12px',
-                          color: 'var(--muted)',
-                          fontWeight: 550,
-                          marginTop: '3px'
-                        }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        <span>Kochi Central</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Modern iOS Duty Status Toggle Switch */}
-                  <div
-                    id="driver-duty-toggle-btn"
-                    role="switch"
-                    aria-checked={driverOnline}
-                    onClick={async () => {
-                      const next = !driverOnline;
-                      setDriverOnline(next);
-                      if (next) {
-                        await requestDriverNotificationPermission();
-                        if (driverPartner?.nativeNotifs !== false) {
-                          notifyDriverOnlineStatus(true);
-                        }
-                      }
-                      addToast(
-                        next ? 'You are now Online! Receiving bookings.' : 'You went Offline. No bookings will be received.',
-                        next ? 'check' : 'info'
-                      );
-                      if (driverPartner?.haptic !== false && navigator.vibrate) {
-                        try { navigator.vibrate(40); } catch (e) {}
-                      }
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '9px',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      WebkitTapHighlightColor: 'transparent',
-                      padding: '4px 6px',
-                      borderRadius: '999px',
-                      transition: 'opacity 0.15s ease'
-                    }}
-                    title={driverOnline ? 'Tap to Go Offline' : 'Tap to Go Online'}
-                  >
-                    <span
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: 800,
-                        color: driverOnline ? '#10B981' : 'var(--muted)',
-                        letterSpacing: '-0.01em',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}
-                    >
-                      {driverOnline && (
-                        <span
-                          style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            background: '#10B981',
-                            boxShadow: '0 0 0 2.5px rgba(16, 185, 129, 0.25)',
-                            animation: 'pulse 1.4s infinite'
-                          }}
-                        />
-                      )}
-                      {driverOnline ? 'Online' : 'Offline'}
-                    </span>
-
-                    {/* iOS Style Toggle Switch Track & Thumb */}
-                    <div
-                      style={{
-                        width: '46px',
-                        height: '26px',
-                        borderRadius: '999px',
-                        background: driverOnline ? '#10B981' : 'var(--bar, #D1D5DB)',
-                        boxShadow: driverOnline
-                          ? '0 2px 10px rgba(16, 185, 129, 0.38)'
-                          : 'none',
-                        position: 'relative',
-                        transition: 'background 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease',
-                        flexShrink: 0
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '2px',
-                          left: '2px',
-                          width: '22px',
-                          height: '22px',
-                          borderRadius: '50%',
-                          background: '#FFFFFF',
-                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
-                          transform: driverOnline ? 'translateX(20px)' : 'translateX(0px)',
-                          transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subtle Refined Hairline Divider */}
-                <div
-                  style={{
-                    height: '1px',
-                    background: 'linear-gradient(90deg, transparent 0%, var(--line) 15%, var(--line) 85%, transparent 100%)',
-                    margin: '18px 0 16px',
-                    position: 'relative',
-                    zIndex: 1
-                  }}
-                />
-
-                {/* Section 2: Hero Financial Telemetry Display */}
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  {/* Row A: Section Label + Quick Wallet Navigation Link */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.08em',
-                          color: 'var(--muted)'
-                        }}
-                      >
-                        Today's Earnings
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setDTab('wallet')}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: 0,
-                        fontSize: '11.5px',
-                        fontWeight: 750,
-                        color: 'var(--ink)',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        opacity: 0.85
-                      }}
-                      title="View Wallet Ledger"
-                    >
-                      <span>Wallet</span>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14" />
-                        <path d="m13 6 6 6-6 6" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Row B: Hero Typographic Amount + Net Pill */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '9px', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                      <span
-                        style={{
-                          fontSize: '26px',
-                          fontWeight: 750,
-                          color: 'var(--muted)',
-                          marginRight: '2px',
-                          lineHeight: 1
-                        }}
-                      >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', color: 'var(--ink)' }}>
+                      <span style={{ fontSize: '24px', fontWeight: 800, marginRight: '2px', lineHeight: 1 }}>
                         ₹
                       </span>
-                      <span
-                        style={{
-                          fontSize: '38px',
-                          fontWeight: 900,
-                          letterSpacing: '-0.035em',
-                          color: 'var(--ink)',
-                          lineHeight: 1
-                        }}
-                      >
+                      <span style={{ fontSize: '38px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.035em' }}>
                         {todayEarnings.toLocaleString('en-IN')}
                       </span>
                     </div>
@@ -3109,12 +3078,12 @@ export default function DriverApp() {
                     {todayEarnings > 0 ? (
                       <span
                         style={{
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: 800,
                           color: '#16A34A',
                           background: 'rgba(34, 197, 94, 0.12)',
                           border: '1px solid rgba(34, 197, 94, 0.25)',
-                          padding: '2.5px 8px',
+                          padding: '4px 10px',
                           borderRadius: '999px',
                           lineHeight: 1
                         }}
@@ -3124,91 +3093,175 @@ export default function DriverApp() {
                     ) : (
                       <span
                         style={{
-                          fontSize: '11px',
-                          fontWeight: 650,
+                          fontSize: '11.5px',
+                          fontWeight: 700,
                           color: 'var(--muted)',
                           background: 'var(--field)',
-                          padding: '2px 7px',
-                          borderRadius: '6px'
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          border: '1px solid var(--line)'
                         }}
                       >
+                        <span style={{ width: '6.5px', height: '6.5px', borderRadius: '50%', background: '#10B981' }} />
                         Shift Active
                       </span>
                     )}
                   </div>
 
-                  {/* Row C: Micro Telemetry Stat Capsules (This Month & Completed Trips) */}
-                  <div
+                  {/* Wallet Button */}
+                  <button
+                    type="button"
+                    onClick={() => setDTab('wallet')}
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '10px'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      padding: '8px 14px',
+                      borderRadius: '12px',
+                      border: '1.5px solid var(--line)',
+                      background: 'var(--card)',
+                      color: 'var(--ink)',
+                      fontSize: '13px',
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                      flexShrink: 0,
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    {/* Stat Card 1: This Month */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+                      <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+                      <circle cx="17" cy="13" r="1" />
+                    </svg>
+                    <span>Wallet</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Stat Capsules: This Month & Completed */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px'
+                  }}
+                >
+                  {/* Stat 1: This Month */}
+                  <div
+                    style={{
+                      background: 'var(--field)',
+                      borderRadius: '16px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      border: '1px solid var(--line)'
+                    }}
+                  >
                     <div
                       style={{
-                        background: 'var(--field)',
-                        borderRadius: '14px',
-                        padding: '10px 12px',
-                        border: '1px solid var(--line)',
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '12px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        color: '#10B981',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
                       }}
                     >
-                      <span
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div
                         style={{
                           fontSize: '10.5px',
-                          fontWeight: 700,
+                          fontWeight: 800,
                           color: 'var(--muted)',
                           textTransform: 'uppercase',
                           letterSpacing: '0.04em'
                         }}
                       >
                         This Month
-                      </span>
+                      </div>
                       <b
                         style={{
-                          fontSize: '14px',
-                          fontWeight: 800,
+                          fontSize: '16px',
+                          fontWeight: 900,
                           color: 'var(--ink)',
-                          letterSpacing: '-0.01em'
+                          letterSpacing: '-0.02em',
+                          marginTop: '2px',
+                          display: 'block'
                         }}
                       >
-                        ₹{todayEarnings.toLocaleString('en-IN')}
+                        ₹{thisMonthEarnings.toLocaleString('en-IN')}
                       </b>
                     </div>
+                  </div>
 
-                    {/* Stat Card 2: Completed Trips */}
+                  {/* Stat 2: Completed Trips */}
+                  <div
+                    style={{
+                      background: 'var(--field)',
+                      borderRadius: '16px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      border: '1px solid var(--line)'
+                    }}
+                  >
                     <div
                       style={{
-                        background: 'var(--field)',
-                        borderRadius: '14px',
-                        padding: '10px 12px',
-                        border: '1px solid var(--line)',
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '12px',
+                        background: 'rgba(14, 165, 233, 0.12)',
+                        color: '#0284C7',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
                       }}
                     >
-                      <span
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10" />
+                        <line x1="12" y1="20" x2="12" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="14" />
+                      </svg>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div
                         style={{
                           fontSize: '10.5px',
-                          fontWeight: 700,
+                          fontWeight: 800,
                           color: 'var(--muted)',
                           textTransform: 'uppercase',
                           letterSpacing: '0.04em'
                         }}
                       >
                         Completed
-                      </span>
+                      </div>
                       <b
                         style={{
-                          fontSize: '14px',
-                          fontWeight: 800,
+                          fontSize: '16px',
+                          fontWeight: 900,
                           color: 'var(--ink)',
-                          letterSpacing: '-0.01em'
+                          letterSpacing: '-0.02em',
+                          marginTop: '2px',
+                          display: 'block'
                         }}
                       >
                         {completedTripsCount} {completedTripsCount === 1 ? 'Trip' : 'Trips'}
@@ -3243,13 +3296,47 @@ export default function DriverApp() {
               </div>
             )}
 
-            {/* Trip Requests Section - Smooth scrollable without re-animation shifts */}
-            <div className="sec">
-              <h3>Trip requests</h3>
-              <span className="pill" style={{ background: driverOnline && requestedTrips.length > 0 ? '#16A34A' : 'var(--field)', color: driverOnline && requestedTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
-                {driverOnline ? requestedTrips.length : 0} waiting
-              </span>
-            </div>
+            {/* Card 3: Trip Requests Section */}
+            <div
+              className="card stagger-2"
+              style={{
+                borderRadius: '24px',
+                padding: '18px 16px',
+                marginBottom: '16px',
+                border: '1px solid var(--line)',
+                background: 'var(--card)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '14px'
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: '18px',
+                    fontWeight: 800,
+                    color: 'var(--ink)',
+                    letterSpacing: '-0.02em'
+                  }}
+                >
+                  Trip requests
+                </h3>
+                <span
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: 'var(--muted)'
+                  }}
+                >
+                  {driverOnline ? requestedTrips.length : 0} waiting
+                </span>
+              </div>
 
             {driverOnline && requestedTrips.length > 0 ? (
               <div className="stack" style={{ willChange: 'contents' }}>
@@ -3460,17 +3547,96 @@ export default function DriverApp() {
                 })}
               </div>
             ) : (
-              <div className="empty stagger-2">
-                {driverOnline ? 'No new requests. Stay online to receive trips.' : 'You are currently offline. Turn on toggle to receive trip requests.'}
+              <div
+                style={{
+                  background: 'var(--field)',
+                  borderRadius: '18px',
+                  padding: '36px 16px',
+                  textAlign: 'center',
+                  border: '1px solid var(--line)'
+                }}
+              >
+                <div
+                  style={{
+                    width: '54px',
+                    height: '54px',
+                    borderRadius: '50%',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    color: '#10B981',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 12px'
+                  }}
+                >
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v2" />
+                    <path d="m4.93 4.93 1.41 1.41" />
+                    <path d="m19.07 4.93-1.41 1.41" />
+                    <path d="M22 13h-4l-2 3h-8l-2-3H2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6z" />
+                  </svg>
+                </div>
+                <div
+                  style={{
+                    fontSize: '14.5px',
+                    fontWeight: 750,
+                    color: 'var(--ink)',
+                    marginBottom: '4px'
+                  }}
+                >
+                  {driverOnline ? 'No new requests.' : 'You are currently offline.'}
+                </div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--muted)',
+                    fontWeight: 500
+                  }}
+                >
+                  {driverOnline ? 'Stay online to receive trips.' : 'Turn on toggle to receive trip requests.'}
+                </div>
               </div>
             )}
+          </div>
 
-            {/* Today Trips Section */}
-            <div className="sec stagger-3" style={{ marginTop: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0 }}>Today Trips</h3>
-              </div>
-              <span className="pill" style={{ background: todayTrips.length > 0 ? '#16A34A' : 'var(--field)', color: todayTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
+          {/* Card 4: Today Trips Section */}
+          <div
+            className="card stagger-3"
+            style={{
+              borderRadius: '24px',
+              padding: '18px 16px',
+              marginBottom: '16px',
+              border: '1px solid var(--line)',
+              background: 'var(--card)',
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '14px'
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  fontWeight: 800,
+                  color: 'var(--ink)',
+                  letterSpacing: '-0.02em'
+                }}
+              >
+                Today Trips
+              </h3>
+              <span
+                style={{
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  color: 'var(--muted)'
+                }}
+              >
                 {todayTrips.length} active
               </span>
             </div>
@@ -4069,15 +4235,96 @@ export default function DriverApp() {
                 })}
               </div>
             ) : (
-              <div className="empty">No active trips for today. Accept new requests above.</div>
-            )}
-
-            {/* Upcoming Trips Section */}
-            <div className="sec stagger-3" style={{ marginTop: '22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0 }}>Upcoming Trips</h3>
+              <div
+                style={{
+                  background: 'var(--field)',
+                  borderRadius: '18px',
+                  padding: '36px 16px',
+                  textAlign: 'center',
+                  border: '1px solid var(--line)'
+                }}
+              >
+                <div
+                  style={{
+                    width: '54px',
+                    height: '54px',
+                    borderRadius: '50%',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    color: '#3B82F6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 12px'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    <path d="M9 12h6" />
+                    <path d="M9 16h6" />
+                  </svg>
+                </div>
+                <div
+                  style={{
+                    fontSize: '14.5px',
+                    fontWeight: 750,
+                    color: 'var(--ink)',
+                    marginBottom: '4px'
+                  }}
+                >
+                  No active trips for today.
+                </div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--muted)',
+                    fontWeight: 500
+                  }}
+                >
+                  Accept new requests above.
+                </div>
               </div>
-              <span className="pill" style={{ background: futureUpcomingTrips.length > 0 ? '#2563EB' : 'var(--field)', color: futureUpcomingTrips.length > 0 ? '#FFFFFF' : 'var(--muted)', fontWeight: 750, fontSize: '11px', padding: '3px 10px', borderRadius: '999px' }}>
+            )}
+          </div>
+
+          {/* Card 5: Upcoming Trips Section */}
+          <div
+            className="card stagger-3"
+            style={{
+              borderRadius: '24px',
+              padding: '18px 16px',
+              marginBottom: '16px',
+              border: '1px solid var(--line)',
+              background: 'var(--card)',
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '14px'
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  fontWeight: 800,
+                  color: 'var(--ink)',
+                  letterSpacing: '-0.02em'
+                }}
+              >
+                Upcoming Trips
+              </h3>
+              <span
+                style={{
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  color: 'var(--muted)'
+                }}
+              >
                 {futureUpcomingTrips.length} scheduled
               </span>
             </div>
@@ -4140,8 +4387,47 @@ export default function DriverApp() {
                 })}
               </div>
             ) : (
-              <div className="empty">No upcoming scheduled trips.</div>
+              <div
+                style={{
+                  background: 'var(--field)',
+                  borderRadius: '18px',
+                  padding: '36px 16px',
+                  textAlign: 'center',
+                  border: '1px solid var(--line)'
+                }}
+              >
+                <div
+                  style={{
+                    width: '54px',
+                    height: '54px',
+                    borderRadius: '50%',
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    color: '#8B5CF6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 12px'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--muted)'
+                  }}
+                >
+                  No upcoming scheduled trips.
+                </div>
+              </div>
             )}
+          </div>
             </div>
           </div>
         )}
