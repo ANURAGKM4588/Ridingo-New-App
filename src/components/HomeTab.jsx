@@ -1930,8 +1930,10 @@ Live GPS Tracking: ${trackUrl}`;
       {/* Popular Destinations Quick Book - CURATED SWIPE SECTION */}
       <div className="sec stagger-5" style={{ marginTop: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div>
-          <h3 style={{ margin: 0, lineHeight: 1.2 }}>Popular destinations</h3>
-          <span style={{ fontSize: '11px', color: 'var(--muted, #71717A)', fontWeight: 500 }}>
+          <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 650, letterSpacing: '-0.02em', lineHeight: 1.25, color: 'var(--ink, #0F172A)' }}>
+            Popular destinations
+          </h3>
+          <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', fontWeight: 500, letterSpacing: '-0.01em' }}>
             Airports · Railway Stations · Tourist Spots · Cities
           </span>
         </div>
@@ -1941,19 +1943,19 @@ Live GPS Tracking: ${trackUrl}`;
           style={{
             background: 'rgba(217, 119, 6, 0.08)',
             border: 'none',
-            padding: '6px 10px',
+            padding: '5px 10px',
             borderRadius: '999px',
             display: 'inline-flex',
             alignItems: 'center',
             gap: '4px',
             color: 'var(--yellow-dark, #D97706)',
-            fontWeight: 750,
-            fontSize: '12px',
+            fontWeight: 650,
+            fontSize: '11.5px',
             cursor: 'pointer'
           }}
         >
           <span>See all ({POPULAR_DESTINATIONS.length})</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14" />
             <path d="m13 6 6 6-6 6" />
           </svg>
@@ -1979,7 +1981,7 @@ Live GPS Tracking: ${trackUrl}`;
         {POPULAR_DESTINATIONS.filter((d) => d.featured).map((item) => (
           <div
             key={item.id}
-            onClick={() => openBooking(item.bookingCat || 'outstation', item.destAddress)}
+            onClick={() => openBooking(item.bookingCat || 'outstation', item)}
             style={{
               width: '136px',
               height: '112px',
@@ -2015,7 +2017,7 @@ Live GPS Tracking: ${trackUrl}`;
                 padding: '2px 6px',
                 color: '#FFFFFF',
                 fontSize: '8.5px',
-                fontWeight: 700,
+                fontWeight: 650,
                 letterSpacing: '0.2px'
               }}
             >
@@ -2034,7 +2036,7 @@ Live GPS Tracking: ${trackUrl}`;
                 padding: '8px 9px'
               }}
             >
-              <b style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.15 }}>
+              <b style={{ fontSize: '12.5px', fontWeight: 650, color: '#FFFFFF', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
                 {item.name}
               </b>
               <span
@@ -2043,6 +2045,7 @@ Live GPS Tracking: ${trackUrl}`;
                   color: 'rgba(255,255,255,0.85)',
                   marginTop: '2px',
                   fontWeight: 500,
+                  letterSpacing: '-0.01em',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'

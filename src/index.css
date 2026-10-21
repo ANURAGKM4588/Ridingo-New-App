@@ -1,8 +1,8 @@
 :root {
   color-scheme: light;
   box-sizing: border-box;
-  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, 'Segoe UI', sans-serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --yellow: #FFC70A;
   --on-yellow: #15140F;
@@ -155,9 +155,19 @@ body {
 *,
 *::before,
 *::after {
+  font-family: inherit;
   touch-action: manipulation;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+button, input, select, textarea, optgroup {
+  font-family: var(--font-body);
 }
 
 /* Native Mobile App Experience: Globally eliminate scrollbars across the entire app */

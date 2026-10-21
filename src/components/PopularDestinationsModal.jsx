@@ -113,10 +113,10 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                 </svg>
               </button>
               <div>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink, #18181B)', letterSpacing: '-0.3px', lineHeight: 1.2 }}>
+                <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 650, color: 'var(--ink, #18181B)', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
                   Popular Destinations
                 </h2>
-                <span style={{ fontSize: '11.5px', color: 'var(--muted, #71717A)', fontWeight: 500 }}>
+                <span style={{ fontSize: '11px', color: 'var(--muted, #71717A)', fontWeight: 500, letterSpacing: '-0.01em' }}>
                   Airports · Railway Stations · Tourist Spots · Cities
                 </span>
               </div>
@@ -270,7 +270,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                 {filteredDestinations.map((item) => (
                   <div
                     key={item.id}
-                    onClick={() => onSelectDestination(item.bookingCat, item.destAddress)}
+                    onClick={() => onSelectDestination(item.bookingCat, item)}
                     style={{
                       background: 'var(--surface, #FFFFFF)',
                       borderRadius: '16px',
@@ -374,10 +374,11 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
                         <b
                           style={{
-                            fontSize: '13.5px',
-                            fontWeight: 800,
+                            fontSize: '13px',
+                            fontWeight: 650,
                             color: 'var(--ink, #18181B)',
-                            lineHeight: 1.2,
+                            lineHeight: 1.25,
+                            letterSpacing: '-0.015em',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'

@@ -6,6 +6,7 @@ import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocatio
 import { searchPlaces } from '../lib/locationService';
 import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement, cleanPlusCode, fetchNearestLandmarkByCoordinates, getPlaceDetailsOnMarkerPlaced } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
+import { POPULAR_DESTINATIONS } from '../data/popularDestinations';
 
 const highlightMatchGoogleStock = (text, query) => {
   if (!text) return '';
@@ -436,10 +437,60 @@ export default function BookingSheet() {
     }
   }, [bookingCategory, bookingOpen]);
 
-  // Sync destination only if explicitly selected from home search or landmark
+  // Sync destination & Google Maps coordinates when selected from popular destinations, home search, or landmark
   useEffect(() => {
     if (bookingDestination) {
-      setDrop(bookingDestination);
+      let destName = '';
+      let destAddress = '';
+      let destLat = null;
+      let destLng = null;
+      let destCity = '';
+
+      if (typeof bookingDestination === 'object' && bookingDestination !== null) {
+        destName = bookingDestination.name || bookingDestination.title || '';
+        destAddress = bookingDestination.destAddress || bookingDestination.address || bookingDestination.formatted || '';
+        destLat = bookingDestination.lat;
+        destLng = bookingDestination.lng;
+        destCity = bookingDestination.city || bookingDestination.state || '';
+      } else if (typeof bookingDestination === 'string') {
+        destAddress = bookingDestination.trim();
+        const matched = POPULAR_DESTINATIONS.find(
+          d => d.destAddress === destAddress || d.name === destAddress || destAddress.toLowerCase().includes(d.name.toLowerCase())
+        );
+        if (matched) {
+          destName = matched.name;
+          destLat = matched.lat;
+          destLng = matched.lng;
+          destCity = matched.state || '';
+        }
+      }
+
+      const displayDrop = destAddress || destName || (typeof bookingDestination === 'string' ? bookingDestination : '');
+      if (displayDrop) {
+        setDrop(displayDrop);
+      }
+
+      if (destLat && destLng) {
+        const coords = {
+          lat: Number(destLat),
+          lng: Number(destLng),
+          name: destName || displayDrop,
+          formatted: displayDrop,
+          city: destCity || 'Kerala',
+          state: 'Kerala'
+        };
+        setDropCoords(coords);
+        setDropDetails(coords);
+      } else if (displayDrop) {
+        // Fallback geocode to resolve exact Google Map coordinates
+        geocodeAddress(displayDrop).then(coords => {
+          if (coords) {
+            const cObj = { ...coords, name: destName || displayDrop, formatted: displayDrop };
+            setDropCoords(cObj);
+            setDropDetails(cObj);
+          }
+        }).catch(() => {});
+      }
     }
   }, [bookingDestination, bookingOpen]);
 
