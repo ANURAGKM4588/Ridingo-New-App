@@ -1034,15 +1034,6 @@ export default function BookingSheet() {
                     <label className="bk-route-label" htmlFor="bk-pickup">
                       Pickup location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
                     </label>
-                    <button
-                      type="button"
-                      className="bk-route-action-btn"
-                      onClick={handleUseCurrentLocation}
-                      title="Use current location"
-                    >
-                      <Icon name="crosshair" size={12} />
-                      <span>{isDetectingCurrent ? 'Locating...' : 'Use current location'}</span>
-                    </button>
                   </div>
 
                   <div className="bk-route-input-wrap">
@@ -1055,6 +1046,22 @@ export default function BookingSheet() {
                       onChange={e => handlePickupChange(e.target.value)}
                       autoComplete="off"
                     />
+
+                    <button
+                      type="button"
+                      className="bk-route-end-icon-btn"
+                      onClick={handleUseCurrentLocation}
+                      title={isDetectingCurrent ? 'Locating...' : 'Use current location'}
+                      aria-label="Use current location"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="22" y1="12" x2="18" y2="12" />
+                        <line x1="6" y1="12" x2="2" y2="12" />
+                        <line x1="12" y1="6" x2="12" y2="2" />
+                        <line x1="12" y1="22" x2="12" y2="18" />
+                      </svg>
+                    </button>
 
                     {/* Google Maps Stock Location Suggestions Dropdown */}
                     {activeSuggestField === 'pickup' && Boolean(pickup?.trim()?.length >= 1) && pickupSuggestions.length > 0 && (
@@ -1114,18 +1121,6 @@ export default function BookingSheet() {
                     <label className="bk-route-label" htmlFor="bk-drop">
                       Destination location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
                     </label>
-                    <button
-                      type="button"
-                      className="bk-route-action-btn"
-                      onClick={() => {
-                        setActiveSuggestField(null);
-                        openMap('drop');
-                      }}
-                      title="Choose on map"
-                    >
-                      <Icon name="pin" size={12} />
-                      <span>Choose on map</span>
-                    </button>
                   </div>
 
                   <div className="bk-route-input-wrap">
@@ -1138,6 +1133,22 @@ export default function BookingSheet() {
                       onChange={e => handleDropChange(e.target.value)}
                       autoComplete="off"
                     />
+
+                    <button
+                      type="button"
+                      className="bk-route-end-icon-btn"
+                      onClick={() => {
+                        setActiveSuggestField(null);
+                        openMap('drop');
+                      }}
+                      title="Choose on map"
+                      aria-label="Choose on map"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                    </button>
 
                     {/* Google Maps Stock Location Suggestions Dropdown */}
                     {activeSuggestField === 'drop' && Boolean(drop?.trim()?.length >= 1) && dropSuggestions.length > 0 && (
@@ -1456,9 +1467,9 @@ export default function BookingSheet() {
                     id: 'IMT',
                     label: 'IMT',
                     icon: (
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                         <circle cx="12" cy="12" r="3" />
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                       </svg>
                     )
                   }
@@ -1481,10 +1492,6 @@ export default function BookingSheet() {
 
               {/* Fare Invoice Breakdown Card */}
               <div className="bk-fare-card">
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--ink, #0F172A)' }}>
-                  Fare Details
-                </h4>
-
                 {/* Driver Trip Fare */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
@@ -1536,14 +1543,14 @@ export default function BookingSheet() {
                 {/* Total Fare */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink, #000000)' }}>
+                    <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink, #000000)' }}>
                       Total Trip Fare
                     </span>
                     <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
                       Driver gets ₹{remaining} after trip
                     </span>
                   </div>
-                  <span style={{ fontSize: '18px', fontWeight: 850, color: 'var(--ink, #000000)', fontFamily: 'var(--font-mono, monospace)' }}>
+                  <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink, #000000)', fontFamily: 'var(--font-mono, monospace)' }}>
                     ₹{fare}
                   </span>
                 </div>
@@ -1654,34 +1661,6 @@ export default function BookingSheet() {
                   <span style={{ fontSize: '24px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: '2px', fontFamily: 'var(--font-mono, monospace)' }}>
                     ₹{adv}
                   </span>
-                </div>
-
-                {/* Vertical Divider */}
-                <div style={{ width: '1px', height: '32px', background: 'rgba(255, 255, 255, 0.18)', margin: '0 8px' }} />
-
-                {/* Middle: Total + Amount + Info */}
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', letterSpacing: '0.02em', lineHeight: 1.1 }}>
-                    Total
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: '#FFFFFF', fontFamily: 'var(--font-mono, monospace)' }}>
-                      ₹{fare}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowTermsModal(true)}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255, 255, 255, 0.65)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                      aria-label="View Terms"
-                      title="View Terms & Policy"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
 
                 {/* Right Side: White Pay Now Pill Button */}
