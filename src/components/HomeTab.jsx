@@ -851,8 +851,8 @@ Live GPS Tracking: ${trackUrl}`;
   const first = rawFirst ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1) : 'there';
 
   const openBooking = (cat, destination = null) => {
-    if (destination && setBookingDestination) {
-      setBookingDestination(destination);
+    if (setBookingDestination) {
+      setBookingDestination(destination || '');
     }
     setBookingCategory(cat);
     setBookingOpen(true);

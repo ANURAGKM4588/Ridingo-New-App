@@ -103,6 +103,7 @@ export default function BookingSheet() {
     bookingCategory,
     setBookingCategory,
     bookingDestination,
+    setBookingDestination,
     user,
     userBalance,
     setUtx,
@@ -503,9 +504,15 @@ export default function BookingSheet() {
       if (!bookingDestination) {
         setDrop('');
         setDropCoords(null);
+        setDropDetails(null);
       }
       setPickup('');
       setPickupCoords(null);
+      setPickupDetails(null);
+      setFlightNo('');
+      setPickupSuggestions([]);
+      setDropSuggestions([]);
+      setActiveSuggestField(null);
       setTripTelemetry({
         distanceKm: null,
         distanceText: '--',
@@ -800,9 +807,45 @@ export default function BookingSheet() {
     }
   };
 
-  const handleClose = () => {
+  const resetBookingForm = () => {
     setIsSuccess(false);
     setConfirmedTrip(null);
+    setPickup('');
+    setDrop('');
+    setPickupCoords(null);
+    setDropCoords(null);
+    setPickupDetails(null);
+    setDropDetails(null);
+    setPickupSuggestions([]);
+    setDropSuggestions([]);
+    setActiveSuggestField(null);
+    setTripTelemetry({
+      distanceKm: null,
+      distanceText: '--',
+      durationMins: null,
+      durationText: '--',
+      etaText: '--',
+      isCalculated: false
+    });
+    setFlightNo('');
+    setDriverEarlyBuffer('30m');
+    setAirportType('pickup');
+    setCat('hourly');
+    setQty(3);
+    setSelectedDate(getTodayISO());
+    setSelectedTime(getDefaultTime());
+    setTrans('Manual');
+    setShakingLocationField(null);
+    if (setBookingDestination) {
+      setBookingDestination('');
+    }
+    if (setBookingCategory) {
+      setBookingCategory(null);
+    }
+  };
+
+  const handleClose = () => {
+    resetBookingForm();
     setBookingOpen(false);
   };
 
@@ -955,9 +998,6 @@ export default function BookingSheet() {
                       style={{ whiteSpace: 'nowrap' }}
                       onClick={() => {
                         setAirportType('pickup');
-                        if (!pickup || !pickup.toLowerCase().includes('airport')) {
-                          setPickup('Cochin International Airport (COK), Arrival Gate');
-                        }
                       }}
                     >
                       Airport Pickup
@@ -968,7 +1008,6 @@ export default function BookingSheet() {
                       style={{ whiteSpace: 'nowrap' }}
                       onClick={() => {
                         setAirportType('drop');
-                        setDrop('Cochin International Airport (COK), Departure Gate');
                       }}
                     >
                       Airport Drop
