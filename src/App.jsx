@@ -93,7 +93,9 @@ function MainApp() {
     setLiveTrackingOpen,
     tripToCancel,
     setTripToCancel,
-    cancelTripByUser
+    cancelTripByUser,
+    trips,
+    setActiveTrackingTripId
   } = app;
 
   const handleUserPhoneRecovery = () => {
@@ -125,11 +127,15 @@ function MainApp() {
       if (typeof window !== 'undefined') {
         const p = new URLSearchParams(window.location.search);
         if (p.get('track') === 'true') {
+          const tripToTrack = trips?.find(t => ['inprogress', 'ready_to_start', 'pickup_arrived', 'accepted'].includes(t.status)) || trips?.[0];
+          if (tripToTrack && setActiveTrackingTripId) {
+            setActiveTrackingTripId(tripToTrack.id);
+          }
           setLiveTrackingOpen(true);
         }
       }
     } catch (e) {}
-  }, [setLiveTrackingOpen]);
+  }, [setLiveTrackingOpen, setActiveTrackingTripId, trips]);
 
   React.useEffect(() => {
     // Graceful fade-out of the App Refresh Splash Screen

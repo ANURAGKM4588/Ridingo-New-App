@@ -8,71 +8,83 @@ import {
 
 function getDriverPersonIcon(google) {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
       <defs>
         <filter id="d-sh" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.4"/>
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
         </filter>
       </defs>
-      <!-- Outer white halo with shadow -->
-      <circle cx="22" cy="22" r="20" fill="#FFFFFF" stroke="rgba(0,0,0,0.08)" stroke-width="1" filter="url(#d-sh)"/>
-      <!-- Inner vibrant blue driver badge -->
-      <circle cx="22" cy="22" r="17.5" fill="#1A73E8"/>
-      <!-- Person Head -->
-      <circle cx="22" cy="15" r="4.8" fill="#FFFFFF"/>
-      <!-- Person Torso / Shoulders -->
-      <path d="M13 29.5c0-4.2 4-6.8 9-6.8s9 2.6 9 6.8v1H13v-1z" fill="#FFFFFF"/>
+      <circle cx="15" cy="15" r="14" fill="#FFFFFF" stroke="rgba(0,0,0,0.06)" stroke-width="0.8" filter="url(#d-sh)"/>
+      <circle cx="15" cy="15" r="12" fill="#1A73E8"/>
+      <circle cx="15" cy="10" r="3.2" fill="#FFFFFF"/>
+      <path d="M9 20c0-2.8 2.8-4.5 6-4.5s6 1.7 6 4.5v0.8H9V20z" fill="#FFFFFF"/>
     </svg>
   `.trim();
 
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.Size(44, 44),
-    anchor: new google.Point(22, 22)
+    scaledSize: new google.Size(30, 30),
+    anchor: new google.Point(15, 15)
   };
 }
 
 function getGreenPickupPin(google) {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="50" viewBox="0 0 38 50">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
       <defs>
-        <filter id="p-sh" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+        <filter id="p-sh" x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
         </filter>
+        <linearGradient id="p-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#34D399"/>
+          <stop offset="100%" stop-color="#059669"/>
+        </linearGradient>
       </defs>
-      <!-- Green Location Pin pointing down -->
-      <path d="M19 2C10.16 2 3 9.16 3 18c0 13.5 14.5 29.5 15.3 30.3.4.4 1 .4 1.4 0C20.5 47.5 35 31.5 35 18 35 9.16 27.84 2 19 2z" fill="#10B981" stroke="#FFFFFF" stroke-width="2.5" filter="url(#p-sh)"/>
-      <!-- Inner white dot -->
-      <circle cx="19" cy="18" r="6.5" fill="#FFFFFF"/>
+      <!-- Metal needle pin pointing to (12, 31) -->
+      <path d="M12 16 L12 31" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/>
+      <!-- Pin collar -->
+      <ellipse cx="12" cy="15.5" rx="4.5" ry="1.6" fill="#065F46"/>
+      <!-- Pushpin round head -->
+      <circle cx="12" cy="9" r="7.5" fill="url(#p-grad)" stroke="#FFFFFF" stroke-width="1.2" filter="url(#p-sh)"/>
+      <!-- 3D spherical shine -->
+      <circle cx="9.8" cy="6.8" r="2.4" fill="#FFFFFF" fill-opacity="0.75"/>
     </svg>
   `.trim();
 
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.Size(38, 50),
-    anchor: new google.Point(19, 49)
+    scaledSize: new google.Size(24, 32),
+    anchor: new google.Point(12, 31)
   };
 }
 
 function getRedDestinationPin(google) {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="50" viewBox="0 0 38 50">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
       <defs>
-        <filter id="r-sh" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+        <filter id="r-sh" x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
         </filter>
+        <linearGradient id="r-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#F87171"/>
+          <stop offset="100%" stop-color="#DC2626"/>
+        </linearGradient>
       </defs>
-      <!-- Red Location Pin pointing down -->
-      <path d="M19 2C10.16 2 3 9.16 3 18c0 13.5 14.5 29.5 15.3 30.3.4.4 1 .4 1.4 0C20.5 47.5 35 31.5 35 18 35 9.16 27.84 2 19 2z" fill="#EF4444" stroke="#FFFFFF" stroke-width="2.5" filter="url(#r-sh)"/>
-      <!-- Inner white dot -->
-      <circle cx="19" cy="18" r="6.5" fill="#FFFFFF"/>
+      <!-- Metal needle pin pointing to (12, 31) -->
+      <path d="M12 16 L12 31" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/>
+      <!-- Pin collar -->
+      <ellipse cx="12" cy="15.5" rx="4.5" ry="1.6" fill="#991B1B"/>
+      <!-- Pushpin round head -->
+      <circle cx="12" cy="9" r="7.5" fill="url(#r-grad)" stroke="#FFFFFF" stroke-width="1.2" filter="url(#r-sh)"/>
+      <!-- 3D spherical shine -->
+      <circle cx="9.8" cy="6.8" r="2.4" fill="#FFFFFF" fill-opacity="0.75"/>
     </svg>
   `.trim();
 
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.Size(38, 50),
-    anchor: new google.Point(19, 49)
+    scaledSize: new google.Size(24, 32),
+    anchor: new google.Point(12, 31)
   };
 }
 
