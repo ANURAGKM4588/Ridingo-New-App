@@ -2069,7 +2069,50 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
   dLat = dLat || 10.0285;
   dLng = dLng || 76.3120;
 
-  // 2. Try Google Maps Directions API via JS SDK DirectionsService
+  // 2. Primary: Google Cloud Routes API v2 (official computeRoutes endpoint)
+  const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
+  try {
+    const routesRes = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration'
+      },
+      body: JSON.stringify({
+        origin: { location: { latLng: { latitude: Number(oLat), longitude: Number(oLng) } } },
+        destination: { location: { latLng: { latitude: Number(dLat), longitude: Number(dLng) } } },
+        travelMode: 'DRIVE'
+      })
+    });
+
+    if (routesRes.ok) {
+      const routesData = await routesRes.json();
+      const encodedPolyline = routesData?.routes?.[0]?.polyline?.encodedPolyline;
+      if (encodedPolyline) {
+        const points = decodeGooglePolyline(encodedPolyline);
+        if (points.length >= 2) {
+          const meters = routesData.routes[0].distanceMeters;
+          const distKm = meters ? Number((meters / 1000).toFixed(1)) : null;
+          const durSec = parseInt(routesData.routes[0].duration || '0', 10);
+          const durMins = durSec ? Math.round(durSec / 60) : null;
+          const res = {
+            points,
+            overview_polyline: { points: encodedPolyline },
+            distanceKm: distKm,
+            durationMins: durMins,
+            source: 'google_routes_api_v2'
+          };
+          roadDirectionsCache.set(cacheKey, res);
+          return res;
+        }
+      }
+    }
+  } catch (routesErr) {
+    console.warn('[GoogleRoadDirections] Google Routes API v2 notice:', routesErr);
+  }
+
+  // 3. Fallback: Google Maps Directions API via JS SDK DirectionsService
   if (typeof window !== 'undefined' && window.google?.maps?.DirectionsService) {
     try {
       const directionsService = new window.google.maps.DirectionsService();

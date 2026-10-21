@@ -171,6 +171,8 @@ export default function GraphicLiveMap({
 
   const [mapInstance, setMapInstance] = useState(null);
   const routeCasingPolylineRef = useRef(null);
+  const hasAutoFittedRef = useRef(false);
+  const isUserInteractingRef = useRef(false);
 
   const carLat = driverLive?.lat || originCoords.lat || 10.0245;
   const carLng = driverLive?.lng || originCoords.lng || 76.3075;
@@ -201,6 +203,36 @@ export default function GraphicLiveMap({
         gestureHandling: isModal ? 'auto' : 'none',
         styles: isDarkTheme ? GOOGLE_MAPS_DARK_STYLE : []
       });
+
+      // Dynamically scale polyline thickness when user zooms so the road line stays crisp and proportional
+      const updatePolylineWeight = () => {
+        const z = map.getZoom() || 14;
+        let strokeW = 4;
+        let casingW = 6.5;
+        if (z <= 12) {
+          strokeW = 3.5;
+          casingW = 5.5;
+        } else if (z === 13 || z === 14) {
+          strokeW = 4.5;
+          casingW = 7;
+        } else if (z === 15 || z === 16) {
+          strokeW = 5.5;
+          casingW = 8.5;
+        } else if (z >= 17) {
+          strokeW = 7;
+          casingW = 10.5;
+        }
+        if (routePolylineRef.current) {
+          routePolylineRef.current.setOptions({ strokeWeight: strokeW });
+        }
+        if (routeCasingPolylineRef.current) {
+          routeCasingPolylineRef.current.setOptions({ strokeWeight: casingW });
+        }
+      };
+
+      map.addListener('zoom_changed', updatePolylineWeight);
+      map.addListener('dragstart', () => { isUserInteractingRef.current = true; });
+
       googleMapRef.current = map;
       setMapInstance(map);
 
@@ -272,6 +304,8 @@ export default function GraphicLiveMap({
       }
       googleMapRef.current = null;
       setMapInstance(null);
+      hasAutoFittedRef.current = false;
+      isUserInteractingRef.current = false;
     };
   }, []);
 
@@ -315,13 +349,24 @@ export default function GraphicLiveMap({
 
           const polyPath = points.map(p => new google.LatLng(Number(p.lat), Number(p.lng)));
 
+          const currentZoom = mapInstance.getZoom() || 14;
+          let strokeW = 4.5;
+          let casingW = 7;
+          if (currentZoom <= 12) {
+            strokeW = 3.5;
+            casingW = 5.5;
+          } else if (currentZoom >= 17) {
+            strokeW = 7;
+            casingW = 10.5;
+          }
+
           // A. Google Maps Navigation Route Casing (darker road contour)
           routeCasingPolylineRef.current = new google.Polyline({
             path: polyPath,
             geodesic: true,
             strokeColor: isDarkTheme ? '#1E3A8A' : '#1558B0',
             strokeOpacity: 0.9,
-            strokeWeight: 7,
+            strokeWeight: casingW,
             zIndex: 1,
             map: mapInstance
           });
@@ -332,7 +377,7 @@ export default function GraphicLiveMap({
             geodesic: true,
             strokeColor: isDarkTheme ? '#3B82F6' : '#1A73E8',
             strokeOpacity: 1,
-            strokeWeight: 4.5,
+            strokeWeight: strokeW,
             zIndex: 2,
             icons: [{
               icon: {
@@ -347,13 +392,16 @@ export default function GraphicLiveMap({
             map: mapInstance
           });
 
-          // Fit bounds so route between driver / pickup and destination is centered and clearly visible
-          const bounds = new google.LatLngBounds();
-          polyPath.forEach(pt => bounds.extend(pt));
-          if (driverMarkerRef.current?.getPosition()) {
-            bounds.extend(driverMarkerRef.current.getPosition());
+          // Fit bounds so route between driver / pickup and destination is centered on first load
+          if (!hasAutoFittedRef.current && !isUserInteractingRef.current) {
+            const bounds = new google.LatLngBounds();
+            polyPath.forEach(pt => bounds.extend(pt));
+            if (driverMarkerRef.current?.getPosition()) {
+              bounds.extend(driverMarkerRef.current.getPosition());
+            }
+            mapInstance.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
+            hasAutoFittedRef.current = true;
           }
-          mapInstance.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
         }
       } catch (err) {
         console.warn('[GraphicLiveMap] Google Directions route error:', err);

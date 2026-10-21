@@ -10,7 +10,7 @@
     <script>
       (function() {
         try {
-          var pref = localStorage.getItem('ridingo_theme_pref') || 'light';
+          var pref = localStorage.getItem('ridingo_user_theme') || localStorage.getItem('ridingo_theme_pref') || 'light';
           var isDark = false;
           if (pref === 'dark') {
             isDark = true;
@@ -140,22 +140,29 @@
         display: none !important;
       }
 
-      /* User App Light Mode: Black User Logo */
+      /* User App Light Mode: Black User Logo ONLY */
+      html:not([data-app="driver"]):not(.standalone-driver):not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user,
       [data-app="user"]:not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user,
-      .standalone-user:not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user,
-      html:not([data-app="driver"]):not(.standalone-driver):not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user {
+      .standalone-user:not([data-theme="dark"]) .app-splash-overlay .splash-logo-light.splash-user {
         display: block !important;
         height: 48px;
         max-width: 240px;
       }
+      [data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user,
+      html[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user {
+        display: none !important;
+      }
 
-      /* User App Dark Mode: White User Logo */
+      /* User App Dark Mode: White User Logo ONLY */
+      html:not([data-app="driver"]):not(.standalone-driver)[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
       [data-app="user"][data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
-      .standalone-user[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
-      html:not([data-app="driver"]):not(.standalone-driver)[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user {
+      .standalone-user[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user {
         display: block !important;
         height: 48px;
         max-width: 240px;
+      }
+      html:not([data-theme="dark"]) .app-splash-overlay .splash-logo-dark.splash-user {
+        display: none !important;
       }
 
       /* Minimal Modern Premium Loading Bar Animation */
@@ -273,11 +280,18 @@
           try {
             var isD = document.documentElement.getAttribute('data-app') === 'driver' ||
               document.documentElement.classList.contains('standalone-driver');
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             var splash = document.getElementById('app-splash-screen');
             if (splash) {
-              var purge = splash.querySelectorAll(isD ? '.splash-user' : '.splash-driver');
-              for (var i = 0; i < purge.length; i++) {
-                purge[i].parentNode && purge[i].parentNode.removeChild(purge[i]);
+              // 1. Purge other app logos
+              var purgeApp = splash.querySelectorAll(isD ? '.splash-user' : '.splash-driver');
+              for (var i = 0; i < purgeApp.length; i++) {
+                purgeApp[i].parentNode && purgeApp[i].parentNode.removeChild(purgeApp[i]);
+              }
+              // 2. Purge opposite theme logos so black logo NEVER renders in dark mode and vice-versa
+              var purgeTheme = splash.querySelectorAll(isDark ? '.splash-logo-light' : '.splash-logo-dark');
+              for (var j = 0; j < purgeTheme.length; j++) {
+                purgeTheme[j].parentNode && purgeTheme[j].parentNode.removeChild(purgeTheme[j]);
               }
             }
           } catch(e) {}
