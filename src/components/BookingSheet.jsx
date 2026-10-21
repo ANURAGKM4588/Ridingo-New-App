@@ -215,7 +215,7 @@ export default function BookingSheet() {
     const pText = pickup?.trim();
     const dText = drop?.trim();
 
-    if (!pText || !dText || !pickupCoords || !dropCoords) {
+    if (!pText || !dText) {
       setTripTelemetry({
         distanceKm: null,
         distanceText: '--',
@@ -229,12 +229,40 @@ export default function BookingSheet() {
 
     const calculateRoute = async () => {
       try {
+        let pCoords = pickupCoords;
+        let dCoords = dropCoords;
+
+        // Automatically resolve genuine Google coordinates if either coordinate is not yet set
+        if (!pCoords?.lat && pText) {
+          const resolvedP = await geocodeAddress(pText);
+          if (resolvedP?.lat) {
+            pCoords = resolvedP;
+            if (!isCancelled) {
+              setPickupCoords(resolvedP);
+              setPickupDetails(resolvedP);
+            }
+          }
+        }
+
+        if (!dCoords?.lat && dText) {
+          const resolvedD = await geocodeAddress(dText);
+          if (resolvedD?.lat) {
+            dCoords = resolvedD;
+            if (!isCancelled) {
+              setDropCoords(resolvedD);
+              setDropDetails(resolvedD);
+            }
+          }
+        }
+
+        if (!pCoords?.lat || !dCoords?.lat) return;
+
         // 1. Google Maps Distance Matrix API: Real-time driving distance and duration
         const matrixRes = await fetchGoogleDistanceMatrix({
           origin: pText,
           destination: dText,
-          originCoords: pickupCoords,
-          destCoords: dropCoords
+          originCoords: pCoords,
+          destCoords: dCoords
         });
         if (!isCancelled && matrixRes) {
           setTripTelemetry({
@@ -294,7 +322,8 @@ export default function BookingSheet() {
             formatted: cleanPlusCode(details.formatted_address || chosen),
             city: details.city || '',
             state: details.state || '',
-            postalCode: details.postalCode || ''
+            postalCode: details.postalCode || '',
+            source: 'google'
           };
           setPickupCoords(coords);
           setPickupDetails(details);
@@ -306,6 +335,20 @@ export default function BookingSheet() {
       }
     }
 
+    // Always prioritize Google geocodeAddress (Google Places searchText) for genuine coordinates
+    try {
+      const coords = await geocodeAddress(chosen);
+      if (coords && coords.lat && coords.lng) {
+        const cObj = { ...coords, name: cleanPlusCode(item.title), formatted: chosen, source: 'google' };
+        setPickupCoords(cObj);
+        setPickupDetails(cObj);
+        addToast(`Pickup confirmed: ${item.title}`, 'pin');
+        return;
+      }
+    } catch (geoErr) {
+      console.warn('Pickup geocoding error:', geoErr);
+    }
+
     if (item.lat && item.lng) {
       const coords = {
         lat: Number(item.lat),
@@ -313,19 +356,12 @@ export default function BookingSheet() {
         name: cleanPlusCode(item.title),
         formatted: chosen,
         city: item.sub?.split(',')?.[0]?.trim() || '',
-        state: 'Kerala'
+        state: 'Kerala',
+        source: item.source || 'fallback'
       };
       setPickupCoords(coords);
       setPickupDetails(coords);
       addToast(`Pickup confirmed: ${item.title}`, 'pin');
-    } else {
-      const coords = await geocodeAddress(chosen);
-      if (coords) {
-        const cObj = { ...coords, name: cleanPlusCode(item.title), formatted: chosen };
-        setPickupCoords(cObj);
-        setPickupDetails(cObj);
-        addToast(`Pickup confirmed: ${item.title}`, 'pin');
-      }
     }
   };
 
@@ -349,7 +385,8 @@ export default function BookingSheet() {
             formatted: cleanPlusCode(details.formatted_address || chosen),
             city: details.city || '',
             state: details.state || '',
-            postalCode: details.postalCode || ''
+            postalCode: details.postalCode || '',
+            source: 'google'
           };
           setDropCoords(coords);
           setDropDetails(details);
@@ -361,6 +398,20 @@ export default function BookingSheet() {
       }
     }
 
+    // Always prioritize Google geocodeAddress (Google Places searchText) for genuine coordinates
+    try {
+      const coords = await geocodeAddress(chosen);
+      if (coords && coords.lat && coords.lng) {
+        const cObj = { ...coords, name: item.title, formatted: chosen, source: 'google' };
+        setDropCoords(cObj);
+        setDropDetails(cObj);
+        addToast(`Destination confirmed: ${item.title}`, 'pin');
+        return;
+      }
+    } catch (geoErr) {
+      console.warn('Destination geocoding error:', geoErr);
+    }
+
     if (item.lat && item.lng) {
       const coords = {
         lat: Number(item.lat),
@@ -368,19 +419,12 @@ export default function BookingSheet() {
         name: item.title,
         formatted: chosen,
         city: item.sub?.split(',')?.[0]?.trim() || '',
-        state: 'Kerala'
+        state: 'Kerala',
+        source: item.source || 'fallback'
       };
       setDropCoords(coords);
       setDropDetails(coords);
       addToast(`Destination confirmed: ${item.title}`, 'pin');
-    } else {
-      const coords = await geocodeAddress(chosen);
-      if (coords) {
-        const cObj = { ...coords, name: item.title, formatted: chosen };
-        setDropCoords(cObj);
-        setDropDetails(cObj);
-        addToast(`Destination confirmed: ${item.title}`, 'pin');
-      }
     }
   };
 
@@ -729,7 +773,7 @@ export default function BookingSheet() {
     setSelectedTime(`${h}:${m}`);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     try {
       const cleanPickup = pickup?.trim();
       if (!cleanPickup) {
@@ -745,22 +789,18 @@ export default function BookingSheet() {
 
       let pCoords = pickupCoords;
       if (!pCoords) {
-        if (pickupSuggestions.length > 0) {
-          const item = pickupSuggestions[0];
-          pCoords = { lat: Number(item.lat) || 11.2588, lng: Number(item.lng) || 75.7804, name: item.title || cleanPickup, formatted: cleanPickup };
-        } else {
-          pCoords = { lat: 11.2588, lng: 75.7804, name: cleanPickup, formatted: cleanPickup };
+        pCoords = await geocodeAddress(cleanPickup);
+        if (!pCoords) {
+          pCoords = { lat: 11.2588, lng: 75.7804, name: cleanPickup, formatted: cleanPickup, source: 'default' };
         }
         setPickupCoords(pCoords);
       }
 
       let dCoords = dropCoords;
       if (!dCoords) {
-        if (dropSuggestions.length > 0) {
-          const item = dropSuggestions[0];
-          dCoords = { lat: Number(item.lat) || 11.2600, lng: Number(item.lng) || 75.7900, name: item.title || cleanDrop, formatted: cleanDrop };
-        } else {
-          dCoords = { lat: 11.2600, lng: 75.7900, name: cleanDrop, formatted: cleanDrop };
+        dCoords = await geocodeAddress(cleanDrop);
+        if (!dCoords) {
+          dCoords = { lat: 11.2600, lng: 75.7900, name: cleanDrop, formatted: cleanDrop, source: 'default' };
         }
         setDropCoords(dCoords);
       }

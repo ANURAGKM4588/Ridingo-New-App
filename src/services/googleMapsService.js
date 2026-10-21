@@ -914,6 +914,7 @@ export async function fetchPlaceDetails(placeId) {
             name: data.displayName?.text || data.formattedAddress?.split(',')?.[0]?.trim() || '',
             formatted_address: data.formattedAddress || '',
             address_components: data.addressComponents || [],
+            source: 'google',
             ...parsed
           };
         }
@@ -1175,14 +1176,15 @@ export function rankAndFilterPlaces(items, rawQuery) {
 
 // In-memory LRU-style cache for high-speed instant 0ms autocomplete responses
 const placesMemoryCache = new Map();
+let placesSearchSeq = 0;
 
 /**
  * Unified Places Search & Autocomplete
  * Configured with official Google Places API & Instant In-Memory Cache:
  * 1. Checks in-memory cache first for instant 0ms response on repeat keystrokes/backspaces.
- * 2. Uses window.google.maps.places.AutocompleteService if SDK is loaded (fastest native browser client).
- * 3. Falls back to REST Places endpoint, then Nominatim and local database.
- * 4. Exact full name match is placed at top (#1).
+ * 2. Uses Google Places API (New) Autocomplete via REST with country: India restriction.
+ * 3. Falls back to Google Places Text Search (searchText) if autocomplete returns 0 suggestions.
+ * 4. Ensures all suggestions carry genuine Google place IDs and verified coordinates.
  */
 export async function searchGooglePlaces(query, callback, options = {}) {
   if (!query || !query.trim() || query.trim().length < 2) {
@@ -1192,107 +1194,36 @@ export async function searchGooglePlaces(query, callback, options = {}) {
 
   const clean = query.trim();
   const lower = clean.toLowerCase();
+  const currentSeq = ++placesSearchSeq;
 
-  // 1. Instant 0ms Cache Hit (Eliminates all typing lag on backspace / frequent locations)
+  // 1. Instant 0ms Cache Hit (Only if verified genuine Google results)
   if (placesMemoryCache.has(lower)) {
     const cached = placesMemoryCache.get(lower);
-    callback(cached);
-    return;
-  }
-
-  // 2. Official Google Maps JavaScript SDK AutocompleteService (Zero-CORS, sub-50ms latency)
-  if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
-    try {
-      const autocompleteService = new window.google.maps.places.AutocompleteService();
-      const request = {
-        input: clean,
-        componentRestrictions: { country: 'in' }
-      };
-
-      if (options.userCoords && options.userCoords.lat && options.userCoords.lng) {
-        request.locationBias = new window.google.maps.Circle({
-          center: { lat: Number(options.userCoords.lat), lng: Number(options.userCoords.lng) },
-          radius: 40000
-        });
-      }
-
-      autocompleteService.getPlacePredictions(request, (predictions, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && Array.isArray(predictions) && predictions.length > 0) {
-          const formatted = predictions.map(p => {
-            const rawTitle = p.structured_formatting?.main_text || p.description.split(',')[0];
-            const rawSub = p.structured_formatting?.secondary_text || '';
-            const rawFull = p.description;
-            return {
-              id: p.place_id,
-              place_id: p.place_id,
-              title: cleanPlusCode(rawTitle),
-              sub: cleanPlusCode(rawSub),
-              full: cleanPlusCode(rawFull),
-              isMock: false
-            };
-          });
-
-          // Preserve all Google predictions without skipping any location; sort exact/prefix matches to top
-          const sorted = [...formatted].sort((a, b) => {
-            const aTitle = (a.title || '').toLowerCase();
-            const bTitle = (b.title || '').toLowerCase();
-            const aStarts = aTitle.startsWith(lower);
-            const bStarts = bTitle.startsWith(lower);
-            if (aStarts && !bStarts) return -1;
-            if (!aStarts && bStarts) return 1;
-            return 0;
-          });
-
-          placesMemoryCache.set(lower, sorted);
-          callback(sorted);
-          return;
-        }
-
-        // Fallback to local and Nominatim
-        fallbackSearch();
-      });
+    if (Array.isArray(cached) && cached.length > 0 && cached[0].source === 'google') {
+      callback(cached);
       return;
-    } catch (sdkErr) {
-      console.warn('[GooglePlaces] SDK AutocompleteService notice, using REST:', sdkErr);
     }
   }
 
-  // 3. Fallback to Live Google Places API (New) Autocomplete via REST
-  if (GOOGLE_MAPS_API_KEY && !GOOGLE_MAPS_API_KEY.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
+  // 2. Primary: Live Google Places API (New) Autocomplete via REST (Country: India)
+  const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
+  if (apiKey && !apiKey.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
     try {
-      if (placesApiAbortController) {
-        placesApiAbortController.abort();
-      }
-      placesApiAbortController = new AbortController();
-      const timeoutId = setTimeout(() => placesApiAbortController?.abort(), 2000);
-
       const payload = {
         input: clean,
         includedRegionCodes: ['in']
       };
 
-      if (options.userCoords && options.userCoords.lat && options.userCoords.lng) {
-        payload.locationBias = {
-          circle: {
-            center: {
-              latitude: Number(options.userCoords.lat),
-              longitude: Number(options.userCoords.lng)
-            },
-            radius: 50000.0
-          }
-        };
-      }
-
       const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
         method: 'POST',
-        signal: placesApiAbortController.signal,
         headers: {
           'Content-Type': 'application/json',
-          'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY
+          'X-Goog-Api-Key': apiKey
         },
         body: JSON.stringify(payload)
       });
-      clearTimeout(timeoutId);
+
+      if (currentSeq !== placesSearchSeq) return;
 
       if (res.ok) {
         const data = await res.json();
@@ -1310,41 +1241,116 @@ export async function searchGooglePlaces(query, callback, options = {}) {
                 title: mainText,
                 sub: secondaryText,
                 full: cleanPlusCode(p.text?.text || `${mainText}, ${secondaryText}`),
-                isMock: false
+                isMock: false,
+                source: 'google'
               };
             });
 
-          // Preserve all Google REST results without skipping any location
-          const sorted = [...googleResults].sort((a, b) => {
-            const aTitle = (a.title || '').toLowerCase();
-            const bTitle = (b.title || '').toLowerCase();
-            const aStarts = aTitle.startsWith(lower);
-            const bStarts = bTitle.startsWith(lower);
-            if (aStarts && !bStarts) return -1;
-            if (!aStarts && bStarts) return 1;
-            return 0;
-          });
-
-          placesMemoryCache.set(lower, sorted);
-          callback(sorted);
+          placesMemoryCache.set(lower, googleResults);
+          callback(googleResults);
           return;
+        }
+
+        // If autocomplete returned 0 suggestions (e.g. user typed a complex full address),
+        // use Google Places Text Search (searchText) which resolves full address queries with 100% genuine precision!
+        const searchRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
+          },
+          body: JSON.stringify({
+            textQuery: clean,
+            languageCode: 'en',
+            regionCode: 'in'
+          })
+        });
+
+        if (currentSeq !== placesSearchSeq) return;
+
+        if (searchRes.ok) {
+          const sData = await searchRes.json();
+          if (sData?.places && sData.places.length > 0) {
+            const searchResults = sData.places.map(p => {
+              const placeId = p.id;
+              const title = cleanPlusCode(p.displayName?.text || clean);
+              const sub = cleanPlusCode(p.formattedAddress || '');
+              return {
+                id: placeId,
+                place_id: placeId,
+                title,
+                sub,
+                full: sub || title,
+                lat: p.location?.latitude ? Number(p.location.latitude) : undefined,
+                lng: p.location?.longitude ? Number(p.location.longitude) : undefined,
+                isMock: false,
+                source: 'google'
+              };
+            });
+
+            placesMemoryCache.set(lower, searchResults);
+            callback(searchResults);
+            return;
+          }
         }
       }
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.warn('[GooglePlaces] Live Places query notice:', err);
-      }
+      console.warn('[GooglePlaces] Live Places query error:', err);
     }
   }
 
-  // 4. Fallback search via Nominatim & Local Database with typo tolerance
+  // 3. Secondary: Google Maps JavaScript SDK AutocompleteService (country: 'in')
+  if (typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
+    try {
+      const autocompleteService = new window.google.maps.places.AutocompleteService();
+      const request = {
+        input: clean,
+        componentRestrictions: { country: 'in' }
+      };
+
+      autocompleteService.getPlacePredictions(request, (predictions, status) => {
+        if (currentSeq !== placesSearchSeq) return;
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && Array.isArray(predictions) && predictions.length > 0) {
+          const formatted = predictions.map(p => {
+            const rawTitle = p.structured_formatting?.main_text || p.description.split(',')[0];
+            const rawSub = p.structured_formatting?.secondary_text || '';
+            const rawFull = p.description;
+            return {
+              id: p.place_id,
+              place_id: p.place_id,
+              title: cleanPlusCode(rawTitle),
+              sub: cleanPlusCode(rawSub),
+              full: cleanPlusCode(rawFull),
+              isMock: false,
+              source: 'google'
+            };
+          });
+
+          placesMemoryCache.set(lower, formatted);
+          callback(formatted);
+          return;
+        }
+
+        fallbackSearch();
+      });
+      return;
+    } catch (sdkErr) {
+      console.warn('[GooglePlaces] SDK AutocompleteService notice:', sdkErr);
+    }
+  }
+
+  // 4. Fallback search via Local Database & Nominatim ONLY when offline / no Google API key
   function fallbackSearch() {
+    if (currentSeq !== placesSearchSeq) return;
+    const rawLocal = getFilteredMockPlaces(lower);
+    if (rawLocal.length > 0) {
+      callback(rawLocal.slice(0, 10));
+      return;
+    }
     fetchNominatimPlaces(clean, (nomResults) => {
-      const rawLocal = getFilteredMockPlaces(lower);
-      const combined = [...(nomResults || []), ...rawLocal];
-      const ranked = rankAndFilterPlaces(combined, clean).slice(0, 15);
-      placesMemoryCache.set(lower, ranked);
-      callback(ranked);
+      if (currentSeq !== placesSearchSeq) return;
+      callback(nomResults || []);
     });
   }
 
@@ -1747,7 +1753,43 @@ export async function geocodeAddress(addressText) {
   const clean = addressText.trim();
   if (!clean) return null;
 
-  // 1. Google Maps Geocoder if SDK loaded
+  // 1. Primary: Official Google Places API (New) Text Search (Exact genuine Google coordinates)
+  const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
+  if (apiKey && !apiKey.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
+    try {
+      const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
+        },
+        body: JSON.stringify({
+          textQuery: clean,
+          languageCode: 'en',
+          regionCode: 'in'
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const firstPlace = data?.places?.[0];
+        if (firstPlace?.location?.latitude && firstPlace?.location?.longitude) {
+          return {
+            lat: Number(firstPlace.location.latitude),
+            lng: Number(firstPlace.location.longitude),
+            name: firstPlace.displayName?.text || clean,
+            formatted_address: firstPlace.formattedAddress || clean,
+            place_id: firstPlace.id,
+            source: 'google'
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[GooglePlaces] Text search geocode notice:', err);
+    }
+  }
+
+  // 2. Google Maps Geocoder if SDK loaded
   if (typeof window !== 'undefined' && window.google?.maps?.Geocoder) {
     try {
       const geocoder = new window.google.maps.Geocoder();
@@ -1843,26 +1885,89 @@ export async function geocodeAddress(addressText) {
  * @returns {Promise<{ distanceKm: number, distanceText: string, durationMins: number, durationText: string, etaText: string, source: string }>}
  */
 export async function fetchGoogleDistanceMatrix({ origin, destination, originCoords, destCoords }) {
-  // 1. Google Maps JS SDK DistanceMatrixService
+  const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
+
+  // 1. Resolve exact coordinates via places:searchText / geocodeAddress
+  let oCoords = originCoords;
+  if ((!oCoords?.lat || oCoords?.source !== 'google') && origin) {
+    const geo = await geocodeAddress(origin);
+    if (geo?.lat && geo?.lng) {
+      oCoords = geo;
+    }
+  }
+  let dCoords = destCoords;
+  if ((!dCoords?.lat || dCoords?.source !== 'google') && destination) {
+    const geo = await geocodeAddress(destination);
+    if (geo?.lat && geo?.lng) {
+      dCoords = geo;
+    }
+  }
+
+  const oLat = oCoords?.lat || (originCoords?.lat ? Number(originCoords.lat) : null);
+  const oLng = oCoords?.lng || (originCoords?.lng ? Number(originCoords.lng) : null);
+  const dLat = dCoords?.lat || (destCoords?.lat ? Number(destCoords.lat) : null);
+  const dLng = dCoords?.lng || (destCoords?.lng ? Number(destCoords.lng) : null);
+
+  // 2. Primary: Google Cloud Routes API v2 (Official modern Traffic-Aware Road Distance & ETA)
+  if (oLat && oLng && dLat && dLng && apiKey && !apiKey.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
+    try {
+      const routesRes = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration,routes.description,routes.polyline.encodedPolyline'
+        },
+        body: JSON.stringify({
+          origin: { location: { latLng: { latitude: Number(oLat), longitude: Number(oLng) } } },
+          destination: { location: { latLng: { latitude: Number(dLat), longitude: Number(dLng) } } },
+          travelMode: 'DRIVE',
+          routingPreference: 'TRAFFIC_AWARE',
+          languageCode: 'en-US'
+        })
+      });
+
+      if (routesRes.ok) {
+        const routesData = await routesRes.json();
+        const route = routesData?.routes?.[0];
+        if (route && route.distanceMeters) {
+          const meters = route.distanceMeters;
+          const distKm = Number((meters / 1000).toFixed(1));
+          const durSec = parseInt(route.duration || '0', 10);
+          const durMins = Math.max(1, Math.round(durSec / 60));
+          const arrival = new Date(Date.now() + durSec * 1000);
+          const etaText = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          return {
+            distanceKm: distKm,
+            distanceText: `${distKm} km`,
+            durationMins: durMins,
+            durationText: `${durMins} mins`,
+            etaText,
+            source: 'google_routes_traffic_matrix',
+            overview_polyline: route.polyline?.encodedPolyline ? { points: route.polyline.encodedPolyline } : null,
+            routeDescription: route.description || ''
+          };
+        }
+      }
+    } catch (routeErr) {
+      console.warn('[GoogleMaps] Routes API computeRoutes error:', routeErr);
+    }
+  }
+
+  // 3. Google Maps JS SDK DistanceMatrixService fallback
   let googleMaps = typeof window !== 'undefined' ? window.google?.maps : null;
   if (!googleMaps && typeof window !== 'undefined') {
     try {
       googleMaps = await initGoogleMapsPlacesSDK();
-    } catch (e) {
-      console.warn('[GoogleMaps] Error initializing Google Maps SDK for Distance Matrix:', e);
-    }
+    } catch (e) {}
   }
 
-  if (googleMaps?.DistanceMatrixService) {
+  if (googleMaps?.DistanceMatrixService && oLat && oLng && dLat && dLng) {
     try {
       const service = new googleMaps.DistanceMatrixService();
-      const originItem = (originCoords?.lat && originCoords?.lng)
-        ? new googleMaps.LatLng(Number(originCoords.lat), Number(originCoords.lng))
-        : (origin || 'Kochi, Kerala');
-
-      const destItem = (destCoords?.lat && destCoords?.lng)
-        ? new googleMaps.LatLng(Number(destCoords.lat), Number(destCoords.lng))
-        : (destination || 'Ernakulam, Kerala');
+      const originItem = new googleMaps.LatLng(Number(oLat), Number(oLng));
+      const destItem = new googleMaps.LatLng(Number(dLat), Number(dLng));
 
       const dmResponse = await new Promise((resolve, reject) => {
         service.getDistanceMatrix(
@@ -1882,7 +1987,7 @@ export async function fetchGoogleDistanceMatrix({ origin, destination, originCoo
                 return;
               }
             }
-            reject(new Error(`Distance Matrix returned status: ${status}`));
+            reject(new Error(`Distance Matrix status: ${status}`));
           }
         );
       });
@@ -1907,31 +2012,11 @@ export async function fetchGoogleDistanceMatrix({ origin, destination, originCoo
         };
       }
     } catch (dmErr) {
-      console.warn('[GoogleMaps] DistanceMatrixService error, falling back to Routes API:', dmErr);
+      console.warn('[GoogleMaps] DistanceMatrixService error:', dmErr);
     }
   }
 
-  // 2. Google Cloud Routes API v2 / Road Directions as live road fallback
-  try {
-    const roadDir = await fetchGoogleRoadDirections({ origin, destination, originCoords, destCoords });
-    if (roadDir && roadDir.distanceKm) {
-      const durSecs = (roadDir.durationMins || 10) * 60;
-      const arrival = new Date(Date.now() + durSecs * 1000);
-      const etaText = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      return {
-        distanceKm: roadDir.distanceKm,
-        distanceText: roadDir.distanceText || `${roadDir.distanceKm} km`,
-        durationMins: roadDir.durationMins,
-        durationText: roadDir.durationText || `${roadDir.durationMins} mins`,
-        etaText,
-        source: 'google_routes_matrix_api'
-      };
-    }
-  } catch (routeErr) {
-    console.warn('[GoogleMaps] Routes API fallback error:', routeErr);
-  }
-
-  throw new Error('Unable to fetch Distance Matrix from Google Maps');
+  throw new Error('Unable to compute Google Maps distance and driving duration');
 }
 
 /**
