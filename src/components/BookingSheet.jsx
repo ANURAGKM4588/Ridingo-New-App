@@ -1588,177 +1588,6 @@ export default function BookingSheet() {
               </div>
             </div>
 
-            {/* Waiting & Additional Trip Section (Single-Line Design) */}
-            <div
-              style={{
-                background: 'var(--card, #FFFFFF)',
-                border: '1px solid #E2E8F0',
-                borderRadius: '16px',
-                padding: '12px 14px',
-                marginBottom: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
-                width: '100%',
-                boxSizing: 'border-box'
-              }}
-            >
-              {/* Row 1: Waiting */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: '#FEF3C7',
-                      color: '#D97706',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                  </div>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
-                    Waiting
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '9.5px',
-                      fontWeight: 750,
-                      padding: '2px 6px',
-                      borderRadius: '6px',
-                      background: '#DCFCE7',
-                      color: '#166534'
-                    }}
-                  >
-                    60m Free
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
-                    ₹2<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/min</span>
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
-                    (after 60m)
-                  </span>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div style={{ height: '1px', background: '#F1F5F9', width: '100%' }} />
-
-              {/* Row 2: Additional Trip */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: '#E0F2FE',
-                      color: '#0284C7',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 19 8.5 5" />
-                      <path d="M19 19 15.5 5" />
-                      <path d="M12 6v3" />
-                      <path d="M12 15v3" />
-                    </svg>
-                  </div>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
-                    Additional Trip
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '9.5px',
-                      fontWeight: 750,
-                      padding: '2px 6px',
-                      borderRadius: '6px',
-                      background: '#E0F2FE',
-                      color: '#0369A1'
-                    }}
-                  >
-                    Extra Km
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
-                    ₹18<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/km</span>
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
-                    (extra route)
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment & Conditions Acceptance Notification */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '11px 14px',
-                borderRadius: '14px',
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                marginBottom: '18px'
-              }}
-            >
-              <div
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  background: '#EEF2F6',
-                  color: '#475569',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-              </div>
-              <span style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4, fontWeight: 500 }}>
-                By completing the payment, you accept the waiting and additional trip terms &amp; conditions.
-              </span>
-            </div>
-
               {/* Fare Invoice Breakdown Card */}
               <div
                 style={{
@@ -1766,7 +1595,7 @@ export default function BookingSheet() {
                   border: '1px solid #E2E8F0',
                   borderRadius: '18px',
                   padding: '16px',
-                  marginBottom: '20px',
+                  marginBottom: '16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px'
@@ -1834,6 +1663,177 @@ export default function BookingSheet() {
                     ₹{fare}
                   </span>
                 </div>
+              </div>
+
+              {/* Waiting & Additional Trip Section (Single-Line Design, Placed at Bottom) */}
+              <div
+                style={{
+                  background: 'var(--card, #FFFFFF)',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}
+              >
+                {/* Row 1: Waiting Charge */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: '#FEF3C7',
+                        color: '#D97706',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
+                      Waiting Charge
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: 750,
+                        padding: '2px 6px',
+                        borderRadius: '6px',
+                        background: '#DCFCE7',
+                        color: '#166534'
+                      }}
+                    >
+                      60m Free
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
+                      ₹2<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/min</span>
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
+                      (after 60m)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: '1px', background: '#F1F5F9', width: '100%' }} />
+
+                {/* Row 2: Additional Trip */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: '#E0F2FE',
+                        color: '#0284C7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 19 8.5 5" />
+                        <path d="M19 19 15.5 5" />
+                        <path d="M12 6v3" />
+                        <path d="M12 15v3" />
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
+                      Additional Trip
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: 750,
+                        padding: '2px 6px',
+                        borderRadius: '6px',
+                        background: '#E0F2FE',
+                        color: '#0369A1'
+                      }}
+                    >
+                      Extra Km
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
+                      ₹18<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/km</span>
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
+                      (extra route)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment & Conditions Acceptance Notification */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '11px 14px',
+                  borderRadius: '14px',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  marginBottom: '20px'
+                }}
+              >
+                <div
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    background: '#EEF2F6',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4, fontWeight: 500 }}>
+                  By completing the payment, you accept the waiting and additional trip terms &amp; conditions.
+                </span>
               </div>
 
             </div>
