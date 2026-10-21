@@ -1160,7 +1160,6 @@ export default function DriverApp() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [activeVehicleTrip, setActiveVehicleTrip] = useState(null);
-  const [pickupRadiusErrors, setPickupRadiusErrors] = useState({});
   const [paymentCompletionModal, setPaymentCompletionModal] = useState(null);
   const [expandedHistoryTripId, setExpandedHistoryTripId] = useState(null);
   const [minimizedRequestTripId, setMinimizedRequestTripId] = useState(null);
@@ -2487,65 +2486,8 @@ export default function DriverApp() {
   };
 
   // 2. Arrived at Pickup (Prompts for Customer Pickup OTP & Inspection)
-  const handleArriveAtPickup = async (t) => {
+  const handleArriveAtPickup = (t) => {
     triggerTactileHaptic('snap');
-
-    // Extract pickup coordinates
-    const pCoords = t.pickupCoords || t.car?.pickupCoords || t.pickup_coords || t.originCoords;
-    const pickupLat = pCoords?.lat ?? pCoords?.latitude;
-    const pickupLng = pCoords?.lng ?? pCoords?.longitude;
-
-    if (pickupLat !== undefined && pickupLng !== undefined && !isNaN(Number(pickupLat)) && !isNaN(Number(pickupLng))) {
-      try {
-        let driverCoords = null;
-
-        // 1. Fetch current coordinates using Geolocation.getCurrentPosition with high accuracy
-        if (typeof navigator !== 'undefined' && navigator.geolocation) {
-          driverCoords = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-              (err) => reject(err),
-              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-          });
-        } else if (Capacitor.isNativePlatform()) {
-          const pos = await getCurrentDevicePosition({ enableHighAccuracy: true });
-          if (pos?.coords) {
-            driverCoords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-          }
-        }
-
-        // Fallback to active driver GPS position if available
-        if (!driverCoords && driverLocation?.lat && driverLocation?.lng) {
-          driverCoords = { latitude: Number(driverLocation.lat), longitude: Number(driverLocation.lng) };
-        }
-
-        if (driverCoords) {
-          // 2. Compare driver coordinates to pickup location's latitude and longitude using getDistance from 'geolib'
-          const distanceMeters = getDistance(
-            { latitude: driverCoords.latitude, longitude: driverCoords.longitude },
-            { latitude: Number(pickupLat), longitude: Number(pickupLng) }
-          );
-
-          // 3. If distance exceeds 1000 meters, do not disable button or alter styling; render minimal inline error text
-          if (distanceMeters > 1000) {
-            setPickupRadiusErrors(prev => ({
-              ...prev,
-              [t.id]: 'You are not in the pickup location radius.'
-            }));
-            return;
-          }
-        }
-      } catch (geoErr) {
-        console.warn('[Driver] Geolocation verification check error:', geoErr);
-      }
-    }
-
-    // 4. Within 1000 meters: clear errors and transition to the vehicle inspection and OTP entry phase
-    setPickupRadiusErrors(prev => ({
-      ...prev,
-      [t.id]: null
-    }));
     setActiveTripAction(t);
     if (arrivedAtPickup) {
       arrivedAtPickup(t.id);
@@ -3740,56 +3682,43 @@ export default function DriverApp() {
 
                         {/* Workflow Action Buttons */}
                         {t.status === 'accepted' && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button
-                                type="button"
-                                className="btn sm"
-                                style={{
-                                  flex: 1,
-                                  background: 'var(--card)',
-                                  border: '1.5px solid var(--line-strong)',
-                                  color: 'var(--ink)',
-                                  fontWeight: 700,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '6px'
-                                }}
-                                onClick={() => handleGetDirections(t.pickup)}
-                              >
-                                <span>Directions</span>
-                              </button>
-                              <button
-                                type="button"
-                                className="btn primary sm"
-                                style={{
-                                  flex: 1.2,
-                                  background: 'var(--solid)',
-                                  color: 'var(--on-solid)',
-                                  border: '1.5px solid var(--solid)',
-                                  fontWeight: 700,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '6px'
-                                }}
-                                onClick={() => handleArriveAtPickup(t)}
-                              >
-                                <span>Arrived at Pickup</span>
-                              </button>
-                            </div>
-                            {pickupRadiusErrors[t.id] && (
-                              <div style={{
-                                color: '#ef4444',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                textAlign: 'center',
-                                padding: '2px 0'
-                              }}>
-                                {pickupRadiusErrors[t.id]}
-                              </div>
-                            )}
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                            <button
+                              type="button"
+                              className="btn sm"
+                              style={{
+                                flex: 1,
+                                background: 'var(--card)',
+                                border: '1.5px solid var(--line-strong)',
+                                color: 'var(--ink)',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
+                              }}
+                              onClick={() => handleGetDirections(t.pickup)}
+                            >
+                              <span>Directions</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="btn primary sm"
+                              style={{
+                                flex: 1.2,
+                                background: 'var(--solid)',
+                                color: 'var(--on-solid)',
+                                border: '1.5px solid var(--solid)',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
+                              }}
+                              onClick={() => handleArriveAtPickup(t)}
+                            >
+                              <span>Arrived at Pickup</span>
+                            </button>
                           </div>
                         )}
 

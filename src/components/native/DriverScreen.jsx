@@ -64,78 +64,14 @@ export default function DriverScreen({
   const [otpInput, setOtpInput] = useState('');
 
   /**
-   * Handle "Arrived at Pickup" tap with Geolocation & geolib getDistance validation
+   * Handle "Arrived at Pickup" tap - transitions directly to vehicle inspection & OTP entry phase
    */
   const handleArrivedAtPickup = useCallback(() => {
-    // Determine target pickup coordinates
-    const pCoords = trip?.pickupCoords || trip?.car?.pickupCoords;
-    const targetLat = pCoords?.latitude ?? pCoords?.lat;
-    const targetLng = pCoords?.longitude ?? pCoords?.lng;
-
-    if (targetLat === undefined || targetLng === undefined) {
-      // In case coordinates are missing from trip object, proceed or log
-      setRadiusError(null);
-      setPhase('inspection_and_otp');
-      if (onTransitionToInspectionAndOtp) {
-        onTransitionToInspectionAndOtp(trip);
-      }
-      return;
+    setRadiusError(null);
+    setPhase('inspection_and_otp');
+    if (onTransitionToInspectionAndOtp) {
+      onTransitionToInspectionAndOtp(trip);
     }
-
-    if (!Geolocation) {
-      // If Geolocation provider is unavailable, clear error and transition
-      setRadiusError(null);
-      setPhase('inspection_and_otp');
-      if (onTransitionToInspectionAndOtp) {
-        onTransitionToInspectionAndOtp(trip);
-      }
-      return;
-    }
-
-    setIsCheckingLocation(true);
-
-    Geolocation.getCurrentPosition(
-      (position) => {
-        setIsCheckingLocation(false);
-        const driverCoords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        };
-
-        const pickupCoords = {
-          latitude: Number(targetLat),
-          longitude: Number(targetLng)
-        };
-
-        // Compare driver coordinates to pickup location's lat/lng using getDistance
-        const distanceMeters = getDistance(driverCoords, pickupCoords);
-
-        if (distanceMeters > 1000) {
-          // Distance exceeds 1000 meters:
-          // Do not disable button or alter styling; render minimal inline error text
-          setRadiusError('You are not in the pickup location radius.');
-        } else {
-          // Within 1000 meters:
-          // Clear errors and transition to vehicle inspection and OTP entry phase
-          setRadiusError(null);
-          setPhase('inspection_and_otp');
-          if (onTransitionToInspectionAndOtp) {
-            onTransitionToInspectionAndOtp(trip);
-          }
-        }
-      },
-      (error) => {
-        setIsCheckingLocation(false);
-        console.warn('[DriverScreen] Geolocation error:', error);
-        // Do not block if GPS hardware times out, or show error notice
-        setRadiusError('Unable to verify location. Please check your GPS.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000
-      }
-    );
   }, [trip, onTransitionToInspectionAndOtp]);
 
   return (
@@ -193,24 +129,15 @@ export default function DriverScreen({
                 <Text style={styles.directionsButtonText}>Directions</Text>
               </TouchableOpacity>
 
-              {/* Arrived at Pickup Button: Unaltered styling & not disabled */}
+              {/* Arrived at Pickup Button */}
               <TouchableOpacity
                 style={styles.arrivedButton}
                 activeOpacity={0.8}
                 onPress={handleArrivedAtPickup}
               >
-                {isCheckingLocation ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.arrivedButtonText}>Arrived at Pickup</Text>
-                )}
+                <Text style={styles.arrivedButtonText}>Arrived at Pickup</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Minimal Inline Error Text rendered below the button */}
-            {radiusError ? (
-              <Text style={styles.inlineErrorText}>{radiusError}</Text>
-            ) : null}
           </View>
         )}
 

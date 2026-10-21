@@ -1832,13 +1832,131 @@ export async function geocodeAddress(addressText) {
 
 
 /**
+ * Official Google Maps Distance Matrix API Integration
+ * Fetches real-time driving distance and duration between pickup and destination.
+ * 
+ * @param {Object} params
+ * @param {string} params.origin - Origin address / place text
+ * @param {string} params.destination - Destination address / place text
+ * @param {{ lat: number, lng: number }} [params.originCoords] - Exact pickup coordinates
+ * @param {{ lat: number, lng: number }} [params.destCoords] - Exact destination coordinates
+ * @returns {Promise<{ distanceKm: number, distanceText: string, durationMins: number, durationText: string, etaText: string, source: string }>}
+ */
+export async function fetchGoogleDistanceMatrix({ origin, destination, originCoords, destCoords }) {
+  // 1. Google Maps JS SDK DistanceMatrixService
+  let googleMaps = typeof window !== 'undefined' ? window.google?.maps : null;
+  if (!googleMaps && typeof window !== 'undefined') {
+    try {
+      googleMaps = await initGoogleMapsPlacesSDK();
+    } catch (e) {
+      console.warn('[GoogleMaps] Error initializing Google Maps SDK for Distance Matrix:', e);
+    }
+  }
+
+  if (googleMaps?.DistanceMatrixService) {
+    try {
+      const service = new googleMaps.DistanceMatrixService();
+      const originItem = (originCoords?.lat && originCoords?.lng)
+        ? new googleMaps.LatLng(Number(originCoords.lat), Number(originCoords.lng))
+        : (origin || 'Kochi, Kerala');
+
+      const destItem = (destCoords?.lat && destCoords?.lng)
+        ? new googleMaps.LatLng(Number(destCoords.lat), Number(destCoords.lng))
+        : (destination || 'Ernakulam, Kerala');
+
+      const dmResponse = await new Promise((resolve, reject) => {
+        service.getDistanceMatrix(
+          {
+            origins: [originItem],
+            destinations: [destItem],
+            travelMode: googleMaps.TravelMode.DRIVING,
+            unitSystem: googleMaps.UnitSystem.METRIC,
+            avoidHighways: false,
+            avoidTolls: false
+          },
+          (result, status) => {
+            if (status === 'OK' && result?.rows?.[0]?.elements?.[0]) {
+              const element = result.rows[0].elements[0];
+              if (element.status === 'OK') {
+                resolve(element);
+                return;
+              }
+            }
+            reject(new Error(`Distance Matrix returned status: ${status}`));
+          }
+        );
+      });
+
+      if (dmResponse?.distance && dmResponse?.duration) {
+        const distMeters = dmResponse.distance.value || 0;
+        const durSecs = dmResponse.duration.value || 0;
+        const distanceKm = Number((distMeters / 1000).toFixed(1));
+        const durationMins = Math.max(1, Math.round(durSecs / 60));
+        const distanceText = dmResponse.distance.text || `${distanceKm} km`;
+        const durationText = dmResponse.duration.text || `${durationMins} mins`;
+        const arrival = new Date(Date.now() + durSecs * 1000);
+        const etaText = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        return {
+          distanceKm,
+          distanceText,
+          durationMins,
+          durationText,
+          etaText,
+          source: 'google_distance_matrix_api'
+        };
+      }
+    } catch (dmErr) {
+      console.warn('[GoogleMaps] DistanceMatrixService error, falling back to Routes API:', dmErr);
+    }
+  }
+
+  // 2. Google Cloud Routes API v2 / Road Directions as live road fallback
+  try {
+    const roadDir = await fetchGoogleRoadDirections({ origin, destination, originCoords, destCoords });
+    if (roadDir && roadDir.distanceKm) {
+      const durSecs = (roadDir.durationMins || 10) * 60;
+      const arrival = new Date(Date.now() + durSecs * 1000);
+      const etaText = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return {
+        distanceKm: roadDir.distanceKm,
+        distanceText: roadDir.distanceText || `${roadDir.distanceKm} km`,
+        durationMins: roadDir.durationMins,
+        durationText: roadDir.durationText || `${roadDir.durationMins} mins`,
+        etaText,
+        source: 'google_routes_matrix_api'
+      };
+    }
+  } catch (routeErr) {
+    console.warn('[GoogleMaps] Routes API fallback error:', routeErr);
+  }
+
+  throw new Error('Unable to fetch Distance Matrix from Google Maps');
+}
+
+/**
  * Real Google Maps Route & Distance/ETA Calculator
  * Integrates directly with official Google Maps DirectionsService and DistanceMatrixService.
  * When Live Google Maps SDK is loaded, queries real live traffic and routes.
  * Falls back to high-accuracy road telemetry when offline or in development mock mode.
  */
 export async function calculateTripRouteAndETA({ origin, destination, originCoords, destCoords }) {
-  // 1. Primary: Real Google Cloud Routes API v2 (official road calculation with user's Google API Key)
+  // 1. Primary: Google Maps Distance Matrix API / Routes API
+  try {
+    const matrixResult = await fetchGoogleDistanceMatrix({ origin, destination, originCoords, destCoords });
+    if (matrixResult && matrixResult.distanceKm) {
+      return {
+        ...matrixResult,
+        originCoords,
+        destCoords,
+        steps: []
+      };
+    }
+  } catch (matrixErr) {
+    console.warn('[GoogleMaps] Primary Distance Matrix error:', matrixErr);
+  }
+
+  // 2. Secondary: Real Google Cloud Routes API v2
   try {
     const roadDir = await fetchGoogleRoadDirections({ origin, destination, originCoords, destCoords });
     if (roadDir && roadDir.distanceKm) {

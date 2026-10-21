@@ -4,7 +4,7 @@ import Icon from './Icon';
 import MapPickerModal from './MapPickerModal';
 import { getDeviceLocation, getCachedDeviceLocation } from '../lib/deviceLocation';
 import { searchPlaces } from '../lib/locationService';
-import { searchGooglePlaces, calculateTripRouteAndETA, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement, cleanPlusCode, fetchNearestLandmarkByCoordinates, getPlaceDetailsOnMarkerPlaced } from '../services/googleMapsService';
+import { searchGooglePlaces, calculateTripRouteAndETA, fetchGoogleDistanceMatrix, geocodeAddress, fetchPlaceDetails, initGooglePlacesAutocomplete, formatDurationMeasurement, cleanPlusCode, fetchNearestLandmarkByCoordinates, getPlaceDetailsOnMarkerPlaced } from '../services/googleMapsService';
 import { openPhonePeCheckout } from '../utils/phonepe';
 import { POPULAR_DESTINATIONS } from '../data/popularDestinations';
 
@@ -228,6 +228,25 @@ export default function BookingSheet() {
     }
 
     const calculateRoute = async () => {
+      try {
+        // 1. Google Maps Distance Matrix API: Real-time driving distance and duration
+        const matrixRes = await fetchGoogleDistanceMatrix({
+          origin: pText,
+          destination: dText,
+          originCoords: pickupCoords,
+          destCoords: dropCoords
+        });
+        if (!isCancelled && matrixRes) {
+          setTripTelemetry({
+            ...matrixRes,
+            isCalculated: true
+          });
+          return;
+        }
+      } catch (matrixErr) {
+        console.warn('[BookingSheet] Distance Matrix API error, trying route calculation:', matrixErr);
+      }
+
       try {
         const res = await calculateTripRouteAndETA({
           origin: pText,
