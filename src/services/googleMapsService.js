@@ -11,7 +11,7 @@
  */
 
 // API Key from environment (.env)
-export const GOOGLE_MAPS_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_MAPS_API_KEY) || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
+export const GOOGLE_MAPS_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_MAPS_API_KEY) || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
 
 // Mock Mode Configuration
 // Set to true by default if no API key is configured or VITE_USE_MOCK_MAPS === 'true'
@@ -693,7 +693,7 @@ export function loadGoogleMapsSdk(apiKey = GOOGLE_MAPS_API_KEY) {
       return;
     }
 
-    const effectiveKey = apiKey || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
+    const effectiveKey = apiKey || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
     const script = document.createElement('script');
     script.id = 'ridingo-google-maps-script';
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(effectiveKey)}&libraries=places,geometry`;
@@ -2070,7 +2070,7 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
   dLng = dLng || 76.3120;
 
   // 2. Primary: Google Cloud Routes API v2 (official computeRoutes endpoint)
-  const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyC4h9iZeICidnBBQSiP0wCJo-TX_GxkxNM';
+  const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
   try {
     const routesRes = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
