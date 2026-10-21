@@ -67,7 +67,11 @@ function repackTarget(target) {
 
   const targetPublic = path.join(tempDir, 'Payload', 'App.app', 'public');
   if (fs.existsSync(targetPublic)) {
-    fs.rmSync(targetPublic, { recursive: true, force: true });
+    try {
+      fs.rmSync(targetPublic, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    } catch (e) {
+      console.warn('Warning removing targetPublic:', e.message);
+    }
   }
 
   console.log(`📋 Injecting latest 6-digit OTP code & UI into Payload/App.app/public...`);

@@ -948,9 +948,9 @@ body.standalone-app .nav {
   padding-top: 6px !important;
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   box-sizing: border-box !important;
-  background: #000000 !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.45) !important;
+  background: #FFFFFF !important;
+  border-top: 1px solid var(--line, #E5E5EA) !important;
+  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.06) !important;
   -webkit-backdrop-filter: blur(24px) !important;
   backdrop-filter: blur(24px) !important;
   transition: background .2s ease, border-color .2s ease, box-shadow .2s ease, transform 0.2s ease, opacity 0.2s ease;
@@ -996,9 +996,9 @@ body.standalone-app:has(.driver-modal-overlay) .nav {
   :root:not([data-theme="light"]) body.standalone-app .nav,
   html:not([data-theme="light"]) body.standalone-app .nav,
   body.standalone-app:not([data-theme="light"]) .nav {
-    background: #000000 !important;
-    border-top-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.45) !important;
+    background: #121214 !important;
+    border-top-color: #2C2C2E !important;
+    box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.4) !important;
   }
 }
 
@@ -1006,19 +1006,19 @@ body.standalone-app:has(.driver-modal-overlay) .nav {
 :root[data-theme="dark"] body.standalone-app .nav,
 html[data-theme="dark"] body.standalone-app .nav,
 body.standalone-app[data-theme="dark"] .nav {
-  background: #000000 !important;
-  border-top-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.45) !important;
+  background: #121214 !important;
+  border-top-color: #2C2C2E !important;
+  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* Explicit Light Theme on html or body (Navbar stays sleek black) */
+/* Explicit Light Theme on html or body */
 :root[data-theme="light"] body.standalone-app .nav,
 html[data-theme="light"] body.standalone-app .nav,
 body.standalone-app[data-theme="light"] .nav,
 body.standalone-driver[data-theme="light"] .nav {
-  background: #000000 !important;
-  border-top-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.45) !important;
+  background: #FFFFFF !important;
+  border-top-color: #E5E5EA !important;
+  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.06) !important;
 }
 
 #col-u:has(.ob-screen) #u-nav,
@@ -1038,14 +1038,14 @@ body.standalone-app .nv {
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: var(--muted, #68686E) !important;
   cursor: pointer !important;
   text-decoration: none !important;
   position: relative !important;
 }
 
 body.standalone-app .nv.on {
-  color: var(--yellow, #FFC70A) !important;
+  color: #0B0B0C !important;
 }
 
 body.standalone-app .nv .nv-i {
@@ -1062,7 +1062,7 @@ body.standalone-app .nv .nv-i svg {
 }
 
 body.standalone-app .nv.on .nv-i svg {
-  color: var(--yellow, #FFC70A) !important;
+  color: #0B0B0C !important;
 }
 
 body.standalone-app .nv .nv-l {
@@ -1073,7 +1073,21 @@ body.standalone-app .nv .nv-l {
 }
 
 body.standalone-app .nv.on .nv-l {
-  color: var(--yellow, #FFC70A) !important;
+  color: #0B0B0C !important;
+}
+
+:root[data-theme="dark"] body.standalone-app .nv,
+body.standalone-app[data-theme="dark"] .nv {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+:root[data-theme="dark"] body.standalone-app .nv.on,
+body.standalone-app[data-theme="dark"] .nv.on,
+:root[data-theme="dark"] body.standalone-app .nv.on .nv-i svg,
+body.standalone-app[data-theme="dark"] .nv.on .nv-i svg,
+:root[data-theme="dark"] body.standalone-app .nv.on .nv-l,
+body.standalone-app[data-theme="dark"] .nv.on .nv-l {
+  color: #FFFFFF !important;
 }
 
 /* 7. Modal Sheets and Toasts */
@@ -1171,11 +1185,18 @@ body.standalone-app .map-picker-foot {
   height: auto;
   padding: 9px 6px 26px;
   border-radius: 0;
-  background: #000000;
+  background: var(--card, #FFFFFF);
   -webkit-backdrop-filter: saturate(200%) blur(28px);
   backdrop-filter: saturate(200%) blur(28px);
-  box-shadow: 0 -.5px 0 rgba(255, 255, 255, 0.12);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 -.5px 0 var(--line-strong, #C7C7CC);
+  border-top: 1px solid var(--line, #E5E5EA);
+}
+
+[data-theme="dark"] .nav,
+:root[data-theme="dark"] .nav {
+  background: #121214 !important;
+  border-top-color: #2C2C2E !important;
+  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.4) !important;
 }
 
 .nv {
@@ -1188,7 +1209,7 @@ body.standalone-app .map-picker-foot {
   gap: 3px;
   font-size: 10.5px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--muted, #68686E);
   text-align: center;
   letter-spacing: .01em;
   transition: color .25s, transform .2s;
@@ -1200,11 +1221,11 @@ body.standalone-app .map-picker-foot {
 }
 
 .nv.on {
-  color: var(--yellow, #FFC70A) !important;
+  color: #0B0B0C !important;
 }
 
 .nv.on .nv-i svg {
-  color: var(--yellow, #FFC70A) !important;
+  color: #0B0B0C !important;
 }
 
 [data-theme="dark"] .nv.on,
@@ -1212,7 +1233,7 @@ body.standalone-app .map-picker-foot {
 #col-u[data-theme="dark"] .nv.on,
 #col-d[data-theme="dark"] .nv.on,
 body.standalone-app[data-theme="dark"] .nv.on {
-  color: var(--yellow, #FFC70A) !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .nv.on .nv-i svg,
@@ -1220,7 +1241,7 @@ body.standalone-app[data-theme="dark"] .nv.on {
 #col-u[data-theme="dark"] .nv.on .nv-i svg,
 #col-d[data-theme="dark"] .nv.on .nv-i svg,
 body.standalone-app[data-theme="dark"] .nv.on .nv-i svg {
-  color: var(--yellow, #FFC70A) !important;
+  color: #FFFFFF !important;
 }
 
 .nv.on::before,
