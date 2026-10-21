@@ -828,34 +828,6 @@ Please contact the passenger or emergency services (112) immediately!`;
                   <span>Emergency SOS</span>
                 </button>
               </div>
-
-              {/* Cancel Accepted Trip (Triggers cancellation policy popup with fine) */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (setTripToCancel) {
-                    setTripToCancel(trip);
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '8px 0 2px',
-                  background: 'none',
-                  border: 'none',
-                  color: '#EF4444',
-                  fontSize: '12.5px',
-                  fontWeight: 650,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Icon name="x" size={13} color="#EF4444" />
-                <span>Cancel Ride (Cancellation policy applies)</span>
-              </button>
             </div>
           ) : (
             /* ==========================================================
