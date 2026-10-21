@@ -131,7 +131,7 @@ export default function BookingSheet() {
   const [driverEarlyBuffer, setDriverEarlyBuffer] = useState('30m'); // '15m' | '30m' | '45m' | 'exact'
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmedTrip, setConfirmedTrip] = useState(null);
-  const [hasReviewedTerms, setHasReviewedTerms] = useState(false);
+  const [hasReviewedTerms, setHasReviewedTerms] = useState(true);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [isShakingTerms, setIsShakingTerms] = useState(false);
   const [shakingLocationField, setShakingLocationField] = useState(null); // 'pickup' | 'drop' | null
@@ -1722,63 +1722,41 @@ export default function BookingSheet() {
               </div>
             </div>
 
-            {/* Full-Width Policy Acknowledgement Button */}
-            <div style={{ marginBottom: '18px' }} ref={termsSectionRef} className={isShakingTerms ? 'shake-attention' : ''}>
-              {!hasReviewedTerms ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHasReviewedTerms(true);
-                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                      try { navigator.vibrate(15); } catch (_) {}
-                    }
-                    if (addToast) addToast('Policy acknowledged! Pay Now is unlocked.', 'check');
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '52px',
-                    borderRadius: '14px',
-                    background: isShakingTerms ? '#EA580C' : '#0F172A',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    fontWeight: 750,
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '9px',
-                    boxShadow: isShakingTerms
-                      ? '0 0 0 3px rgba(234, 88, 12, 0.35)'
-                      : '0 4px 16px rgba(15, 23, 42, 0.22)',
-                    transition: 'all 0.18s ease'
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <span>I Acknowledge Waiting & Route Policy</span>
-                </button>
-              ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    height: '44px',
-                    borderRadius: '12px',
-                    background: 'rgba(22, 163, 74, 0.08)',
-                    border: '1px solid rgba(22, 163, 74, 0.25)',
-                    fontSize: '13px',
-                    color: '#16A34A',
-                    fontWeight: 750
-                  }}
-                >
-                  <Icon name="check-circle" size={16} color="#16A34A" />
-                  <span>Waiting & Route Policy Acknowledged</span>
-                </div>
-              )}
+            {/* Payment & Conditions Acceptance Notification */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '11px 14px',
+                borderRadius: '14px',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                marginBottom: '18px'
+              }}
+            >
+              <div
+                style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  background: '#EEF2F6',
+                  color: '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </div>
+              <span style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4, fontWeight: 500 }}>
+                By completing the payment, you accept the waiting and additional trip terms &amp; conditions.
+              </span>
             </div>
 
               {/* Fare Invoice Breakdown Card */}
@@ -1916,31 +1894,27 @@ export default function BookingSheet() {
                   type="button"
                   className="btn primary"
                   id="bk-submit-btn"
-                  aria-disabled={!hasReviewedTerms || !pickup?.trim() || !drop?.trim()}
+                  aria-disabled={!pickup?.trim() || !drop?.trim()}
                   style={{
                     height: '48px',
                     borderRadius: '14px',
                     padding: '0 22px',
                     fontWeight: 800,
                     fontSize: '14.5px',
-                    cursor: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? 'pointer' : 'default',
-                    background: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? 'var(--solid, #000000)' : '#94A3B8',
+                    cursor: (pickup?.trim() && drop?.trim()) ? 'pointer' : 'default',
+                    background: (pickup?.trim() && drop?.trim()) ? 'var(--solid, #000000)' : '#94A3B8',
                     color: '#FFFFFF',
-                    border: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? '1.5px solid var(--solid, #000000)' : '1.5px solid #94A3B8',
-                    boxShadow: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? '0 4px 14px rgba(0, 0, 0, 0.22)' : 'none',
+                    border: (pickup?.trim() && drop?.trim()) ? '1.5px solid var(--solid, #000000)' : '1.5px solid #94A3B8',
+                    boxShadow: (pickup?.trim() && drop?.trim()) ? '0 4px 14px rgba(0, 0, 0, 0.22)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     whiteSpace: 'nowrap',
-                    opacity: (hasReviewedTerms && pickup?.trim() && drop?.trim()) ? 1 : 0.75,
+                    opacity: (pickup?.trim() && drop?.trim()) ? 1 : 0.75,
                     transition: 'all 0.2s ease'
                   }}
                   onClick={() => {
-                    if (!hasReviewedTerms) {
-                      triggerWaitingSectionShake();
-                      return;
-                    }
                     if (!pickup?.trim()) {
                       triggerLocationShake('pickup');
                       return;
@@ -1952,9 +1926,7 @@ export default function BookingSheet() {
                     handleSubmit();
                   }}
                   title={
-                    !hasReviewedTerms
-                      ? 'Please review the waiting charges before paying.'
-                      : !pickup?.trim()
+                    !pickup?.trim()
                       ? 'Please enter Pickup location (From) before paying.'
                       : !drop?.trim()
                       ? 'Please enter Destination location (To) before paying.'
