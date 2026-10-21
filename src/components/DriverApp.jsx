@@ -2902,35 +2902,32 @@ export default function DriverApp() {
                         </span>
                       </div>
 
-                      {/* Subtitle location badge */}
+                      {/* Subtitle location badge (clean without Pro Driver badge) */}
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '5px',
+                          gap: '4px',
                           fontSize: '12px',
                           color: 'var(--muted)',
                           fontWeight: 550,
                           marginTop: '3px'
                         }}
                       >
-                        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75, marginRight: '3px' }}>
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                            <circle cx="12" cy="10" r="3" />
-                          </svg>
-                          Kochi Central
-                        </span>
-                        <span style={{ opacity: 0.4 }}>•</span>
-                        <span style={{ color: 'var(--ink)', fontWeight: 650, fontSize: '11.5px' }}>Pro Driver</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <span>Kochi Central</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Right: Modern iOS Duty Status Toggle Button */}
-                  <button
-                    type="button"
+                  {/* Right: Modern iOS Duty Status Toggle Switch */}
+                  <div
                     id="driver-duty-toggle-btn"
+                    role="switch"
+                    aria-checked={driverOnline}
                     onClick={async () => {
                       const next = !driverOnline;
                       setDriverOnline(next);
@@ -2949,61 +2946,75 @@ export default function DriverApp() {
                       }
                     }}
                     style={{
-                      background: driverOnline ? '#ECFDF5' : 'var(--field)',
-                      color: driverOnline ? '#059669' : 'var(--muted)',
-                      border: driverOnline ? '1.5px solid #A7F3D0' : '1.5px solid var(--line-strong)',
-                      fontSize: '12.5px',
-                      fontWeight: 750,
-                      letterSpacing: '-0.01em',
-                      padding: '7px 15px',
-                      borderRadius: '999px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
+                      gap: '9px',
                       cursor: 'pointer',
-                      boxShadow: driverOnline
-                        ? '0 3px 12px rgba(16, 185, 129, 0.2)'
-                        : '0 1px 3px rgba(0, 0, 0, 0.04)',
-                      transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
                       userSelect: 'none',
-                      flexShrink: 0
+                      WebkitTapHighlightColor: 'transparent',
+                      padding: '4px 6px',
+                      borderRadius: '999px',
+                      transition: 'opacity 0.15s ease'
                     }}
                     title={driverOnline ? 'Tap to Go Offline' : 'Tap to Go Online'}
                   >
                     <span
                       style={{
-                        position: 'relative',
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        color: driverOnline ? '#10B981' : 'var(--muted)',
+                        letterSpacing: '-0.01em',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '8px',
-                        height: '8px'
+                        gap: '5px'
                       }}
                     >
                       {driverOnline && (
                         <span
                           style={{
-                            position: 'absolute',
-                            width: '100%',
-                            height: '100%',
+                            width: '6px',
+                            height: '6px',
                             borderRadius: '50%',
                             background: '#10B981',
-                            animation: 'pulse-dot 1.8s infinite',
-                            opacity: 0.6
+                            boxShadow: '0 0 0 2.5px rgba(16, 185, 129, 0.25)',
+                            animation: 'pulse 1.4s infinite'
                           }}
                         />
                       )}
-                      <span
+                      {driverOnline ? 'Online' : 'Offline'}
+                    </span>
+
+                    {/* iOS Style Toggle Switch Track & Thumb */}
+                    <div
+                      style={{
+                        width: '46px',
+                        height: '26px',
+                        borderRadius: '999px',
+                        background: driverOnline ? '#10B981' : 'var(--bar, #D1D5DB)',
+                        boxShadow: driverOnline
+                          ? '0 2px 10px rgba(16, 185, 129, 0.38)'
+                          : 'none',
+                        position: 'relative',
+                        transition: 'background 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease',
+                        flexShrink: 0
+                      }}
+                    >
+                      <div
                         style={{
-                          width: '7px',
-                          height: '7px',
+                          position: 'absolute',
+                          top: '2px',
+                          left: '2px',
+                          width: '22px',
+                          height: '22px',
                           borderRadius: '50%',
-                          background: driverOnline ? '#10B981' : '#94A3B8'
+                          background: '#FFFFFF',
+                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
+                          transform: driverOnline ? 'translateX(20px)' : 'translateX(0px)',
+                          transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
                         }}
                       />
-                    </span>
-                    <span>{driverOnline ? 'Online' : 'Offline'}</span>
-                  </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Subtle Refined Hairline Divider */}
