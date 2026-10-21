@@ -1017,340 +1017,263 @@ export default function BookingSheet() {
               </div>
             )}
 
-            {/* Pickup Location with 1-tap Current Location */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', marginBottom: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label className="lab" htmlFor="bk-pickup" style={{ margin: 0 }}>
-                  Pickup location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
-                </label>
+            {/* Unified Route Box (Pickup & Destination with Left Timeline) */}
+            <div className="bk-route-card">
+              <div className="bk-route-timeline">
+                <div className="bk-timeline-dot pickup">
+                  <div className="bk-timeline-dot-inner" />
+                </div>
+                <div className="bk-timeline-dashed-line" />
+                <div className="bk-timeline-dot dest" />
               </div>
-              <button
-                type="button"
-                onClick={handleUseCurrentLocation}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--ink)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: 0
-                }}
-              >
-                <Icon name="crosshair" size={13} />
-                <span>{isDetectingCurrent ? 'Locating...' : 'Use current location'}</span>
-              </button>
-            </div>
-            <div className={`loc-input-wrap ${shakingLocationField === 'pickup' ? 'shake-attention' : ''}`} style={{ position: 'relative', zIndex: activeSuggestField === 'pickup' ? 9999 : 2 }}>
-              <input
-                ref={pickupInputRef}
-                className="inp"
-                id="bk-pickup"
-                placeholder="Where should the driver meet you?"
-                value={pickup}
-                onChange={e => handlePickupChange(e.target.value)}
-                autoComplete="off"
-              />
-              <button
-                className="loc-map-btn"
-                type="button"
-                title="Choose on map"
-                onClick={() => {
-                  setActiveSuggestField(null);
-                  openMap('pickup');
-                }}
-              >
-                <Icon name="pin" size={16} />
-              </button>
 
-              {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'pickup' && Boolean(pickup?.trim()?.length >= 1) && pickupSuggestions.length > 0 && (
-                <div className="location-suggest-dropdown" style={{ zIndex: 9999, maxHeight: '280px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                  {pickupSuggestions.map((item, idx) => (
+              <div className="bk-route-fields">
+                {/* Pickup Section */}
+                <div className={`bk-route-section ${shakingLocationField === 'pickup' ? 'shake-attention' : ''}`} style={{ zIndex: activeSuggestField === 'pickup' ? 9999 : 2 }}>
+                  <div className="bk-route-header">
+                    <label className="bk-route-label" htmlFor="bk-pickup">
+                      Pickup location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
+                    </label>
                     <button
-                      key={idx}
                       type="button"
-                      className="loc-suggest-item"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSelectPickupPlace(item)}
+                      className="bk-route-action-btn"
+                      onClick={handleUseCurrentLocation}
+                      title="Use current location"
                     >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="#70757a"
-                        style={{ flexShrink: 0, marginTop: '2px' }}
-                        aria-hidden="true"
-                      >
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                      </svg>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {highlightMatchGoogleStock(item.title, pickup)}
-                        </div>
-                        {item.sub && (
-                          <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                            {item.sub}
-                          </div>
-                        )}
-                      </div>
+                      <Icon name="crosshair" size={12} />
+                      <span>{isDetectingCurrent ? 'Locating...' : 'Use current location'}</span>
                     </button>
-                  ))}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
-                    <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
-                    <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
-                      <span style={{ color: '#4285F4' }}>G</span>
-                      <span style={{ color: '#EA4335' }}>o</span>
-                      <span style={{ color: '#FBBC05' }}>o</span>
-                      <span style={{ color: '#4285F4' }}>g</span>
-                      <span style={{ color: '#34A853' }}>l</span>
-                      <span style={{ color: '#EA4335' }}>e</span>
-                    </span>
+                  </div>
+
+                  <div className="bk-route-input-wrap">
+                    <input
+                      ref={pickupInputRef}
+                      id="bk-pickup"
+                      className="bk-route-input"
+                      placeholder="Where should the driver meet you?"
+                      value={pickup}
+                      onChange={e => handlePickupChange(e.target.value)}
+                      autoComplete="off"
+                    />
+
+                    {/* Google Maps Stock Location Suggestions Dropdown */}
+                    {activeSuggestField === 'pickup' && Boolean(pickup?.trim()?.length >= 1) && pickupSuggestions.length > 0 && (
+                      <div className="location-suggest-dropdown" style={{ zIndex: 99999, maxHeight: '280px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        {pickupSuggestions.map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            className="loc-suggest-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleSelectPickupPlace(item)}
+                          >
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="#70757a"
+                              style={{ flexShrink: 0, marginTop: '2px' }}
+                              aria-hidden="true"
+                            >
+                              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                            </svg>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {highlightMatchGoogleStock(item.title, pickup)}
+                              </div>
+                              {item.sub && (
+                                <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                                  {item.sub}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
+                          <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
+                          <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
+                            <span style={{ color: '#4285F4' }}>G</span>
+                            <span style={{ color: '#EA4335' }}>o</span>
+                            <span style={{ color: '#FBBC05' }}>o</span>
+                            <span style={{ color: '#4285F4' }}>g</span>
+                            <span style={{ color: '#34A853' }}>l</span>
+                            <span style={{ color: '#EA4335' }}>e</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Destination Location */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label className="lab" htmlFor="bk-drop" style={{ margin: 0 }}>
-                  Destination location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
-                </label>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSuggestField(null);
-                  openMap('drop');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--ink)',
-                  opacity: 0.9,
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: 0
-                }}
-              >
-                <Icon name="pin" size={13} />
-                <span>Choose on map</span>
-              </button>
-            </div>
-            <div className={`loc-input-wrap ${shakingLocationField === 'drop' ? 'shake-attention' : ''}`} style={{ position: 'relative', zIndex: activeSuggestField === 'drop' ? 9999 : 1 }}>
-              <input
-                ref={dropInputRef}
-                className="inp"
-                id="bk-drop"
-                placeholder="Where are you heading to?"
-                value={drop}
-                onChange={e => handleDropChange(e.target.value)}
-                autoComplete="off"
-              />
-              <button
-                className="loc-map-btn"
-                type="button"
-                title="Choose on map"
-                onClick={() => {
-                  setActiveSuggestField(null);
-                  openMap('drop');
-                }}
-              >
-                <Icon name="pin" size={16} />
-              </button>
+                {/* Divider Line */}
+                <div className="bk-route-divider" />
 
-              {/* Google Maps Stock Location Suggestions Dropdown */}
-              {activeSuggestField === 'drop' && Boolean(drop?.trim()?.length >= 1) && dropSuggestions.length > 0 && (
-                <div className="location-suggest-dropdown" style={{ zIndex: 9999, maxHeight: '280px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                  {dropSuggestions.map((item, idx) => (
+                {/* Destination Section */}
+                <div className={`bk-route-section ${shakingLocationField === 'drop' ? 'shake-attention' : ''}`} style={{ zIndex: activeSuggestField === 'drop' ? 9999 : 1 }}>
+                  <div className="bk-route-header">
+                    <label className="bk-route-label" htmlFor="bk-drop">
+                      Destination location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
+                    </label>
                     <button
-                      key={idx}
                       type="button"
-                      className="loc-suggest-item"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSelectDropPlace(item)}
+                      className="bk-route-action-btn"
+                      onClick={() => {
+                        setActiveSuggestField(null);
+                        openMap('drop');
+                      }}
+                      title="Choose on map"
                     >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="#70757a"
-                        style={{ flexShrink: 0, marginTop: '2px' }}
-                        aria-hidden="true"
-                      >
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                      </svg>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {highlightMatchGoogleStock(item.title, drop)}
-                        </div>
-                        {item.sub && (
-                          <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                            {item.sub}
-                          </div>
-                        )}
-                      </div>
+                      <Icon name="pin" size={12} />
+                      <span>Choose on map</span>
                     </button>
-                  ))}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
-                    <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
-                    <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
-                      <span style={{ color: '#4285F4' }}>G</span>
-                      <span style={{ color: '#EA4335' }}>o</span>
-                      <span style={{ color: '#FBBC05' }}>o</span>
-                      <span style={{ color: '#4285F4' }}>g</span>
-                      <span style={{ color: '#34A853' }}>l</span>
-                      <span style={{ color: '#EA4335' }}>e</span>
-                    </span>
+                  </div>
+
+                  <div className="bk-route-input-wrap">
+                    <input
+                      ref={dropInputRef}
+                      id="bk-drop"
+                      className="bk-route-input"
+                      placeholder="Where are you heading to?"
+                      value={drop}
+                      onChange={e => handleDropChange(e.target.value)}
+                      autoComplete="off"
+                    />
+
+                    {/* Google Maps Stock Location Suggestions Dropdown */}
+                    {activeSuggestField === 'drop' && Boolean(drop?.trim()?.length >= 1) && dropSuggestions.length > 0 && (
+                      <div className="location-suggest-dropdown" style={{ zIndex: 99999, maxHeight: '280px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        {dropSuggestions.map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            className="loc-suggest-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleSelectDropPlace(item)}
+                          >
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="#70757a"
+                              style={{ flexShrink: 0, marginTop: '2px' }}
+                              aria-hidden="true"
+                            >
+                              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                            </svg>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '14px', color: 'var(--ink, #202124)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {highlightMatchGoogleStock(item.title, drop)}
+                              </div>
+                              {item.sub && (
+                                <div style={{ fontSize: '12px', color: '#70757a', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                                  {item.sub}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '6px 14px', borderTop: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
+                          <span style={{ fontSize: '11px', color: '#70757a', fontWeight: 400, marginRight: '4px' }}>powered by</span>
+                          <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '-0.3px', fontFamily: "Roboto, 'Product Sans', sans-serif" }}>
+                            <span style={{ color: '#4285F4' }}>G</span>
+                            <span style={{ color: '#EA4335' }}>o</span>
+                            <span style={{ color: '#FBBC05' }}>o</span>
+                            <span style={{ color: '#4285F4' }}>g</span>
+                            <span style={{ color: '#34A853' }}>l</span>
+                            <span style={{ color: '#EA4335' }}>e</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-
-
-            {/* Total Distance & ETA Minimal Stat Bar */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto 1fr',
-                alignItems: 'center',
-                background: 'var(--field)',
-                borderRadius: '12px',
-                padding: '10px 18px',
-                marginTop: '12px',
-                marginBottom: '10px',
-                border: '1px solid var(--line)'
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    fontSize: '10.5px',
-                    fontWeight: 650,
-                    color: 'var(--muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    display: 'block',
-                    marginBottom: '2px'
-                  }}
-                >
-                  Total Distance
-                </span>
-                <span
-                  style={{
-                    fontSize: '15px',
-                    fontWeight: 700,
-                    color: tripTelemetry.isCalculated && tripTelemetry.distanceText ? 'var(--ink)' : 'var(--muted)',
-                    letterSpacing: '-0.02em',
-                    display: 'block'
-                  }}
-                >
-                  {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
-                </span>
-              </div>
-
-              <div style={{ width: '1px', height: '26px', background: 'var(--line)', margin: '0 8px' }} />
-
-              <div style={{ textAlign: 'right' }}>
-                <span
-                  style={{
-                    fontSize: '10.5px',
-                    fontWeight: 650,
-                    color: 'var(--muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    display: 'block',
-                    marginBottom: '2px'
-                  }}
-                >
-                  ETA
-                </span>
-                <span
-                  style={{
-                    fontSize: '15px',
-                    fontWeight: 700,
-                    color: tripTelemetry.isCalculated ? 'var(--ink)' : 'var(--muted)',
-                    letterSpacing: '-0.02em',
-                    display: 'block'
-                  }}
-                >
-                  {tripTelemetry.isCalculated && tripTelemetry.durationMins
-                    ? formatDurationMeasurement(tripTelemetry.durationMins)
-                    : (tripTelemetry.durationText && tripTelemetry.durationText !== '--'
-                        ? tripTelemetry.durationText.replace(/^~\s*/, '')
-                        : '--')}
-                </span>
               </div>
             </div>
 
-            {/* Hours Stepper (Only for hourly/daily/event) */}
+            {/* Total Distance & ETA Telemetry Stat Bar */}
+            <div className="bk-telemetry-bar">
+              <div className="bk-telemetry-col">
+                <div className="bk-telemetry-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19 8 5" />
+                    <path d="M20 19 16 5" />
+                    <line x1="12" y1="7" x2="12" y2="9" />
+                    <line x1="12" y1="13" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="bk-telemetry-label">Total distance</span>
+                  <span className="bk-telemetry-val">
+                    {tripTelemetry.isCalculated && tripTelemetry.distanceText ? tripTelemetry.distanceText : '--'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bk-telemetry-divider" />
+
+              <div className="bk-telemetry-col">
+                <div className="bk-telemetry-icon">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="bk-telemetry-label">ETA</span>
+                  <span className="bk-telemetry-val">
+                    {tripTelemetry.isCalculated && tripTelemetry.durationMins
+                      ? formatDurationMeasurement(tripTelemetry.durationMins)
+                      : (tripTelemetry.durationText && tripTelemetry.durationText !== '--'
+                          ? tripTelemetry.durationText.replace(/^~\s*/, '')
+                          : '--')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Hours Stepper (Only for hourly/daily/outstation/event) */}
             {!isFlat && (
-              <>
-                <div className="lab" style={{ marginTop: '10px' }}>
-                  {currentCat.units === 'hours' ? 'Hours' : 'Days'}
+              <div className="bk-hours-wrap">
+                <div className="bk-hours-header">
+                  <h4 className="bk-hours-title">
+                    {currentCat.units === 'hours' ? 'Hours' : 'Days'}
+                  </h4>
+                  <span className="bk-hours-subtitle">Select driver duration</span>
                 </div>
-                <div className="stepper">
+                <div className="bk-hours-stepper">
                   <button
                     type="button"
+                    className="bk-stepper-btn minus"
                     onClick={() => handleQtyChange(-1)}
                     disabled={qty <= (currentCat.min || 1)}
                     aria-label="Less"
-                    style={{
-                      background: 'var(--field)',
-                      color: 'var(--ink)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '10px',
-                      cursor: qty <= (currentCat.min || 1) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-                      opacity: qty <= (currentCat.min || 1) ? 0.4 : 1,
-                      display: 'grid',
-                      placeItems: 'center'
-                    }}
                   >
-                    <Icon name="minus" size={18} />
+                    <Icon name="minus" size={16} />
                   </button>
-                  <b style={{ color: 'var(--ink)' }}>
+                  <span className="bk-stepper-val">
                     {qty} {qty === 1 ? currentCat.unit : currentCat.units}
-                  </b>
+                  </span>
                   <button
                     type="button"
+                    className="bk-stepper-btn plus"
                     onClick={() => handleQtyChange(1)}
                     disabled={qty >= (currentCat.max || 12)}
                     aria-label="More"
-                    style={{
-                      background: 'var(--field)',
-                      color: 'var(--ink)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '10px',
-                      cursor: qty >= (currentCat.max || 12) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-                      opacity: qty >= (currentCat.max || 12) ? 0.4 : 1,
-                      display: 'grid',
-                      placeItems: 'center'
-                    }}
                   >
-                    <Icon name="plus" size={18} />
+                    <Icon name="plus" size={16} />
                   </button>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Date and time */}
-            <div style={{ marginBottom: '18px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)', margin: 0 }}>
-                  Pickup date & time
+                <label style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink, #0F172A)', margin: 0 }}>
+                  Pickup date &amp; time
                 </label>
-                <span style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: 800 }}>
-                  {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dateStr} - {timeStr}
+                <span style={{ fontSize: '12.5px', color: 'var(--ink, #0F172A)', fontWeight: 700 }}>
+                  {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dateStr}, {timeStr}
                 </span>
               </div>
 
@@ -1363,8 +1286,9 @@ export default function BookingSheet() {
                   overflowX: 'auto',
                   scrollbarWidth: 'none',
                   WebkitOverflowScrolling: 'touch',
-                  marginBottom: '12px',
-                  width: '100%'
+                  marginBottom: '10px',
+                  width: '100%',
+                  paddingBottom: '2px'
                 }}
               >
                 <button
@@ -1394,13 +1318,6 @@ export default function BookingSheet() {
                   onClick={() => addMinutesToTime(30)}
                 >
                   +30m
-                </button>
-                <button
-                  type="button"
-                  className="bk-preset-btn"
-                  onClick={() => addMinutesToTime(60)}
-                >
-                  +1h
                 </button>
               </div>
 
@@ -1511,16 +1428,51 @@ export default function BookingSheet() {
                 Vehicle gearbox
               </label>
               <div className="bk-gearbox-wrap">
-                {['Manual', 'Automatic', 'IMT'].map(x => {
-                  const isActive = trans === x;
+                {[
+                  {
+                    id: 'Manual',
+                    label: 'Manual',
+                    icon: (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 5v14" />
+                        <path d="M12 5v14" />
+                        <path d="M18 5v14" />
+                        <path d="M6 12h12" />
+                      </svg>
+                    )
+                  },
+                  {
+                    id: 'Automatic',
+                    label: 'Automatic',
+                    icon: (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="m8 16 4-8 4 8" />
+                        <path d="M9.5 13h5" />
+                      </svg>
+                    )
+                  },
+                  {
+                    id: 'IMT',
+                    label: 'IMT',
+                    icon: (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                    )
+                  }
+                ].map(item => {
+                  const isActive = trans === item.id;
                   return (
                     <button
-                      key={x}
+                      key={item.id}
                       type="button"
-                      onClick={() => setTrans(x)}
+                      onClick={() => setTrans(item.id)}
                       className={`bk-gearbox-btn ${isActive ? 'active' : ''}`}
                     >
-                      {x}
+                      {item.icon}
+                      <span>{item.label}</span>
                     </button>
                   );
                 })}
@@ -1529,6 +1481,10 @@ export default function BookingSheet() {
 
               {/* Fare Invoice Breakdown Card */}
               <div className="bk-fare-card">
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--ink, #0F172A)' }}>
+                  Fare Details
+                </h4>
+
                 {/* Driver Trip Fare */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
@@ -1551,7 +1507,7 @@ export default function BookingSheet() {
                       Platform fee
                     </span>
                     <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
-                      App service & 24/7 matching
+                      App service &amp; 24/7 matching
                     </span>
                   </div>
                   <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
@@ -1563,10 +1519,10 @@ export default function BookingSheet() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <span style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 600 }}>
-                      Safety & dispatch fee
+                      Safety &amp; dispatch fee
                     </span>
                     <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
-                      Ride safety & operational dispatch
+                      Ride safety &amp; operational dispatch
                     </span>
                   </div>
                   <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #0F172A)', fontFamily: 'var(--font-mono, monospace)' }}>
@@ -1580,14 +1536,14 @@ export default function BookingSheet() {
                 {/* Total Fare */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink, #000000)' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink, #000000)' }}>
                       Total Trip Fare
                     </span>
                     <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #64748B)', marginTop: '1px' }}>
                       Driver gets ₹{remaining} after trip
                     </span>
                   </div>
-                  <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink, #000000)', fontFamily: 'var(--font-mono, monospace)' }}>
+                  <span style={{ fontSize: '18px', fontWeight: 850, color: 'var(--ink, #000000)', fontFamily: 'var(--font-mono, monospace)' }}>
                     ₹{fare}
                   </span>
                 </div>
@@ -1687,61 +1643,51 @@ export default function BookingSheet() {
 
             </div>
 
-            {/* Sticky Bottom Action Footer (Always visible & accessible) */}
-            <div
-              className="sheet-sticky-foot"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px'
-              }}
-            >
-              {/* Left Side: Now paying amount (prominent and big) + Total fare */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'var(--muted, #64748B)',
-                    display: 'block'
-                  }}
-                >
-                  Pay now (30%)
-                </span>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '1px' }}>
-                  <span
-                    style={{
-                      fontSize: '26px',
-                      fontWeight: 900,
-                      color: 'var(--ink, #000000)',
-                      letterSpacing: '-0.03em',
-                      fontFamily: 'var(--font-mono, monospace)',
-                      lineHeight: 1
-                    }}
-                  >
+            {/* Sticky Floating Bottom Action Bar */}
+            <div className="sheet-sticky-foot bk-footer-floating-wrap">
+              <div className="bk-floating-bar">
+                {/* Left Side: Pay Now (30%) + Amount */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', letterSpacing: '0.02em', lineHeight: 1.1 }}>
+                    Pay Now (30%)
+                  </span>
+                  <span style={{ fontSize: '24px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: '2px', fontFamily: 'var(--font-mono, monospace)' }}>
                     ₹{adv}
                   </span>
                 </div>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    color: 'var(--muted, #64748B)',
-                    fontWeight: 600,
-                    marginTop: '3px'
-                  }}
-                >
-                  Total: <b style={{ color: 'var(--ink, #000000)', fontWeight: 750 }}>₹{fare}</b>
-                </span>
-              </div>
 
-              {/* Right Side: Action Button */}
-              <div style={{ marginLeft: 'auto' }}>
+                {/* Vertical Divider */}
+                <div style={{ width: '1px', height: '32px', background: 'rgba(255, 255, 255, 0.18)', margin: '0 8px' }} />
+
+                {/* Middle: Total + Amount + Info */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', letterSpacing: '0.02em', lineHeight: 1.1 }}>
+                    Total
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: '#FFFFFF', fontFamily: 'var(--font-mono, monospace)' }}>
+                      ₹{fare}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255, 255, 255, 0.65)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      aria-label="View Terms"
+                      title="View Terms & Policy"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Side: White Pay Now Pill Button */}
                 <button
                   type="button"
-                  className={`bk-submit-btn ${(!pickup?.trim() || !drop?.trim()) ? 'disabled' : ''}`}
+                  className={`bk-floating-pay-btn ${(!pickup?.trim() || !drop?.trim()) ? 'disabled' : ''}`}
                   id="bk-submit-btn"
                   disabled={!pickup?.trim() || !drop?.trim()}
                   aria-disabled={!pickup?.trim() || !drop?.trim()}
@@ -1765,7 +1711,10 @@ export default function BookingSheet() {
                   }
                 >
                   <span>Pay Now</span>
-                  <Icon name="chevron-right" size={16} />
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
                 </button>
               </div>
             </div>
