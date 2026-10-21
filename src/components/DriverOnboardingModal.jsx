@@ -602,6 +602,7 @@ export default function DriverOnboardingModal() {
             height={isKeyboardVisible && step === 'otp' ? 34 : 44}
             width={isKeyboardVisible && step === 'otp' ? 136 : 176}
             center={true}
+            isDriver={true}
             style={{
               margin: isKeyboardVisible && step === 'otp' ? '0 auto 8px auto' : '0 auto 12px auto',
               display: 'flex',

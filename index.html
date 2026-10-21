@@ -103,20 +103,45 @@
       }
 
       /* Light mode: Black logo */
-      .app-splash-overlay .splash-logo-light {
+      .app-splash-logo.splash-driver {
+        display: none !important;
+      }
+      .app-splash-overlay .splash-logo-light.splash-user {
         display: block;
       }
 
       /* Dark mode: White logo */
-      [data-theme="dark"] .app-splash-overlay .splash-logo-light,
-      html[data-theme="dark"] .app-splash-overlay .splash-logo-light,
-      body[data-theme="dark"] .app-splash-overlay .splash-logo-light {
+      [data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user,
+      html[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user,
+      body[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-user {
         display: none !important;
       }
 
-      [data-theme="dark"] .app-splash-overlay .splash-logo-dark,
-      html[data-theme="dark"] .app-splash-overlay .splash-logo-dark,
-      body[data-theme="dark"] .app-splash-overlay .splash-logo-dark {
+      [data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
+      html[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user,
+      body[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-user {
+        display: block !important;
+      }
+
+      /* Driver App Splash Rules */
+      .standalone-driver .app-splash-logo.splash-user,
+      html.standalone-driver .app-splash-logo.splash-user,
+      body.standalone-driver .app-splash-logo.splash-user {
+        display: none !important;
+      }
+      .standalone-driver .app-splash-overlay .splash-logo-light.splash-driver,
+      html.standalone-driver .app-splash-overlay .splash-logo-light.splash-driver,
+      body.standalone-driver .app-splash-overlay .splash-logo-light.splash-driver {
+        display: block !important;
+      }
+      .standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-driver,
+      html.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-driver,
+      body.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-light.splash-driver {
+        display: none !important;
+      }
+      .standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-driver,
+      html.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-driver,
+      body.standalone-driver[data-theme="dark"] .app-splash-overlay .splash-logo-dark.splash-driver {
         display: block !important;
       }
 
@@ -184,8 +209,12 @@
     <!-- App Refresh Premium Splash Screen -->
     <div id="app-splash-screen" class="app-splash-overlay" aria-hidden="true">
       <div class="app-splash-content">
-        <img class="app-splash-logo splash-logo-dark" src="/Ridingo White.png" alt="Ridingo" />
-        <img class="app-splash-logo splash-logo-light" src="/Ridingo Black.png" alt="Ridingo" />
+        <!-- User App Logos -->
+        <img class="app-splash-logo splash-logo-dark splash-user" src="/Ridingo White.png" alt="Ridingo" />
+        <img class="app-splash-logo splash-logo-light splash-user" src="/Ridingo Black.png" alt="Ridingo" />
+        <!-- Driver App Logos -->
+        <img class="app-splash-logo splash-logo-dark splash-driver" src="/Drivers/Logo Drivers-01.png" alt="Ridingo Driver" />
+        <img class="app-splash-logo splash-logo-light splash-driver" src="/Drivers/Logo Drivers-02.png" alt="Ridingo Driver" />
 
         <div class="app-splash-loader-track">
           <div class="app-splash-loader-fill"></div>

@@ -139,6 +139,16 @@ function compileStandaloneHtml(appType, appName) {
 `;
   html = html.replace('</head>', `${headInjection}\n</head>`);
 
+  // If driver app, replace user logos and icons with driver logos and icons
+  if (!isUser) {
+    html = html.replace(/href="\/App icon\.png"/g, 'href="/Drivers/Drivers App icon.png"');
+    html = html.replace(/href="\.\/App icon\.png"/g, 'href="./Drivers/Drivers App icon.png"');
+    html = html.replace(/src="\/Ridingo White\.png"/g, 'src="/Drivers/Logo Drivers-01.png"');
+    html = html.replace(/src="\/Ridingo Black\.png"/g, 'src="/Drivers/Logo Drivers-02.png"');
+    html = html.replace(/src="\.\/Ridingo White\.png"/g, 'src="./Drivers/Logo Drivers-01.png"');
+    html = html.replace(/src="\.\/Ridingo Black\.png"/g, 'src="./Drivers/Logo Drivers-02.png"');
+  }
+
   // Pre-apply standalone class to html and body tags
   html = html.replace(/<html([^>]*)>/i, `<html$1 class="standalone-app standalone-${appType}">`);
   html = html.replace(/<body([^>]*)>/i, `<body$1 class="standalone-app standalone-${appType}">`);
@@ -155,7 +165,14 @@ targets.forEach(t => {
     display: 'standalone',
     background_color: t.type === 'user' ? '#FFFFFF' : '#0B0B0C',
     theme_color: t.type === 'user' ? '#FFC70A' : '#0B0B0C',
-    orientation: 'portrait'
+    orientation: 'portrait',
+    icons: t.type === 'driver' ? [
+      { src: './Drivers/Drivers App icon.png', sizes: '512x512', type: 'image/png' },
+      { src: './Drivers/app-icon-192.png', sizes: '192x192', type: 'image/png' }
+    ] : [
+      { src: './app-icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: './app-icon-192.png', sizes: '192x192', type: 'image/png' }
+    ]
   };
 
   t.distDirs.forEach(dir => {

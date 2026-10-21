@@ -5338,6 +5338,7 @@ export default function DriverApp() {
                 height={20}
                 width={80}
                 center
+                isDriver={true}
                 style={{ opacity: 0.8, marginBottom: '8px' }}
               />
 
