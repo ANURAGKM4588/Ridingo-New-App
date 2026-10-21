@@ -120,7 +120,16 @@ function MainApp() {
         });
       }
     } catch (e) {}
-  }, []);
+
+    try {
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('track') === 'true') {
+          setLiveTrackingOpen(true);
+        }
+      }
+    } catch (e) {}
+  }, [setLiveTrackingOpen]);
 
   React.useEffect(() => {
     // Graceful fade-out of the App Refresh Splash Screen

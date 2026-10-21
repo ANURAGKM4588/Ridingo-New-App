@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import Icon from './Icon';
 import {
   loadGoogleMapsSdk,
   GOOGLE_MAPS_DARK_STYLE,
@@ -7,59 +6,12 @@ import {
   decodeGooglePolyline
 } from '../services/googleMapsService';
 
-// Authentic Google Maps Live Tracking Component - Pure Google Cloud Routes API v2
-
-function ManeuverDirectionIcon({ maneuver = 'STRAIGHT', size = 20, color = '#FFFFFF' }) {
-  const m = String(maneuver || '').toUpperCase();
-  if (m.includes('LEFT')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18l-5-5 5-5" />
-        <path d="M4 13h11a5 5 0 0 0 5-5V4" />
-      </svg>
-    );
-  }
-  if (m.includes('RIGHT')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M15 18l5-5-5-5" />
-        <path d="M20 13H9a5 5 0 0 1-5-5V4" />
-      </svg>
-    );
-  }
-  if (m.includes('UTURN')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 10l-4 4 4 4" />
-        <path d="M5 14h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5H8" />
-      </svg>
-    );
-  }
-  if (m.includes('ROUNDABOUT')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="4" />
-        <path d="M16 8l3-3-3-3" />
-        <path d="M19 5a9 9 0 0 0-14 7" />
-      </svg>
-    );
-  }
-  if (m.includes('MERGE') || m.includes('FORK')) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3v18" />
-        <path d="M18 9l-6-6-6 6" />
-      </svg>
-    );
-  }
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 19V5" />
-      <path d="M5 12l7-7 7 7" />
-    </svg>
-  );
-}
-
+/**
+ * Authentic Google Maps Live Tracking Component
+ * - Driver Accepted -> Arrived: Route is Driver Live Device GPS -> Pickup Location
+ * - Trip In-Progress (after car inspection): Route is Pickup Location -> Destination Location
+ * - Clean UI: No black box, no text overlays, no buttons, no Google logos/bottom texts, no polyline arrows.
+ */
 export default function GraphicLiveMap({
   trip,
   isModal = false,
@@ -70,14 +22,16 @@ export default function GraphicLiveMap({
   const containerRef = useRef(null);
   const googleMapRef = useRef(null);
   const routePolylineRef = useRef(null);
+  const routeCasingPolylineRef = useRef(null);
   const driverMarkerRef = useRef(null);
   const pickupMarkerRef = useRef(null);
   const destMarkerRef = useRef(null);
-  const [showTurnSteps, setShowTurnSteps] = useState(false);
 
   const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
   const isOnTrip = trip?.status === 'inprogress';
   const driverLive = trip?.driverCoords;
+
+  const prevApproachingRef = useRef(isApproachingPickup);
 
   // Passenger Pickup Coordinates
   const pickupCoords = useMemo(() => {
@@ -104,9 +58,9 @@ export default function GraphicLiveMap({
     };
   }, [trip?.dropCoords, trip?.car?.dropCoords, pickupCoords.lat, pickupCoords.lng]);
 
-  // Dynamic Route Origin & Destination for Route Direction:
+  // Dynamic Route Origin & Destination:
   // - Phase 1 (Driver Accepted -> Arrived): Route is Driver Mobile GPS -> Pickup Location
-  // - Phase 2 (Trip Started): Route is Pickup Location -> Destination
+  // - Phase 2 (Trip Started / In-Progress): Route is Pickup Location -> Destination
   const originCoords = useMemo(() => {
     if (isApproachingPickup) {
       if (driverLive?.lat && driverLive?.lng) {
@@ -172,16 +126,13 @@ export default function GraphicLiveMap({
   }, []);
 
   const [mapInstance, setMapInstance] = useState(null);
-  const [navigationHud, setNavigationHud] = useState(null);
-  const routeCasingPolylineRef = useRef(null);
   const hasAutoFittedRef = useRef(false);
   const isUserInteractingRef = useRef(false);
 
   const carLat = driverLive?.lat || originCoords.lat || 10.0245;
   const carLng = driverLive?.lng || originCoords.lng || 76.3075;
-  const carAngle = trip?.driverHeading !== undefined ? trip.driverHeading : 0;
 
-  // 1. Initialize Official Google Maps Map Instance
+  // 1. Initialize Official Google Maps Map Instance (UI controls completely disabled)
   useEffect(() => {
     let isCancelled = false;
 
@@ -193,16 +144,20 @@ export default function GraphicLiveMap({
       const centerLat = (originCoords.lat + destCoords.lat) / 2;
       const centerLng = (originCoords.lng + destCoords.lng) / 2;
 
-      // Authentic Google Maps Map Instance
+      // Authentic Google Maps Map Instance with all default UI buttons disabled
       const map = new google.Map(containerRef.current, {
         center: { lat: centerLat, lng: centerLng },
         zoom: 14,
         mapTypeId: google.MapTypeId.ROADMAP,
-        disableDefaultUI: false,
-        zoomControl: true,
+        disableDefaultUI: true,
+        zoomControl: false,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        rotateControl: false,
+        scaleControl: false,
+        clickableIcons: false,
+        keyboardShortcuts: false,
         gestureHandling: isModal ? 'auto' : 'none',
         styles: isDarkTheme ? GOOGLE_MAPS_DARK_STYLE : []
       });
@@ -239,7 +194,7 @@ export default function GraphicLiveMap({
       googleMapRef.current = map;
       setMapInstance(map);
 
-      // Official Google Maps Pickup Marker
+      // Official Google Maps Pickup Marker (Green Pin)
       pickupMarkerRef.current = new google.Marker({
         position: { lat: pickupCoords.lat, lng: pickupCoords.lng },
         map,
@@ -251,7 +206,7 @@ export default function GraphicLiveMap({
         }
       });
 
-      // Official Google Maps Destination Marker (rendered during active ride)
+      // Official Google Maps Destination Marker (Red Pin, rendered during in-progress trip)
       destMarkerRef.current = new google.Marker({
         position: { lat: dropCoords.lat, lng: dropCoords.lng },
         map: isApproachingPickup ? null : map,
@@ -263,19 +218,18 @@ export default function GraphicLiveMap({
         }
       });
 
-      // Official Google Maps Driver Vehicle Live Marker with directional symbol arrow
+      // Official Google Maps Driver Vehicle Live Marker (clean circular vehicle puck, no arrows)
       driverMarkerRef.current = new google.Marker({
         position: { lat: carLat, lng: carLng },
         map,
         title: 'Driver Location',
         zIndex: 20,
         icon: {
-          path: google.SymbolPath.FORWARD_CLOSED_ARROW,
-          scale: 6,
-          rotation: carAngle,
+          path: google.SymbolPath.CIRCLE,
+          scale: 7.5,
           fillColor: '#1A73E8',
           fillOpacity: 1,
-          strokeWeight: 2.5,
+          strokeWeight: 3,
           strokeColor: '#FFFFFF'
         }
       });
@@ -312,10 +266,16 @@ export default function GraphicLiveMap({
     };
   }, []);
 
-  // 2. Fetch and Draw Route Directions using Google Maps Directions API & overview_polyline.points
+  // 2. Fetch and Draw Route Directions using Google Cloud Routes API v2
   useEffect(() => {
     if (!mapInstance || !window.google?.maps) return;
     let isSubscribed = true;
+
+    // Reset auto-fit if transition between approaching pickup and trip inprogress occurs
+    if (prevApproachingRef.current !== isApproachingPickup) {
+      hasAutoFittedRef.current = false;
+      prevApproachingRef.current = isApproachingPickup;
+    }
 
     async function updateRouteDirection() {
       try {
@@ -327,9 +287,7 @@ export default function GraphicLiveMap({
         });
 
         if (!isSubscribed || !mapInstance) return;
-        setNavigationHud(result);
 
-        // Use overview_polyline.points from Google Maps Directions API response
         let points = [];
         const overviewPoints = result?.overview_polyline?.points || result?.overview_polyline;
         if (typeof overviewPoints === 'string') {
@@ -364,7 +322,7 @@ export default function GraphicLiveMap({
             casingW = 10.5;
           }
 
-          // A. Google Maps Navigation Route Casing (darker road contour)
+          // A. Road Contour Casing
           routeCasingPolylineRef.current = new google.Polyline({
             path: polyPath,
             geodesic: true,
@@ -375,7 +333,7 @@ export default function GraphicLiveMap({
             map: mapInstance
           });
 
-          // B. Google Maps Navigation Route Line with official road direction forward arrows
+          // B. Real-Time Google Routes Road Line (pure solid road polyline, no direction arrows)
           routePolylineRef.current = new google.Polyline({
             path: polyPath,
             geodesic: true,
@@ -383,20 +341,10 @@ export default function GraphicLiveMap({
             strokeOpacity: 1,
             strokeWeight: strokeW,
             zIndex: 2,
-            icons: [{
-              icon: {
-                path: google.SymbolPath.FORWARD_OPEN_ARROW,
-                scale: 2,
-                strokeColor: '#FFFFFF',
-                strokeWeight: 1.5
-              },
-              offset: '25px',
-              repeat: '70px'
-            }],
             map: mapInstance
           });
 
-          // Fit bounds so route between driver / pickup and destination is centered on first load
+          // Fit bounds so route is centered on load
           if (!hasAutoFittedRef.current && !isUserInteractingRef.current) {
             const bounds = new google.LatLngBounds();
             polyPath.forEach(pt => bounds.extend(pt));
@@ -408,7 +356,7 @@ export default function GraphicLiveMap({
           }
         }
       } catch (err) {
-        console.warn('[GraphicLiveMap] Google Directions route error:', err);
+        console.warn('[GraphicLiveMap] Google Routes error:', err);
       }
     }
 
@@ -440,45 +388,26 @@ export default function GraphicLiveMap({
     }
   }, [mapInstance, pickupCoords, dropCoords, isApproachingPickup]);
 
-  // 4. Smooth driver vehicle GPS location & rotation updates
+  // 4. Smooth driver vehicle GPS location updates (circular vehicle puck)
   useEffect(() => {
     if (!driverMarkerRef.current || !window.google?.maps) return;
     try {
       const google = window.google.maps;
       driverMarkerRef.current.setPosition(new google.LatLng(carLat, carLng));
       driverMarkerRef.current.setIcon({
-        path: google.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 6,
-        rotation: carAngle,
+        path: google.SymbolPath.CIRCLE,
+        scale: 7.5,
         fillColor: '#1A73E8',
         fillOpacity: 1,
-        strokeWeight: 2.5,
+        strokeWeight: 3,
         strokeColor: '#FFFFFF'
       });
     } catch (_) {}
-  }, [carLat, carLng, carAngle]);
-
-
-  const handleRecenter = (e) => {
-    if (e) e.stopPropagation();
-    if (!mapInstance || !window.google?.maps) return;
-    isUserInteractingRef.current = false;
-    const google = window.google.maps;
-    const bounds = new google.LatLngBounds();
-    if (driverMarkerRef.current?.getPosition()) {
-      bounds.extend(driverMarkerRef.current.getPosition());
-    } else {
-      bounds.extend(new google.LatLng(carLat, carLng));
-    }
-    bounds.extend(new google.LatLng(destCoords.lat, destCoords.lng));
-    mapInstance.fitBounds(bounds, { top: 40, right: 30, bottom: 40, left: 30 });
-  };
-
-  const navStep = navigationHud?.currentStep;
-  const allSteps = navigationHud?.steps || [];
+  }, [carLat, carLng]);
 
   return (
     <div
+      className="graphic-live-map-clean-container"
       style={{
         position: 'relative',
         width: '100%',
@@ -491,225 +420,30 @@ export default function GraphicLiveMap({
       }}
       onClick={!isModal && onOpenModal ? onOpenModal : undefined}
     >
+      {/* Hide all Google UI buttons, Google logo link, keyboard shortcuts, terms, and map data text */}
+      <style>{`
+        .graphic-live-map-clean-container .gm-style-cc,
+        .graphic-live-map-clean-container .gmnoprint,
+        .graphic-live-map-clean-container a[href*="maps.google.com"],
+        .graphic-live-map-clean-container a[href*="google.com/maps"],
+        .graphic-live-map-clean-container a[title*="Google"],
+        .graphic-live-map-clean-container .gm-control-active,
+        .graphic-live-map-clean-container div[aria-label="Map data"],
+        .graphic-live-map-clean-container div[aria-label="Keyboard shortcuts"],
+        .graphic-live-map-clean-container button[aria-label="Keyboard shortcuts"],
+        .graphic-live-map-clean-container .gm-bundled-control {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+      `}</style>
+
       {/* Official Google Maps Viewport Container */}
       <div
         ref={containerRef}
         style={{ width: '100%', height: '100%' }}
       />
-
-      {/* Official Google Maps Real-Time Direction Navigation UI (from Google Routes API v2) */}
-      {navStep?.instruction && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '10px',
-            left: '10px',
-            right: '10px',
-            zIndex: 10,
-            background: isDarkTheme ? '#0F5132' : '#0F9D58',
-            color: '#FFFFFF',
-            borderRadius: '14px',
-            padding: '10px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
-          }}
-          onClick={(e) => {
-            if (isModal && allSteps.length > 1) {
-              e.stopPropagation();
-              setShowTurnSteps(!showTurnSteps);
-            }
-          }}
-        >
-          {/* Authentic Maneuver Icon */}
-          <div
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'rgba(0, 0, 0, 0.22)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              flexShrink: 0
-            }}
-          >
-            <ManeuverDirectionIcon maneuver={navStep.maneuver} size={20} color="#FFFFFF" />
-          </div>
-
-          {/* Navigation Instruction & Distance to Turn */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {navStep.distance && (
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.6px',
-                  color: 'rgba(255, 255, 255, 0.9)'
-                }}
-              >
-                In {navStep.distance}
-              </div>
-            )}
-            <div
-              style={{
-                fontSize: '13.5px',
-                fontWeight: 750,
-                color: '#FFFFFF',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                lineHeight: 1.25,
-                marginTop: '1px'
-              }}
-            >
-              {navStep.instruction}
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontWeight: 600,
-                marginTop: '2px'
-              }}
-            >
-              {navigationHud.durationText ? `${navigationHud.durationText} remaining` : ''}
-              {navigationHud.distanceText ? ` · ${navigationHud.distanceText}` : ''}
-            </div>
-          </div>
-
-          {/* Step list toggle arrow when multiple steps exist in modal mode */}
-          {isModal && allSteps.length > 1 && (
-            <div
-              style={{
-                padding: '4px 6px',
-                borderRadius: '8px',
-                background: 'rgba(0, 0, 0, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '11px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                flexShrink: 0
-              }}
-            >
-              <span>{allSteps.length} turns</span>
-              <Icon name={showTurnSteps ? 'chevron-up' : 'chevron-down'} size={14} color="#FFFFFF" />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Expandable Real-Time Google Routes Turn-by-Turn Steps Drawer */}
-      {isModal && showTurnSteps && allSteps.length > 1 && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '74px',
-            left: '10px',
-            right: '10px',
-            maxHeight: '170px',
-            overflowY: 'auto',
-            zIndex: 15,
-            background: isDarkTheme ? '#1E293B' : '#FFFFFF',
-            borderRadius: '14px',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-            border: '1px solid var(--line)',
-            padding: '8px 12px'
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div
-            style={{
-              fontSize: '11px',
-              fontWeight: 800,
-              color: 'var(--muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              marginBottom: '6px',
-              paddingBottom: '4px',
-              borderBottom: '1px solid var(--line)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}
-          >
-            <span>Google Route Directions</span>
-            <span style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => setShowTurnSteps(false)}>Close</span>
-          </div>
-          {allSteps.map((step, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '6px 0',
-                borderBottom: idx < allSteps.length - 1 ? '1px solid var(--line)' : 'none'
-              }}
-            >
-              <div
-                style={{
-                  width: '26px',
-                  height: '26px',
-                  borderRadius: '6px',
-                  background: isDarkTheme ? '#334155' : '#E2E8F0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}
-              >
-                <ManeuverDirectionIcon maneuver={step.maneuver} size={14} color={isDarkTheme ? '#F8FAFC' : '#1E293B'} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '12px', fontWeight: 650, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {step.instruction}
-                </div>
-                {step.distance && (
-                  <div style={{ fontSize: '10.5px', color: 'var(--muted)', fontWeight: 500 }}>
-                    {step.distance} {step.duration ? `· ${step.duration}` : ''}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Google Maps Style Floating Re-Center Button */}
-      {isModal && (
-        <button
-          type="button"
-          onClick={handleRecenter}
-          aria-label="Re-center Map"
-          style={{
-            position: 'absolute',
-            bottom: '12px',
-            right: '12px',
-            width: '38px',
-            height: '38px',
-            borderRadius: '999px',
-            background: isDarkTheme ? '#1E293B' : '#FFFFFF',
-            color: isDarkTheme ? '#FFFFFF' : '#1E293B',
-            border: '1px solid var(--line)',
-            boxShadow: '0 3px 12px rgba(0, 0, 0, 0.22)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 10,
-            padding: 0
-          }}
-        >
-          <Icon name="navigation" size={17} color={isDarkTheme ? '#60A5FA' : '#1A73E8'} />
-        </button>
-      )}
     </div>
   );
 }
