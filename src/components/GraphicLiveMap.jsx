@@ -5,7 +5,8 @@ import {
   GOOGLE_MAP_TILES,
   openInGoogleMaps,
   fetchGoogleRoadDirections,
-  getCachedRoadDirections
+  getCachedRoadDirections,
+  decodeGooglePolyline
 } from '../services/googleMapsService';
 
 // Fallback geographic route waypoints for authentic Google Maps display
@@ -190,9 +191,21 @@ export default function GraphicLiveMap({
           originCoords: originCoords,
           destCoords: destCoords
         });
-        if (isSubscribed && result?.points && result.points.length >= 2) {
-          if (trip && isOnTrip) trip.routePoints = result.points;
-          setRoutePoints(result.points);
+
+        // Use overview_polyline.points from Google Maps Directions API response to draw accurate road polyline
+        let roadPoints = [];
+        const overviewPoints = result?.overview_polyline?.points || result?.overview_polyline;
+        if (typeof overviewPoints === 'string') {
+          roadPoints = decodeGooglePolyline(overviewPoints);
+        } else if (Array.isArray(overviewPoints)) {
+          roadPoints = overviewPoints;
+        } else if (Array.isArray(result?.points)) {
+          roadPoints = result.points;
+        }
+
+        if (isSubscribed && roadPoints && roadPoints.length >= 2) {
+          if (trip && isOnTrip) trip.routePoints = roadPoints;
+          setRoutePoints(roadPoints);
         }
       } catch (err) {
         console.warn('[GraphicLiveMap] Error fetching Google Maps Directions:', err);

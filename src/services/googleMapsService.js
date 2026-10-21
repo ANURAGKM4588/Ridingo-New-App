@@ -1953,12 +1953,79 @@ export function getCachedRoadDirections(originCoords, destCoords, origin, destin
 }
 
 /**
+ * Decodes a Google Maps overview_polyline.points encoded string into an array of { lat, lng } coordinates.
+ * Follows the official Google Maps encoded polyline algorithm.
+ */
+export function decodeGooglePolyline(encoded) {
+  if (!encoded || typeof encoded !== 'string') return [];
+  const points = [];
+  let index = 0;
+  const len = encoded.length;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
+
+/**
+ * Encodes an array of { lat, lng } coordinates into a Google Maps encoded polyline string.
+ */
+export function encodeGooglePolyline(points) {
+  if (!Array.isArray(points) || points.length === 0) return '';
+  let encoded = '';
+  let prevLat = 0;
+  let prevLng = 0;
+
+  const encodeSigned = (val) => {
+    let sgn = val < 0 ? ~(val << 1) : (val << 1);
+    let str = '';
+    while (sgn >= 0x20) {
+      str += String.fromCharCode((0x20 | (sgn & 0x1f)) + 63);
+      sgn >>= 5;
+    }
+    str += String.fromCharCode(sgn + 63);
+    return str;
+  };
+
+  for (const pt of points) {
+    const lat = Math.round(Number(pt.lat ?? pt[0]) * 1e5);
+    const lng = Math.round(Number(pt.lng ?? pt[1]) * 1e5);
+    encoded += encodeSigned(lat - prevLat);
+    encoded += encodeSigned(lng - prevLng);
+    prevLat = lat;
+    prevLng = lng;
+  }
+  return encoded;
+}
+
+/**
  * Fetches real, road-hugging driving directions between origin and destination.
- * 1. Checks if Google Maps DirectionsService is available in window.google and returns
- *    the official driving route overview_path.
- * 2. If Google Directions is unavailable or errors, uses high-precision OSRM driving
- *    geometry which returns real highway / road coordinates.
- * 3. Falls back gracefully to interpolated waypoints if network is offline.
+ * 1. Calls Google Maps Directions API (DirectionsService) to fetch the route coordinates.
+ * 2. Extracts overview_polyline.points from the Google Maps API response.
+ * 3. Decodes overview_polyline.points so the Polyline component accurately follows the roads.
+ * 4. Falls back to road network router or telemetry if offline.
  */
 export async function fetchGoogleRoadDirections({ origin, destination, originCoords, destCoords }) {
   const cacheKey = getCachedRoadDirectionsKey(originCoords, destCoords, origin, destination);
@@ -1993,15 +2060,15 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
   dLat = dLat || 10.0285;
   dLng = dLng || 76.3120;
 
-  // 2. Try Google Maps JS SDK DirectionsService first
-  if (!isMockMode() && typeof window !== 'undefined' && window.google?.maps?.DirectionsService) {
+  // 2. Try Google Maps Directions API via JS SDK DirectionsService
+  if (typeof window !== 'undefined' && window.google?.maps?.DirectionsService) {
     try {
       const directionsService = new window.google.maps.DirectionsService();
-      const originParam = (originCoords?.lat && originCoords?.lng)
+      const originParam = (oLat && oLng)
         ? new window.google.maps.LatLng(Number(oLat), Number(oLng))
         : (origin || new window.google.maps.LatLng(Number(oLat), Number(oLng)));
 
-      const destParam = (destCoords?.lat && destCoords?.lng)
+      const destParam = (dLat && dLng)
         ? new window.google.maps.LatLng(Number(dLat), Number(dLng))
         : (destination || new window.google.maps.LatLng(Number(dLat), Number(dLng)));
 
@@ -2023,18 +2090,32 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
       });
 
       const route = result.routes[0];
-      if (route?.overview_path && route.overview_path.length > 0) {
-        const points = route.overview_path.map(pt => ({
+      const rawPolyline = route?.overview_polyline;
+      const polylinePoints = typeof rawPolyline === 'string'
+        ? rawPolyline
+        : (rawPolyline?.points || '');
+
+      let points = [];
+      if (polylinePoints) {
+        // Decode overview_polyline.points from Google Maps Directions API response
+        points = decodeGooglePolyline(polylinePoints);
+      } else if (Array.isArray(route.overview_path) && route.overview_path.length > 0) {
+        points = route.overview_path.map(pt => ({
           lat: typeof pt.lat === 'function' ? pt.lat() : pt.lat,
           lng: typeof pt.lng === 'function' ? pt.lng() : pt.lng
         }));
+      }
 
+      if (points.length >= 2) {
         const leg = route.legs?.[0];
         const distKm = leg?.distance?.value ? Number((leg.distance.value / 1000).toFixed(1)) : null;
         const durMins = leg?.duration?.value ? Math.round(leg.duration.value / 60) : null;
 
         const res = {
           points,
+          overview_polyline: {
+            points: polylinePoints || encodeGooglePolyline(points)
+          },
           distanceKm: distKm,
           durationMins: durMins,
           source: 'google_directions_api'
@@ -2043,11 +2124,11 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
         return res;
       }
     } catch (gErr) {
-      console.warn('[GoogleRoadDirections] Google DirectionsService unavailable or failed, switching to road network router:', gErr);
+      console.warn('[GoogleRoadDirections] Google DirectionsService API call warning:', gErr);
     }
   }
 
-  // 3. High-precision road driving router (OSRM highway network)
+  // 3. High-precision road driving router fallback (OSRM highway network)
   try {
     const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`;
     const response = await fetch(osrmUrl, { headers: { 'Accept': 'application/json' } });
@@ -2057,7 +2138,6 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
       if (route?.geometry?.coordinates && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 1) {
         const rawCoords = route.geometry.coordinates; // [ [lng, lat], ... ]
         
-        // Decimate points if there are thousands (to keep Leaflet rendering ultra-smooth at 60fps)
         let sampled = rawCoords;
         if (rawCoords.length > 500) {
           const step = Math.ceil(rawCoords.length / 500);
@@ -2067,9 +2147,13 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
         const points = sampled.map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }));
         const distanceKm = Number((route.distance / 1000).toFixed(1));
         const durationMins = Math.round(route.duration / 60);
+        const encodedPolyline = encodeGooglePolyline(points);
 
         const res = {
           points,
+          overview_polyline: {
+            points: encodedPolyline
+          },
           distanceKm,
           durationMins,
           source: 'road_network_driving'
@@ -2084,8 +2168,12 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
 
   // 4. Offline fallback: Smooth curved highway waypoints
   const mock = calculateMockRoute({ lat: oLat, lng: oLng }, { lat: dLat, lng: dLng });
+  const fallbackPoints = mock.waypoints;
   const fallbackRes = {
-    points: mock.waypoints,
+    points: fallbackPoints,
+    overview_polyline: {
+      points: encodeGooglePolyline(fallbackPoints)
+    },
     distanceKm: mock.distanceKm,
     durationMins: mock.durationMins,
     source: 'interpolated_highway'

@@ -3825,8 +3825,8 @@ export default function DriverApp() {
                             {/* ── Compact Action Strips ── */}
                             <div
                               style={{
-                                background: '#FFFFFF',
-                                border: '1px solid #E2E8F0',
+                                background: 'var(--card, #FFFFFF)',
+                                border: '1px solid var(--line, #E2E8F0)',
                                 borderRadius: '14px',
                                 overflow: 'hidden'
                               }}
@@ -3839,7 +3839,7 @@ export default function DriverApp() {
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
                                   gap: '10px',
-                                  background: isAdditionalRideActive ? '#F0FDF4' : '#FFFFFF',
+                                  background: isAdditionalRideActive ? 'rgba(34, 197, 94, 0.12)' : 'var(--card, #FFFFFF)',
                                   transition: 'background 0.15s ease'
                                 }}
                               >
@@ -3895,18 +3895,20 @@ export default function DriverApp() {
                                 </div>
                                 <button
                                   type="button"
+                                  className={isAdditionalRideActive ? "driver-strip-action-btn active" : "driver-strip-action-btn"}
                                   onClick={() => handleToggleAdditionalRide(t.id)}
                                   style={{
-                                    padding: '6px 16px',
-                                    borderRadius: '8px',
-                                    border: isAdditionalRideActive ? 'none' : '1.5px solid var(--line, #E2E8F0)',
-                                    background: isAdditionalRideActive ? '#DC2626' : 'var(--card, #FFFFFF)',
-                                    color: isAdditionalRideActive ? '#FFFFFF' : 'var(--ink, #0F172A)',
+                                    padding: '7px 18px',
+                                    borderRadius: '999px',
+                                    border: 'none',
+                                    background: isAdditionalRideActive ? '#DC2626' : 'var(--solid, #0B0B0C)',
+                                    color: isAdditionalRideActive ? '#FFFFFF' : 'var(--on-solid, #FFFFFF)',
                                     fontSize: '12px',
                                     fontWeight: 800,
                                     cursor: 'pointer',
                                     flexShrink: 0,
-                                    letterSpacing: '0.2px',
+                                    letterSpacing: '0.3px',
+                                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
                                     transition: 'all 0.15s ease'
                                   }}
                                 >
@@ -4013,18 +4015,20 @@ export default function DriverApp() {
                                 </div>
                                 <button
                                   type="button"
+                                  className={isWaitingActive ? "driver-strip-action-btn active" : "driver-strip-action-btn"}
                                   onClick={() => handleToggleWaiting(t.id)}
                                   style={{
-                                    padding: '6px 16px',
-                                    borderRadius: '8px',
-                                    border: isWaitingActive ? 'none' : '1.5px solid var(--line, #E2E8F0)',
-                                    background: isWaitingActive ? '#DC2626' : 'var(--card, #FFFFFF)',
-                                    color: isWaitingActive ? '#FFFFFF' : 'var(--ink, #0F172A)',
+                                    padding: '7px 18px',
+                                    borderRadius: '999px',
+                                    border: 'none',
+                                    background: isWaitingActive ? '#DC2626' : 'var(--solid, #0B0B0C)',
+                                    color: isWaitingActive ? '#FFFFFF' : 'var(--on-solid, #FFFFFF)',
                                     fontSize: '12px',
                                     fontWeight: 800,
                                     cursor: 'pointer',
                                     flexShrink: 0,
-                                    letterSpacing: '0.2px',
+                                    letterSpacing: '0.3px',
+                                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
                                     transition: 'all 0.15s ease'
                                   }}
                                 >
