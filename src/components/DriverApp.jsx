@@ -2807,24 +2807,6 @@ export default function DriverApp() {
                   overflow: 'hidden'
                 }}
               >
-                {/* Subtle Ambient Radial Glow */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '-25px',
-                    right: '-25px',
-                    width: '120px',
-                    height: '120px',
-                    borderRadius: '50%',
-                    background: driverOnline
-                      ? 'radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0) 70%)'
-                      : 'radial-gradient(circle, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0) 70%)',
-                    pointerEvents: 'none',
-                    zIndex: 0,
-                    transition: 'background 0.35s ease'
-                  }}
-                />
-
                 {/* Left: Avatar + Identity + Rating Badge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0, position: 'relative', zIndex: 1 }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -2867,10 +2849,7 @@ export default function DriverApp() {
                         borderRadius: '50%',
                         background: driverOnline ? '#10B981' : '#94A3B8',
                         border: '2.5px solid var(--card)',
-                        boxShadow: driverOnline
-                          ? '0 0 0 2px rgba(16, 185, 129, 0.35)'
-                          : 'none',
-                        transition: 'all 0.3s ease'
+                        transition: 'background 0.3s ease'
                       }}
                     />
                   </div>
@@ -2974,25 +2953,12 @@ export default function DriverApp() {
                 >
                   <span
                     style={{
-                      fontSize: '12.5px',
+                      fontSize: '13px',
                       fontWeight: 800,
                       color: driverOnline ? '#10B981' : 'var(--muted)',
-                      letterSpacing: '-0.01em',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px'
+                      letterSpacing: '-0.01em'
                     }}
                   >
-                    <span
-                      style={{
-                        width: '7px',
-                        height: '7px',
-                        borderRadius: '50%',
-                        background: driverOnline ? '#10B981' : 'var(--muted)',
-                        boxShadow: driverOnline ? '0 0 0 2.5px rgba(16, 185, 129, 0.25)' : 'none',
-                        animation: driverOnline ? 'pulse 1.4s infinite' : 'none'
-                      }}
-                    />
                     {driverOnline ? 'Online' : 'Offline'}
                   </span>
 
