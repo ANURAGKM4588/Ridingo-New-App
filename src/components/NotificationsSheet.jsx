@@ -522,6 +522,7 @@ export default function NotificationsSheet() {
   const [expandedId, setExpandedId] = useState(null);
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [isClearingAll, setIsClearingAll] = useState(false);
+  const unreadCount = useMemo(() => (unotes ? unotes.filter(n => !n.read).length : 0), [unotes]);
 
   if (!notifsOpen) return null;
 
@@ -579,7 +580,6 @@ export default function NotificationsSheet() {
 
   const hasNotes = unotes && unotes.length > 0;
   const showList = hasNotes && !isClearingAll;
-  const unreadCount = useMemo(() => (unotes ? unotes.filter(n => !n.read).length : 0), [unotes]);
 
   return (
     <>
