@@ -870,26 +870,14 @@ export default function BookingSheet() {
           /* ---------- Booking Details Form (Full-Page Design) ---------- */
           <>
             {/* Full-Page App Bar Header with Back Button Only */}
-            <div className="sheet-sticky-top" style={{ borderBottom: '1px solid var(--line, #F1F5F9)', padding: 'max(14px, env(safe-area-inset-top, 0px)) 18px 14px', background: 'var(--card, #FFFFFF)' }}>
+            <div className="sheet-sticky-top" style={{ borderBottom: '1px solid var(--line, #F1F5F9)', padding: 'max(14px, env(safe-area-inset-top, 0px)) 18px 14px', background: 'var(--sheet, #FFFFFF)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                   <button
                     type="button"
-                    className="iconbtn"
+                    className="iconbtn bk-back-btn"
                     onClick={handleClose}
                     aria-label="Back"
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '50%',
-                      background: '#F1F5F9',
-                      border: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--ink, #0F172A)',
-                      cursor: 'pointer'
-                    }}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="m15 18-6-6 6-6" />
@@ -899,7 +887,7 @@ export default function BookingSheet() {
                     <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 850, color: 'var(--ink, #0F172A)', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
                       Book a Driver
                     </h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#64748B', fontWeight: 500 }}>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--muted, #64748B)', fontWeight: 500 }}>
                       Professional driver on demand
                     </p>
                   </div>
@@ -1381,90 +1369,35 @@ export default function BookingSheet() {
               >
                 <button
                   type="button"
-                  style={{
-                    flexShrink: 0,
-                    padding: '8px 18px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: isToday ? '#0F172A' : '#F1F5F9',
-                    color: isToday ? '#FFFFFF' : '#334155',
-                    fontSize: '13px',
-                    fontWeight: isToday ? 750 : 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className={`bk-preset-btn ${isToday ? 'active' : ''}`}
                   onClick={() => setSelectedDate(todayISO)}
                 >
                   Today
                 </button>
                 <button
                   type="button"
-                  style={{
-                    flexShrink: 0,
-                    padding: '8px 18px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: isTomorrow ? '#0F172A' : '#F1F5F9',
-                    color: isTomorrow ? '#FFFFFF' : '#334155',
-                    fontSize: '13px',
-                    fontWeight: isTomorrow ? 750 : 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className={`bk-preset-btn ${isTomorrow ? 'active' : ''}`}
                   onClick={() => setSelectedDate(tomorrowISO)}
                 >
                   Tomorrow
                 </button>
                 <button
                   type="button"
-                  style={{
-                    flexShrink: 0,
-                    padding: '8px 18px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: '#F1F5F9',
-                    color: '#334155',
-                    fontSize: '13px',
-                    fontWeight: 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className="bk-preset-btn"
                   onClick={() => addMinutesToTime(10)}
                 >
                   Now
                 </button>
                 <button
                   type="button"
-                  style={{
-                    flexShrink: 0,
-                    padding: '8px 18px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: '#F1F5F9',
-                    color: '#334155',
-                    fontSize: '13px',
-                    fontWeight: 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className="bk-preset-btn"
                   onClick={() => addMinutesToTime(30)}
                 >
                   +30m
                 </button>
                 <button
                   type="button"
-                  style={{
-                    flexShrink: 0,
-                    padding: '8px 18px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: '#F1F5F9',
-                    color: '#334155',
-                    fontSize: '13px',
-                    fontWeight: 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className="bk-preset-btn"
                   onClick={() => addMinutesToTime(60)}
                 >
                   +1h
@@ -1475,17 +1408,7 @@ export default function BookingSheet() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {/* Date Card */}
                 <div
-                  style={{
-                    position: 'relative',
-                    background: '#F8FAFC',
-                    borderRadius: '16px',
-                    border: isCustomDate ? '1.5px solid var(--ink)' : '1px solid #E2E8F0',
-                    padding: '12px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    cursor: 'pointer'
-                  }}
+                  className={`bk-picker-card ${isCustomDate ? 'custom-active' : ''}`}
                   onClick={() => {
                     const el = document.getElementById('bk-date-input');
                     if (el && typeof el.showPicker === 'function') {
@@ -1493,7 +1416,7 @@ export default function BookingSheet() {
                     }
                   }}
                 >
-                  <div style={{ color: '#334155', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <div className="bk-picker-card-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
                       <line x1="16" x2="16" y1="2" y2="6" />
@@ -1502,14 +1425,14 @@ export default function BookingSheet() {
                     </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <span className="bk-picker-card-label">
                       DATE
                     </span>
-                    <span style={{ fontSize: '14.5px', fontWeight: 750, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span className="bk-picker-card-value">
                       {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dateStr}
                     </span>
                   </div>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <svg className="bk-picker-card-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                   <input
@@ -1535,17 +1458,7 @@ export default function BookingSheet() {
 
                 {/* Time Card */}
                 <div
-                  style={{
-                    position: 'relative',
-                    background: '#F8FAFC',
-                    borderRadius: '16px',
-                    border: '1px solid #E2E8F0',
-                    padding: '12px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    cursor: 'pointer'
-                  }}
+                  className="bk-picker-card"
                   onClick={() => {
                     const el = document.getElementById('bk-time-input');
                     if (el && typeof el.showPicker === 'function') {
@@ -1553,21 +1466,21 @@ export default function BookingSheet() {
                     }
                   }}
                 >
-                  <div style={{ color: '#334155', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <div className="bk-picker-card-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
                     </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <span className="bk-picker-card-label">
                       TIME
                     </span>
-                    <span style={{ fontSize: '14.5px', fontWeight: 750, color: 'var(--ink)' }}>
+                    <span className="bk-picker-card-value">
                       {timeStr}
                     </span>
                   </div>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <svg className="bk-picker-card-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                   <input
@@ -1597,18 +1510,7 @@ export default function BookingSheet() {
               <label style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink, #0F172A)', display: 'block', marginBottom: '8px' }}>
                 Vehicle gearbox
               </label>
-              <div
-                style={{
-                  background: '#F1F5F9',
-                  borderRadius: '14px',
-                  padding: '4px',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                  gap: '4px',
-                  width: '100%',
-                  boxSizing: 'border-box'
-                }}
-              >
+              <div className="bk-gearbox-wrap">
                 {['Manual', 'Automatic', 'IMT'].map(x => {
                   const isActive = trans === x;
                   return (
@@ -1616,24 +1518,7 @@ export default function BookingSheet() {
                       key={x}
                       type="button"
                       onClick={() => setTrans(x)}
-                      style={{
-                        height: '42px',
-                        borderRadius: '10px',
-                        border: 'none',
-                        background: isActive ? '#FFFFFF' : 'transparent',
-                        color: isActive ? 'var(--ink, #0F172A)' : '#475569',
-                        fontSize: '13.5px',
-                        fontWeight: isActive ? 800 : 600,
-                        boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: 0,
-                        padding: '0 4px',
-                        letterSpacing: '-0.01em'
-                      }}
+                      className={`bk-gearbox-btn ${isActive ? 'active' : ''}`}
                     >
                       {x}
                     </button>
@@ -1643,18 +1528,7 @@ export default function BookingSheet() {
             </div>
 
               {/* Fare Invoice Breakdown Card */}
-              <div
-                style={{
-                  background: 'var(--card, #FFFFFF)',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '18px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}
-              >
+              <div className="bk-fare-card">
                 {/* Driver Trip Fare */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
@@ -1720,21 +1594,7 @@ export default function BookingSheet() {
               </div>
 
               {/* Waiting & Additional Trip Section (Single-Line Design, Placed at Bottom) */}
-              <div
-                style={{
-                  background: 'var(--card, #FFFFFF)',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '16px',
-                  padding: '12px 14px',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
-                  width: '100%',
-                  boxSizing: 'border-box'
-                }}
-              >
+              <div className="bk-waiting-card">
                 {/* Row 1: Waiting Charge */}
                 <div
                   style={{
@@ -1746,20 +1606,8 @@ export default function BookingSheet() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
-                    <div
-                      style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        background: '#FEF3C7',
-                        color: '#D97706',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <div className="bk-waiting-icon-clock">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10" />
                         <polyline points="12 6 12 12 16 14" />
                       </svg>
@@ -1767,32 +1615,23 @@ export default function BookingSheet() {
                     <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
                       Waiting Charge
                     </span>
-                    <span
-                      style={{
-                        fontSize: '9.5px',
-                        fontWeight: 750,
-                        padding: '2px 6px',
-                        borderRadius: '6px',
-                        background: '#DCFCE7',
-                        color: '#166534'
-                      }}
-                    >
+                    <span className="bk-waiting-badge-free">
                       60m Free
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                     <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
-                      ₹2<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/min</span>
+                      ₹2<span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/min</span>
                     </span>
-                    <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
+                    <span className="bk-waiting-subtext">
                       (after 60m)
                     </span>
                   </div>
                 </div>
 
                 {/* Divider */}
-                <div style={{ height: '1px', background: '#F1F5F9', width: '100%' }} />
+                <div className="bk-waiting-divider" />
 
                 {/* Row 2: Additional Trip */}
                 <div
@@ -1805,20 +1644,8 @@ export default function BookingSheet() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
-                    <div
-                      style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        background: '#E0F2FE',
-                        color: '#0284C7',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <div className="bk-waiting-icon-extra">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 19 8.5 5" />
                         <path d="M19 19 15.5 5" />
                         <path d="M12 6v3" />
@@ -1828,25 +1655,16 @@ export default function BookingSheet() {
                     <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
                       Additional Trip
                     </span>
-                    <span
-                      style={{
-                        fontSize: '9.5px',
-                        fontWeight: 750,
-                        padding: '2px 6px',
-                        borderRadius: '6px',
-                        background: '#E0F2FE',
-                        color: '#0369A1'
-                      }}
-                    >
+                    <span className="bk-waiting-badge-extra">
                       Extra Km
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                     <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
-                      ₹18<span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>/km</span>
+                      ₹18<span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted, #64748B)' }}>/km</span>
                     </span>
-                    <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
+                    <span className="bk-waiting-subtext">
                       (extra route)
                     </span>
                   </div>
@@ -1854,38 +1672,15 @@ export default function BookingSheet() {
               </div>
 
               {/* Payment & Conditions Acceptance Notification */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '11px 14px',
-                  borderRadius: '14px',
-                  background: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  marginBottom: '20px'
-                }}
-              >
-                <div
-                  style={{
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: '50%',
-                    background: '#EEF2F6',
-                    color: '#475569',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <div className="bk-terms-notice">
+                <div className="bk-terms-notice-icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <line x1="12" y1="16" x2="12" y2="12" />
                     <line x1="12" y1="8" x2="12.01" y2="8" />
                   </svg>
                 </div>
-                <span style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4, fontWeight: 500 }}>
+                <span className="bk-terms-notice-text">
                   By completing the payment, you accept the waiting and additional trip terms &amp; conditions.
                 </span>
               </div>
@@ -1946,28 +1741,10 @@ export default function BookingSheet() {
               <div style={{ marginLeft: 'auto' }}>
                 <button
                   type="button"
-                  className="btn primary"
+                  className={`bk-submit-btn ${(!pickup?.trim() || !drop?.trim()) ? 'disabled' : ''}`}
                   id="bk-submit-btn"
+                  disabled={!pickup?.trim() || !drop?.trim()}
                   aria-disabled={!pickup?.trim() || !drop?.trim()}
-                  style={{
-                    height: '48px',
-                    borderRadius: '14px',
-                    padding: '0 22px',
-                    fontWeight: 800,
-                    fontSize: '14.5px',
-                    cursor: (pickup?.trim() && drop?.trim()) ? 'pointer' : 'default',
-                    background: (pickup?.trim() && drop?.trim()) ? 'var(--solid, #000000)' : '#94A3B8',
-                    color: '#FFFFFF',
-                    border: (pickup?.trim() && drop?.trim()) ? '1.5px solid var(--solid, #000000)' : '1.5px solid #94A3B8',
-                    boxShadow: (pickup?.trim() && drop?.trim()) ? '0 4px 14px rgba(0, 0, 0, 0.22)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    whiteSpace: 'nowrap',
-                    opacity: (pickup?.trim() && drop?.trim()) ? 1 : 0.75,
-                    transition: 'all 0.2s ease'
-                  }}
                   onClick={() => {
                     if (!pickup?.trim()) {
                       triggerLocationShake('pickup');
@@ -2015,17 +1792,7 @@ export default function BookingSheet() {
           onClick={() => setShowTermsModal(false)}
         >
           <div
-            style={{
-              width: '100%',
-              maxWidth: '430px',
-              background: 'var(--card, #FFFFFF)',
-              borderRadius: '24px',
-              padding: '24px',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
-              color: 'var(--ink, #0F172A)',
-              position: 'relative',
-              animation: 'scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}
+            className="bk-terms-modal-card"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -2077,7 +1844,7 @@ export default function BookingSheet() {
 
             {/* Terms Content List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', lineHeight: 1.45, marginBottom: '20px' }}>
-              <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+              <div className="bk-terms-box-1">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                   <Icon name="clock" size={15} color="#0284C7" />
                   <b style={{ fontSize: '13px', color: '#0F172A' }}>60 Minutes Free Waiting</b>
@@ -2087,7 +1854,7 @@ export default function BookingSheet() {
                 </p>
               </div>
 
-              <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FEE2E2' }}>
+              <div className="bk-terms-box-2">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                   <Icon name="alert-circle" size={15} color="#DC2626" />
                   <b style={{ fontSize: '13px', color: '#991B1B' }}>Additional Waiting: ₹2 / min</b>
@@ -2097,7 +1864,7 @@ export default function BookingSheet() {
                 </p>
               </div>
 
-              <div style={{ padding: '12px 14px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #DCFCE7' }}>
+              <div className="bk-terms-box-3">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                   <Icon name="route" size={15} color="#166534" />
                   <b style={{ fontSize: '13px', color: '#166534' }}>Distance Extension & Tolls</b>
@@ -2111,7 +1878,7 @@ export default function BookingSheet() {
             {/* Review & Accept Button */}
             <button
               type="button"
-              className="btn primary"
+              className="bk-submit-btn"
               onClick={() => {
                 setHasReviewedTerms(true);
                 setShowTermsModal(false);
@@ -2119,22 +1886,13 @@ export default function BookingSheet() {
               }}
               style={{
                 width: '100%',
-                height: '48px',
-                borderRadius: '14px',
-                background: '#000000',
-                color: '#FFFFFF',
-                fontWeight: 800,
-                fontSize: '14.5px',
-                border: 'none',
-                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.22)'
+                gap: '8px'
               }}
             >
-              <Icon name="check" size={16} color="#FFFFFF" />
+              <Icon name="check" size={16} />
               <span>I Review & Accept Terms</span>
             </button>
           </div>

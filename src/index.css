@@ -4214,9 +4214,15 @@ button.btn-primary:active,
 
 [data-theme="dark"] .stepper button,
 :root[data-theme="dark"] .stepper button {
-  background: #FFFFFF !important;
-  color: #000000 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  background: #2C2C2E !important;
+  color: #FFFFFF !important;
+  border: 1px solid #3A3A3C !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .stepper button:active,
+:root[data-theme="dark"] .stepper button:active {
+  background: #3A3A3C !important;
 }
 
 .stepper b {
@@ -6798,6 +6804,500 @@ body[data-theme="dark"] .onboarding-continue-btn {
   flex: 1 1 auto !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
+}
+
+/* Booking Page Dark Mode Root & Structural Backgrounds */
+[data-theme="dark"] .booking-fullscreen-view,
+:root[data-theme="dark"] .booking-fullscreen-view {
+  background: #121214 !important;
+}
+
+[data-theme="dark"] .booking-fullscreen-view .sheet.booking-fullscreen-inner,
+:root[data-theme="dark"] .booking-fullscreen-view .sheet.booking-fullscreen-inner {
+  background: #121214 !important;
+}
+
+[data-theme="dark"] .booking-fullscreen-view .sheet-sticky-top,
+:root[data-theme="dark"] .booking-fullscreen-view .sheet-sticky-top {
+  background: #121214 !important;
+  border-bottom: 1px solid #2C2C2E !important;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .booking-fullscreen-view .sheet-sticky-foot,
+:root[data-theme="dark"] .booking-fullscreen-view .sheet-sticky-foot {
+  background: #121214 !important;
+  border-top: 1px solid #2C2C2E !important;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Header Back Button */
+.bk-back-btn {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  background: var(--field, #F1F5F9) !important;
+  border: 1px solid var(--line, #E2E8F0) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--ink, #0F172A) !important;
+  cursor: pointer !important;
+  transition: transform 0.12s ease, background 0.15s ease !important;
+}
+.bk-back-btn:active {
+  transform: scale(0.92) !important;
+}
+[data-theme="dark"] .bk-back-btn,
+:root[data-theme="dark"] .bk-back-btn {
+  background: #242426 !important;
+  border-color: #333336 !important;
+  color: #FFFFFF !important;
+}
+
+/* Quick Date & Time Presets */
+.bk-preset-btn {
+  flex-shrink: 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid #E2E8F0;
+  background: #F1F5F9;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.bk-preset-btn:active {
+  transform: scale(0.95);
+}
+.bk-preset-btn.active {
+  background: #0F172A;
+  color: #FFFFFF;
+  border-color: #0F172A;
+  font-weight: 750;
+}
+[data-theme="dark"] .bk-preset-btn,
+:root[data-theme="dark"] .bk-preset-btn {
+  background: #242426;
+  border-color: #333336;
+  color: rgba(255, 255, 255, 0.7);
+}
+[data-theme="dark"] .bk-preset-btn.active,
+:root[data-theme="dark"] .bk-preset-btn.active {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Date & Time Interactive Dropdown Cards */
+.bk-picker-card {
+  position: relative;
+  background: #F8FAFC;
+  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.bk-picker-card.custom-active {
+  border-color: #0F172A;
+}
+.bk-picker-card-icon {
+  color: #334155;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.bk-picker-card-label {
+  font-size: 10px;
+  color: #64748B;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.bk-picker-card-value {
+  font-size: 14.5px;
+  font-weight: 750;
+  color: var(--ink, #0F172A);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bk-picker-card-chevron {
+  color: #64748B;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .bk-picker-card,
+:root[data-theme="dark"] .bk-picker-card {
+  background: #1C1C1E;
+  border-color: #2C2C2E;
+}
+[data-theme="dark"] .bk-picker-card.custom-active,
+:root[data-theme="dark"] .bk-picker-card.custom-active {
+  border-color: var(--yellow, #FFC70A);
+}
+[data-theme="dark"] .bk-picker-card-icon,
+:root[data-theme="dark"] .bk-picker-card-icon {
+  color: var(--yellow, #FFC70A);
+}
+[data-theme="dark"] .bk-picker-card-label,
+:root[data-theme="dark"] .bk-picker-card-label {
+  color: #8E8E93;
+}
+[data-theme="dark"] .bk-picker-card-value,
+:root[data-theme="dark"] .bk-picker-card-value {
+  color: #FFFFFF;
+}
+[data-theme="dark"] .bk-picker-card-chevron,
+:root[data-theme="dark"] .bk-picker-card-chevron {
+  color: #8E8E93;
+}
+
+/* Vehicle Gearbox Segment */
+.bk-gearbox-wrap {
+  background: #F1F5F9;
+  border-radius: 14px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+}
+.bk-gearbox-btn {
+  height: 42px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 4px;
+  letter-spacing: -0.01em;
+}
+.bk-gearbox-btn.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .bk-gearbox-wrap,
+:root[data-theme="dark"] .bk-gearbox-wrap {
+  background: #242426;
+  border-color: #333336;
+}
+[data-theme="dark"] .bk-gearbox-btn,
+:root[data-theme="dark"] .bk-gearbox-btn {
+  color: rgba(255, 255, 255, 0.65);
+}
+[data-theme="dark"] .bk-gearbox-btn.active,
+:root[data-theme="dark"] .bk-gearbox-btn.active {
+  background: #FFFFFF;
+  color: #000000;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Fare Invoice Breakdown Card */
+.bk-fare-card {
+  background: var(--card, #FFFFFF);
+  border: 1px solid var(--line, #E2E8F0);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+[data-theme="dark"] .bk-fare-card,
+:root[data-theme="dark"] .bk-fare-card {
+  background: #1C1C1E;
+  border-color: #2C2C2E;
+}
+
+/* Waiting & Additional Trip Section */
+.bk-waiting-card {
+  background: var(--card, #FFFFFF);
+  border: 1px solid var(--line, #E2E8F0);
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  width: 100%;
+  box-sizing: border-box;
+}
+.bk-waiting-divider {
+  height: 1px;
+  background: var(--line, #F1F5F9);
+  width: 100%;
+}
+.bk-waiting-icon-clock {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #FEF3C7;
+  color: #D97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bk-waiting-badge-free {
+  font-size: 9.5px;
+  font-weight: 750;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #DCFCE7;
+  color: #166534;
+}
+.bk-waiting-icon-extra {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #E0F2FE;
+  color: #0284C7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bk-waiting-badge-extra {
+  font-size: 9.5px;
+  font-weight: 750;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #E0F2FE;
+  color: #0369A1;
+}
+.bk-waiting-subtext {
+  font-size: 11px;
+  color: var(--muted, #94A3B8);
+  font-weight: 500;
+}
+[data-theme="dark"] .bk-waiting-card,
+:root[data-theme="dark"] .bk-waiting-card {
+  background: #1C1C1E;
+  border-color: #2C2C2E;
+}
+[data-theme="dark"] .bk-waiting-divider,
+:root[data-theme="dark"] .bk-waiting-divider {
+  background: #2C2C2E;
+}
+[data-theme="dark"] .bk-waiting-icon-clock,
+:root[data-theme="dark"] .bk-waiting-icon-clock {
+  background: rgba(255, 199, 10, 0.16);
+  color: #FFC70A;
+}
+[data-theme="dark"] .bk-waiting-badge-free,
+:root[data-theme="dark"] .bk-waiting-badge-free {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ADE80;
+}
+[data-theme="dark"] .bk-waiting-icon-extra,
+:root[data-theme="dark"] .bk-waiting-icon-extra {
+  background: rgba(2, 132, 199, 0.18);
+  color: #38BDF8;
+}
+[data-theme="dark"] .bk-waiting-badge-extra,
+:root[data-theme="dark"] .bk-waiting-badge-extra {
+  background: rgba(2, 132, 199, 0.18);
+  color: #38BDF8;
+}
+[data-theme="dark"] .bk-waiting-subtext,
+:root[data-theme="dark"] .bk-waiting-subtext {
+  color: #8E8E93;
+}
+
+/* Terms Acceptance Card */
+.bk-terms-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  margin-bottom: 20px;
+}
+.bk-terms-notice-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #EEF2F6;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bk-terms-notice-text {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.4;
+  font-weight: 500;
+}
+[data-theme="dark"] .bk-terms-notice,
+:root[data-theme="dark"] .bk-terms-notice {
+  background: #1C1C1E;
+  border-color: #2C2C2E;
+}
+[data-theme="dark"] .bk-terms-notice-icon,
+:root[data-theme="dark"] .bk-terms-notice-icon {
+  background: #2C2C2E;
+  color: #8E8E93;
+}
+[data-theme="dark"] .bk-terms-notice-text,
+:root[data-theme="dark"] .bk-terms-notice-text {
+  color: #8E8E93;
+}
+
+/* Action Button (Pay Now) */
+.bk-submit-btn {
+  height: 48px;
+  border-radius: 14px;
+  padding: 0 22px;
+  font-weight: 800;
+  font-size: 14.5px;
+  cursor: pointer;
+  background: #000000;
+  color: #FFFFFF;
+  border: 1.5px solid #000000;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.bk-submit-btn:disabled,
+.bk-submit-btn.disabled {
+  cursor: default;
+  background: #E2E8F0 !important;
+  color: #94A3B8 !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: none !important;
+  opacity: 0.8 !important;
+}
+[data-theme="dark"] .bk-submit-btn,
+:root[data-theme="dark"] .bk-submit-btn {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .bk-submit-btn:disabled,
+:root[data-theme="dark"] .bk-submit-btn.disabled {
+  background: #242426 !important;
+  color: #636366 !important;
+  border-color: #333336 !important;
+  box-shadow: none !important;
+  opacity: 0.65 !important;
+}
+
+/* Terms Review Dialog */
+.bk-terms-modal-card {
+  width: 100%;
+  max-width: 430px;
+  background: var(--card, #FFFFFF);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  color: var(--ink, #0F172A);
+  position: relative;
+  animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--line, transparent);
+}
+.bk-terms-box-1 {
+  padding: 12px 14px;
+  background: #F8FAFC;
+  border-radius: 14px;
+  border: 1px solid #E2E8F0;
+}
+.bk-terms-box-2 {
+  padding: 12px 14px;
+  background: #FEF2F2;
+  border-radius: 14px;
+  border: 1px solid #FEE2E2;
+}
+.bk-terms-box-3 {
+  padding: 12px 14px;
+  background: #F0FDF4;
+  border-radius: 14px;
+  border: 1px solid #DCFCE7;
+}
+[data-theme="dark"] .bk-terms-modal-card,
+:root[data-theme="dark"] .bk-terms-modal-card {
+  background: #1C1C1E;
+  border-color: #2C2C2E;
+}
+[data-theme="dark"] .bk-terms-box-1,
+:root[data-theme="dark"] .bk-terms-box-1 {
+  background: #242426;
+  border-color: #333336;
+}
+[data-theme="dark"] .bk-terms-box-1 b,
+:root[data-theme="dark"] .bk-terms-box-1 b {
+  color: #FFFFFF !important;
+}
+[data-theme="dark"] .bk-terms-box-1 p,
+:root[data-theme="dark"] .bk-terms-box-1 p {
+  color: #B8B8C4 !important;
+}
+[data-theme="dark"] .bk-terms-box-2,
+:root[data-theme="dark"] .bk-terms-box-2 {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.24);
+}
+[data-theme="dark"] .bk-terms-box-2 b,
+:root[data-theme="dark"] .bk-terms-box-2 b {
+  color: #F87171 !important;
+}
+[data-theme="dark"] .bk-terms-box-2 p,
+:root[data-theme="dark"] .bk-terms-box-2 p {
+  color: #FCA5A5 !important;
+}
+[data-theme="dark"] .bk-terms-box-3,
+:root[data-theme="dark"] .bk-terms-box-3 {
+  background: rgba(22, 101, 52, 0.16);
+  border-color: rgba(22, 101, 52, 0.28);
+}
+[data-theme="dark"] .bk-terms-box-3 b,
+:root[data-theme="dark"] .bk-terms-box-3 b {
+  color: #4ADE80 !important;
+}
+[data-theme="dark"] .bk-terms-box-3 p,
+:root[data-theme="dark"] .bk-terms-box-3 p {
+  color: #86EFAC !important;
+}
+[data-theme="dark"] .location-suggest-dropdown {
+  background: #1C1C1E !important;
+  border-color: #2C2C2E !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5) !important;
+}
+[data-theme="dark"] .loc-suggest-item {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme="dark"] .loc-suggest-item:hover,
+[data-theme="dark"] .loc-suggest-item:active {
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Cancellation Modal - Floating Minimal Modern Card with Mobile Frame Padding */
