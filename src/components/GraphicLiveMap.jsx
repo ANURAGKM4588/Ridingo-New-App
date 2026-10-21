@@ -6,6 +6,76 @@ import {
   decodeGooglePolyline
 } from '../services/googleMapsService';
 
+function getDriverPersonIcon(google) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+      <defs>
+        <filter id="d-sh" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.4"/>
+        </filter>
+      </defs>
+      <!-- Outer white halo with shadow -->
+      <circle cx="22" cy="22" r="20" fill="#FFFFFF" stroke="rgba(0,0,0,0.08)" stroke-width="1" filter="url(#d-sh)"/>
+      <!-- Inner vibrant blue driver badge -->
+      <circle cx="22" cy="22" r="17.5" fill="#1A73E8"/>
+      <!-- Person Head -->
+      <circle cx="22" cy="15" r="4.8" fill="#FFFFFF"/>
+      <!-- Person Torso / Shoulders -->
+      <path d="M13 29.5c0-4.2 4-6.8 9-6.8s9 2.6 9 6.8v1H13v-1z" fill="#FFFFFF"/>
+    </svg>
+  `.trim();
+
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.Size(44, 44),
+    anchor: new google.Point(22, 22)
+  };
+}
+
+function getGreenPickupPin(google) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="50" viewBox="0 0 38 50">
+      <defs>
+        <filter id="p-sh" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+        </filter>
+      </defs>
+      <!-- Green Location Pin pointing down -->
+      <path d="M19 2C10.16 2 3 9.16 3 18c0 13.5 14.5 29.5 15.3 30.3.4.4 1 .4 1.4 0C20.5 47.5 35 31.5 35 18 35 9.16 27.84 2 19 2z" fill="#10B981" stroke="#FFFFFF" stroke-width="2.5" filter="url(#p-sh)"/>
+      <!-- Inner white dot -->
+      <circle cx="19" cy="18" r="6.5" fill="#FFFFFF"/>
+    </svg>
+  `.trim();
+
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.Size(38, 50),
+    anchor: new google.Point(19, 49)
+  };
+}
+
+function getRedDestinationPin(google) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="50" viewBox="0 0 38 50">
+      <defs>
+        <filter id="r-sh" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+        </filter>
+      </defs>
+      <!-- Red Location Pin pointing down -->
+      <path d="M19 2C10.16 2 3 9.16 3 18c0 13.5 14.5 29.5 15.3 30.3.4.4 1 .4 1.4 0C20.5 47.5 35 31.5 35 18 35 9.16 27.84 2 19 2z" fill="#EF4444" stroke="#FFFFFF" stroke-width="2.5" filter="url(#r-sh)"/>
+      <!-- Inner white dot -->
+      <circle cx="19" cy="18" r="6.5" fill="#FFFFFF"/>
+    </svg>
+  `.trim();
+
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.Size(38, 50),
+    anchor: new google.Point(19, 49)
+  };
+}
+
 /**
  * Authentic Google Maps Live Tracking Component
  * - Driver Accepted -> Arrived: Route is Driver Live Device GPS -> Pickup Location
@@ -194,44 +264,31 @@ export default function GraphicLiveMap({
       googleMapRef.current = map;
       setMapInstance(map);
 
-      // Official Google Maps Pickup Marker (Green Pin)
+      // Official Google Maps Pickup Marker (Green Location Pin)
       pickupMarkerRef.current = new google.Marker({
         position: { lat: pickupCoords.lat, lng: pickupCoords.lng },
         map,
         title: 'Pickup Location',
         zIndex: 10,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-          scaledSize: new google.Size(36, 36)
-        }
+        icon: getGreenPickupPin(google)
       });
 
-      // Official Google Maps Destination Marker (Red Pin, rendered during in-progress trip)
+      // Official Google Maps Destination Marker (Red Location Pin, rendered during in-progress trip)
       destMarkerRef.current = new google.Marker({
         position: { lat: dropCoords.lat, lng: dropCoords.lng },
         map: isApproachingPickup ? null : map,
         title: 'Destination',
         zIndex: 10,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-          scaledSize: new google.Size(36, 36)
-        }
+        icon: getRedDestinationPin(google)
       });
 
-      // Official Google Maps Driver Vehicle Live Marker (clean circular vehicle puck, no arrows)
+      // Official Google Maps Driver Vehicle Live Marker (Person Icon)
       driverMarkerRef.current = new google.Marker({
         position: { lat: carLat, lng: carLng },
         map,
         title: 'Driver Location',
         zIndex: 20,
-        icon: {
-          path: google.SymbolPath.CIRCLE,
-          scale: 7.5,
-          fillColor: '#1A73E8',
-          fillOpacity: 1,
-          strokeWeight: 3,
-          strokeColor: '#FFFFFF'
-        }
+        icon: getDriverPersonIcon(google)
       });
     }
 
@@ -381,27 +438,25 @@ export default function GraphicLiveMap({
     const google = window.google.maps;
     if (pickupMarkerRef.current) {
       pickupMarkerRef.current.setPosition(new google.LatLng(pickupCoords.lat, pickupCoords.lng));
+      pickupMarkerRef.current.setIcon(getGreenPickupPin(google));
+      pickupMarkerRef.current.setMap(mapInstance);
     }
     if (destMarkerRef.current) {
       destMarkerRef.current.setPosition(new google.LatLng(dropCoords.lat, dropCoords.lng));
+      destMarkerRef.current.setIcon(getRedDestinationPin(google));
       destMarkerRef.current.setMap(isApproachingPickup ? null : mapInstance);
+    }
+    if (driverMarkerRef.current) {
+      driverMarkerRef.current.setIcon(getDriverPersonIcon(google));
     }
   }, [mapInstance, pickupCoords, dropCoords, isApproachingPickup]);
 
-  // 4. Smooth driver vehicle GPS location updates (circular vehicle puck)
+  // 4. Smooth driver vehicle GPS location updates (Person Icon)
   useEffect(() => {
     if (!driverMarkerRef.current || !window.google?.maps) return;
     try {
       const google = window.google.maps;
       driverMarkerRef.current.setPosition(new google.LatLng(carLat, carLng));
-      driverMarkerRef.current.setIcon({
-        path: google.SymbolPath.CIRCLE,
-        scale: 7.5,
-        fillColor: '#1A73E8',
-        fillOpacity: 1,
-        strokeWeight: 3,
-        strokeColor: '#FFFFFF'
-      });
     } catch (_) {}
   }, [carLat, carLng]);
 
