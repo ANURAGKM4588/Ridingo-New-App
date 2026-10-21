@@ -8,85 +8,109 @@ import {
 
 function getDriverPersonIcon(google) {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
       <defs>
         <filter id="d-sh" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.38"/>
         </filter>
       </defs>
-      <circle cx="15" cy="15" r="14" fill="#FFFFFF" stroke="rgba(0,0,0,0.06)" stroke-width="0.8" filter="url(#d-sh)"/>
-      <circle cx="15" cy="15" r="12" fill="#1A73E8"/>
-      <circle cx="15" cy="10" r="3.2" fill="#FFFFFF"/>
-      <path d="M9 20c0-2.8 2.8-4.5 6-4.5s6 1.7 6 4.5v0.8H9V20z" fill="#FFFFFF"/>
+      <!-- Outer white halo with shadow -->
+      <circle cx="19" cy="19" r="17.5" fill="#FFFFFF" stroke="rgba(0,0,0,0.08)" stroke-width="1" filter="url(#d-sh)"/>
+      <!-- Inner vibrant blue driver badge -->
+      <circle cx="19" cy="19" r="15" fill="#1A73E8"/>
+      <!-- Person Head -->
+      <circle cx="19" cy="13" r="4.2" fill="#FFFFFF"/>
+      <!-- Person Torso / Shoulders -->
+      <path d="M11.5 25.5c0-3.6 3.4-5.8 7.5-5.8s7.5 2.2 7.5 5.8v1h-15v-1z" fill="#FFFFFF"/>
     </svg>
   `.trim();
 
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.Size(30, 30),
-    anchor: new google.Point(15, 15)
+    scaledSize: new google.Size(38, 38),
+    anchor: new google.Point(19, 19)
   };
 }
 
 function getGreenPickupPin(google) {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
+    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
       <defs>
         <filter id="p-sh" x="-25%" y="-25%" width="150%" height="150%">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.35"/>
         </filter>
         <linearGradient id="p-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stop-color="#34D399"/>
           <stop offset="100%" stop-color="#059669"/>
         </linearGradient>
       </defs>
-      <!-- Metal needle pin pointing to (12, 31) -->
-      <path d="M12 16 L12 31" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/>
+      <!-- Metal needle pin pointing to (15, 39) -->
+      <path d="M15 20 L15 39" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round"/>
       <!-- Pin collar -->
-      <ellipse cx="12" cy="15.5" rx="4.5" ry="1.6" fill="#065F46"/>
+      <ellipse cx="15" cy="19.5" rx="5.5" ry="2" fill="#065F46"/>
       <!-- Pushpin round head -->
-      <circle cx="12" cy="9" r="7.5" fill="url(#p-grad)" stroke="#FFFFFF" stroke-width="1.2" filter="url(#p-sh)"/>
+      <circle cx="15" cy="11.5" r="9.5" fill="url(#p-grad)" stroke="#FFFFFF" stroke-width="1.5" filter="url(#p-sh)"/>
       <!-- 3D spherical shine -->
-      <circle cx="9.8" cy="6.8" r="2.4" fill="#FFFFFF" fill-opacity="0.75"/>
+      <circle cx="12" cy="8.5" r="3" fill="#FFFFFF" fill-opacity="0.75"/>
     </svg>
   `.trim();
 
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.Size(24, 32),
-    anchor: new google.Point(12, 31)
+    scaledSize: new google.Size(30, 40),
+    anchor: new google.Point(15, 39)
   };
 }
 
 function getRedDestinationPin(google) {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
+    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
       <defs>
         <filter id="r-sh" x="-25%" y="-25%" width="150%" height="150%">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.35"/>
         </filter>
         <linearGradient id="r-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stop-color="#F87171"/>
           <stop offset="100%" stop-color="#DC2626"/>
         </linearGradient>
       </defs>
-      <!-- Metal needle pin pointing to (12, 31) -->
-      <path d="M12 16 L12 31" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/>
+      <!-- Metal needle pin pointing to (15, 39) -->
+      <path d="M15 20 L15 39" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round"/>
       <!-- Pin collar -->
-      <ellipse cx="12" cy="15.5" rx="4.5" ry="1.6" fill="#991B1B"/>
+      <ellipse cx="15" cy="19.5" rx="5.5" ry="2" fill="#991B1B"/>
       <!-- Pushpin round head -->
-      <circle cx="12" cy="9" r="7.5" fill="url(#r-grad)" stroke="#FFFFFF" stroke-width="1.2" filter="url(#r-sh)"/>
+      <circle cx="15" cy="11.5" r="9.5" fill="url(#r-grad)" stroke="#FFFFFF" stroke-width="1.5" filter="url(#r-sh)"/>
       <!-- 3D spherical shine -->
-      <circle cx="9.8" cy="6.8" r="2.4" fill="#FFFFFF" fill-opacity="0.75"/>
+      <circle cx="12" cy="8.5" r="3" fill="#FFFFFF" fill-opacity="0.75"/>
     </svg>
   `.trim();
 
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.Size(24, 32),
-    anchor: new google.Point(12, 31)
+    scaledSize: new google.Size(30, 40),
+    anchor: new google.Point(15, 39)
   };
 }
+
+// Clean tracking map style rules:
+// - Strips away POI icons (churches, hospitals, schools, businesses, restaurants)
+// - Preserves authentic Google Maps place names (localities, neighborhoods) and road names
+const TRACKING_MAP_POI_FILTER = [
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text', stylers: [{ visibility: 'on' }] },
+  { featureType: 'administrative.neighborhood', elementType: 'labels.text', stylers: [{ visibility: 'on' }] },
+  { featureType: 'road', elementType: 'labels.text', stylers: [{ visibility: 'on' }] }
+];
+
+const TRACKING_MAP_DARK_STYLE = [
+  ...GOOGLE_MAPS_DARK_STYLE.filter(s => s.featureType !== 'poi' && s.featureType !== 'transit'),
+  ...TRACKING_MAP_POI_FILTER
+];
+
+const TRACKING_MAP_LIGHT_STYLE = [
+  ...TRACKING_MAP_POI_FILTER
+];
 
 /**
  * Authentic Google Maps Live Tracking Component
@@ -194,7 +218,7 @@ export default function GraphicLiveMap({
       setIsDarkTheme(dark);
       if (googleMapRef.current && window.google?.maps) {
         googleMapRef.current.setOptions({
-          styles: dark ? GOOGLE_MAPS_DARK_STYLE : []
+          styles: dark ? TRACKING_MAP_DARK_STYLE : TRACKING_MAP_LIGHT_STYLE
         });
       }
     };
@@ -241,7 +265,7 @@ export default function GraphicLiveMap({
         clickableIcons: false,
         keyboardShortcuts: false,
         gestureHandling: isModal ? 'auto' : 'none',
-        styles: isDarkTheme ? GOOGLE_MAPS_DARK_STYLE : []
+        styles: isDarkTheme ? TRACKING_MAP_DARK_STYLE : TRACKING_MAP_LIGHT_STYLE
       });
 
       // Dynamically scale polyline thickness when user zooms so the road line stays crisp and proportional
