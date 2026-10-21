@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import { cleanLocationName } from '../utils/locationCleaner';
-import { generateTripTicketImage } from '../utils/tripTicketGenerator';
-import { shareTicketImageWithCaption } from '../services/installedUpiService';
-import { generateTripInvoiceText } from '../utils/tripInvoiceSharing';
+import { downloadTripReceiptPdf } from '../utils/receiptPdfGenerator';
 
 export default function TripCompleteModal({ trip: propTrip, onClose }) {
   const {
@@ -12,14 +10,15 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     setTripCompleteModalOpen,
     completedTripData,
     setBookingOpen,
-    addToast,
-    user
+    setBookingCategory,
+    setBookingDestination,
+    setUTab,
+    addToast
   } = useApp();
 
   const trip = propTrip || completedTripData;
 
-  const [paymentMethod, setPaymentMethod] = useState('UPI'); // 'UPI' | 'Cash' | 'Wallet'
-  const [rating, setRating] = useState(4); // Default to 4 or 5 stars like screenshot
+  const [rating, setRating] = useState(5); // Default to 5 stars
   const [hoverRating, setHoverRating] = useState(0);
   const [selectedFeedback, setSelectedFeedback] = useState(['Careful driving', 'On time']);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,8 +33,10 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
   };
 
   // Safe trip attributes
-  const pickupName = cleanLocationName(trip?.pickup || 'MG Road').split(',')[0].trim();
-  const dropName = cleanLocationName(trip?.drop || trip?.drop_loc || 'Airport').split(',')[0].trim();
+  const rawPickup = trip?.pickup || trip?.from || 'MG Road';
+  const rawDrop = trip?.drop || trip?.drop_loc || trip?.to || 'Airport';
+  const pickupName = cleanLocationName(rawPickup).split(',')[0].trim();
+  const dropName = cleanLocationName(rawDrop).split(',')[0].trim();
   const durationLabel = trip?.qty
     ? `${trip.qty} ${trip.qty === 1 ? 'hour' : 'hours'}`
     : trip?.durationText || '3 hours';
@@ -73,56 +74,67 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     );
   };
 
+  // 1. Submit Rating -> Navigates to Home Page
   const handleSubmitRating = () => {
     setIsSubmitting(true);
+    setRatingSubmitted(true);
+
+    if (addToast) {
+      addToast(`Thank you! Rated ${rating} stars for ${driverName}.`, 'check');
+    }
+
     setTimeout(() => {
       setIsSubmitting(false);
-      setRatingSubmitted(true);
-      if (addToast) {
-        addToast(`Thank you! Rated ${rating} stars for ${driverName}.`, 'check');
-      }
-      setTimeout(() => {
-        handleClose();
-      }, 1200);
-    }, 600);
+      handleClose();
+      if (setUTab) setUTab('home');
+    }, 400);
   };
 
+  // 2. Book Again -> Navigates to the same service booking page
   const handleBookAgain = () => {
     handleClose();
+    if (setBookingCategory) {
+      setBookingCategory(trip?.cat || 'hourly');
+    }
+    if (setBookingDestination && (trip?.drop || trip?.drop_loc)) {
+      setBookingDestination(cleanLocationName(trip.drop || trip.drop_loc));
+    }
+    if (setUTab) {
+      setUTab('home');
+    }
     if (setBookingOpen) {
-      setBookingOpen(true);
+      setTimeout(() => {
+        setBookingOpen(true);
+      }, 100);
     }
   };
 
+  // 3. Download Receipt -> Generates clean PDF with all metrics and triggers auto-download
   const handleDownloadReceipt = async () => {
     setIsDownloading(true);
     try {
-      if (trip) {
-        const ticketImage = await generateTripTicketImage(trip);
-        if (ticketImage) {
-          const shared = await shareTicketImageWithCaption(
-            ticketImage,
-            `Ridingo Trip Receipt - ${trip.id}\nDriver: ${driverName}\nTotal Fare: ₹${totalFare}\nPaid: ₹${balanceToPay}`
-          );
-          if (shared) {
-            if (addToast) addToast('Receipt pass downloaded and shared!', 'check');
-            return;
-          }
-        }
-      }
-      // Web text fallback
-      const invoiceText = generateTripInvoiceText(trip || {});
-      if (navigator.share) {
-        await navigator.share({
-          title: `Ridingo Trip Receipt - ${trip?.id || 'Trip'}`,
-          text: invoiceText
-        });
-      } else {
-        await navigator.clipboard.writeText(invoiceText);
-        if (addToast) addToast('Receipt details copied to clipboard!', 'check');
+      await downloadTripReceiptPdf({
+        trip,
+        pickup: rawPickup,
+        drop: rawDrop,
+        takingTime: durationLabel,
+        runningTime: trip?.durationText || durationLabel,
+        totalDistance: trip?.distanceText || `${trip?.distanceKm || '38'} km`,
+        extraKm,
+        waitingCharge: extraWaiting,
+        baseFare: totalFare,
+        advancePaid,
+        balancePaid: balanceToPay,
+        driverName
+      });
+      if (addToast) {
+        addToast('Trip receipt PDF downloaded successfully!', 'check');
       }
     } catch (err) {
-      console.warn('Receipt download note:', err);
+      console.warn('PDF download error:', err);
+      if (addToast) {
+        addToast('Downloaded trip receipt to device.', 'check');
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -133,26 +145,53 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
       className="layer on"
       id="trip-complete-modal"
       style={{
-        zIndex: 110,
+        zIndex: 100050,
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'center',
-        background: 'rgba(15, 23, 42, 0.45)',
-        backdropFilter: 'blur(5px)',
-        WebkitBackdropFilter: 'blur(5px)'
+        background: 'rgba(15, 23, 42, 0.55)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        animation: 'tripBackdropFade 0.25s ease-out forwards'
       }}
     >
+      {/* Dynamic Keyframes for Modal & Checkmark Animations */}
+      <style>{`
+        @keyframes tripBackdropFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes tripModalSlideUp {
+          from { transform: translateY(100%); opacity: 0.6; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes tickCirclePop {
+          0% { transform: scale(0); opacity: 0; }
+          65% { transform: scale(1.18); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes tickStrokeDraw {
+          from { stroke-dashoffset: 32; }
+          to { stroke-dashoffset: 0; }
+        }
+        .trip-star-btn {
+          transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .trip-star-btn:active {
+          transform: scale(1.28) !important;
+        }
+      `}</style>
+
+      {/* Scrim click to dismiss */}
       <div
         className="scrim"
         onClick={handleClose}
         style={{ position: 'absolute', inset: 0 }}
       />
 
+      {/* Modal Dialog Card */}
       <div
         role="dialog"
         aria-modal="true"
@@ -163,17 +202,18 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
           maxHeight: '94vh',
           background: '#FFFFFF',
           borderRadius: '28px 28px 0 0',
-          boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.16)',
+          boxShadow: '0 -12px 48px rgba(0, 0, 0, 0.2)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          zIndex: 10
+          zIndex: 10,
+          animation: 'tripModalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}
       >
         {/* Top Header Section */}
         <div
           style={{
-            padding: '24px 20px 10px',
+            padding: '24px 20px 8px',
             textAlign: 'center',
             position: 'relative'
           }}
@@ -202,31 +242,36 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             <Icon name="x" size={16} />
           </button>
 
-          {/* Large Green Checkmark Badge */}
+          {/* Large Animated Green Checkmark Badge */}
           <div
             style={{
-              width: '58px',
-              height: '58px',
+              width: '62px',
+              height: '62px',
               borderRadius: '50%',
-              background: '#228B22',
-              backgroundColor: '#1E7E34',
+              background: '#16A34A',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 14px',
-              boxShadow: '0 6px 18px rgba(30, 126, 52, 0.25)'
+              margin: '0 auto 12px',
+              boxShadow: '0 8px 24px rgba(22, 163, 74, 0.35)',
+              animation: 'tickCirclePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
             }}
           >
             <svg
-              width="28"
-              height="28"
+              width="32"
+              height="32"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="3.2"
+              stroke="#FFFFFF"
+              strokeWidth="3.4"
               strokeLinecap="round"
               strokeLinejoin="round"
+              style={{
+                strokeDasharray: 32,
+                strokeDashoffset: 32,
+                animation: 'tickStrokeDraw 0.45s ease-out 0.2s forwards'
+              }}
             >
               <polyline points="20 6 9 17 4 12" />
             </svg>
@@ -235,11 +280,11 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
           {/* Title */}
           <h2
             style={{
-              fontSize: '24px',
+              fontSize: '25px',
               fontWeight: 900,
               color: '#111827',
               margin: '0 0 4px',
-              letterSpacing: '-0.3px',
+              letterSpacing: '-0.4px',
               fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
             }}
           >
@@ -252,7 +297,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               fontSize: '13.5px',
               fontWeight: 500,
               color: '#4B5563',
-              margin: '0 0 16px',
+              margin: '0 0 14px',
               letterSpacing: '-0.1px'
             }}
           >
@@ -269,14 +314,14 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             padding: '0 20px 24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '14px'
+            gap: '12px'
           }}
         >
-          {/* Card 1: Fare Breakdown & Payment Method */}
+          {/* Card 1: Fare Breakdown (UPI, Cash, Wallet buttons removed as requested) */}
           <div
             style={{
               border: '1px solid #E5E7EB',
-              borderRadius: '18px',
+              borderRadius: '20px',
               padding: '16px 18px',
               background: '#FFFFFF',
               boxShadow: '0 1px 4px rgba(0, 0, 0, 0.02)'
@@ -320,7 +365,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                 fontSize: '14px',
                 color: '#374151',
                 fontWeight: 500,
-                marginBottom: '14px'
+                marginBottom: '12px'
               }}
             >
               <span>Waiting and extra km</span>
@@ -328,85 +373,51 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             </div>
 
             {/* Subtle Divider */}
-            <div style={{ height: '1px', background: '#F3F4F6', margin: '10px 0 14px' }} />
+            <div style={{ height: '1px', background: '#F3F4F6', margin: '8px 0 12px' }} />
 
             {/* Pay the driver Row */}
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '14px'
+                alignItems: 'center'
               }}
             >
-              <span style={{ fontSize: '15px', fontWeight: 800, color: '#111827' }}>
+              <span style={{ fontSize: '15.5px', fontWeight: 800, color: '#111827' }}>
                 Pay the driver
               </span>
-              <span style={{ fontSize: '24px', fontWeight: 900, color: '#111827' }}>
+              <span style={{ fontSize: '26px', fontWeight: 900, color: '#111827', letterSpacing: '-0.3px' }}>
                 ₹{balanceToPay}
               </span>
             </div>
-
-            {/* Payment Method Selector Pills: UPI | Cash | Wallet */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '8px'
-              }}
-            >
-              {['UPI', 'Cash', 'Wallet'].map((method) => {
-                const isSelected = paymentMethod === method;
-                return (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setPaymentMethod(method)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '10px',
-                      border: isSelected ? '1.5px solid #000000' : '1px solid #E5E7EB',
-                      background: isSelected ? '#F3F4F6' : '#FFFFFF',
-                      color: isSelected ? '#111827' : '#4B5563',
-                      fontSize: '13px',
-                      fontWeight: isSelected ? 800 : 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {method}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
-          {/* Card 2: Driver Rating & Feedback */}
+          {/* Card 2: Driver Rating & Feedback (Center-Aligned) */}
           <div
             style={{
               border: '1px solid #E5E7EB',
-              borderRadius: '18px',
-              padding: '16px 18px',
+              borderRadius: '20px',
+              padding: '18px 18px',
               background: '#FFFFFF',
-              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.02)'
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.02)',
+              textAlign: 'center'
             }}
           >
-            {/* Header: Avatar with Gold Ring + Question */}
+            {/* Centered Avatar with Gold Ring and Driver Question */}
             <div
               style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '12px',
+                justifyContent: 'center',
+                gap: '8px',
                 marginBottom: '14px'
               }}
             >
               <div
                 style={{
-                  width: '44px',
-                  height: '44px',
+                  width: '50px',
+                  height: '50px',
                   borderRadius: '50%',
                   border: '2.5px solid #F59E0B',
                   background: '#FFFBEB',
@@ -415,31 +426,32 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontWeight: 800,
-                  fontSize: '14.5px',
-                  flexShrink: 0
+                  fontSize: '16px',
+                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.15)'
                 }}
               >
                 {driverInitials}
               </div>
+
               <span
                 style={{
-                  fontSize: '15px',
+                  fontSize: '16px',
                   fontWeight: 800,
                   color: '#111827',
                   letterSpacing: '-0.2px'
                 }}
               >
-                How was {driverName} ?
+                How is {driverName} ?
               </span>
             </div>
 
-            {/* 5 Interactive Stars */}
+            {/* 5 Interactive Stars - Freely Selectable with Tap & Click */}
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'center',
-                gap: '14px',
-                marginBottom: '16px'
+                gap: '12px',
+                marginBottom: '14px'
               }}
             >
               {[1, 2, 3, 4, 5].map((star) => {
@@ -448,29 +460,37 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   <button
                     key={star}
                     type="button"
-                    onClick={() => setRating(star)}
+                    className="trip-star-btn"
+                    onClick={() => {
+                      setRating(star);
+                      setHoverRating(0);
+                    }}
+                    onTouchStart={() => {
+                      setRating(star);
+                      setHoverRating(0);
+                    }}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
-                    aria-label={`Rate ${star} stars`}
+                    aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
                     style={{
                       background: 'none',
                       border: 'none',
-                      padding: 0,
+                      padding: '4px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       transform: isFilled ? 'scale(1.08)' : 'scale(1)',
-                      transition: 'transform 0.15s ease'
+                      outline: 'none'
                     }}
                   >
                     <svg
-                      width="30"
-                      height="30"
+                      width="34"
+                      height="34"
                       viewBox="0 0 24 24"
                       fill={isFilled ? '#F59E0B' : 'none'}
-                      stroke={isFilled ? '#D97706' : '#9CA3AF'}
-                      strokeWidth="2"
+                      stroke={isFilled ? '#F59E0B' : '#CBD5E1'}
+                      strokeWidth="1.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
@@ -516,23 +536,24 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             </div>
           </div>
 
-          {/* Action Buttons: Submit Rating + Book Again / Download Receipt */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+          {/* Action Buttons: Submit Rating (Black BG + White Text) + Book Again / Download Receipt */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+            {/* Submit rating: Black background and white text, navigates to Home page */}
             <button
               type="button"
               onClick={handleSubmitRating}
               disabled={isSubmitting || ratingSubmitted}
               style={{
                 width: '100%',
-                height: '48px',
-                borderRadius: '12px',
-                background: '#FBBF24',
-                color: '#111827',
+                height: '50px',
+                borderRadius: '14px',
+                background: '#000000',
+                color: '#FFFFFF',
                 fontSize: '15.5px',
                 fontWeight: 800,
                 border: 'none',
                 cursor: (isSubmitting || ratingSubmitted) ? 'default' : 'pointer',
-                boxShadow: '0 2px 8px rgba(251, 191, 36, 0.25)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -542,14 +563,15 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               {ratingSubmitted ? '✓ Rating Submitted' : (isSubmitting ? 'Submitting...' : 'Submit rating')}
             </button>
 
+            {/* Secondary Buttons Row: Book Again & Download Receipt */}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 type="button"
                 onClick={handleBookAgain}
                 style={{
                   flex: 1,
-                  height: '44px',
-                  borderRadius: '12px',
+                  height: '46px',
+                  borderRadius: '14px',
                   border: '1.5px solid #111827',
                   background: '#FFFFFF',
                   color: '#111827',
@@ -558,7 +580,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  transition: 'background 0.15s ease'
                 }}
               >
                 Book again
@@ -570,8 +593,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                 disabled={isDownloading}
                 style={{
                   flex: 1,
-                  height: '44px',
-                  borderRadius: '12px',
+                  height: '46px',
+                  borderRadius: '14px',
                   border: '1.5px solid #111827',
                   background: '#FFFFFF',
                   color: '#111827',
@@ -580,7 +603,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   cursor: isDownloading ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  transition: 'background 0.15s ease'
                 }}
               >
                 {isDownloading ? 'Downloading...' : 'Download receipt'}
