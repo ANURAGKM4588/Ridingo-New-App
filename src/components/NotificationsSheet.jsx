@@ -48,43 +48,62 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
       <div className="scrim" onClick={onClose} />
 
       <div
-        className="sheet"
+        className="offer-details-modal-sheet"
         style={{
           width: '100%',
           maxWidth: '440px',
-          background: 'var(--card, #FFFFFF)',
-          borderTopLeftRadius: '22px',
-          borderTopRightRadius: '22px',
-          padding: '16px 18px max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.22)',
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          background: 'var(--sheet, var(--card, #FFFFFF))',
+          borderTopLeftRadius: '24px',
+          borderTopRightRadius: '24px',
+          padding: '12px 18px max(18px, calc(env(safe-area-inset-bottom, 0px) + 14px))',
+          boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.28)',
+          border: '1px solid var(--line, rgba(0,0,0,0.06))',
+          borderBottom: 'none',
           position: 'relative',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          zIndex: 10002,
+          animation: 'up 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+          pointerEvents: 'auto'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ width: '36px', height: '4px', borderRadius: '999px', background: '#E2E8F0', margin: '0 auto 14px' }} />
+        {/* Sleek Drag Handle */}
+        <div
+          style={{
+            width: '36px',
+            height: '4px',
+            borderRadius: '999px',
+            background: 'var(--line-strong, #CBD5E1)',
+            opacity: 0.8,
+            margin: '0 auto 12px'
+          }}
+        />
 
         {/* Modal Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '13px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
             <span
               style={{
-                width: '32px',
-                height: '32px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '10px',
                 background: '#FEF3C7',
                 color: '#D97706',
-                display: 'grid',
-                placeItems: 'center'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
               }}
             >
               <Icon name="star" size={17} />
             </span>
             <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 750, color: 'var(--ink, #0F172A)' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 750, color: 'var(--ink, #0F172A)', letterSpacing: '-0.015em', lineHeight: 1.25 }}>
                 Offer Details
               </h3>
-              <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)' }}>
+              <span style={{ fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
                 Promotion Terms
               </span>
             </div>
@@ -107,7 +126,7 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
               cursor: 'pointer'
             }}
           >
-            <Icon name="x" size={15} />
+            <Icon name="x" size={14} />
           </button>
         </div>
 
@@ -116,16 +135,17 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
           style={{
             background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
             color: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '16px',
-            marginBottom: '14px',
-            border: '1px solid rgba(255, 255, 255, 0.08)'
+            borderRadius: '15px',
+            padding: '14px 16px',
+            marginBottom: '15px',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 4px 16px rgba(15, 23, 42, 0.12)'
           }}
         >
-          <div style={{ display: 'inline-block', background: 'rgba(250, 204, 21, 0.2)', border: '1px solid #FACC15', color: '#FACC15', borderRadius: '999px', padding: '2px 8px', fontSize: '10.5px', fontWeight: 750, letterSpacing: '0.03em', marginBottom: '6px' }}>
+          <div style={{ display: 'inline-block', background: 'rgba(250, 204, 21, 0.18)', border: '1px solid #FACC15', color: '#FACC15', borderRadius: '999px', padding: '2px 8px', fontSize: '10.5px', fontWeight: 750, letterSpacing: '0.03em', marginBottom: '6px' }}>
             {discountLabel}
           </div>
-          <h4 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 750, color: '#FFFFFF' }}>
+          <h4 style={{ margin: '0 0 4px', fontSize: '15.5px', fontWeight: 750, color: '#FFFFFF', letterSpacing: '-0.015em' }}>
             {offer.title || 'Special Promotion'}
           </h4>
           <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#94A3B8', lineHeight: 1.4 }}>
@@ -137,54 +157,77 @@ function OfferDetailsModal({ offer, onClose, onClaim }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              background: 'rgba(255, 255, 255, 0.07)',
+              background: 'rgba(255, 255, 255, 0.08)',
               border: '1px dashed #FACC15',
-              padding: '4px 10px',
-              borderRadius: '10px'
+              padding: '4px 11px',
+              borderRadius: '9px'
             }}
           >
-            <span style={{ fontSize: '11px', color: '#E2E8F0', fontWeight: 500 }}>Code:</span>
-            <b style={{ fontSize: '13px', color: '#FACC15', fontFamily: 'monospace', letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: '11px', color: '#CBD5E1', fontWeight: 500 }}>Code:</span>
+            <b style={{ fontSize: '12.5px', color: '#FACC15', fontFamily: 'monospace', letterSpacing: '0.06em' }}>
               {promoCode}
             </b>
           </div>
         </div>
 
         {/* Terms list */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink, #0F172A)', marginBottom: '6px' }}>
+        <div style={{ marginBottom: '18px' }}>
+          <div style={{ fontSize: '12.5px', fontWeight: 750, color: 'var(--ink, #0F172A)', marginBottom: '8px', letterSpacing: '-0.01em' }}>
             Terms & Conditions
           </div>
-          <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '11.5px', color: 'var(--muted, #64748B)', lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {terms.map((t, idx) => (
-              <li key={idx} style={{ marginBottom: '3px' }}>{t}</li>
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  fontSize: '11.5px',
+                  color: 'var(--muted, #64748B)',
+                  lineHeight: 1.4
+                }}
+              >
+                <span
+                  style={{
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    background: 'var(--muted, #94A3B8)',
+                    marginTop: '5px',
+                    flexShrink: 0
+                  }}
+                />
+                <span style={{ flex: 1 }}>{t}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
         {/* Claim Button */}
         <button
           type="button"
-          className="btn primary"
           style={{
             width: '100%',
-            height: '42px',
+            height: '44px',
             borderRadius: '12px',
-            fontWeight: 700,
-            fontSize: '13px',
-            background: 'var(--solid, #000000)',
+            fontWeight: 750,
+            fontSize: '13.5px',
+            background: 'var(--solid, #0F172A)',
             color: 'var(--on-solid, #FFFFFF)',
             border: 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '6px'
+            gap: '8px',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+            transition: 'opacity 0.15s ease'
           }}
           onClick={() => onClaim(offer)}
         >
           <span>Claim & Book Now</span>
-          <Icon name="chevron-right" size={15} />
+          <Icon name="chevronRight" size={15} />
         </button>
       </div>
     </div>

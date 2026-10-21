@@ -984,7 +984,8 @@ body.standalone-app .driver-modal-overlay {
   z-index: 10000 !important;
 }
 
-body.standalone-app .sheet {
+body.standalone-app .sheet,
+body.standalone-app .offer-details-modal-sheet {
   z-index: 10001 !important;
 }
 
@@ -7954,6 +7955,28 @@ body.app-offline-mode .action-btn {
   animation: subtleShake 0.46s cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35), 0 8px 24px rgba(245, 158, 11, 0.15) !important;
 }
+
+/* =========================================================================
+   Offer Details Modal Sheet Styles
+   ========================================================================= */
+.offer-details-modal-sheet {
+  position: relative;
+  width: 100% !important;
+  max-width: 440px !important;
+  box-sizing: border-box !important;
+  pointer-events: auto !important;
+  border-top-left-radius: 26px !important;
+  border-top-right-radius: 26px !important;
+  background: var(--sheet, var(--card, #FFFFFF));
+  animation: up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+[data-theme="dark"] .offer-details-modal-sheet {
+  background: #111318 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-bottom: none !important;
+}
+
 
 
 
