@@ -1700,56 +1700,41 @@ export function formatDurationMeasurement(totalMinutes) {
 }
 
 /**
- * Calculates Mock Turn-by-Turn Route Telemetry & Waypoints
- * Generates realistic polylines, duration, distance, and turns for testing.
+ * Calculates Real Coordinate Telemetry (Distance & Duration) between GPS points
+ * Pure real mathematical calculation without fake demo steps or simulated curves.
  */
+export function calculateDirectDistanceKm(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 1.5;
+  const R = 6371;
+  const dLat = ((Number(lat2) - Number(lat1)) * Math.PI) / 180;
+  const dLon = ((Number(lon2) - Number(lon1)) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((Number(lat1) * Math.PI) / 180) *
+      Math.cos((Number(lat2) * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(1));
+}
+
 export function calculateMockRoute(originCoord, destCoord) {
   const oLat = originCoord?.lat || 10.0245;
   const oLng = originCoord?.lng || 76.3075;
   const dLat = destCoord?.lat || 10.0285;
   const dLng = destCoord?.lng || 76.3120;
 
-  // Approximate distance in km (Haversine formula)
-  const R = 6371;
-  const dLatRad = ((dLat - oLat) * Math.PI) / 180;
-  const dLngRad = ((dLng - oLng) * Math.PI) / 180;
-  const a =
-    Math.sin(dLatRad / 2) * Math.sin(dLatRad / 2) +
-    Math.cos((oLat * Math.PI) / 180) *
-      Math.cos((dLat * Math.PI) / 180) *
-      Math.sin(dLngRad / 2) *
-      Math.sin(dLngRad / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const rawDistKm = R * c;
-  const distanceKm = Math.max(1.2, Number((rawDistKm * 1.35).toFixed(1))); // 1.35x road factor
-
-  // Average city driving speed 30 km/h
-  const durationMins = Math.max(5, Math.round((distanceKm / 28) * 60));
-
-  // Generate 6 smooth interpolated waypoints following typical city road grid
-  const waypoints = [];
-  const numSteps = 6;
-  for (let i = 0; i <= numSteps; i++) {
-    const t = i / numSteps;
-    // Add slight natural curve offset to simulate real roads
-    const curveOffset = Math.sin(t * Math.PI) * 0.0035;
-    const lat = oLat + (dLat - oLat) * t + curveOffset;
-    const lng = oLng + (dLng - oLng) * t - curveOffset * 0.5;
-    waypoints.push({ lat, lng });
-  }
+  const rawDistKm = calculateDirectDistanceKm(oLat, oLng, dLat, dLng);
+  const distanceKm = Math.max(0.5, Number((rawDistKm * 1.3).toFixed(1)));
+  const durationMins = Math.max(2, Math.round((distanceKm / 28) * 60));
 
   return {
     distanceKm,
     durationMins,
     distanceText: `${distanceKm} km`,
     durationText: formatDurationMeasurement(durationMins),
-    waypoints,
-    steps: [
-      { instruction: 'Head north towards main corridor', distance: '400 m' },
-      { instruction: 'Turn right onto highway bypass', distance: `${(distanceKm * 0.6).toFixed(1)} km` },
-      { instruction: 'Take the flyover ramp towards destination', distance: `${(distanceKm * 0.3).toFixed(1)} km` },
-      { instruction: 'Arrive at destination on the left', distance: '100 m' }
-    ]
+    waypoints: [{ lat: oLat, lng: oLng }, { lat: dLat, lng: dLng }],
+    steps: []
   };
 }
 
@@ -1853,7 +1838,33 @@ export async function geocodeAddress(addressText) {
  * Falls back to high-accuracy road telemetry when offline or in development mock mode.
  */
 export async function calculateTripRouteAndETA({ origin, destination, originCoords, destCoords }) {
-  // 1. If Google Maps DirectionsService is available in window.google
+  // 1. Primary: Real Google Cloud Routes API v2 (official road calculation with user's Google API Key)
+  try {
+    const roadDir = await fetchGoogleRoadDirections({ origin, destination, originCoords, destCoords });
+    if (roadDir && roadDir.distanceKm) {
+      const durSecs = (roadDir.durationMins || 10) * 60;
+      const arrival = new Date(Date.now() + durSecs * 1000);
+      const etaText = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      return {
+        distanceKm: roadDir.distanceKm,
+        distanceText: roadDir.distanceText || `${roadDir.distanceKm} km`,
+        durationMins: roadDir.durationMins,
+        durationText: roadDir.durationText || `${roadDir.durationMins} mins`,
+        etaText,
+        source: roadDir.source,
+        overview_polyline: roadDir.overview_polyline,
+        steps: roadDir.steps || [],
+        currentStep: roadDir.currentStep || null,
+        originCoords,
+        destCoords
+      };
+    }
+  } catch (err) {
+    console.warn('[GoogleMaps] Routes API v2 calculation error:', err);
+  }
+
+  // 2. Secondary: Google Maps DirectionsService if loaded in browser
   if (!isMockMode() && typeof window !== 'undefined' && window.google?.maps?.DirectionsService) {
     try {
       const directionsService = new window.google.maps.DirectionsService();
@@ -1911,12 +1922,11 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
         }
       }
     } catch (err) {
-      console.warn('[GoogleMaps] Live DirectionsService error, using telemetry fallback:', err);
+      console.warn('[GoogleMaps] DirectionsService error:', err);
     }
   }
 
-  // 2. High-precision coordinate / road telemetry calculation
-  // Resolve coordinates from place strings if coordinates are not provided
+  // 3. Fallback: Precise GPS coordinate distance calculation (pure math, no fake steps)
   let oCoords = originCoords;
   if (!oCoords?.lat && origin) {
     oCoords = await geocodeAddress(origin);
@@ -1926,20 +1936,27 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
     dCoords = await geocodeAddress(destination);
   }
 
-  const route = calculateMockRoute(oCoords, dCoords);
-  const now = Date.now();
-  const arrival = new Date(now + route.durationMins * 60 * 1000);
+  const oLat = oCoords?.lat || 10.0245;
+  const oLng = oCoords?.lng || 76.3075;
+  const dLat = dCoords?.lat || 10.0385;
+  const dLng = dCoords?.lng || 76.3190;
+
+  const rawDistKm = calculateDirectDistanceKm(oLat, oLng, dLat, dLng);
+  const distanceKm = Math.max(0.5, Number((rawDistKm * 1.3).toFixed(1)));
+  const durationMins = Math.max(2, Math.round((distanceKm / 28) * 60));
+  const arrival = new Date(Date.now() + durationMins * 60 * 1000);
   const etaText = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return {
-    distanceKm: route.distanceKm,
-    distanceText: route.distanceText,
-    durationMins: route.durationMins,
-    durationText: route.durationText,
+    distanceKm,
+    distanceText: `${distanceKm} km`,
+    durationMins,
+    durationText: formatDurationMeasurement(durationMins),
     etaText,
-    source: 'google_telemetry',
+    source: 'real_gps_telemetry',
     originCoords: oCoords,
-    destCoords: dCoords
+    destCoords: dCoords,
+    steps: []
   };
 }
 
@@ -2077,30 +2094,46 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration'
+        'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.steps.navigationInstruction,routes.legs.steps.localizedValues'
       },
       body: JSON.stringify({
         origin: { location: { latLng: { latitude: Number(oLat), longitude: Number(oLng) } } },
         destination: { location: { latLng: { latitude: Number(dLat), longitude: Number(dLng) } } },
-        travelMode: 'DRIVE'
+        travelMode: 'DRIVE',
+        languageCode: 'en-US'
       })
     });
 
     if (routesRes.ok) {
       const routesData = await routesRes.json();
-      const encodedPolyline = routesData?.routes?.[0]?.polyline?.encodedPolyline;
+      const route = routesData?.routes?.[0];
+      const encodedPolyline = route?.polyline?.encodedPolyline;
       if (encodedPolyline) {
         const points = decodeGooglePolyline(encodedPolyline);
         if (points.length >= 2) {
-          const meters = routesData.routes[0].distanceMeters;
+          const meters = route.distanceMeters;
           const distKm = meters ? Number((meters / 1000).toFixed(1)) : null;
-          const durSec = parseInt(routesData.routes[0].duration || '0', 10);
+          const durSec = parseInt(route.duration || '0', 10);
           const durMins = durSec ? Math.round(durSec / 60) : null;
+
+          // Real turn-by-turn navigation instructions straight from Google Routes API
+          const rawSteps = route.legs?.[0]?.steps || [];
+          const steps = rawSteps.map(s => ({
+            instruction: (s.navigationInstruction?.instructions || '').replace(/\n/g, ' ').trim(),
+            maneuver: s.navigationInstruction?.maneuver || 'STRAIGHT',
+            distance: s.localizedValues?.distance?.text || '',
+            duration: s.localizedValues?.staticDuration?.text || ''
+          })).filter(s => Boolean(s.instruction));
+
           const res = {
             points,
             overview_polyline: { points: encodedPolyline },
             distanceKm: distKm,
             durationMins: durMins,
+            distanceText: distKm ? `${distKm} km` : '',
+            durationText: durMins ? `${durMins} mins` : '',
+            steps,
+            currentStep: steps[0] || null,
             source: 'google_routes_api_v2'
           };
           roadDirectionsCache.set(cacheKey, res);
@@ -2149,7 +2182,6 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
 
       let points = [];
       if (polylinePoints) {
-        // Decode overview_polyline.points from Google Maps Directions API response
         points = decodeGooglePolyline(polylinePoints);
       } else if (Array.isArray(route.overview_path) && route.overview_path.length > 0) {
         points = route.overview_path.map(pt => ({
@@ -2162,6 +2194,12 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
         const leg = route.legs?.[0];
         const distKm = leg?.distance?.value ? Number((leg.distance.value / 1000).toFixed(1)) : null;
         const durMins = leg?.duration?.value ? Math.round(leg.duration.value / 60) : null;
+        const rawSteps = leg?.steps || [];
+        const steps = rawSteps.map(s => ({
+          instruction: (s.instructions || '').replace(/<[^>]*>/g, '').trim(),
+          distance: s.distance?.text || '',
+          duration: s.duration?.text || ''
+        })).filter(s => Boolean(s.instruction));
 
         const res = {
           points,
@@ -2170,6 +2208,10 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
           },
           distanceKm: distKm,
           durationMins: durMins,
+          distanceText: leg?.distance?.text || (distKm ? `${distKm} km` : ''),
+          durationText: leg?.duration?.text || (durMins ? `${durMins} mins` : ''),
+          steps,
+          currentStep: steps[0] || null,
           source: 'google_directions_api'
         };
         roadDirectionsCache.set(cacheKey, res);
@@ -2180,7 +2222,7 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
     }
   }
 
-  // 3. High-precision road driving router fallback (OSRM highway network)
+  // 4. Real road driving router fallback (OSRM highway network)
   try {
     const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`;
     const response = await fetch(osrmUrl, { headers: { 'Accept': 'application/json' } });
@@ -2188,8 +2230,7 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
       const data = await response.json();
       const route = data.routes?.[0];
       if (route?.geometry?.coordinates && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 1) {
-        const rawCoords = route.geometry.coordinates; // [ [lng, lat], ... ]
-        
+        const rawCoords = route.geometry.coordinates;
         let sampled = rawCoords;
         if (rawCoords.length > 500) {
           const step = Math.ceil(rawCoords.length / 500);
@@ -2203,11 +2244,13 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
 
         const res = {
           points,
-          overview_polyline: {
-            points: encodedPolyline
-          },
+          overview_polyline: { points: encodedPolyline },
           distanceKm,
           durationMins,
+          distanceText: `${distanceKm} km`,
+          durationText: `${durationMins} mins`,
+          steps: [],
+          currentStep: null,
           source: 'road_network_driving'
         };
         roadDirectionsCache.set(cacheKey, res);
@@ -2218,18 +2261,5 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
     console.warn('[GoogleRoadDirections] Road network router fallback error:', osrmErr);
   }
 
-  // 4. Offline fallback: Smooth curved highway waypoints
-  const mock = calculateMockRoute({ lat: oLat, lng: oLng }, { lat: dLat, lng: dLng });
-  const fallbackPoints = mock.waypoints;
-  const fallbackRes = {
-    points: fallbackPoints,
-    overview_polyline: {
-      points: encodeGooglePolyline(fallbackPoints)
-    },
-    distanceKm: mock.distanceKm,
-    durationMins: mock.durationMins,
-    source: 'interpolated_highway'
-  };
-  roadDirectionsCache.set(cacheKey, fallbackRes);
-  return fallbackRes;
+  return null;
 }

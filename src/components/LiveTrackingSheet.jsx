@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
-import GraphicLiveMap, { getRouteTelemetry } from './GraphicLiveMap';
+import GraphicLiveMap from './GraphicLiveMap';
 import { openInGoogleMaps } from '../services/googleMapsService';
 import ContactProfileCard from './ContactProfileCard';
 import { Share } from '@capacitor/share';

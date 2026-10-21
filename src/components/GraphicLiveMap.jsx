@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import Icon from './Icon';
 import {
   loadGoogleMapsSdk,
   GOOGLE_MAPS_DARK_STYLE,
@@ -6,59 +7,59 @@ import {
   decodeGooglePolyline
 } from '../services/googleMapsService';
 
-// Fallback geographic route waypoints
-export const ROUTE_COORDS = [
-  { lat: 10.0245, lng: 76.3075, name: 'Edappally Toll (Pickup)' },
-  { lat: 10.0210, lng: 76.3088, name: 'Metro Corridor' },
-  { lat: 10.0155, lng: 76.3115, name: 'Palarivattom Bypass' },
-  { lat: 10.0205, lng: 76.3150, name: 'NH 66 Flyover' },
-  { lat: 10.0260, lng: 76.3135, name: 'Lulu Junction' },
-  { lat: 10.0285, lng: 76.3120, name: 'Lulu Mall (Destination)' }
-];
+// Authentic Google Maps Live Tracking Component - Pure Google Cloud Routes API v2
 
-export const ROUTE_PTS_MODAL = ROUTE_COORDS.map((c, i) => ({ x: 50 + i * 55, y: 220 - i * 32, name: c.name }));
-export const ROUTE_PTS_MINI = ROUTE_COORDS.map((c, i) => ({ x: 60 + i * 50, y: 150 - i * 22, name: c.name }));
-
-export function getRouteTelemetry(pts = ROUTE_COORDS, prog = 0.42) {
-  prog = Math.max(0.01, Math.min(0.99, prog));
-  const validPts = Array.isArray(pts) && pts.length >= 2 ? pts : ROUTE_COORDS;
-  let totalLen = 0;
-  const lens = [];
-  for (let i = 0; i < validPts.length - 1; i++) {
-    const d = Math.hypot(validPts[i + 1].lat - validPts[i].lat, validPts[i + 1].lng - validPts[i].lng);
-    lens.push(d);
-    totalLen += d;
+function ManeuverDirectionIcon({ maneuver = 'STRAIGHT', size = 20, color = '#FFFFFF' }) {
+  const m = String(maneuver || '').toUpperCase();
+  if (m.includes('LEFT')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18l-5-5 5-5" />
+        <path d="M4 13h11a5 5 0 0 0 5-5V4" />
+      </svg>
+    );
   }
-  const targetDist = prog * totalLen;
-  let accumulated = 0;
-  for (let i = 0; i < lens.length; i++) {
-    if (accumulated + lens[i] >= targetDist || i === lens.length - 1) {
-      const segT = (targetDist - accumulated) / (lens[i] || 1);
-      const p0 = validPts[i];
-      const p1 = validPts[i + 1];
-      const lat = p0.lat + (p1.lat - p0.lat) * segT;
-      const lng = p0.lng + (p1.lng - p0.lng) * segT;
-      const angle = (Math.atan2(p1.lng - p0.lng, p1.lat - p0.lat) * 180) / Math.PI;
-      return {
-        lat,
-        lng,
-        x: Math.round(50 + (i + segT) * 20),
-        y: Math.round(220 - (i + segT) * 15),
-        angle: Math.round(angle),
-        currentStreet: p0.name || ''
-      };
-    }
-    accumulated += lens[i];
+  if (m.includes('RIGHT')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 18l5-5-5-5" />
+        <path d="M20 13H9a5 5 0 0 1-5-5V4" />
+      </svg>
+    );
   }
-  return { lat: validPts[0].lat, lng: validPts[0].lng, x: 50, y: 220, angle: 0, currentStreet: validPts[0].name || '' };
+  if (m.includes('UTURN')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 10l-4 4 4 4" />
+        <path d="M5 14h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5H8" />
+      </svg>
+    );
+  }
+  if (m.includes('ROUNDABOUT')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M16 8l3-3-3-3" />
+        <path d="M19 5a9 9 0 0 0-14 7" />
+      </svg>
+    );
+  }
+  if (m.includes('MERGE') || m.includes('FORK')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v18" />
+        <path d="M18 9l-6-6-6 6" />
+      </svg>
+    );
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 19V5" />
+      <path d="M5 12l7-7 7 7" />
+    </svg>
+  );
 }
 
-/**
- * Official Google Maps Live Tracking Component
- * Powered by Google Maps JavaScript API & Google Directions API
- * Renders authentic Google Maps UI, road-following Polyline from overview_polyline.points,
- * official Google markers, and live driver GPS location orientation.
- */
 export default function GraphicLiveMap({
   trip,
   isModal = false,
@@ -72,6 +73,7 @@ export default function GraphicLiveMap({
   const driverMarkerRef = useRef(null);
   const pickupMarkerRef = useRef(null);
   const destMarkerRef = useRef(null);
+  const [showTurnSteps, setShowTurnSteps] = useState(false);
 
   const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
   const isOnTrip = trip?.status === 'inprogress';
@@ -170,6 +172,7 @@ export default function GraphicLiveMap({
   }, []);
 
   const [mapInstance, setMapInstance] = useState(null);
+  const [navigationHud, setNavigationHud] = useState(null);
   const routeCasingPolylineRef = useRef(null);
   const hasAutoFittedRef = useRef(false);
   const isUserInteractingRef = useRef(false);
@@ -324,6 +327,7 @@ export default function GraphicLiveMap({
         });
 
         if (!isSubscribed || !mapInstance) return;
+        setNavigationHud(result);
 
         // Use overview_polyline.points from Google Maps Directions API response
         let points = [];
@@ -455,6 +459,24 @@ export default function GraphicLiveMap({
   }, [carLat, carLng, carAngle]);
 
 
+  const handleRecenter = (e) => {
+    if (e) e.stopPropagation();
+    if (!mapInstance || !window.google?.maps) return;
+    isUserInteractingRef.current = false;
+    const google = window.google.maps;
+    const bounds = new google.LatLngBounds();
+    if (driverMarkerRef.current?.getPosition()) {
+      bounds.extend(driverMarkerRef.current.getPosition());
+    } else {
+      bounds.extend(new google.LatLng(carLat, carLng));
+    }
+    bounds.extend(new google.LatLng(destCoords.lat, destCoords.lng));
+    mapInstance.fitBounds(bounds, { top: 40, right: 30, bottom: 40, left: 30 });
+  };
+
+  const navStep = navigationHud?.currentStep;
+  const allSteps = navigationHud?.steps || [];
+
   return (
     <div
       style={{
@@ -474,6 +496,220 @@ export default function GraphicLiveMap({
         ref={containerRef}
         style={{ width: '100%', height: '100%' }}
       />
+
+      {/* Official Google Maps Real-Time Direction Navigation UI (from Google Routes API v2) */}
+      {navStep?.instruction && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            left: '10px',
+            right: '10px',
+            zIndex: 10,
+            background: isDarkTheme ? '#0F5132' : '#0F9D58',
+            color: '#FFFFFF',
+            borderRadius: '14px',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}
+          onClick={(e) => {
+            if (isModal && allSteps.length > 1) {
+              e.stopPropagation();
+              setShowTurnSteps(!showTurnSteps);
+            }
+          }}
+        >
+          {/* Authentic Maneuver Icon */}
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
+              background: 'rgba(0, 0, 0, 0.22)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              flexShrink: 0
+            }}
+          >
+            <ManeuverDirectionIcon maneuver={navStep.maneuver} size={20} color="#FFFFFF" />
+          </div>
+
+          {/* Navigation Instruction & Distance to Turn */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {navStep.distance && (
+              <div
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.6px',
+                  color: 'rgba(255, 255, 255, 0.9)'
+                }}
+              >
+                In {navStep.distance}
+              </div>
+            )}
+            <div
+              style={{
+                fontSize: '13.5px',
+                fontWeight: 750,
+                color: '#FFFFFF',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                lineHeight: 1.25,
+                marginTop: '1px'
+              }}
+            >
+              {navStep.instruction}
+            </div>
+            <div
+              style={{
+                fontSize: '11px',
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontWeight: 600,
+                marginTop: '2px'
+              }}
+            >
+              {navigationHud.durationText ? `${navigationHud.durationText} remaining` : ''}
+              {navigationHud.distanceText ? ` · ${navigationHud.distanceText}` : ''}
+            </div>
+          </div>
+
+          {/* Step list toggle arrow when multiple steps exist in modal mode */}
+          {isModal && allSteps.length > 1 && (
+            <div
+              style={{
+                padding: '4px 6px',
+                borderRadius: '8px',
+                background: 'rgba(0, 0, 0, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+            >
+              <span>{allSteps.length} turns</span>
+              <Icon name={showTurnSteps ? 'chevron-up' : 'chevron-down'} size={14} color="#FFFFFF" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Expandable Real-Time Google Routes Turn-by-Turn Steps Drawer */}
+      {isModal && showTurnSteps && allSteps.length > 1 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '74px',
+            left: '10px',
+            right: '10px',
+            maxHeight: '170px',
+            overflowY: 'auto',
+            zIndex: 15,
+            background: isDarkTheme ? '#1E293B' : '#FFFFFF',
+            borderRadius: '14px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+            border: '1px solid var(--line)',
+            padding: '8px 12px'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              color: 'var(--muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '6px',
+              paddingBottom: '4px',
+              borderBottom: '1px solid var(--line)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}
+          >
+            <span>Google Route Directions</span>
+            <span style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => setShowTurnSteps(false)}>Close</span>
+          </div>
+          {allSteps.map((step, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '6px 0',
+                borderBottom: idx < allSteps.length - 1 ? '1px solid var(--line)' : 'none'
+              }}
+            >
+              <div
+                style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '6px',
+                  background: isDarkTheme ? '#334155' : '#E2E8F0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <ManeuverDirectionIcon maneuver={step.maneuver} size={14} color={isDarkTheme ? '#F8FAFC' : '#1E293B'} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '12px', fontWeight: 650, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {step.instruction}
+                </div>
+                {step.distance && (
+                  <div style={{ fontSize: '10.5px', color: 'var(--muted)', fontWeight: 500 }}>
+                    {step.distance} {step.duration ? `· ${step.duration}` : ''}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Google Maps Style Floating Re-Center Button */}
+      {isModal && (
+        <button
+          type="button"
+          onClick={handleRecenter}
+          aria-label="Re-center Map"
+          style={{
+            position: 'absolute',
+            bottom: '12px',
+            right: '12px',
+            width: '38px',
+            height: '38px',
+            borderRadius: '999px',
+            background: isDarkTheme ? '#1E293B' : '#FFFFFF',
+            color: isDarkTheme ? '#FFFFFF' : '#1E293B',
+            border: '1px solid var(--line)',
+            boxShadow: '0 3px 12px rgba(0, 0, 0, 0.22)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 10,
+            padding: 0
+          }}
+        >
+          <Icon name="navigation" size={17} color={isDarkTheme ? '#60A5FA' : '#1A73E8'} />
+        </button>
+      )}
     </div>
   );
 }
