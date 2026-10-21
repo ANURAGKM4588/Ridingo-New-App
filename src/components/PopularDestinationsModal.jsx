@@ -113,12 +113,9 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                 </svg>
               </button>
               <div>
-                <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 650, color: 'var(--ink, #18181B)', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--ink, #18181B)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                   Popular Destinations
                 </h2>
-                <span style={{ fontSize: '11px', color: 'var(--muted, #71717A)', fontWeight: 500, letterSpacing: '-0.01em' }}>
-                  Airports · Railway Stations · Tourist Spots · Cities
-                </span>
               </div>
             </div>
 
@@ -387,20 +384,6 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                           {item.name}
                         </b>
                       </div>
-                      <span
-                        style={{
-                          fontSize: '10.5px',
-                          color: 'var(--muted, #71717A)',
-                          fontWeight: 500,
-                          marginTop: '2px',
-                          lineHeight: 1.25,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
-                        {item.sub}
-                      </span>
 
                       <div
                         style={{

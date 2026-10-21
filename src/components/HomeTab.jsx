@@ -1929,14 +1929,7 @@ Live GPS Tracking: ${trackUrl}`;
 
       {/* Popular Destinations Quick Book - CURATED SWIPE SECTION */}
       <div className="sec stagger-5" style={{ marginTop: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 650, letterSpacing: '-0.02em', lineHeight: 1.25, color: 'var(--ink, #0F172A)' }}>
-            Popular destinations
-          </h3>
-          <span style={{ fontSize: '11px', color: 'var(--muted, #64748B)', fontWeight: 500, letterSpacing: '-0.01em' }}>
-            Airports · Railway Stations · Tourist Spots · Cities
-          </span>
-        </div>
+        <h3 style={{ margin: 0, lineHeight: 1.2 }}>Popular destinations</h3>
         <button
           type="button"
           onClick={() => setDestinationsModalOpen(true)}
@@ -2024,35 +2017,21 @@ Live GPS Tracking: ${trackUrl}`;
               {item.type || item.state}
             </div>
 
-            {/* Gradient Overlay & Text */}
+            {/* Gradient Overlay & Text (Only Location Name) */}
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.25) 55%, transparent 100%)',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.18) 60%, transparent 100%)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'flex-end',
-                padding: '8px 9px'
+                padding: '8px 10px'
               }}
             >
-              <b style={{ fontSize: '12.5px', fontWeight: 650, color: '#FFFFFF', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+              <b style={{ fontSize: '12.5px', fontWeight: 650, color: '#FFFFFF', lineHeight: 1.25, letterSpacing: '-0.01em' }}>
                 {item.name}
               </b>
-              <span
-                style={{
-                  fontSize: '9.5px',
-                  color: 'rgba(255,255,255,0.85)',
-                  marginTop: '2px',
-                  fontWeight: 500,
-                  letterSpacing: '-0.01em',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {item.sub}
-              </span>
             </div>
           </div>
         ))}

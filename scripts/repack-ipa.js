@@ -79,7 +79,11 @@ function repackTarget(target) {
   }
   execSync(`tar -a -cf "${ipaPath}" Payload`, { cwd: tempDir, stdio: 'inherit' });
 
-  fs.rmSync(tempDir, { recursive: true, force: true });
+  try {
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  } catch (err) {
+    // Non-fatal on Windows if directory handle takes a moment to release
+  }
   const stats = fs.statSync(ipaPath);
   console.log(`🎉 SUCCESS: ${ipaName} successfully updated! (${(stats.size / 1024 / 1024).toFixed(2)} MB) -> ${ipaPath}`);
 }
