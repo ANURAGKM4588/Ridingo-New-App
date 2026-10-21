@@ -32,6 +32,7 @@
     "expo": "^57.0.26",
     "firebase": "^12.19.0",
     "framer-motion": "^14.2.0",
+    "geolib": "^4.0.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
