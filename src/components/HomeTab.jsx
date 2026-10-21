@@ -1927,12 +1927,12 @@ Live GPS Tracking: ${trackUrl}`;
         })}
       </div>
 
-      {/* Popular Destinations Quick Book - CURATED SWIPE SECTION (Top 7) */}
+      {/* Popular Destinations Quick Book - CURATED SWIPE SECTION */}
       <div className="sec stagger-5" style={{ marginTop: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div>
           <h3 style={{ margin: 0, lineHeight: 1.2 }}>Popular destinations</h3>
           <span style={{ fontSize: '11px', color: 'var(--muted, #71717A)', fontWeight: 500 }}>
-            Kerala · Tamil Nadu · Karnataka
+            Airports · Railway Stations · Tourist Spots · Cities
           </span>
         </div>
         <button
@@ -1952,7 +1952,7 @@ Live GPS Tracking: ${trackUrl}`;
             cursor: 'pointer'
           }}
         >
-          <span>See all (21)</span>
+          <span>See all ({POPULAR_DESTINATIONS.length})</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14" />
             <path d="m13 6 6 6-6 6" />
@@ -1976,7 +1976,7 @@ Live GPS Tracking: ${trackUrl}`;
           paddingRight: '4px'
         }}
       >
-        {POPULAR_DESTINATIONS.filter((d) => d.featured).slice(0, 7).map((item) => (
+        {POPULAR_DESTINATIONS.filter((d) => d.featured).map((item) => (
           <div
             key={item.id}
             onClick={() => openBooking(item.bookingCat || 'outstation', item.destAddress)}
@@ -2003,7 +2003,7 @@ Live GPS Tracking: ${trackUrl}`;
                 display: 'block'
               }}
             />
-            {/* Top State Pill */}
+            {/* Top Type Pill */}
             <div
               style={{
                 position: 'absolute',
@@ -2019,7 +2019,7 @@ Live GPS Tracking: ${trackUrl}`;
                 letterSpacing: '0.2px'
               }}
             >
-              {item.state}
+              {item.type || item.state}
             </div>
 
             {/* Gradient Overlay & Text */}

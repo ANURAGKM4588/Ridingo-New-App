@@ -3,30 +3,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { POPULAR_DESTINATIONS } from '../data/popularDestinations';
 
 export default function PopularDestinationsModal({ isOpen, onClose, onSelectDestination }) {
-  const [selectedState, setSelectedState] = useState('All');
+  const [selectedType, setSelectedType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredDestinations = useMemo(() => {
     return POPULAR_DESTINATIONS.filter((item) => {
-      const matchesState = selectedState === 'All' || item.state === selectedState;
+      const matchesType = selectedType === 'All' || item.type === selectedType;
       const query = searchQuery.trim().toLowerCase();
       const matchesQuery =
         !query ||
         item.name.toLowerCase().includes(query) ||
         item.sub.toLowerCase().includes(query) ||
         item.state.toLowerCase().includes(query) ||
+        (item.type && item.type.toLowerCase().includes(query)) ||
         item.category.toLowerCase().includes(query) ||
         item.tag.toLowerCase().includes(query);
 
-      return matchesState && matchesQuery;
+      return matchesType && matchesQuery;
     });
-  }, [selectedState, searchQuery]);
+  }, [selectedType, searchQuery]);
 
-  const stateCounts = useMemo(() => {
-    const counts = { All: POPULAR_DESTINATIONS.length, Kerala: 0, 'Tamil Nadu': 0, Karnataka: 0 };
+  const typeCounts = useMemo(() => {
+    const counts = { All: POPULAR_DESTINATIONS.length, Airport: 0, 'Railway Station': 0, 'Tourist Spot': 0, Destination: 0 };
     POPULAR_DESTINATIONS.forEach((d) => {
-      if (counts[d.state] !== undefined) {
-        counts[d.state]++;
+      if (counts[d.type] !== undefined) {
+        counts[d.type]++;
       }
     });
     return counts;
@@ -116,7 +117,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                   Popular Destinations
                 </h2>
                 <span style={{ fontSize: '11.5px', color: 'var(--muted, #71717A)', fontWeight: 500 }}>
-                  Kerala · Tamil Nadu · Karnataka
+                  Airports · Railway Stations · Tourist Spots · Cities
                 </span>
               </div>
             </div>
@@ -161,7 +162,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
               </svg>
               <input
                 type="text"
-                placeholder="Search destination, hill station, temple..."
+                placeholder="Search airport, station, tourist spot, city..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -193,7 +194,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
             </div>
           </div>
 
-          {/* State Filter Tabs */}
+          {/* Type Filter Tabs */}
           <div
             style={{
               display: 'flex',
@@ -204,13 +205,13 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
               WebkitOverflowScrolling: 'touch'
             }}
           >
-            {['All', 'Kerala', 'Tamil Nadu', 'Karnataka'].map((stateName) => {
-              const active = selectedState === stateName;
+            {['All', 'Airport', 'Railway Station', 'Tourist Spot', 'Destination'].map((typeName) => {
+              const active = selectedType === typeName;
               return (
                 <button
-                  key={stateName}
+                  key={typeName}
                   type="button"
-                  onClick={() => setSelectedState(stateName)}
+                  onClick={() => setSelectedType(typeName)}
                   style={{
                     padding: '6px 14px',
                     borderRadius: '999px',
@@ -227,7 +228,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                     transition: 'all 0.18s ease'
                   }}
                 >
-                  <span>{stateName}</span>
+                  <span>{typeName === 'All' ? 'All' : typeName}</span>
                   <span
                     style={{
                       fontSize: '10px',
@@ -237,7 +238,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                       borderRadius: '8px'
                     }}
                   >
-                    {stateCounts[stateName] || 0}
+                    {typeCounts[typeName] || 0}
                   </span>
                 </button>
               );
@@ -296,7 +297,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                           display: 'block'
                         }}
                       />
-                      {/* State Pill */}
+                      {/* Type Pill */}
                       <span
                         style={{
                           position: 'absolute',
@@ -312,7 +313,7 @@ export default function PopularDestinationsModal({ isOpen, onClose, onSelectDest
                           letterSpacing: '0.2px'
                         }}
                       >
-                        {item.state}
+                        {item.type || item.state}
                       </span>
                       {/* Rating Badge */}
                       <span
