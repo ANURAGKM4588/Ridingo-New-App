@@ -386,6 +386,8 @@ export function AppProvider({ children }) {
   const [driverTx, setDriverTx] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [tripToCancel, setTripToCancel] = useState(null);
+  const [tripCompleteModalOpen, setTripCompleteModalOpen] = useState(false);
+  const [completedTripData, setCompletedTripData] = useState(null);
   const [termsConfirmationBanner, setTermsConfirmationBanner] = useState(null);
 
   useEffect(() => {
@@ -818,16 +820,17 @@ export function AppProvider({ children }) {
                     stopActiveTone();
                     // Retain completed trips so History tab displays Completed!
                     setTrips(prev => prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj, status: 'completed' } : t)));
-                    // Immediately dismiss and remove tracking popup on User App when payment completed
+                    // Transition to TripCompleteModal on User App
+                    setCompletedTripData(tripObj);
+                    setTripCompleteModalOpen(true);
                     setLiveTrackingOpen(false);
                     setActiveTrackingTripId(null);
-                    setUTab('home');
                   } else if (tripObj.status === 'invoice_pending' || tripObj.status === 'ending_otp') {
                     setTrips(prev => prev.map(t => (t.id === tripObj.id ? { ...t, ...tripObj } : t)));
-                    // Immediately dismiss and remove tracking popup on User App when trip ends
+                    setCompletedTripData(tripObj);
+                    setTripCompleteModalOpen(true);
                     setLiveTrackingOpen(false);
                     setActiveTrackingTripId(null);
-                    setUTab('home');
                   } else if (tripObj.status === 'cancelled') {
                     setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                     dismissIncomingRideNotification(tripObj.id);
@@ -2285,6 +2288,10 @@ export function AppProvider({ children }) {
         settledTripIdsRef,
         tripToCancel,
         setTripToCancel,
+        tripCompleteModalOpen,
+        setTripCompleteModalOpen,
+        completedTripData,
+        setCompletedTripData,
         termsConfirmationBanner,
         setTermsConfirmationBanner,
         isUpcomingFutureTrip,

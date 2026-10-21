@@ -28,7 +28,9 @@ export default function TripsTab() {
     setActiveTrackingTripId,
     setTripToCancel,
     isUpcomingFutureTrip,
-    isTripTrackingUnlocked
+    isTripTrackingUnlocked,
+    setTripCompleteModalOpen,
+    setCompletedTripData
   } = useApp();
 
   const [filter, setFilter] = useState('all');
@@ -553,6 +555,31 @@ export default function TripsTab() {
                       >
                         <Icon name="mail" size={13} color="#3B82F6" />
                         <span>Email Invoice</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (setCompletedTripData) setCompletedTripData(t);
+                          if (setTripCompleteModalOpen) setTripCompleteModalOpen(true);
+                        }}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '999px',
+                          background: '#FEF3C7',
+                          border: '1px solid #F59E0B',
+                          color: '#92400E',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <span style={{ color: '#D97706' }}>★</span>
+                        <span>Trip Complete & Rating</span>
                       </button>
                     </div>
                   </div>

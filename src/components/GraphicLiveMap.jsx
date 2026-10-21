@@ -122,9 +122,10 @@ export default function GraphicLiveMap({
   trip,
   isModal = false,
   height,
+  style = {},
   onOpenModal
 }) {
-  const mapHeight = height || (isModal ? 280 : 150);
+  const mapHeight = typeof height === 'number' ? `${height}px` : (height || (isModal ? '280px' : '150px'));
   const containerRef = useRef(null);
   const googleMapRef = useRef(null);
   const routePolylineRef = useRef(null);
@@ -502,12 +503,13 @@ export default function GraphicLiveMap({
       style={{
         position: 'relative',
         width: '100%',
-        height: `${mapHeight}px`,
+        height: mapHeight,
         borderRadius: isModal ? '20px' : '16px',
         overflow: 'hidden',
         border: '1px solid var(--line)',
         boxShadow: isDarkTheme ? '0 2px 12px rgba(0, 0, 0, 0.35)' : '0 2px 10px rgba(0, 0, 0, 0.04)',
-        background: isDarkTheme ? '#242F3E' : '#E5E3DF'
+        background: isDarkTheme ? '#242F3E' : '#E5E3DF',
+        ...style
       }}
       onClick={!isModal && onOpenModal ? onOpenModal : undefined}
     >

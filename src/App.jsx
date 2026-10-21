@@ -12,6 +12,7 @@ import OnboardingModal from './components/OnboardingModal';
 import LegalModal from './components/LegalModal';
 import PhonePePgCheckout from './components/PhonePePgCheckout';
 import TripCancellationModal from './components/TripCancellationModal';
+import TripCompleteModal from './components/TripCompleteModal';
 import DriverApp from './components/DriverApp';
 import AdminPanel from './components/admin/AdminPanel';
 import Icon from './components/Icon';
@@ -232,6 +233,7 @@ function MainApp() {
                       onClose={() => setTripToCancel(null)}
                     />
                   )}
+                  <TripCompleteModal />
 
                   <div className="toasts" id="u-toasts" aria-live="polite">
                     {toasts.map(t => (
