@@ -2129,16 +2129,35 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
     }
   }
 
-  // 3. Fallback: Precise GPS coordinate distance calculation (pure math, no fake steps)
+  // 3. Coordinate geocode resolution and Google Cloud Routes execution
   let oCoords = originCoords;
-  if (!oCoords?.lat && origin) {
-    oCoords = await geocodeAddress(origin);
+  if ((!oCoords?.lat || oCoords?.source !== 'google') && origin) {
+    const geo = await geocodeAddress(origin);
+    if (geo?.lat) oCoords = geo;
   }
   let dCoords = destCoords;
-  if (!dCoords?.lat && destination) {
-    dCoords = await geocodeAddress(destination);
+  if ((!dCoords?.lat || dCoords?.source !== 'google') && destination) {
+    const geo = await geocodeAddress(destination);
+    if (geo?.lat) dCoords = geo;
   }
 
+  if (oCoords?.lat && dCoords?.lat && GOOGLE_MAPS_API_KEY && !GOOGLE_MAPS_API_KEY.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
+    try {
+      const dm = await fetchGoogleDistanceMatrix({ origin, destination, originCoords: oCoords, destCoords: dCoords });
+      if (dm && dm.distanceKm) {
+        return {
+          ...dm,
+          originCoords: oCoords,
+          destCoords: dCoords,
+          steps: []
+        };
+      }
+    } catch (e) {
+      console.warn('[GoogleMaps] Fallback distance matrix error:', e);
+    }
+  }
+
+  // 4. Emergency offline calculation
   const oLat = oCoords?.lat || 10.0245;
   const oLng = oCoords?.lng || 76.3075;
   const dLat = dCoords?.lat || 10.0385;
@@ -2156,7 +2175,7 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
     durationMins,
     durationText: formatDurationMeasurement(durationMins),
     etaText,
-    source: 'real_gps_telemetry',
+    source: 'offline_emergency_telemetry',
     originCoords: oCoords,
     destCoords: dCoords,
     steps: []
@@ -2262,22 +2281,22 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
     return roadDirectionsCache.get(cacheKey);
   }
 
-  // 1. Resolve coordinates if not provided
+  // 1. Resolve coordinates if not provided or unverified
   let oLat = originCoords?.lat;
   let oLng = originCoords?.lng;
   let dLat = destCoords?.lat;
   let dLng = destCoords?.lng;
 
-  if ((!oLat || !oLng) && origin) {
+  if ((!oLat || !oLng || originCoords?.source !== 'google') && origin) {
     const geo = await geocodeAddress(origin);
-    if (geo) {
+    if (geo?.lat && geo?.lng) {
       oLat = geo.lat;
       oLng = geo.lng;
     }
   }
-  if ((!dLat || !dLng) && destination) {
+  if ((!dLat || !dLng || destCoords?.source !== 'google') && destination) {
     const geo = await geocodeAddress(destination);
-    if (geo) {
+    if (geo?.lat && geo?.lng) {
       dLat = geo.lat;
       dLng = geo.lng;
     }
@@ -2289,7 +2308,7 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
   dLat = dLat || 10.0285;
   dLng = dLng || 76.3120;
 
-  // 2. Primary: Google Cloud Routes API v2 (official computeRoutes endpoint)
+  // 2. Primary: Google Cloud Routes API v2 (official computeRoutes endpoint with live traffic)
   const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
   try {
     const routesRes = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
@@ -2297,12 +2316,13 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.steps.navigationInstruction,routes.legs.steps.localizedValues'
+        'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.description,routes.legs.steps.navigationInstruction,routes.legs.steps.localizedValues'
       },
       body: JSON.stringify({
         origin: { location: { latLng: { latitude: Number(oLat), longitude: Number(oLng) } } },
         destination: { location: { latLng: { latitude: Number(dLat), longitude: Number(dLng) } } },
         travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_AWARE',
         languageCode: 'en-US'
       })
     });
