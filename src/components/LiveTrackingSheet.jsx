@@ -440,640 +440,669 @@ Please contact the passenger or emergency services (112) immediately!`;
     window.open(`https://wa.me/${cleanNum}?text=${encodeURIComponent(`Hi ${trip.driver || 'Driver'}, regarding Ridingo trip ${trip.id}`)}`, '_blank');
   };
 
-  const driverName =
-    (typeof trip?.driver === 'string' ? trip.driver : trip?.driver?.name) ||
-    trip?.driverObj?.name ||
-    'Suresh K.';
-
-  const driverInitials = (() => {
-    if (!driverName) return 'SK';
-    const parts = driverName.trim().split(/\s+/);
-    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    return driverName.slice(0, 2).toUpperCase();
-  })();
-
-  const driverRating = trip.driverRating || trip.driverObj?.rating || '4.9';
-  const driverTripsCount = trip.driverTripsCount || trip.driverObj?.totalTrips || '312';
-  const driverLanguages = trip.driverLanguages || 'Drives automatic · Speaks Malayalam, English';
-  const otpDisplay = String(trip.startOtp || trip.otp || '4821').trim();
-
   return (
-    <div
-      className="layer on"
-      id="u-tracking-layer"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: '#E5E3DF',
-        overflow: 'hidden',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-      }}
-    >
-      {/* 1. Fullscreen Background Graphic Map */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-        <GraphicLiveMap
-          trip={liveTripData}
-          isModal={false}
-          height="100%"
-          style={{ borderRadius: 0, border: 'none' }}
-        />
-      </div>
+    <div className="layer on" id="u-tracking-layer" style={{ zIndex: 95 }}>
+      <div className="scrim" onClick={() => setLiveTrackingOpen(false)} />
 
-      {/* 2. Top-Left Floating Circular Back Button */}
-      <button
-        type="button"
-        onClick={() => {
-          setLiveTrackingOpen(false);
-          if (setActiveTrackingTripId) setActiveTrackingTripId(null);
-        }}
-        style={{
-          position: 'absolute',
-          top: 'calc(16px + env(safe-area-inset-top, 0px))',
-          left: '16px',
-          width: '46px',
-          height: '46px',
-          borderRadius: '50%',
-          background: '#FFFFFF',
-          border: 'none',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.14)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 20,
-          color: '#111827',
-          transition: 'transform 0.15s ease'
-        }}
-        aria-label="Back"
-      >
-        <Icon name="chevron-left" size={24} />
-      </button>
-
-      {/* 3. Top-Right Floating Capsule "Live GPS" Badge */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 'calc(16px + env(safe-area-inset-top, 0px))',
-          right: '16px',
-          padding: '8px 16px',
-          borderRadius: '999px',
-          background: '#FFFFFF',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.14)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '13px',
-          fontWeight: 800,
-          color: '#111827',
-          zIndex: 20
-        }}
-      >
-        <span
-          style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: '#16A34A',
-            display: 'inline-block',
-            boxShadow: '0 0 0 2px rgba(22, 163, 74, 0.25)'
-          }}
-        />
-        <span>Live GPS</span>
-      </div>
-
-      {/* 4. Bottom Sliding Popup Sheet */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 30,
-          background: '#FFFFFF',
-          borderTopLeftRadius: '28px',
-          borderTopRightRadius: '28px',
-          boxShadow: '0 -10px 30px rgba(0, 0, 0, 0.14)',
-          padding: '12px 20px calc(18px + env(safe-area-inset-bottom, 12px))',
-          maxHeight: '70vh',
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          boxSizing: 'border-box'
-        }}
-      >
-        {/* Drag Handle Indicator */}
-        <div
-          style={{
-            width: '42px',
-            height: '4px',
-            background: '#D1D5DB',
-            borderRadius: '999px',
-            margin: '0 auto 14px'
-          }}
-        />
-
-        {isWaiting ? (
-          /* ==========================================================
-             A. WAITING FOR DRIVER SEARCH VIEW
-             ========================================================== */
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#D97706' }}>Searching driver</div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#111827', letterSpacing: '-0.5px', marginTop: '2px' }}>
-                  Finding your driver...
-                </div>
-              </div>
-              <div
-                style={{
-                  background: '#FEF3C7',
-                  color: '#92400E',
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  fontSize: '13px',
-                  fontWeight: 800
-                }}
-              >
-                ₹{trip?.fare || 600}
-              </div>
+      <div className="sheet no-scroll-anim" role="dialog" aria-modal="true" style={{ maxHeight: '92%', bottom: 0, paddingBottom: 0 }}>
+        {/* Sticky Header: Small bar (grab) + Title + Close icon */}
+        <div className="sheet-sticky-top" style={{ padding: '8px 18px 2px' }}>
+          <div className="grab" />
+          <div className="sheet-h">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              {isStarted ? (
+                <span
+                  className="pill good"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 700
+                  }}
+                >
+                  <span className="live-pulse-dot" style={{ background: '#22C55E' }} />
+                  LIVE GPS TRACKING
+                </span>
+              ) : isArrived ? (
+                <span
+                  className="pill good"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    color: 'var(--good)'
+                  }}
+                >
+                  <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
+                  DRIVER AT PICKUP
+                </span>
+              ) : isReady ? (
+                <span
+                  className="pill good"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    color: 'var(--good)'
+                  }}
+                >
+                  <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
+                  READY TO START
+                </span>
+              ) : isAccepted ? (
+                <span
+                  className="pill good"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    color: 'var(--good)'
+                  }}
+                >
+                  <span className="live-pulse-dot" style={{ background: '#16A34A' }} />
+                  DRIVER CONFIRMED
+                </span>
+              ) : (
+                <span
+                  className="pill warn"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'rgba(250, 204, 21, 0.2)',
+                    color: 'var(--warn)'
+                  }}
+                >
+                  <span className="live-pulse-dot" style={{ background: '#F59E0B' }} />
+                  WAITING FOR DRIVER
+                </span>
+              )}
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--muted)' }}>
+                {trip.id}
+              </span>
             </div>
-
-            <div style={{ fontSize: '13px', color: '#4B5563', padding: '12px 14px', background: '#F8FAFC', borderRadius: '14px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                <span><b>Pickup:</b> {getLocationUpToFirstComma(trip?.pickup)}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
-                <span><b>Drop:</b> {getLocationUpToFirstComma(trip?.drop_loc)}</span>
-              </div>
-            </div>
-
             <button
-              type="button"
-              onClick={() => {
-                if (cancelTripByUser) {
-                  cancelTripByUser(trip.id, { feeOverride: 0 });
-                } else if (declineTrip) {
-                  declineTrip(trip.id);
-                } else {
-                  setTrips(prev => prev.filter(t => t.id !== trip.id));
-                }
-                if (setActiveTrackingTripId) setActiveTrackingTripId(null);
-                setLiveTrackingOpen(false);
-                if (addToast) addToast('Trip request cancelled freely.', 'check');
-              }}
-              style={{
-                width: '100%',
-                height: '48px',
-                borderRadius: '14px',
-                background: 'rgba(239, 68, 68, 0.08)',
-                border: '1.5px solid rgba(239, 68, 68, 0.28)',
-                color: '#DC2626',
-                fontSize: '14px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
+              className="iconbtn"
+              onClick={() => setLiveTrackingOpen(false)}
+              aria-label="Close"
             >
-              Cancel Request
+              <Icon name="x" size={18} />
             </button>
           </div>
-        ) : isStarted ? (
-          /* ==========================================================
-             B. TRIP IN PROGRESS VIEW
-             ========================================================== */
-          <div>
-            {/* Status & ETA Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#16A34A' }}>Trip in progress</div>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: '#111827', letterSpacing: '-0.5px', marginTop: '2px' }}>
-                  {etaMins} min away
-                </div>
-              </div>
+        </div>
+
+        {/* Scrollable Body with Smooth Vertical Scrolling Behavior */}
+        <div
+          className="sheet-scroll-body"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+            scrollBehavior: 'smooth',
+            padding: '10px 18px max(14px, env(safe-area-inset-bottom, 0px))',
+            scrollbarWidth: 'none'
+          }}
+        >
+          {/* Top Center Graphic Map UI Viewport - STRICTLY rendered ONLY after driver starts trip */}
+          {isStarted && (
+            <div className="live-sheet-map-wrap" style={{ height: '275px', marginBottom: '14px', borderRadius: '20px' }}>
+              <GraphicLiveMap
+                trip={liveTripData}
+                isModal={true}
+                height={275}
+              />
+            </div>
+          )}
+
+          {isWaiting ? (
+            /* ==========================================================
+               1. WAITING FOR DRIVER CONFIRMATION VIEW (NO MAP)
+               ========================================================== */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Radar Searching Animation Card */}
               <div
+                className="card"
                 style={{
-                  background: '#FEF3C7',
-                  color: '#92400E',
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  fontSize: '12px',
-                  fontWeight: 800
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  borderRadius: '20px',
+                  background: 'var(--card)',
+                  border: '1px solid var(--line)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px'
                 }}
               >
-                {distLeft} to drop
+                <div style={{ position: 'relative', width: '68px', height: '68px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255, 199, 10, 0.25)', animation: 'pulse 1.8s infinite' }} />
+                  <div style={{ position: 'absolute', inset: '6px', borderRadius: '50%', background: 'rgba(255, 199, 10, 0.15)', animation: 'pulse 2.4s infinite' }} />
+                  <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'var(--yellow)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111827', zIndex: 2 }}>
+                    <Icon name="clock" size={24} />
+                  </div>
+                </div>
+
+                <div>
+                  <b style={{ fontSize: '17px', color: 'var(--ink)', display: 'block' }}>
+                    Finding Your Driver...
+                  </b>
+                  <span style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
+                    Broadcasting your request to certified drivers near {cleanLocationName(typeof trip?.pickup === 'string' && trip.pickup ? trip.pickup.split(',')[0] : 'Edappally Toll')}
+                  </span>
+                </div>
+
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 14px', borderRadius: '999px', background: 'var(--field)', fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>
+                  <span className="live-pulse-dot" style={{ background: '#22C55E' }} />
+                  <span>Dispatched to nearest verified drivers</span>
+                </div>
               </div>
-            </div>
 
-            {/* Route Summary Row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748B', marginBottom: '12px', padding: '8px 12px', background: '#F8FAFC', borderRadius: '12px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Destination: <b>{getLocationUpToFirstComma(trip?.drop_loc)}</b>
-              </span>
-              <span style={{ marginLeft: 'auto', fontWeight: 700, color: '#111827' }}>{liveSpeed} km/h</span>
-            </div>
+              {/* Trip Summary Card */}
+              <div className="card" style={{ padding: '16px', borderRadius: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 750, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                    {String(trip?.cat || 'hourly').toUpperCase()} DRIVER SERVICE
+                  </span>
+                  <b style={{ fontSize: '17px', color: 'var(--ink)' }}>₹{trip?.fare || 600}</b>
+                </div>
 
-            {/* Driver Details Card */}
-            <div
-              style={{
-                border: '1.5px solid #F1F5F9',
-                borderRadius: '20px',
-                padding: '12px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '12px',
-                background: '#FFFFFF',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                <div
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, overflow: 'hidden' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={trip?.pickup}>
+                      <b>Pickup:</b> {getLocationUpToFirstComma(trip?.pickup) || 'Edappally Toll'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, overflow: 'hidden' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={trip?.drop_loc}>
+                      <b>Drop:</b> {getLocationUpToFirstComma(trip?.drop_loc) || 'City Route'}
+                    </span>
+                  </div>
+                  {trip?.distanceText && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '12px', color: 'var(--muted)' }}>
+                      <span style={{ fontWeight: 600 }}>Route: {trip.distanceText}</span>
+                      <span>·</span>
+                      <span style={{ fontWeight: 600 }}>ETA: ~{trip.durationText || '25 mins'}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line)' }}>
+                  Gearbox: {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
+                </div>
+              </div>
+
+              {/* Free Instant Cancel Request Button (No cancellation policy popup required when no driver accepted) */}
+              <div style={{ marginTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (cancelTripByUser) {
+                      cancelTripByUser(trip.id, { feeOverride: 0 });
+                    } else if (declineTrip) {
+                      declineTrip(trip.id);
+                    } else {
+                      setTrips(prev => prev.filter(t => t.id !== trip.id));
+                    }
+                    if (setActiveTrackingTripId) setActiveTrackingTripId(null);
+                    setLiveTrackingOpen(false);
+                    if (addToast) addToast('Trip request cancelled freely. No cancellation fee.', 'check');
+                  }}
                   style={{
-                    width: '52px',
-                    height: '52px',
-                    borderRadius: '50%',
-                    border: '2.5px solid #F59E0B',
-                    background: '#FFFBEB',
+                    width: '100%',
+                    height: '46px',
+                    borderRadius: '14px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1.5px solid rgba(239, 68, 68, 0.28)',
+                    color: '#DC2626',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '16px',
-                    color: '#1E293B',
-                    flexShrink: 0
+                    gap: '8px',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  {driverInitials}
-                </div>
+                  <Icon name="x" size={16} color="#DC2626" />
+                  <span>Cancel Trip</span>
+                </button>
+              </div>
+            </div>
+          ) : isDriverAssigned ? (
+            /* ==========================================================
+               2. DRIVER ACCEPTED / ARRIVED · REACHING PICKUP
+               ========================================================== */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Live Real GPS Google Map Route from Driver Location -> Pickup */}
+              <div style={{ height: '240px', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', position: 'relative' }}>
+                <GraphicLiveMap
+                  trip={liveTripData}
+                  isModal={true}
+                  height={240}
+                />
+              </div>
 
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {driverName}
+              {/* Quick Stats Grid: ETA & Distance to Pickup */}
+              <div
+                className="live-sheet-stats-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '8px'
+                }}
+              >
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>ETA TO PICKUP</span>
+                  <b className="val" style={{ fontSize: '15px', color: 'var(--ink)', fontWeight: 800 }}>
+                    {isArrived ? 'Arrived' : `${etaMins} mins`}
+                  </b>
+                </div>
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>DISTANCE</span>
+                  <b className="val" style={{ fontSize: '15px', color: 'var(--ink)', fontWeight: 800 }}>
+                    {isArrived ? '0.0 km' : distLeft}
+                  </b>
+                </div>
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>DRIVER</span>
+                  <b className="val" style={{ fontSize: '15px', color: '#16A34A', fontWeight: 800 }}>
+                    {isArrived ? 'At Pickup' : 'En Route'}
+                  </b>
+                </div>
+              </div>
+
+              {/* 4-DIGIT PICKUP OTP FOR DRIVER VERIFICATION */}
+              <div
+                style={{
+                  background: '#000000',
+                  color: '#FFFFFF',
+                  borderRadius: '16px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+                  border: '1.5px solid #27272A'
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
+                    Trip Pickup OTP
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginTop: '1px' }}>
+                    Share with driver upon arrival
+                  </span>
+                </div>
+                <div style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '6px', color: '#FFFFFF', fontFamily: 'monospace' }}>
+                  {trip.startOtp || '4821'}
+                </div>
+              </div>
+
+              {/* Driver Contact Row with Call & WhatsApp Buttons */}
+              <ContactProfileCard
+                name={trip.driver || 'Ravi Kumar'}
+                role="Assigned Driver"
+                phone={trip.driverObj?.phone || '+91 94471 23456'}
+                rating="4.9"
+                style={{
+                  background: 'var(--card)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                }}
+              />
+
+              {/* Action Buttons: Share Ride (Outline Black) & Emergency SOS (Red BG) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', marginBottom: '14px' }}>
+                <button
+                  type="button"
+                  onClick={handleShareTrip}
+                  disabled={isSharing}
+                  style={{
+                    flex: 1,
+                    height: '46px',
+                    borderRadius: '14px',
+                    background: 'var(--card)',
+                    color: 'var(--ink)',
+                    border: '1.5px solid var(--line-strong)',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    cursor: isSharing ? 'wait' : 'pointer',
+                    opacity: isSharing ? 0.7 : 1,
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+                  }}
+                >
+                  <Icon name="share" size={16} style={{ color: 'var(--ink)' }} />
+                  <span>{isSharing ? 'Sharing...' : 'Share Ride'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSos}
+                  style={{
+                    flex: 1.15,
+                    height: '46px',
+                    borderRadius: '14px',
+                    background: '#EF4444',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    cursor: 'pointer',
+                    boxShadow: '0 3px 12px rgba(239, 68, 68, 0.35)'
+                  }}
+                >
+                  <Icon name="alert-triangle" size={16} color="#FFFFFF" />
+                  <span>Emergency SOS</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ==========================================================
+               3. ACTIVE IN-PROGRESS LIVE TRACKING VIEW (WITH LIVE MAP)
+               ========================================================== */
+            <>
+
+
+              {/* Quick Stats Grid */}
+              <div
+                className="live-sheet-stats-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '8px',
+                  marginBottom: '10px'
+                }}
+              >
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>ETA</span>
+                  <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{etaMins} mins</b>
+                </div>
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Distance Left</span>
+                  <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{distLeft}</b>
+                </div>
+                <div className="live-sheet-stat-card card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+                  <span className="lbl" style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600, display: 'block' }}>Live Speed</span>
+                  <b className="val" style={{ fontSize: '16px', color: 'var(--ink)', fontWeight: 800 }}>{liveSpeed} km/h</b>
+                </div>
+              </div>
+
+              {/* Driver Profile Card */}
+              <div
+                className="live-driver-profile-card card"
+                style={{
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ position: 'relative' }}>
+                    <span className="av lg" style={{ width: '44px', height: '44px', fontWeight: 700, fontSize: '15px' }}>
+                      RK
                     </span>
                     <span
                       style={{
-                        width: '16px',
-                        height: '16px',
+                        position: 'absolute',
+                        bottom: -2,
+                        right: -2,
+                        width: '18px',
+                        height: '18px',
                         borderRadius: '50%',
-                        background: '#16A34A',
+                        background: '#22C55E',
                         color: '#FFFFFF',
-                        display: 'inline-flex',
+                        display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '10px',
-                        fontWeight: 900,
-                        flexShrink: 0
+                        boxShadow: '0 0 0 2px var(--card)'
                       }}
+                      title="Verified Professional Driver"
                     >
-                      ✓
+                      <Icon name="check" size={10} color="#FFFFFF" />
                     </span>
                   </div>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', marginTop: '2px' }}>
-                    {driverRating} rating · {driverTripsCount} trips
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <b style={{ fontSize: '15px', color: 'var(--ink)' }}>{trip.driver || 'Ravi Kumar'}</b>
+                      <span
+                        style={{
+                          background: 'rgba(255, 199, 10, 0.2)',
+                          color: 'var(--on-yellow)',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: '6px'
+                        }}
+                      >
+                        Rating 4.8
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+                      Certified Driver · {trip?.trans || trip?.car?.trans || 'Automatic'} Transmission
+                    </div>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {driverLanguages}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="iconbtn"
+                    onClick={handleCall}
+                    title="Call Driver"
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: 'transparent',
+                      border: '1.5px solid var(--ink, #0F172A)',
+                      color: 'var(--ink, #0F172A)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0
+                    }}
+                  >
+                    <Icon name="phone" size={16} />
+                  </button>
+                  <button
+                    className="iconbtn"
+                    onClick={handleChat}
+                    title="WhatsApp Driver"
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: '#25D366',
+                      border: 'none',
+                      color: '#FFFFFF',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: '0 3px 10px rgba(37, 211, 102, 0.35)'
+                    }}
+                  >
+                    <Icon name="whatsapp" size={19} color="#FFFFFF" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Route Timeline */}
+              <div className="card" style={{ padding: '10px 12px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', position: 'relative' }}>
+                  {/* Vertical connector line */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '18px',
+                      bottom: '18px',
+                      left: '7px',
+                      width: '2px',
+                      background: 'var(--line)',
+                      zIndex: 1
+                    }}
+                  />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%', zIndex: 2 }}>
+                    {/* Pickup Row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          background: '#22C55E',
+                          boxShadow: '0 0 0 3px rgba(34, 197, 94, 0.25)',
+                          flex: 'none'
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>
+                          Pickup
+                        </span>
+                        <b
+                          style={{
+                            fontSize: '13.5px',
+                            color: 'var(--ink)',
+                            display: 'block',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                          title={trip.pickup}
+                        >
+                          {getLocationUpToFirstComma(trip.pickup)}
+                        </b>
+                      </div>
+                    </div>
+
+                    {/* Drop Row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          background: '#EF4444',
+                          boxShadow: '0 0 0 3px rgba(239, 68, 68, 0.25)',
+                          flex: 'none'
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>
+                          Destination
+                        </span>
+                        <b
+                          style={{
+                            fontSize: '13.5px',
+                            color: 'var(--ink)',
+                            display: 'block',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                          title={trip.drop_loc}
+                        >
+                          {getLocationUpToFirstComma(trip.drop_loc)}
+                        </b>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              {/* Action Buttons: Share Ride (Outline Black) & Emergency SOS (Red BG) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', marginBottom: '16px' }}>
                 <button
                   type="button"
-                  onClick={handleCall}
+                  onClick={handleShareTrip}
+                  disabled={isSharing}
                   style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    border: '1.5px solid #E2E8F0',
-                    background: '#FFFFFF',
+                    flex: 1,
+                    height: '46px',
+                    borderRadius: '14px',
+                    background: 'var(--card)',
+                    color: 'var(--ink)',
+                    border: '1.5px solid var(--line-strong)',
+                    fontSize: '13px',
+                    fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer',
-                    color: '#111827'
+                    gap: '7px',
+                    cursor: isSharing ? 'wait' : 'pointer',
+                    opacity: isSharing ? 0.7 : 1,
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                   }}
-                  aria-label="Call Driver"
                 >
-                  <Icon name="phone" size={18} />
+                  <Icon name="share" size={16} style={{ color: 'var(--ink)' }} />
+                  <span>{isSharing ? 'Sharing...' : 'Share Ride'}</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleChat}
+                  onClick={handleSos}
                   style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    background: '#128C7E',
+                    flex: 1.15,
+                    height: '46px',
+                    borderRadius: '14px',
+                    background: '#EF4444',
+                    color: '#FFFFFF',
                     border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    color: '#FFFFFF'
-                  }}
-                  aria-label="WhatsApp Driver"
-                >
-                  <Icon name="message-circle" size={20} color="#FFFFFF" />
-                </button>
-              </div>
-            </div>
-
-            {/* Action Buttons: Share trip & Emergency SOS */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <button
-                type="button"
-                onClick={handleShareTrip}
-                disabled={isSharing}
-                style={{
-                  flex: 1,
-                  height: '48px',
-                  borderRadius: '14px',
-                  border: '1.5px solid #111827',
-                  background: '#FFFFFF',
-                  color: '#111827',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  cursor: 'pointer'
-                }}
-              >
-                <Icon name="share" size={17} />
-                <span>{isSharing ? 'Sharing...' : 'Share trip'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSos}
-                style={{
-                  flex: 1.15,
-                  height: '48px',
-                  borderRadius: '14px',
-                  background: '#DC2626',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  fontSize: '14px',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)'
-                }}
-              >
-                <Icon name="alert-triangle" size={17} color="#FFFFFF" />
-                <span>Emergency SOS</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* ==========================================================
-             C. DRIVER ARRIVING / ACCEPTED VIEW (MATCHES SCREENSHOT 2)
-             ========================================================== */
-          <div>
-            {/* Status & ETA Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280' }}>
-                  {isArrived ? 'Driver arrived' : 'Driver arriving'}
-                </div>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: '#111827', letterSpacing: '-0.5px', marginTop: '2px' }}>
-                  {isArrived ? 'At pickup location' : `${etaMins || 8} min away`}
-                </div>
-              </div>
-              <div
-                style={{
-                  background: '#FEF3C7',
-                  color: '#92400E',
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  fontSize: '12px',
-                  fontWeight: 800
-                }}
-              >
-                {isArrived ? '0.0 km to pickup' : `${distLeft || '2.1 km'} to pickup`}
-              </div>
-            </div>
-
-            {/* Pitch Black Pickup OTP Card */}
-            <div
-              style={{
-                background: '#0F172A',
-                color: '#FFFFFF',
-                borderRadius: '18px',
-                padding: '14px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '12px',
-                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.2)'
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF' }}>Your pickup OTP</div>
-                <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>Tell the driver only when they arrive</div>
-              </div>
-              <div style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '6px', color: '#FFFFFF', fontFamily: 'monospace' }}>
-                {otpDisplay.split('').join(' ')}
-              </div>
-            </div>
-
-            {/* Driver Details Card */}
-            <div
-              style={{
-                border: '1.5px solid #F1F5F9',
-                borderRadius: '20px',
-                padding: '12px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '12px',
-                background: '#FFFFFF',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                {/* Circle Avatar with gold border */}
-                <div
-                  style={{
-                    width: '52px',
-                    height: '52px',
-                    borderRadius: '50%',
-                    border: '2.5px solid #F59E0B',
-                    background: '#FFFBEB',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    fontSize: '13px',
                     fontWeight: 800,
-                    fontSize: '16px',
-                    color: '#1E293B',
-                    flexShrink: 0
-                  }}
-                >
-                  {driverInitials}
-                </div>
-
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {driverName}
-                    </span>
-                    <span
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        background: '#16A34A',
-                        color: '#FFFFFF',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '10px',
-                        fontWeight: 900,
-                        flexShrink: 0
-                      }}
-                    >
-                      ✓
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', marginTop: '2px' }}>
-                    {driverRating} rating · {driverTripsCount} trips
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {driverLanguages}
-                  </div>
-                </div>
-              </div>
-
-              {/* Call & WhatsApp Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                <button
-                  type="button"
-                  onClick={handleCall}
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    border: '1.5px solid #E2E8F0',
-                    background: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    gap: '7px',
                     cursor: 'pointer',
-                    color: '#111827'
+                    boxShadow: '0 3px 12px rgba(239, 68, 68, 0.35)'
                   }}
-                  aria-label="Call Driver"
                 >
-                  <Icon name="phone" size={18} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleChat}
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    background: '#128C7E',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    color: '#FFFFFF'
-                  }}
-                  aria-label="WhatsApp Driver"
-                >
-                  <Icon name="message-circle" size={20} color="#FFFFFF" />
+                  <Icon name="alert-triangle" size={16} color="#FFFFFF" />
+                  <span>Emergency SOS</span>
                 </button>
               </div>
-            </div>
-
-            {/* Action Buttons: Share trip & Emergency SOS */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <button
-                type="button"
-                onClick={handleShareTrip}
-                disabled={isSharing}
-                style={{
-                  flex: 1,
-                  height: '48px',
-                  borderRadius: '14px',
-                  border: '1.5px solid #111827',
-                  background: '#FFFFFF',
-                  color: '#111827',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  cursor: 'pointer'
-                }}
-              >
-                <Icon name="share" size={17} />
-                <span>{isSharing ? 'Sharing...' : 'Share trip'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSos}
-                style={{
-                  flex: 1.15,
-                  height: '48px',
-                  borderRadius: '14px',
-                  background: '#DC2626',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  fontSize: '14px',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)'
-                }}
-              >
-                <Icon name="alert-triangle" size={17} color="#FFFFFF" />
-                <span>Emergency SOS</span>
-              </button>
-            </div>
-
-            {/* Cancel trip link */}
-            <div style={{ textAlign: 'center', marginTop: '4px' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (setTripToCancel) {
-                    setTripToCancel(trip);
-                  } else if (cancelTripByUser) {
-                    cancelTripByUser(trip.id);
-                  }
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#94A3B8',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '6px 12px'
-                }}
-              >
-                Cancel trip
-              </button>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Trip Ticket Modal with filled image preview, direct image share, download, and copy */}
