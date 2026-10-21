@@ -895,23 +895,24 @@ export default function BookingSheet() {
               <div
                 style={{
                   background: 'var(--field)',
-                  borderRadius: '16px',
-                  padding: '14px',
+                  borderRadius: '14px',
+                  padding: '12px 14px',
                   border: '1px solid var(--line)',
-                  marginBottom: '16px',
+                  marginBottom: '14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px'
+                  gap: '10px'
                 }}
               >
                 <div>
-                  <div className="lab" style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div className="lab" style={{ margin: '0 0 5px', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                     Airport Transfer Direction
                   </div>
-                  <div className="seg" style={{ marginTop: '0' }}>
+                  <div className="seg" style={{ marginTop: '0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                     <button
                       type="button"
                       className={airportType === 'pickup' ? 'on' : ''}
+                      style={{ whiteSpace: 'nowrap' }}
                       onClick={() => {
                         setAirportType('pickup');
                         if (!pickup || !pickup.toLowerCase().includes('airport')) {
@@ -919,42 +920,43 @@ export default function BookingSheet() {
                         }
                       }}
                     >
-                      Airport Pickup (Arrival)
+                      Airport Pickup
                     </button>
                     <button
                       type="button"
                       className={airportType === 'drop' ? 'on' : ''}
+                      style={{ whiteSpace: 'nowrap' }}
                       onClick={() => {
                         setAirportType('drop');
                         setDrop('Cochin International Airport (COK), Departure Gate');
                       }}
                     >
-                      Airport Drop (Departure)
+                      Airport Drop
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="lab" style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    Flight Number {airportType === 'pickup' ? '(for live flight arrival tracking)' : '(optional)'}
+                  <label className="lab" style={{ margin: '0 0 5px', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', display: 'block', whiteSpace: 'nowrap' }}>
+                    Flight Number
                   </label>
                   <input
                     className="inp"
-                    placeholder="e.g. AI-504, 6E-201, IX-412"
+                    placeholder="e.g. AI-504, 6E-201"
                     value={flightNo}
                     onChange={e => setFlightNo(e.target.value.toUpperCase())}
-                    style={{ textTransform: 'uppercase', letterSpacing: '0.04em', background: 'var(--card)' }}
+                    style={{ textTransform: 'uppercase', letterSpacing: '0.04em', background: 'var(--card)', height: '40px' }}
                   />
                 </div>
 
                 {airportType === 'pickup' && (
                   <div>
-                    <label className="lab" style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Driver Arrival at Airport (Avoid waiting after flight landing)
+                    <label className="lab" style={{ margin: '0 0 5px', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', display: 'block', whiteSpace: 'nowrap' }}>
+                      Driver Arrival
                     </label>
-                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
                       {[
-                        { id: '30m', label: '30m early (Recommended)' },
+                        { id: '30m', label: '30m early' },
                         { id: '45m', label: '45m early' },
                         { id: '15m', label: '15m early' },
                         { id: 'exact', label: 'At landing' }
@@ -963,7 +965,7 @@ export default function BookingSheet() {
                           key={buf.id}
                           type="button"
                           className={`chip ${driverEarlyBuffer === buf.id ? 'on' : ''}`}
-                          style={{ fontSize: '11.5px', padding: '4px 10px', height: '28px', flexShrink: 0, whiteSpace: 'nowrap' }}
+                          style={{ fontSize: '12px', padding: '5px 12px', height: '30px', flexShrink: 0, whiteSpace: 'nowrap', fontWeight: driverEarlyBuffer === buf.id ? 700 : 500 }}
                           onClick={() => setDriverEarlyBuffer(buf.id)}
                         >
                           {buf.label}
@@ -979,7 +981,7 @@ export default function BookingSheet() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <label className="lab" htmlFor="bk-pickup" style={{ margin: 0 }}>
-                  Pickup location (From) <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
+                  Pickup location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
                 </label>
               </div>
               <button
@@ -1007,7 +1009,7 @@ export default function BookingSheet() {
                 ref={pickupInputRef}
                 className="inp"
                 id="bk-pickup"
-                placeholder="Where should the driver meet you? (From)"
+                placeholder="Where should the driver meet you?"
                 value={pickup}
                 onChange={e => handlePickupChange(e.target.value)}
                 autoComplete="off"
@@ -1072,11 +1074,11 @@ export default function BookingSheet() {
               )}
             </div>
 
-            {/* Destination Location (To) */}
+            {/* Destination Location */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <label className="lab" htmlFor="bk-drop" style={{ margin: 0 }}>
-                  Destination location (To) <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
+                  Destination location <span style={{ color: '#EA580C', fontWeight: 800 }}>*</span>
                 </label>
               </div>
               <button
@@ -1108,7 +1110,7 @@ export default function BookingSheet() {
                 ref={dropInputRef}
                 className="inp"
                 id="bk-drop"
-                placeholder="Where are you heading to? (To)"
+                placeholder="Where are you heading to?"
                 value={drop}
                 onChange={e => handleDropChange(e.target.value)}
                 autoComplete="off"
