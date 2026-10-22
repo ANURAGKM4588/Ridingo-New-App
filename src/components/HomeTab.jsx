@@ -1912,25 +1912,14 @@ Live GPS Tracking: ${trackUrl}`;
             </span>
           </div>
 
-          <div className="bento-hero-body" style={{ alignItems: 'flex-start' }}>
-            <span className="bento-hero-ic" style={{ marginTop: '2px' }}>
+          <div className="bento-hero-body">
+            <span className="bento-hero-ic">
               <Icon name="hourly" size={22} />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <b className="bento-hero-title">Hourly driver</b>
-              <div className="bento-hero-sub" style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', fontWeight: 550, marginTop: '3px', lineHeight: 1.4 }}>
-                Flexible duration for city errands, meetings & shopping
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'var(--field, #F1F5F9)', color: 'var(--ink, #0F172A)', border: '1px solid var(--line, #E2E8F0)' }}>
-                  Meetings
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'var(--field, #F1F5F9)', color: 'var(--ink, #0F172A)', border: '1px solid var(--line, #E2E8F0)' }}>
-                  Shopping
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', background: 'var(--field, #F1F5F9)', color: 'var(--muted, #64748B)', border: '1px solid var(--line, #E2E8F0)' }}>
-                  City Errands
-                </span>
+              <div className="bento-hero-sub" style={{ fontSize: '12.5px', color: 'var(--muted, #64748B)', marginTop: '2px', lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                City errands, meetings & shopping
               </div>
             </div>
           </div>
