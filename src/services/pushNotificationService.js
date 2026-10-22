@@ -841,11 +841,10 @@ export function notifyDriverTripAccepted(trip) {
   recordNotificationSent(dedupKey);
 
   const pickup = cleanLocationName(trip?.pickup || trip?.from) || 'Pickup Location';
-  const startOtp = trip?.startOtp || trip?.car?.startOtp || trip?.otp || '4821';
   const fare = Number(trip?.fare) || 600;
 
-  const title = `Trip Accepted · Start OTP: ${startOtp}`;
-  const body = `Trip confirmed (₹${fare}). Customer Start OTP: ${startOtp}.\nPickup: ${pickup}. Navigate to pickup location.`;
+  const title = `Trip Accepted · Reach Pickup Location`;
+  const body = `Trip confirmed (₹${fare}). Pickup: ${pickup}. Navigate to pickup location and verify customer pickup OTP.`;
 
   // Gentle confirmation tone
   try {
@@ -863,7 +862,6 @@ export function notifyDriverTripAccepted(trip) {
       type: 'alert',
       extra: {
         tripId,
-        startOtp,
         pickup,
         fare
       }

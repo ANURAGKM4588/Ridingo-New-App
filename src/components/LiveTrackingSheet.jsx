@@ -571,7 +571,7 @@ Please contact the passenger or emergency services (112) immediately!`;
             WebkitOverflowScrolling: 'touch',
             overscrollBehaviorY: 'contain',
             scrollBehavior: 'smooth',
-            padding: '10px 18px max(14px, env(safe-area-inset-bottom, 0px))',
+            padding: '10px 18px max(24px, env(safe-area-inset-bottom, 24px))',
             scrollbarWidth: 'none'
           }}
         >
@@ -788,7 +788,7 @@ Please contact the passenger or emergency services (112) immediately!`;
               />
 
               {/* Action Buttons: Share Ride (Outline Black) & Emergency SOS (Red BG) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', marginBottom: 'max(16px, env(safe-area-inset-bottom, 16px))' }}>
                 <button
                   type="button"
                   onClick={handleShareTrip}
@@ -1060,7 +1060,7 @@ Please contact the passenger or emergency services (112) immediately!`;
               </div>
 
               {/* Action Buttons: Share Ride (Outline Black) & Emergency SOS (Red BG) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', marginBottom: 'max(16px, env(safe-area-inset-bottom, 16px))' }}>
                 <button
                   type="button"
                   onClick={handleShareTrip}

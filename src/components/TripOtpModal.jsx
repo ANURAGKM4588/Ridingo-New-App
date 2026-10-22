@@ -41,8 +41,11 @@ export default function TripOtpModal({
     }
   };
 
+  const isDev = Boolean(typeof import.meta !== 'undefined' && import.meta.env?.DEV);
+
   const checkOtp = (entered) => {
-    if (entered === correctOtp || entered === '1234') {
+    const isBypass = isDev && (entered === '1234');
+    if (entered === correctOtp || isBypass) {
       onVerified();
     } else {
       setError(true);
@@ -132,26 +135,28 @@ export default function TripOtpModal({
           </span>
         )}
 
-        {/* Hint for demo testing */}
-        <button
-          type="button"
-          onClick={() => {
-            const arr = correctOtp ? correctOtp.split('') : ['4', '8', '2', '1'];
-            setDigits(arr);
-            checkOtp(arr.join(''));
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--brand, #2563EB)',
-            fontSize: '11.5px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            marginBottom: '16px'
-          }}
-        >
-          Customer provided code: <b>{correctOtp || '4821'}</b> (Tap to auto-fill)
-        </button>
+        {/* Hint for demo testing (restricted to dev mode only) */}
+        {isDev && (
+          <button
+            type="button"
+            onClick={() => {
+              const arr = correctOtp ? correctOtp.split('') : ['4', '8', '2', '1'];
+              setDigits(arr);
+              checkOtp(arr.join(''));
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--brand, #2563EB)',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              marginBottom: '16px'
+            }}
+          >
+            [Dev Testing Only] Customer provided code: <b>{correctOtp || '4821'}</b> (Tap to auto-fill)
+          </button>
+        )}
 
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
