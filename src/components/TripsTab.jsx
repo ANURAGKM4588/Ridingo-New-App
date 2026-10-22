@@ -184,71 +184,17 @@ export default function TripsTab() {
         <p>All your driver bookings</p>
       </div>
 
-      {/* Apple-Style Minimal Segmented Trip Status Bar */}
-      <div
-        className="stagger-2"
-        style={{
-          marginBottom: '16px',
-          background: 'var(--field)',
-          borderRadius: '16px',
-          padding: '4px',
-          display: 'grid',
-          gridTemplateColumns: `repeat(${Object.keys(F).length}, 1fr)`,
-          gap: '4px',
-          border: '1px solid var(--line)',
-          position: 'relative'
-        }}
-      >
-        {Object.keys(F).map((k) => {
-          const isActive = filter === k;
-          return (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setFilter(k)}
-              style={{
-                position: 'relative',
-                height: '38px',
-                border: 'none',
-                background: 'transparent',
-                borderRadius: '12px',
-                fontSize: '13px',
-                fontWeight: isActive ? 700 : 550,
-                color: isActive ? 'var(--ink)' : 'var(--muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 4px',
-                zIndex: 1,
-                transition: 'color 0.18s ease',
-                WebkitTapHighlightColor: 'transparent',
-                userSelect: 'none'
-              }}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="appleTripStatusActivePill"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: '12px',
-                    background: 'var(--card)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)',
-                    zIndex: -1
-                  }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 480,
-                    damping: 38,
-                    mass: 0.8
-                  }}
-                />
-              )}
-              <span style={{ position: 'relative', zIndex: 2 }}>{F[k]}</span>
-            </button>
-          );
-        })}
+      {/* Category Chips - Full rounded corner rectangle shape matching Driver App */}
+      <div className="chips stagger-2" style={{ marginBottom: '14px', display: 'flex', gap: '6px', overflowX: 'auto' }}>
+        {Object.keys(F).map((k) => (
+          <button
+            key={k}
+            className={`chip ${filter === k ? 'on' : ''}`}
+            onClick={() => setFilter(k)}
+          >
+            {F[k]}
+          </button>
+        ))}
       </div>
 
       {/* Trip List with Apple-style smooth crossfade */}

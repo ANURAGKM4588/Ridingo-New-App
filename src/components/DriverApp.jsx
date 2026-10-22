@@ -610,7 +610,7 @@ function SwipeFaceIdWithdrawal({
  * Checks IndexedDB binary store so it survives across page refreshes and app re-launches.
  * Does NOT play fake, stock, or placeholder videos.
  */
-function TripHistoryRecordedVideoPlayer({ trip, savedInspection, poster, onExpandFullscreen }) {
+function TripHistoryRecordedVideoPlayer({ trip, savedInspection, poster }) {
   const [videoSrc, setVideoSrc] = useState(() => {
     return trip.videoUrl || trip.vehicle_video || trip.vehicleDetails?.videoUrl || savedInspection?.videoUrl || null;
   });
@@ -647,21 +647,10 @@ function TripHistoryRecordedVideoPlayer({ trip, savedInspection, poster, onExpan
 
   return (
     <div style={{ margin: '10px 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
-          Driver Recorded Inspection Video
-        </b>
-        <span style={{ fontSize: '10.5px', color: '#16A34A', fontWeight: 700 }}>
-          ✓ Verified Live Recording
-        </span>
-      </div>
       <CustomVideoPlayer
         src={videoSrc}
         poster={poster || null}
         title={`${trip.car?.model || 'Vehicle'} Walkaround Inspection`}
-        onExpandFullscreen={(src, vidTitle) => {
-          onExpandFullscreen(src, vidTitle);
-        }}
       />
     </div>
   );
@@ -4674,15 +4663,10 @@ export default function DriverApp() {
 
                               {/* Pre-Trip Vehicle Condition Images Gallery (Driver's Real Taken Photos) */}
                               <div style={{ margin: '10px 0' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                  <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)' }}>
-                                    Vehicle Inspection Photos {realPhotos.length > 0 ? `(${realPhotos.length})` : ''}
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                                  <b style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted, #64748B)', whiteSpace: 'nowrap' }}>
+                                    Vehicle Inspection Photos
                                   </b>
-                                  {realPhotos.length > 0 && (
-                                    <span style={{ fontSize: '10.5px', color: '#16A34A', fontWeight: 700 }}>
-                                      Verified Condition
-                                    </span>
-                                  )}
                                 </div>
 
                                 {realPhotos.length > 0 ? (
@@ -4732,16 +4716,6 @@ export default function DriverApp() {
                                 trip={t}
                                 savedInspection={savedInspection}
                                 poster={realPhotos[0] || null}
-                                onExpandFullscreen={(src, vidTitle) => {
-                                  setMediaModalState({
-                                    isOpen: true,
-                                    type: 'video',
-                                    images: [],
-                                    initialIndex: 0,
-                                    videoSrc: src,
-                                    title: vidTitle || 'Walkaround Inspection Video'
-                                  });
-                                }}
                               />
 
                               {/* Driver Earnings & Fare Breakdown */}

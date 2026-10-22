@@ -15,8 +15,7 @@ export default function CustomVideoPlayer({
   src,
   poster,
   title = 'Vehicle Walkaround Inspection Video',
-  subtitle = 'Verified Pre-Trip Condition Recording',
-  onExpandFullscreen
+  subtitle = 'Verified Pre-Trip Condition Recording'
 }) {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -30,7 +29,26 @@ export default function CustomVideoPlayer({
 
   const [videoSrc, setVideoSrc] = useState(src || '');
   const [loadError, setLoadError] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const posterImg = poster || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80';
+
+  // Handle Fullscreen body overflow lock & Escape key
+  useEffect(() => {
+    if (isFullscreen) {
+      const origOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          setIsFullscreen(false);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = origOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isFullscreen]);
 
   // Synchronize when src prop changes
   useEffect(() => {
@@ -210,11 +228,31 @@ export default function CustomVideoPlayer({
 
   return (
     <div
-      className="custom-video-player-container"
+      className={`custom-video-player-container ${isFullscreen ? 'is-fullscreen' : ''}`}
       onClick={togglePlay}
       onMouseMove={triggerControlsAutoHide}
       onTouchStart={triggerControlsAutoHide}
-      style={{
+      style={isFullscreen ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999,
+        background: '#000000',
+        borderRadius: 0,
+        margin: 0,
+        padding: 0,
+        border: 'none',
+        boxShadow: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        userSelect: 'none'
+      } : {
         position: 'relative',
         width: '100%',
         borderRadius: '16px',
@@ -242,47 +280,49 @@ export default function CustomVideoPlayer({
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
-          display: 'block'
+          maxWidth: isFullscreen ? '100vw' : '100%',
+          maxHeight: isFullscreen ? '100vh' : '100%',
+          objectFit: 'contain',
+          display: 'block',
+          background: '#000000'
         }}
       />
 
-      {/* Title & Badge Overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          padding: '12px 14px',
-          background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 3,
-          pointerEvents: 'none'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span
-            style={{
-              padding: '2px 8px',
-              borderRadius: '6px',
-              background: 'rgba(22, 163, 74, 0.85)',
-              color: '#FFFFFF',
-              fontSize: '10.5px',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em'
-            }}
-          >
-            Video
-          </span>
-          <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-            {title}
-          </span>
-        </div>
-      </div>
+      {/* Fullscreen Close Button */}
+      {isFullscreen && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsFullscreen(false);
+          }}
+          aria-label="Exit Fullscreen"
+          style={{
+            position: 'absolute',
+            top: 'max(16px, env(safe-area-inset-top, 16px))',
+            right: 'max(16px, env(safe-area-inset-right, 16px))',
+            width: '42px',
+            height: '42px',
+            borderRadius: '50%',
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1.5px solid rgba(255, 255, 255, 0.25)',
+            color: '#FFFFFF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 40,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)'
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
 
       {/* Error state if recorded video cannot be loaded */}
       {loadError && (
@@ -373,12 +413,14 @@ export default function CustomVideoPlayer({
           bottom: 0,
           left: 0,
           right: 0,
-          padding: '8px 12px 10px',
+          padding: isFullscreen
+            ? '12px 18px max(24px, env(safe-area-inset-bottom, 24px))'
+            : '8px 12px 10px',
           background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.4) 70%, rgba(0, 0, 0, 0) 100%)',
           display: 'flex',
           flexDirection: 'column',
           gap: '6px',
-          zIndex: 5,
+          zIndex: 35,
           opacity: showControls || !isPlaying || isEnded ? 1 : 0,
           transition: 'opacity 0.25s ease',
           pointerEvents: showControls || !isPlaying || isEnded ? 'auto' : 'none'
@@ -495,22 +537,14 @@ export default function CustomVideoPlayer({
               )}
             </button>
 
-            {/* Fullscreen Expand & Zoom Button */}
+            {/* Fullscreen Expand & Fit to Frame Button */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                if (onExpandFullscreen) {
-                  onExpandFullscreen(videoSrc, title);
-                } else if (videoRef.current) {
-                  if (videoRef.current.requestFullscreen) {
-                    videoRef.current.requestFullscreen().catch(() => {});
-                  } else if (videoRef.current.webkitRequestFullscreen) {
-                    videoRef.current.webkitRequestFullscreen();
-                  }
-                }
+                setIsFullscreen(prev => !prev);
               }}
-              title="Expand to Full Screen & Zoom"
+              title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -522,9 +556,15 @@ export default function CustomVideoPlayer({
                 justifyContent: 'center'
               }}
             >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-              </svg>
+              {isFullscreen ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
