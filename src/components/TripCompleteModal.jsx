@@ -20,13 +20,16 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
 
   const trip = propTrip || completedTripData;
 
-  const [rating, setRating] = useState(5); // Default to 5 stars
+  const [rating, setRating] = useState(0); // Empty by default
   const [hoverRating, setHoverRating] = useState(0);
-  const [selectedFeedback, setSelectedFeedback] = useState(['Careful driving', 'On time']);
+  const [selectedFeedback, setSelectedFeedback] = useState([]); // Empty by default
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+
+  // Enabled only when both star rating and driver quality are selected
+  const canSubmit = rating > 0 && selectedFeedback.length > 0;
 
   if (!trip && !tripCompleteModalOpen) return null;
 
@@ -80,9 +83,10 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     );
   };
 
-  // 1. Submit Rating -> Navigates to Home Page
+  // 1. Submit Rating -> Navigates to Home Page (Enabled only when stars and driver quality selected)
   const handleSubmitRating = (e) => {
     if (e) e.stopPropagation();
+    if (!canSubmit || isSubmitting || ratingSubmitted) return;
     setIsSubmitting(true);
     setRatingSubmitted(true);
 
@@ -586,8 +590,8 @@ Status: COMPLETED & PAID ✅`;
             </div>
 
             {/* Rating description text */}
-            <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', marginBottom: '14px' }}>
-              {ratingLabels[currentRating] || '⭐ Rate your trip'}
+            <div style={{ fontSize: '12px', fontWeight: 700, color: currentRating > 0 ? '#64748B' : '#94A3B8', marginBottom: '14px' }}>
+              {currentRating > 0 ? (ratingLabels[currentRating] || '⭐ Rate your trip') : '⭐ Tap a star to rate your driver'}
             </div>
 
             {/* Driver Quality Feedback Option Chips (Freely Selectable) */}
@@ -629,11 +633,12 @@ Status: COMPLETED & PAID ✅`;
 
           {/* Action Buttons Section */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px', pointerEvents: 'auto' }}>
-            {/* Primary Submit Button: Black Background + White Text -> Navigates to Home */}
+            {/* Primary Submit Button: Black Background + White Text (Faded & non-functional until stars and driver quality are selected) */}
             <button
               type="button"
               onClick={handleSubmitRating}
-              disabled={isSubmitting || ratingSubmitted}
+              disabled={!canSubmit || isSubmitting || ratingSubmitted}
+              aria-disabled={!canSubmit}
               style={{
                 width: '100%',
                 height: '50px',
@@ -643,14 +648,17 @@ Status: COMPLETED & PAID ✅`;
                 fontSize: '15.5px',
                 fontWeight: 800,
                 border: 'none',
-                cursor: (isSubmitting || ratingSubmitted) ? 'default' : 'pointer',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+                cursor: canSubmit ? ((isSubmitting || ratingSubmitted) ? 'default' : 'pointer') : 'not-allowed',
+                boxShadow: canSubmit ? '0 4px 14px rgba(0, 0, 0, 0.25)' : 'none',
+                opacity: canSubmit ? 1 : 0.38,
+                transition: 'opacity 0.22s ease, box-shadow 0.22s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                pointerEvents: 'auto'
+                pointerEvents: canSubmit ? 'auto' : 'none'
               }}
+              title={!canSubmit ? 'Please select a star rating and at least one driver quality tag to submit' : 'Submit rating'}
             >
               {ratingSubmitted ? '✓ Rating Submitted' : (isSubmitting ? 'Submitting...' : 'Submit rating')}
             </button>
