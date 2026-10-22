@@ -354,7 +354,13 @@ export function AppProvider({ children }) {
   const [bookingCategory, setBookingCategory] = useState('hourly');
   const [bookingDestination, setBookingDestination] = useState('');
   const [notifsOpen, setNotifsOpen] = useState(false);
-  const [liveTrackingOpen, setLiveTrackingOpen] = useState(false);
+  const [liveTrackingOpen, setLiveTrackingOpen] = useState(() => {
+    try {
+      return localStorage.getItem('ridingo_live_tracking_open') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     try {
       const saved = localStorage.getItem('ridingo_user_session');
@@ -376,8 +382,34 @@ export function AppProvider({ children }) {
   const openLegal = (tab = 'terms') => setLegalModal({ open: true, tab });
   const closeLegal = () => setLegalModal(prev => ({ ...prev, open: false }));
 
-  const [trips, setTrips] = useState([]);
-  const [activeTrackingTripId, setActiveTrackingTripId] = useState(null);
+  // Instant Cache Rehydration: Restore trip history and active bookings immediately on frame 0
+  const [trips, setTrips] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ridingo_cached_trips');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+    return [];
+  });
+  const [tripsLoaded, setTripsLoaded] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ridingo_cached_trips');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return true;
+      }
+    } catch (_) {}
+    return false;
+  });
+  const [activeTrackingTripId, setActiveTrackingTripId] = useState(() => {
+    try {
+      return localStorage.getItem('ridingo_active_tracking_trip_id') || null;
+    } catch (_) {
+      return null;
+    }
+  });
   const [utx, setUtx] = useState(INITIAL_UTX);
   const [unotes, setUnotes] = useState(INITIAL_UNOTES);
   const [driverOnline, setDriverOnline] = useState(true);
@@ -432,6 +464,42 @@ export function AppProvider({ children }) {
       }
     } catch (_) {}
   }, []);
+
+  // Synchronous cache persistence for instant UI state restoration upon app launch / refresh
+  useEffect(() => {
+    try {
+      if (Array.isArray(trips) && trips.length > 0) {
+        // Strip out oversized base64 strings so local storage stays lightning-fast and never exceeds quota
+        const light = trips.slice(0, 35).map(t => {
+          const item = { ...t };
+          if (item.videoUrl && String(item.videoUrl).startsWith('data:')) item.videoUrl = null;
+          if (item.vehicleDetails?.videoUrl && String(item.vehicleDetails.videoUrl).startsWith('data:')) {
+            item.vehicleDetails = { ...item.vehicleDetails, videoUrl: null };
+          }
+          return item;
+        });
+        localStorage.setItem('ridingo_cached_trips', JSON.stringify(light));
+      }
+    } catch (e) {
+      console.warn('[Cache] Could not persist trips to localStorage:', e);
+    }
+  }, [trips]);
+
+  useEffect(() => {
+    try {
+      if (activeTrackingTripId) {
+        localStorage.setItem('ridingo_active_tracking_trip_id', activeTrackingTripId);
+      } else {
+        localStorage.removeItem('ridingo_active_tracking_trip_id');
+      }
+    } catch (_) {}
+  }, [activeTrackingTripId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ridingo_live_tracking_open', String(liveTrackingOpen));
+    } catch (_) {}
+  }, [liveTrackingOpen]);
 
   const notifyUserTripAccepted = (tripId, driverName = 'Ravi Kumar', driverPhone = '+91 94471 23456', targetOtp = '4821') => {
     const key = normalizeTripKey(tripId);
@@ -694,6 +762,8 @@ export function AppProvider({ children }) {
       }
     } catch (err) {
       console.warn('[Supabase] Sync trips error:', err);
+    } finally {
+      setTripsLoaded(true);
     }
   };
 
@@ -2228,6 +2298,7 @@ export function AppProvider({ children }) {
         setDTab,
         trips,
         setTrips,
+        tripsLoaded,
         tripsFilter,
         setTripsFilter,
         utx,

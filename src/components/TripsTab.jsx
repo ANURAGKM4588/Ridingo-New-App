@@ -17,6 +17,7 @@ const CATS = {
 export default function TripsTab() {
   const {
     trips,
+    tripsLoaded,
     setTrips,
     setUtx,
     user,
@@ -259,7 +260,66 @@ export default function TripsTab() {
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          {list.length === 0 ? (
+          {!tripsLoaded && list.length === 0 ? (
+            <div className="trip-list" style={{ marginTop: '8px' }}>
+              {[1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className="card"
+                  style={{
+                    padding: '16px',
+                    borderRadius: '20px',
+                    background: 'var(--card)',
+                    border: '1.5px solid var(--line)',
+                    marginBottom: '10px',
+                    opacity: 0.85
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        background: 'var(--field)',
+                        animation: 'pulse 1.4s ease-in-out infinite'
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          width: '55%',
+                          height: '14px',
+                          borderRadius: '6px',
+                          background: 'var(--field)',
+                          marginBottom: '8px',
+                          animation: 'pulse 1.4s ease-in-out infinite'
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: '35%',
+                          height: '11px',
+                          borderRadius: '5px',
+                          background: 'var(--field)',
+                          animation: 'pulse 1.4s ease-in-out infinite'
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        width: '54px',
+                        height: '24px',
+                        borderRadius: '8px',
+                        background: 'var(--field)',
+                        animation: 'pulse 1.4s ease-in-out infinite'
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : list.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: '40px 20px', borderRadius: '22px', background: 'var(--card)', border: '1.5px solid var(--line)', marginTop: '8px' }}>
           <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--field)', color: 'var(--ink)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <Icon name="route" size={26} />
