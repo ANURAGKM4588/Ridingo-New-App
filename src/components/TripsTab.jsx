@@ -271,7 +271,7 @@ export default function TripsTab() {
           <button
             type="button"
             className="btn primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '999px', fontSize: '13.5px', fontWeight: 750, margin: '0 auto' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', fontSize: '13.5px', fontWeight: 750, margin: '0 auto' }}
             onClick={() => {
               setBookingCategory('hourly');
               setBookingOpen(true);
@@ -370,31 +370,37 @@ export default function TripsTab() {
                       {canTrack && (
                         <button
                           type="button"
-                          className="btn primary"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (setActiveTrackingTripId) setActiveTrackingTripId(t.id);
                             if (setLiveTrackingOpen) setLiveTrackingOpen(true);
                           }}
                           style={{
-                            padding: '4px 12px',
-                            fontSize: '11.5px',
-                            fontWeight: 750,
-                            borderRadius: '999px',
+                            height: '32px',
+                            minHeight: 'unset',
+                            padding: '0 12px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            borderRadius: '8px',
+                            background: 'var(--solid, #0F172A)',
+                            color: 'var(--on-solid, #FFFFFF)',
+                            border: 'none',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            justifyContent: 'center',
+                            gap: '5px',
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
+                            transition: 'all 0.15s ease'
                           }}
                         >
-                          <Icon name="navigation" size={12} />
+                          <Icon name="navigation" size={12} style={{ color: 'var(--on-solid, #FFFFFF)' }} />
                           <span>Track Live</span>
                         </button>
                       )}
                       <button
                         type="button"
-                        className="btn ghost"
                         onClick={(e) => {
                           e.stopPropagation();
                           const isDriverAssigned = Boolean(
@@ -413,15 +419,22 @@ export default function TripsTab() {
                           }
                         }}
                         style={{
-                          padding: '4px 12px',
-                          fontSize: '11.5px',
-                          fontWeight: 750,
+                          height: '32px',
+                          minHeight: 'unset',
+                          padding: '0 12px',
+                          fontSize: '12px',
+                          fontWeight: 700,
                           color: '#EF4444',
                           background: 'rgba(239, 68, 68, 0.08)',
-                          border: '1px solid rgba(239, 68, 68, 0.28)',
-                          borderRadius: '999px',
+                          border: '1px solid rgba(239, 68, 68, 0.22)',
+                          borderRadius: '8px',
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         Cancel Ride
@@ -503,8 +516,10 @@ export default function TripsTab() {
                           shareInvoiceViaWhatsApp(user?.phone || t.rider?.phone, inv);
                         }}
                         style={{
-                          padding: '5px 12px',
-                          borderRadius: '999px',
+                          height: '32px',
+                          minHeight: 'unset',
+                          padding: '0 12px',
+                          borderRadius: '8px',
                           background: 'rgba(16, 185, 129, 0.12)',
                           border: '1px solid rgba(16, 185, 129, 0.28)',
                           color: '#10B981',
@@ -513,7 +528,9 @@ export default function TripsTab() {
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '5px'
+                          justifyContent: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         <Icon name="whatsapp" size={13} color="#10B981" />
@@ -540,8 +557,10 @@ export default function TripsTab() {
                           shareInvoiceViaEmail(user?.email || t.rider?.email, t.id, inv);
                         }}
                         style={{
-                          padding: '5px 12px',
-                          borderRadius: '999px',
+                          height: '32px',
+                          minHeight: 'unset',
+                          padding: '0 12px',
+                          borderRadius: '8px',
                           background: 'rgba(59, 130, 246, 0.12)',
                           border: '1px solid rgba(59, 130, 246, 0.28)',
                           color: '#3B82F6',
@@ -550,7 +569,9 @@ export default function TripsTab() {
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '5px'
+                          justifyContent: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         <Icon name="mail" size={13} color="#3B82F6" />
@@ -565,8 +586,10 @@ export default function TripsTab() {
                           if (setTripCompleteModalOpen) setTripCompleteModalOpen(true);
                         }}
                         style={{
-                          padding: '5px 12px',
-                          borderRadius: '999px',
+                          height: '32px',
+                          minHeight: 'unset',
+                          padding: '0 12px',
+                          borderRadius: '8px',
                           background: '#FEF3C7',
                           border: '1px solid #F59E0B',
                           color: '#92400E',
@@ -575,7 +598,9 @@ export default function TripsTab() {
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '5px'
+                          justifyContent: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         <span style={{ color: '#D97706' }}>★</span>
