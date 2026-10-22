@@ -79,6 +79,12 @@ export default function LiveTrackingSheet() {
   const [showSetSecondaryModal, setShowSetSecondaryModal] = useState(false);
   const [secondaryPhoneInput, setSecondaryPhoneInput] = useState('');
   const [sosData, setSosData] = useState(null);
+  const [roadTelemetry, setRoadTelemetry] = useState(null);
+
+  // Reset road telemetry whenever trip changes or status transitions
+  useEffect(() => {
+    setRoadTelemetry(null);
+  }, [trip?.id, trip?.status]);
 
   // Sync state if trip props update
   useEffect(() => {
@@ -122,11 +128,14 @@ export default function LiveTrackingSheet() {
     return trip?.distanceKm ? Number(trip.distanceKm) : null;
   }, [currentCoords?.lat, currentCoords?.lng, targetCoords?.lat, targetCoords?.lng, trip?.distanceKm]);
 
-  const distLeft = realDistanceKm !== null
-    ? `${realDistanceKm.toFixed(1)} km`
-    : (trip?.distanceText || '2.8 km');
+  const distLeft = roadTelemetry?.distanceText
+    ? roadTelemetry.distanceText
+    : (realDistanceKm !== null ? `${realDistanceKm.toFixed(1)} km` : (trip?.distanceText || '2.8 km'));
 
   const etaMins = useMemo(() => {
+    if (roadTelemetry?.durationMins) {
+      return roadTelemetry.durationMins;
+    }
     if (realDistanceKm !== null) {
       if (liveDriverSpeed > 10) {
         return Math.max(1, Math.round((realDistanceKm / liveDriverSpeed) * 60));
@@ -134,7 +143,7 @@ export default function LiveTrackingSheet() {
       return Math.max(1, Math.round((realDistanceKm / 28) * 60)); // ~28 km/h city average
     }
     return trip?.durationMins || 12;
-  }, [realDistanceKm, liveDriverSpeed, trip?.durationMins]);
+  }, [roadTelemetry?.durationMins, realDistanceKm, liveDriverSpeed, trip?.durationMins]);
 
   const liveSpeed = Math.round(liveDriverSpeed);
 
@@ -573,6 +582,7 @@ Please contact the passenger or emergency services (112) immediately!`;
                 trip={liveTripData}
                 isModal={true}
                 height={275}
+                onRouteCalculated={setRoadTelemetry}
               />
             </div>
           )}
@@ -705,6 +715,7 @@ Please contact the passenger or emergency services (112) immediately!`;
                   trip={liveTripData}
                   isModal={true}
                   height={240}
+                  onRouteCalculated={setRoadTelemetry}
                 />
               </div>
 

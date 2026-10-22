@@ -1887,16 +1887,18 @@ export async function geocodeAddress(addressText) {
 export async function fetchGoogleDistanceMatrix({ origin, destination, originCoords, destCoords }) {
   const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyD8M53hyypWh8lLZk0W57dR7cUzLwb-nmA';
 
-  // 1. Resolve exact coordinates via places:searchText / geocodeAddress
+  // 1. Resolve exact coordinates - strictly preserve provided numeric coordinates
   let oCoords = originCoords;
-  if ((!oCoords?.lat || oCoords?.source !== 'google') && origin) {
+  const oHasCoords = oCoords?.lat != null && oCoords?.lng != null && !isNaN(Number(oCoords.lat)) && !isNaN(Number(oCoords.lng));
+  if (!oHasCoords && origin && !origin.toLowerCase().includes('driver')) {
     const geo = await geocodeAddress(origin);
     if (geo?.lat && geo?.lng) {
       oCoords = geo;
     }
   }
   let dCoords = destCoords;
-  if ((!dCoords?.lat || dCoords?.source !== 'google') && destination) {
+  const dHasCoords = dCoords?.lat != null && dCoords?.lng != null && !isNaN(Number(dCoords.lat)) && !isNaN(Number(dCoords.lng));
+  if (!dHasCoords && destination) {
     const geo = await geocodeAddress(destination);
     if (geo?.lat && geo?.lng) {
       dCoords = geo;
@@ -2129,14 +2131,16 @@ export async function calculateTripRouteAndETA({ origin, destination, originCoor
     }
   }
 
-  // 3. Coordinate geocode resolution and Google Cloud Routes execution
+  // 3. Coordinate geocode resolution and Google Cloud Routes execution - preserve valid numeric coordinates
   let oCoords = originCoords;
-  if ((!oCoords?.lat || oCoords?.source !== 'google') && origin) {
+  const oValid = oCoords?.lat != null && oCoords?.lng != null && !isNaN(Number(oCoords.lat)) && !isNaN(Number(oCoords.lng));
+  if (!oValid && origin && !origin.toLowerCase().includes('driver')) {
     const geo = await geocodeAddress(origin);
     if (geo?.lat) oCoords = geo;
   }
   let dCoords = destCoords;
-  if ((!dCoords?.lat || dCoords?.source !== 'google') && destination) {
+  const dValid = dCoords?.lat != null && dCoords?.lng != null && !isNaN(Number(dCoords.lat)) && !isNaN(Number(dCoords.lng));
+  if (!dValid && destination) {
     const geo = await geocodeAddress(destination);
     if (geo?.lat) dCoords = geo;
   }
@@ -2281,24 +2285,27 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
     return roadDirectionsCache.get(cacheKey);
   }
 
-  // 1. Resolve coordinates if not provided or unverified
-  let oLat = originCoords?.lat;
-  let oLng = originCoords?.lng;
-  let dLat = destCoords?.lat;
-  let dLng = destCoords?.lng;
+  // 1. Resolve coordinates - strictly prioritize provided numeric coordinates (e.g. driver GPS)
+  let oLat = originCoords?.lat != null ? Number(originCoords.lat) : null;
+  let oLng = originCoords?.lng != null ? Number(originCoords.lng) : null;
+  let dLat = destCoords?.lat != null ? Number(destCoords.lat) : null;
+  let dLng = destCoords?.lng != null ? Number(destCoords.lng) : null;
 
-  if ((!oLat || !oLng || originCoords?.source !== 'google') && origin) {
+  const hasValidOrigin = oLat !== null && oLng !== null && !isNaN(oLat) && !isNaN(oLng);
+  const hasValidDest = dLat !== null && dLng !== null && !isNaN(dLat) && !isNaN(dLng);
+
+  if (!hasValidOrigin && origin && !origin.toLowerCase().includes('driver')) {
     const geo = await geocodeAddress(origin);
     if (geo?.lat && geo?.lng) {
-      oLat = geo.lat;
-      oLng = geo.lng;
+      oLat = Number(geo.lat);
+      oLng = Number(geo.lng);
     }
   }
-  if ((!dLat || !dLng || destCoords?.source !== 'google') && destination) {
+  if (!hasValidDest && destination) {
     const geo = await geocodeAddress(destination);
     if (geo?.lat && geo?.lng) {
-      dLat = geo.lat;
-      dLng = geo.lng;
+      dLat = Number(geo.lat);
+      dLng = Number(geo.lng);
     }
   }
 
@@ -2482,6 +2489,35 @@ export async function fetchGoogleRoadDirections({ origin, destination, originCoo
     }
   } catch (osrmErr) {
     console.warn('[GoogleRoadDirections] Road network router fallback error:', osrmErr);
+  }
+
+  // 5. Emergency coordinate interpolation fallback to guarantee connected line between endpoints
+  if (oLat && oLng && dLat && dLng) {
+    const distMeters = Math.hypot((dLat - oLat) * 111000, (dLng - oLng) * 111000 * Math.cos((oLat * Math.PI) / 180));
+    const distKm = Number((distMeters / 1000).toFixed(1));
+    const durMins = Math.max(1, Math.round((distKm / 35) * 60));
+    const stepsCount = 10;
+    const points = [];
+    for (let i = 0; i <= stepsCount; i++) {
+      const frac = i / stepsCount;
+      points.push({
+        lat: Number((oLat + (dLat - oLat) * frac).toFixed(6)),
+        lng: Number((oLng + (dLng - oLng) * frac).toFixed(6))
+      });
+    }
+    const res = {
+      points,
+      overview_polyline: { points: encodeGooglePolyline(points) },
+      distanceKm: distKm,
+      durationMins: durMins,
+      distanceText: `${distKm} km`,
+      durationText: `${durMins} mins`,
+      steps: [],
+      currentStep: null,
+      source: 'offline_direct_route'
+    };
+    roadDirectionsCache.set(cacheKey, res);
+    return res;
   }
 
   return null;

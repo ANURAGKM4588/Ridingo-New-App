@@ -512,18 +512,30 @@ export default function HomeTab() {
   useEffect(() => {
     if (!Array.isArray(availableTrips) || availableTrips.length === 0) return;
     availableTrips.forEach(t => {
+      const normStatus = String(t.status || '').toLowerCase().trim();
+      const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start', 'driver_assigned', 'on_the_way', 'arrived'].includes(normStatus);
+
       const pCoords = (t.pickupCoords?.lat && t.pickupCoords?.lng)
         ? { lat: Number(t.pickupCoords.lat), lng: Number(t.pickupCoords.lng) }
         : null;
       const dCoords = (t.dropCoords?.lat && t.dropCoords?.lng)
         ? { lat: Number(t.dropCoords.lat), lng: Number(t.dropCoords.lng) }
         : null;
-      if (pCoords || dCoords || t.pickup || t.drop_loc) {
+      const drvCoords = (t.driverCoords?.lat && t.driverCoords?.lng)
+        ? { lat: Number(t.driverCoords.lat), lng: Number(t.driverCoords.lng) }
+        : null;
+
+      const originCoords = isApproachingPickup && drvCoords ? drvCoords : pCoords;
+      const destCoords = isApproachingPickup ? pCoords : dCoords;
+      const originName = isApproachingPickup ? 'Driver Location' : (t.pickup || 'Pickup Location');
+      const destName = isApproachingPickup ? (t.pickup || 'Pickup Location') : (t.drop_loc || t.drop || 'Destination');
+
+      if (originCoords || destCoords || originName || destName) {
         fetchGoogleRoadDirections({
-          origin: t.pickup || 'Pickup Location',
-          destination: t.drop_loc || t.drop || 'Destination',
-          originCoords: pCoords,
-          destCoords: dCoords
+          origin: originName,
+          destination: destName,
+          originCoords,
+          destCoords
         }).then(res => {
           if (res?.points && res.points.length > 2) {
             t.routePoints = res.points;

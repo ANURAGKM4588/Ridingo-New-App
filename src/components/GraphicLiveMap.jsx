@@ -122,7 +122,8 @@ export default function GraphicLiveMap({
   trip,
   isModal = false,
   height,
-  onOpenModal
+  onOpenModal,
+  onRouteCalculated
 }) {
   const mapHeight = height || (isModal ? 280 : 150);
   const containerRef = useRef(null);
@@ -133,8 +134,9 @@ export default function GraphicLiveMap({
   const pickupMarkerRef = useRef(null);
   const destMarkerRef = useRef(null);
 
-  const isApproachingPickup = ['accepted', 'pickup_arrived', 'ready_to_start'].includes(trip?.status);
-  const isOnTrip = trip?.status === 'inprogress';
+  const normStatus = String(trip?.status || '').toLowerCase().trim();
+  const isOnTrip = ['inprogress', 'started', 'in_progress', 'trip_started'].includes(normStatus);
+  const isApproachingPickup = !isOnTrip && ['accepted', 'pickup_arrived', 'ready_to_start', 'driver_assigned', 'on_the_way', 'arrived', 'scheduled'].includes(normStatus);
   const driverLive = trip?.driverCoords;
 
   const prevApproachingRef = useRef(isApproachingPickup);
@@ -165,8 +167,8 @@ export default function GraphicLiveMap({
   }, [trip?.dropCoords, trip?.car?.dropCoords, pickupCoords.lat, pickupCoords.lng]);
 
   // Dynamic Route Origin & Destination:
-  // - Phase 1 (Driver Accepted -> Arrived): Route is Driver Mobile GPS -> Pickup Location
-  // - Phase 2 (Trip Started / In-Progress): Route is Pickup Location -> Destination
+  // - Phase 1 (Driver Accepted -> Arrived / Ready to Start): Route is Driver Mobile GPS -> Pickup Location
+  // - Phase 2 (Trip Started / In-Progress): Route is Pickup Location -> User Destination
   const originCoords = useMemo(() => {
     if (isApproachingPickup) {
       if (driverLive?.lat && driverLive?.lng) {
@@ -177,22 +179,25 @@ export default function GraphicLiveMap({
         lng: Number(pickupCoords.lng) - 0.0082
       };
     }
+    // Phase 2: Route begins from user pickup location
     return pickupCoords;
   }, [isApproachingPickup, driverLive?.lat, driverLive?.lng, pickupCoords]);
 
   const destCoords = useMemo(() => {
     if (isApproachingPickup) {
+      // Phase 1: Destination is user pickup location
       return pickupCoords;
     }
+    // Phase 2: Destination is user drop-off destination
     return dropCoords;
   }, [isApproachingPickup, pickupCoords, dropCoords]);
 
   const originName = useMemo(() => {
     if (isApproachingPickup) {
-      return trip?.driver ? `${trip.driver} Location` : 'Driver Location';
+      return 'Driver Location';
     }
     return trip?.pickup || 'Pickup Location';
-  }, [isApproachingPickup, trip?.driver, trip?.pickup]);
+  }, [isApproachingPickup, trip?.pickup]);
 
   const destName = useMemo(() => {
     if (isApproachingPickup) {
@@ -444,8 +449,23 @@ export default function GraphicLiveMap({
             if (driverMarkerRef.current?.getPosition()) {
               bounds.extend(driverMarkerRef.current.getPosition());
             }
-            mapInstance.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
+            if (pickupMarkerRef.current?.getPosition()) {
+              bounds.extend(pickupMarkerRef.current.getPosition());
+            }
+            if (!isApproachingPickup && destMarkerRef.current?.getPosition()) {
+              bounds.extend(destMarkerRef.current.getPosition());
+            }
+            mapInstance.fitBounds(bounds, { top: 35, right: 35, bottom: 35, left: 35 });
             hasAutoFittedRef.current = true;
+          }
+
+          if (onRouteCalculated && result) {
+            onRouteCalculated({
+              distanceKm: result?.distanceKm,
+              durationMins: result?.durationMins,
+              distanceText: result?.distanceText,
+              durationText: result?.durationText
+            });
           }
         }
       } catch (err) {
