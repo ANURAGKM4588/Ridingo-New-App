@@ -1129,7 +1129,14 @@ export function AppProvider({ children }) {
         'Thank you for riding with Ridingo. Your digital invoice has been settled.',
         'check'
       );
-      // Automatic dismissal of live tracking popup & return to home after payment settlement
+      // Automatic transition to post-trip review and rating modal
+      setTrips(currentTrips => {
+        const found = currentTrips.find(t => t.id === tripId);
+        const compTrip = found ? { ...found, ...details, status: 'completed' } : { id: tripId, ...details, status: 'completed' };
+        setCompletedTripData(compTrip);
+        return currentTrips;
+      });
+      setTripCompleteModalOpen(true);
       setLiveTrackingOpen(false);
       setActiveTrackingTripId(null);
       setUTab('home');
@@ -1152,7 +1159,14 @@ export function AppProvider({ children }) {
           completedAt: details.timestamp || Date.now()
         } : t))
       );
-      // Automatic dismissal of live tracking popup & return to home after payment settlement
+      // Automatic transition to post-trip review and rating modal
+      setTrips(currentTrips => {
+        const found = currentTrips.find(t => t.id === tripId);
+        const compTrip = found ? { ...found, ...details, status: 'completed' } : { id: tripId, ...details, status: 'completed' };
+        setCompletedTripData(compTrip);
+        return currentTrips;
+      });
+      setTripCompleteModalOpen(true);
       setLiveTrackingOpen(false);
       setActiveTrackingTripId(null);
       setUTab('home');

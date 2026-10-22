@@ -129,9 +129,10 @@ export default function TripsTab() {
 
   const F = { all: 'All', up: 'Upcoming', done: 'Completed', cancel: 'Cancelled' };
 
-  let list = (trips || []).filter(t => isUserTrip(t, user));
+  // Exclude in-progress trips from the history view until they are marked as 'completed'
+  let list = (trips || []).filter(t => isUserTrip(t, user) && t.status !== 'inprogress');
   if (filter === 'up') {
-    list = list.filter(t => ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'scheduled', 'inprogress'].includes(t.status));
+    list = list.filter(t => ['requested', 'accepted', 'pickup_arrived', 'ready_to_start', 'scheduled'].includes(t.status));
   }
   if (filter === 'done') {
     list = list.filter(t => t.status === 'completed');
@@ -610,7 +611,7 @@ export default function TripsTab() {
                         }}
                       >
                         <span style={{ color: '#D97706' }}>★</span>
-                        <span>Trip Complete & Rating</span>
+                        <span>{t.rating || t.userRating ? `Rated ${t.rating || t.userRating}★ · Review & Invoice` : 'Rate & Invoice'}</span>
                       </button>
                     </div>
                   </div>

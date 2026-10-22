@@ -4512,11 +4512,13 @@ export default function DriverApp() {
             </div>
 
             {(() => {
-              const filtered = trips.filter(t => {
-                if (dFilter === 'done') return t.status === 'completed';
-                if (dFilter === 'up') return t.status !== 'completed';
-                return true;
-              });
+              const filtered = trips
+                .filter(t => t.status !== 'inprogress')
+                .filter(t => {
+                  if (dFilter === 'done') return t.status === 'completed';
+                  if (dFilter === 'up') return t.status !== 'completed';
+                  return true;
+                });
 
               if (filtered.length === 0) {
                 return (

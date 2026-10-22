@@ -755,17 +755,9 @@ export function notifyIncomingRideRequest(trip, callbacks = {}) {
 
   const dedupKey = `trip_request_${normalizeActionKey(tripId)}`;
 
-  // STRICT USER SPECIFICATION:
-  // When the app is OPEN, do NOT show the trip request push notification!
-  // It only needs to appear when the app is MINIMIZED (background) or CLOSED (not running).
-  const isAppOpenInForeground = typeof document !== 'undefined' &&
-    document.visibilityState === 'visible' &&
-    (typeof document.hasFocus === 'function' ? document.hasFocus() : true);
-
-  if (isAppOpenInForeground && !callbacks.forcePush) {
-    console.info('[PushNotifications] Driver app is currently OPEN in foreground. Suppressing trip request push notification (driver sees incoming card directly).');
-    return false;
-  }
+  // Push notification arrives reliably in foreground, background, and when closed
+  const isForeground = typeof document !== 'undefined' && document.visibilityState === 'visible';
+  console.info(`[PushNotifications] Dispatching new ride request notification (foreground=${isForeground}, tripId=${tripId})`);
 
   // STRICT SINGLE NOTIFICATION GUARANTEE WHEN MINIMIZED OR CLOSED
   if (hasNotificationBeenSent(dedupKey)) {

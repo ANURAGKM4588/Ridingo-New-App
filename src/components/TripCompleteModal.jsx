@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import { cleanLocationName } from '../utils/locationCleaner';
 import { downloadTripReceiptPdf } from '../utils/receiptPdfGenerator';
+import { generateTripInvoiceText, shareInvoiceViaWhatsApp, shareInvoiceViaEmail } from '../utils/tripInvoiceSharing';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
@@ -16,22 +17,26 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     setBookingCategory,
     setBookingDestination,
     setUTab,
-    addToast
+    addToast,
+    trips,
+    setTrips,
+    user
   } = useApp();
 
   const trip = propTrip || completedTripData;
 
-  const [rating, setRating] = useState(0); // Empty by default
+  const [rating, setRating] = useState(trip?.rating || trip?.userRating || 0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [selectedFeedback, setSelectedFeedback] = useState([]); // Empty by default
+  const [selectedFeedback, setSelectedFeedback] = useState(Array.isArray(trip?.feedback) ? trip.feedback : []);
+  const [reviewComment, setReviewComment] = useState(trip?.reviewText || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(Boolean(trip?.rating || trip?.userRating));
   const [isClosing, setIsClosing] = useState(false);
 
-  // Enabled only when both star rating and driver quality are selected
-  const canSubmit = rating > 0 && selectedFeedback.length > 0;
+  // Enabled as soon as star rating is selected (1-5 stars)
+  const canSubmit = rating > 0;
 
   const isOpen = propTrip ? true : tripCompleteModalOpen;
   if (!isOpen || !trip) return null;
@@ -92,12 +97,35 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     );
   };
 
-  // 1. Submit Rating -> Navigates to Home Page (Enabled only when stars and driver quality selected)
+  // 1. Submit Rating -> Persists to trip state, storage, and navigates home
   const handleSubmitRating = (e) => {
     if (e) e.stopPropagation();
     if (!canSubmit || isSubmitting || ratingSubmitted || isClosing) return;
     setIsSubmitting(true);
     setRatingSubmitted(true);
+
+    if (setTrips && trip?.id) {
+      setTrips(prev => prev.map(t => (t.id === trip.id ? {
+        ...t,
+        rating,
+        userRating: rating,
+        feedback: selectedFeedback,
+        reviewText: reviewComment,
+        ratedAt: Date.now()
+      } : t)));
+    }
+
+    try {
+      const existingRaw = localStorage.getItem('ridingo_trip_reviews');
+      const reviews = existingRaw ? JSON.parse(existingRaw) : {};
+      reviews[trip.id] = {
+        rating,
+        feedback: selectedFeedback,
+        reviewText: reviewComment,
+        at: Date.now()
+      };
+      localStorage.setItem('ridingo_trip_reviews', JSON.stringify(reviews));
+    } catch (_) {}
 
     if (addToast) {
       addToast(`Thank you! Rated ${rating} stars for ${driverName}.`, 'check');
@@ -208,6 +236,44 @@ Status: COMPLETED & PAID ✅`;
     }
   };
 
+  // 5. WhatsApp Invoice Share
+  const handleWhatsAppInvoice = (e) => {
+    if (e) e.stopPropagation();
+    const inv = generateTripInvoiceText({
+      trip,
+      baseFare: Math.max(0, totalFare - waitingAndExtraKm),
+      extraKm,
+      waitingFare: extraWaiting,
+      totalTripFare: totalFare,
+      advancePaid,
+      balancePaid: balanceToPay,
+      driverName,
+      riderName: user?.name || trip?.userName || 'Customer',
+      riderPhone: user?.phone || trip?.userPhone || ''
+    });
+    shareInvoiceViaWhatsApp(user?.phone || trip?.userPhone, inv);
+    if (addToast) addToast('Opening WhatsApp with official invoice...', 'check');
+  };
+
+  // 6. Email Invoice Share
+  const handleEmailInvoice = (e) => {
+    if (e) e.stopPropagation();
+    const inv = generateTripInvoiceText({
+      trip,
+      baseFare: Math.max(0, totalFare - waitingAndExtraKm),
+      extraKm,
+      waitingFare: extraWaiting,
+      totalTripFare: totalFare,
+      advancePaid,
+      balancePaid: balanceToPay,
+      driverName,
+      riderName: user?.name || trip?.userName || 'Customer',
+      riderPhone: user?.phone || trip?.userPhone || ''
+    });
+    shareInvoiceViaEmail(user?.email || trip?.userEmail, trip.id, inv);
+    if (addToast) addToast('Opening email client with official invoice...', 'check');
+  };
+
   const currentRating = hoverRating || rating;
   const ratingLabels = {
     5: '⭐ 5.0 · Outstanding service',
@@ -316,7 +382,7 @@ Status: COMPLETED & PAID ✅`;
             : 'tcModalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}
       >
-        {/* Top Header Section with Animated Checkmark (No top X close button) */}
+        {/* Top Header Section with Animated Checkmark */}
         <div
           style={{
             padding: '24px 20px 8px',
@@ -325,6 +391,30 @@ Status: COMPLETED & PAID ✅`;
             pointerEvents: 'auto'
           }}
         >
+          {/* Top Close Button */}
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close"
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: '#F1F5F9',
+              border: 'none',
+              color: '#64748B',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10
+            }}
+          >
+            <Icon name="x" size={16} />
+          </button>
           {/* Large Animated Green Checkmark Badge */}
           <div
             style={{
@@ -622,11 +712,37 @@ Status: COMPLETED & PAID ✅`;
                 );
               })}
             </div>
+
+            {/* Optional Written Review Notes */}
+            <div style={{ marginTop: '14px', textAlign: 'left' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                Driver Review & Notes (optional)
+              </label>
+              <textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Write a compliment or feedback about your driver's service..."
+                rows={2}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  borderRadius: '12px',
+                  border: '1px solid #D1D5DB',
+                  background: '#F9FAFB',
+                  padding: '10px 12px',
+                  fontSize: '13px',
+                  color: '#111827',
+                  resize: 'none',
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
           </div>
 
           {/* Action Buttons Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px', pointerEvents: 'auto' }}>
-            {/* Primary Submit Button: Black Background + White Text (Faded & non-functional until stars and driver quality are selected) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px', pointerEvents: 'auto' }}>
+            {/* Primary Submit Button: Black Background + White Text */}
             <button
               type="button"
               onClick={handleSubmitRating}
@@ -651,12 +767,110 @@ Status: COMPLETED & PAID ✅`;
                 gap: '8px',
                 pointerEvents: canSubmit ? 'auto' : 'none'
               }}
-              title={!canSubmit ? 'Please select a star rating and at least one driver quality tag to submit' : 'Submit rating'}
+              title={!canSubmit ? 'Please select a star rating to submit' : 'Submit rating'}
             >
-              {ratingSubmitted ? '✓ Rating Submitted' : (isSubmitting ? 'Submitting...' : 'Submit rating')}
+              {ratingSubmitted ? '✓ Rating Submitted' : (isSubmitting ? 'Submitting...' : 'Submit Rating & Review')}
             </button>
 
-            {/* Secondary Action Buttons Row: Book Again & Share Trip */}
+            {/* Trip Invoice & Receipt Options Card */}
+            <div
+              style={{
+                border: '1px solid #E2E8F0',
+                borderRadius: '16px',
+                padding: '14px',
+                background: '#F8FAFC',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Trip Invoice & Receipts
+                </span>
+                <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 750 }}>
+                  ✓ Settled & Paid
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {/* Download PDF Receipt */}
+                <button
+                  type="button"
+                  onClick={handleDownloadReceipt}
+                  disabled={isDownloading}
+                  style={{
+                    padding: '10px 4px',
+                    borderRadius: '12px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: isDownloading ? 'wait' : 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                  }}
+                >
+                  <Icon name="download" size={15} />
+                  <span>{isDownloading ? 'Downloading...' : 'PDF Receipt'}</span>
+                </button>
+
+                {/* WhatsApp Invoice */}
+                <button
+                  type="button"
+                  onClick={handleWhatsAppInvoice}
+                  style={{
+                    padding: '10px 4px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    color: '#10B981',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Icon name="whatsapp" size={15} color="#10B981" />
+                  <span>WhatsApp</span>
+                </button>
+
+                {/* Email Invoice */}
+                <button
+                  type="button"
+                  onClick={handleEmailInvoice}
+                  style={{
+                    padding: '10px 4px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    color: '#3B82F6',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Icon name="mail" size={15} color="#3B82F6" />
+                  <span>Email</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Secondary Action Buttons Row: Book Again & Share Summary */}
             <div style={{ display: 'flex', gap: '10px', pointerEvents: 'auto' }}>
               {/* Book Again Button */}
               <button
@@ -664,12 +878,12 @@ Status: COMPLETED & PAID ✅`;
                 onClick={handleBookAgain}
                 style={{
                   flex: 1,
-                  height: '46px',
-                  borderRadius: '14px',
-                  border: '1.5px solid #111827',
+                  height: '44px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #0F172A',
                   background: '#FFFFFF',
-                  color: '#111827',
-                  fontSize: '13.5px',
+                  color: '#0F172A',
+                  fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
@@ -679,7 +893,7 @@ Status: COMPLETED & PAID ✅`;
                   pointerEvents: 'auto'
                 }}
               >
-                <Icon name="repeat" size={15} />
+                <Icon name="repeat" size={14} />
                 <span>Book again</span>
               </button>
 
@@ -690,12 +904,12 @@ Status: COMPLETED & PAID ✅`;
                 disabled={isSharing}
                 style={{
                   flex: 1,
-                  height: '46px',
-                  borderRadius: '14px',
-                  border: '1.5px solid #111827',
+                  height: '44px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #0F172A',
                   background: '#FFFFFF',
-                  color: '#111827',
-                  fontSize: '13.5px',
+                  color: '#0F172A',
+                  fontSize: '13px',
                   fontWeight: 700,
                   cursor: isSharing ? 'wait' : 'pointer',
                   display: 'flex',
@@ -705,36 +919,10 @@ Status: COMPLETED & PAID ✅`;
                   pointerEvents: 'auto'
                 }}
               >
-                <Icon name="share" size={15} />
-                <span>{isSharing ? 'Sharing...' : 'Share trip'}</span>
+                <Icon name="share" size={14} />
+                <span>{isSharing ? 'Sharing...' : 'Share summary'}</span>
               </button>
             </div>
-
-            {/* Download Receipt PDF Button (Full Width Minimal Pill) */}
-            <button
-              type="button"
-              onClick={handleDownloadReceipt}
-              disabled={isDownloading}
-              style={{
-                width: '100%',
-                height: '46px',
-                borderRadius: '14px',
-                border: '1.5px solid #D1D5DB',
-                background: '#F8FAFC',
-                color: '#111827',
-                fontSize: '13.5px',
-                fontWeight: 700,
-                cursor: isDownloading ? 'wait' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                pointerEvents: 'auto'
-              }}
-            >
-              <Icon name="download" size={16} />
-              <span>{isDownloading ? 'Downloading PDF...' : 'Download receipt (PDF)'}</span>
-            </button>
           </div>
         </div>
       </div>
