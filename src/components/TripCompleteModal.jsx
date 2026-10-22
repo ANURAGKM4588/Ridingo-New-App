@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext';
 import Icon from './Icon';
 import { cleanLocationName } from '../utils/locationCleaner';
 import { downloadTripReceiptPdf } from '../utils/receiptPdfGenerator';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 export default function TripCompleteModal({ trip: propTrip, onClose }) {
   const {
@@ -23,6 +25,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
   const [selectedFeedback, setSelectedFeedback] = useState(['Careful driving', 'On time']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   if (!trip && !tripCompleteModalOpen) return null;
@@ -62,10 +65,13 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
   };
   const driverInitials = getInitials(driverName);
 
+  // Driver Quality Feedback Options
   const feedbackOptions = [
     'Careful driving',
     'On time',
-    'Polite'
+    'Polite',
+    'Clean car',
+    'Smooth route'
   ];
 
   const toggleFeedbackTag = (tag) => {
@@ -75,7 +81,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
   };
 
   // 1. Submit Rating -> Navigates to Home Page
-  const handleSubmitRating = () => {
+  const handleSubmitRating = (e) => {
+    if (e) e.stopPropagation();
     setIsSubmitting(true);
     setRatingSubmitted(true);
 
@@ -87,11 +94,12 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
       setIsSubmitting(false);
       handleClose();
       if (setUTab) setUTab('home');
-    }, 400);
+    }, 350);
   };
 
   // 2. Book Again -> Navigates to the same service booking page
-  const handleBookAgain = () => {
+  const handleBookAgain = (e) => {
+    if (e) e.stopPropagation();
     handleClose();
     if (setBookingCategory) {
       setBookingCategory(trip?.cat || 'hourly');
@@ -109,8 +117,58 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     }
   };
 
-  // 3. Download Receipt -> Generates clean PDF with all metrics and triggers auto-download
-  const handleDownloadReceipt = async () => {
+  // 3. Share Trip Details -> WhatsApp / Native Share / Clipboard
+  const handleShareTrip = async (e) => {
+    if (e) e.stopPropagation();
+    setIsSharing(true);
+    const tripId = trip?.id || 'TRP-' + Date.now().toString().slice(-4);
+    const shareText = `🚗 Ridingo Trip Summary & Receipt
+Trip ID: #${tripId}
+━━━━━━━━━━━━━━━━━━━━
+📍 From: ${pickupName}
+🏁 To: ${dropName}
+⏱ Total Taking Time: ${durationLabel}
+🚗 Running Time: ${trip?.durationText || durationLabel}
+👤 Driver: ${driverName}
+━━━━━━━━━━━━━━━━━━━━
+💰 Total Fare: ₹${totalFare}
+💳 Advance Paid: -₹${advancePaid}
+⏳ Extra KM & Waiting: ₹${waitingAndExtraKm}
+💵 Paid to Driver: ₹${balanceToPay}
+━━━━━━━━━━━━━━━━━━━━
+Status: COMPLETED & PAID ✅`;
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({
+          title: `Ridingo Trip #${tripId}`,
+          text: shareText,
+          dialogTitle: 'Share Trip Details'
+        });
+        if (addToast) addToast('Trip details shared successfully!', 'check');
+      } else if (navigator.share) {
+        await navigator.share({
+          title: `Ridingo Trip #${tripId}`,
+          text: shareText
+        });
+        if (addToast) addToast('Trip details shared successfully!', 'check');
+      } else {
+        await navigator.clipboard.writeText(shareText);
+        if (addToast) addToast('Trip details copied to clipboard!', 'check');
+      }
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+        window.open(waUrl, '_blank');
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // 4. Download Receipt PDF -> Generates vector PDF and triggers immediate download
+  const handleDownloadReceipt = async (e) => {
+    if (e) e.stopPropagation();
     setIsDownloading(true);
     try {
       await downloadTripReceiptPdf({
@@ -140,10 +198,18 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     }
   };
 
+  const currentRating = hoverRating || rating;
+  const ratingLabels = {
+    5: '⭐ 5.0 · Outstanding service',
+    4: '⭐ 4.0 · Very good experience',
+    3: '⭐ 3.0 · Average trip',
+    2: '⭐ 2.0 · Needs improvement',
+    1: '⭐ 1.0 · Unsatisfactory driving'
+  };
+
   return (
     <div
-      className="layer on"
-      id="trip-complete-modal"
+      id="trip-complete-modal-wrapper"
       style={{
         zIndex: 100050,
         position: 'fixed',
@@ -151,71 +217,90 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'center',
-        background: 'rgba(15, 23, 42, 0.55)',
+        background: 'rgba(15, 23, 42, 0.6)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
-        animation: 'tripBackdropFade 0.25s ease-out forwards'
+        pointerEvents: 'auto',
+        animation: 'tcBackdropFade 0.25s ease-out forwards'
       }}
+      onClick={handleClose}
     >
-      {/* Dynamic Keyframes for Modal & Checkmark Animations */}
+      {/* Styles for Animations & Interactive Elements */}
       <style>{`
-        @keyframes tripBackdropFade {
+        @keyframes tcBackdropFade {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes tripModalSlideUp {
+        @keyframes tcModalSlideUp {
           from { transform: translateY(100%); opacity: 0.6; }
           to { transform: translateY(0); opacity: 1; }
         }
-        @keyframes tickCirclePop {
+        @keyframes tcTickPop {
           0% { transform: scale(0); opacity: 0; }
           65% { transform: scale(1.18); opacity: 1; }
           100% { transform: scale(1); opacity: 1; }
         }
-        @keyframes tickStrokeDraw {
+        @keyframes tcTickDraw {
           from { stroke-dashoffset: 32; }
           to { stroke-dashoffset: 0; }
         }
-        .trip-star-btn {
+        .tc-star-btn {
+          background: transparent;
+          border: none;
+          padding: 6px;
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+          display: flex;
+          align-items: center;
+          justifyContent: center;
           transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .trip-star-btn:active {
-          transform: scale(1.28) !important;
+        .tc-star-btn:hover {
+          transform: scale(1.15);
+        }
+        .tc-star-btn:active {
+          transform: scale(1.3) !important;
+        }
+        .tc-chip-btn {
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+          transition: all 0.15s ease;
+        }
+        .tc-chip-btn:active {
+          transform: scale(0.96);
         }
       `}</style>
 
-      {/* Scrim click to dismiss */}
-      <div
-        className="scrim"
-        onClick={handleClose}
-        style={{ position: 'absolute', inset: 0 }}
-      />
-
-      {/* Modal Dialog Card */}
+      {/* Modal Dialog Card - Stops Propagation to Prevent Accidental Close */}
       <div
         role="dialog"
         aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
         style={{
           position: 'relative',
           width: '100%',
-          maxWidth: '430px',
+          maxWidth: '440px',
           maxHeight: '94vh',
           background: '#FFFFFF',
           borderRadius: '28px 28px 0 0',
-          boxShadow: '0 -12px 48px rgba(0, 0, 0, 0.2)',
+          boxShadow: '0 -16px 48px rgba(0, 0, 0, 0.28)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          zIndex: 10,
-          animation: 'tripModalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          zIndex: 100060,
+          pointerEvents: 'auto',
+          animation: 'tcModalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}
       >
-        {/* Top Header Section */}
+        {/* Top Header Section with Animated Checkmark */}
         <div
           style={{
             padding: '24px 20px 8px',
             textAlign: 'center',
-            position: 'relative'
+            position: 'relative',
+            pointerEvents: 'auto'
           }}
         >
           {/* Circular Close Button */}
@@ -227,8 +312,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               position: 'absolute',
               top: '16px',
               right: '16px',
-              width: '32px',
-              height: '32px',
+              width: '34px',
+              height: '34px',
               borderRadius: '50%',
               background: '#F1F5F9',
               border: 'none',
@@ -236,17 +321,18 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#64748B'
+              color: '#64748B',
+              pointerEvents: 'auto'
             }}
           >
-            <Icon name="x" size={16} />
+            <Icon name="x" size={17} />
           </button>
 
           {/* Large Animated Green Checkmark Badge */}
           <div
             style={{
-              width: '62px',
-              height: '62px',
+              width: '64px',
+              height: '64px',
               borderRadius: '50%',
               background: '#16A34A',
               color: '#FFFFFF',
@@ -255,7 +341,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               justifyContent: 'center',
               margin: '0 auto 12px',
               boxShadow: '0 8px 24px rgba(22, 163, 74, 0.35)',
-              animation: 'tickCirclePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+              animation: 'tcTickPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
             }}
           >
             <svg
@@ -270,7 +356,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               style={{
                 strokeDasharray: 32,
                 strokeDashoffset: 32,
-                animation: 'tickStrokeDraw 0.45s ease-out 0.2s forwards'
+                animation: 'tcTickDraw 0.45s ease-out 0.2s forwards'
               }}
             >
               <polyline points="20 6 9 17 4 12" />
@@ -314,10 +400,11 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             padding: '0 20px 24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
+            gap: '12px',
+            pointerEvents: 'auto'
           }}
         >
-          {/* Card 1: Fare Breakdown (UPI, Cash, Wallet buttons removed as requested) */}
+          {/* Card 1: Fare Breakdown */}
           <div
             style={{
               border: '1px solid #E5E7EB',
@@ -375,7 +462,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             {/* Subtle Divider */}
             <div style={{ height: '1px', background: '#F3F4F6', margin: '8px 0 12px' }} />
 
-            {/* Pay the driver Row */}
+            {/* Pay the driver Row (Clean minimal style, UPI/Cash/Wallet buttons removed) */}
             <div
               style={{
                 display: 'flex',
@@ -392,7 +479,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             </div>
           </div>
 
-          {/* Card 2: Driver Rating & Feedback (Center-Aligned) */}
+          {/* Card 2: Driver Rating & Quality Options (Centered) */}
           <div
             style={{
               border: '1px solid #E5E7EB',
@@ -400,7 +487,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               padding: '18px 18px',
               background: '#FFFFFF',
               boxShadow: '0 1px 4px rgba(0, 0, 0, 0.02)',
-              textAlign: 'center'
+              textAlign: 'center',
+              pointerEvents: 'auto'
             }}
           >
             {/* Centered Avatar with Gold Ring and Driver Question */}
@@ -416,8 +504,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             >
               <div
                 style={{
-                  width: '50px',
-                  height: '50px',
+                  width: '52px',
+                  height: '52px',
                   borderRadius: '50%',
                   border: '2.5px solid #F59E0B',
                   background: '#FFFBEB',
@@ -427,7 +515,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   justifyContent: 'center',
                   fontWeight: 800,
                   fontSize: '16px',
-                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.15)'
+                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.18)'
                 }}
               >
                 {driverInitials}
@@ -435,7 +523,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
 
               <span
                 style={{
-                  fontSize: '16px',
+                  fontSize: '16.5px',
                   fontWeight: 800,
                   color: '#111827',
                   letterSpacing: '-0.2px'
@@ -445,54 +533,50 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               </span>
             </div>
 
-            {/* 5 Interactive Stars - Freely Selectable with Tap & Click */}
+            {/* 5 Freely Selectable Stars (Click & Touch Supported) */}
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'center',
-                gap: '12px',
-                marginBottom: '14px'
+                gap: '10px',
+                marginBottom: '8px',
+                pointerEvents: 'auto'
               }}
             >
               {[1, 2, 3, 4, 5].map((star) => {
-                const isFilled = (hoverRating || rating) >= star;
+                const isFilled = currentRating >= star;
                 return (
                   <button
                     key={star}
                     type="button"
-                    className="trip-star-btn"
+                    className="tc-star-btn"
                     onClick={() => {
                       setRating(star);
                       setHoverRating(0);
                     }}
-                    onTouchStart={() => {
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
                       setRating(star);
                       setHoverRating(0);
                     }}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
-                    aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                    aria-label={`Select ${star} stars`}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '4px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
                       transform: isFilled ? 'scale(1.08)' : 'scale(1)',
-                      outline: 'none'
+                      pointerEvents: 'auto'
                     }}
                   >
                     <svg
-                      width="34"
-                      height="34"
+                      width="36"
+                      height="36"
                       viewBox="0 0 24 24"
-                      fill={isFilled ? '#F59E0B' : 'none'}
+                      fill={isFilled ? '#F59E0B' : '#F1F5F9'}
                       stroke={isFilled ? '#F59E0B' : '#CBD5E1'}
-                      strokeWidth="1.8"
+                      strokeWidth="1.6"
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      style={{ pointerEvents: 'none' }}
                     >
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
@@ -501,13 +585,19 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
               })}
             </div>
 
-            {/* Quick Feedback Chips: Careful driving | On time | Polite */}
+            {/* Rating description text */}
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', marginBottom: '14px' }}>
+              {ratingLabels[currentRating] || '⭐ Rate your trip'}
+            </div>
+
+            {/* Driver Quality Feedback Option Chips (Freely Selectable) */}
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'center',
                 gap: '8px',
-                flexWrap: 'wrap'
+                flexWrap: 'wrap',
+                pointerEvents: 'auto'
               }}
             >
               {feedbackOptions.map((tag) => {
@@ -516,17 +606,18 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   <button
                     key={tag}
                     type="button"
+                    className="tc-chip-btn"
                     onClick={() => toggleFeedbackTag(tag)}
                     style={{
                       borderRadius: '999px',
                       padding: '7px 15px',
                       fontSize: '12.5px',
-                      fontWeight: isSelected ? 700 : 500,
+                      fontWeight: isSelected ? 800 : 600,
                       border: isSelected ? '1.5px solid #111827' : '1px solid #D1D5DB',
-                      background: isSelected ? '#F3F4F6' : '#FFFFFF',
-                      color: isSelected ? '#111827' : '#374151',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      background: isSelected ? '#111827' : '#FFFFFF',
+                      color: isSelected ? '#FFFFFF' : '#374151',
+                      pointerEvents: 'auto',
+                      boxShadow: isSelected ? '0 2px 6px rgba(0, 0, 0, 0.15)' : 'none'
                     }}
                   >
                     {tag}
@@ -536,9 +627,9 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
             </div>
           </div>
 
-          {/* Action Buttons: Submit Rating (Black BG + White Text) + Book Again / Download Receipt */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
-            {/* Submit rating: Black background and white text, navigates to Home page */}
+          {/* Action Buttons Section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px', pointerEvents: 'auto' }}>
+            {/* Primary Submit Button: Black Background + White Text -> Navigates to Home */}
             <button
               type="button"
               onClick={handleSubmitRating}
@@ -557,14 +648,16 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.15s ease'
+                gap: '8px',
+                pointerEvents: 'auto'
               }}
             >
               {ratingSubmitted ? '✓ Rating Submitted' : (isSubmitting ? 'Submitting...' : 'Submit rating')}
             </button>
 
-            {/* Secondary Buttons Row: Book Again & Download Receipt */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            {/* Secondary Action Buttons Row: Book Again & Share Trip */}
+            <div style={{ display: 'flex', gap: '10px', pointerEvents: 'auto' }}>
+              {/* Book Again Button */}
               <button
                 type="button"
                 onClick={handleBookAgain}
@@ -581,16 +674,19 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transition: 'background 0.15s ease'
+                  gap: '6px',
+                  pointerEvents: 'auto'
                 }}
               >
-                Book again
+                <Icon name="repeat" size={15} />
+                <span>Book again</span>
               </button>
 
+              {/* Share Trip Details Button */}
               <button
                 type="button"
-                onClick={handleDownloadReceipt}
-                disabled={isDownloading}
+                onClick={handleShareTrip}
+                disabled={isSharing}
                 style={{
                   flex: 1,
                   height: '46px',
@@ -600,16 +696,44 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
                   color: '#111827',
                   fontSize: '13.5px',
                   fontWeight: 700,
-                  cursor: isDownloading ? 'wait' : 'pointer',
+                  cursor: isSharing ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transition: 'background 0.15s ease'
+                  gap: '6px',
+                  pointerEvents: 'auto'
                 }}
               >
-                {isDownloading ? 'Downloading...' : 'Download receipt'}
+                <Icon name="share" size={15} />
+                <span>{isSharing ? 'Sharing...' : 'Share trip'}</span>
               </button>
             </div>
+
+            {/* Download Receipt PDF Button (Full Width Minimal Pill) */}
+            <button
+              type="button"
+              onClick={handleDownloadReceipt}
+              disabled={isDownloading}
+              style={{
+                width: '100%',
+                height: '46px',
+                borderRadius: '14px',
+                border: '1.5px solid #D1D5DB',
+                background: '#F8FAFC',
+                color: '#111827',
+                fontSize: '13.5px',
+                fontWeight: 700,
+                cursor: isDownloading ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                pointerEvents: 'auto'
+              }}
+            >
+              <Icon name="download" size={16} />
+              <span>{isDownloading ? 'Downloading PDF...' : 'Download receipt (PDF)'}</span>
+            </button>
           </div>
         </div>
       </div>

@@ -194,7 +194,12 @@ export async function downloadTripReceiptPdf(receiptData) {
   const fileName = `ridingo-receipt-${tripId}.pdf`;
 
   const pdfString = buildReceiptPdfBuffer(receiptData);
-  const blob = new Blob([pdfString], { type: 'application/pdf' });
+  const len = pdfString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = pdfString.charCodeAt(i) & 0xff;
+  }
+  const blob = new Blob([bytes], { type: 'application/pdf' });
 
   // A. Mobile Native via Capacitor Filesystem
   if (Capacitor.isNativePlatform()) {
@@ -226,10 +231,13 @@ export async function downloadTripReceiptPdf(receiptData) {
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;
+    link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setTimeout(() => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 1500);
     return { success: true, fileName };
   } catch (err) {
     console.error('[receiptPdfGenerator] Download error:', err);
