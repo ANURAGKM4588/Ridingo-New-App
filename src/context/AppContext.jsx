@@ -113,40 +113,28 @@ export const INITIAL_TRIPS = [];
 
 export const INITIAL_UTX = [];
 
-export const INITIAL_UNOTES = [
-  {
-    id: 'notif-1',
-    ts: Date.now() - 1000 * 60 * 18,
-    title: 'Airport Express Driver Offer',
-    body: 'Get 5% cashback on your airport transfer bookings with professional verified drivers. Use promo code AIRPORT5.',
-    icon: 'star',
-    category: 'airport',
-    isOffer: true,
-    offerCode: 'AIRPORT5',
-    offerDiscount: '5% Cashback',
-    read: false
-  },
-  {
-    id: 'notif-2',
-    ts: Date.now() - 1000 * 60 * 65,
-    title: 'Driver Safety Shield Active',
-    body: 'Real-time GPS tracking and 24/7 SOS dispatch are enabled on all your active trips for your peace of mind.',
-    icon: 'shield',
-    read: false
-  },
-  {
-    id: 'notif-3',
-    ts: Date.now() - 1000 * 60 * 60 * 5,
-    title: 'Hourly Driver Pass',
-    body: 'Enjoy 35% off your first city driver booking. Experience effortless commuting in your personal car.',
-    icon: 'gift',
-    category: 'hourly',
-    isOffer: true,
-    offerCode: 'FIRST35',
-    offerDiscount: '35% Off',
-    read: true
-  }
-];
+export const INITIAL_UNOTES = [];
+
+// Automatic Clean-Slate Reset: Clears prior testing data from localStorage to ensure fresh new-user state
+if (typeof window !== 'undefined') {
+  try {
+    const CLEAN_SLATE_KEY = 'ridingo_clean_slate_fresh_v5';
+    if (!localStorage.getItem(CLEAN_SLATE_KEY)) {
+      localStorage.removeItem('ridingo_cached_trips');
+      localStorage.removeItem('ridingo_user_session');
+      localStorage.removeItem('ridingo_driver_session');
+      localStorage.removeItem('ridingo_accepted_trips');
+      localStorage.removeItem('ridingo_settled_trips');
+      localStorage.removeItem('ridingo_declined_trips');
+      localStorage.removeItem('ridingo_active_tracking_trip_id');
+      localStorage.removeItem('ridingo_live_tracking_open');
+      localStorage.removeItem('ridingo_has_onboarded');
+      localStorage.removeItem('ridingo_user_notified_accepted_trips');
+      localStorage.removeItem('ridingo_registered_users_registry');
+      localStorage.setItem(CLEAN_SLATE_KEY, 'true');
+    }
+  } catch (_) {}
+}
 
 export function AppProvider({ children }) {
   // User state: null on fresh install or logged out
@@ -1641,9 +1629,19 @@ export function AppProvider({ children }) {
 
   const resetDemo = () => {
     setUser(null);
+    setDriverPartner(null);
     try {
+      localStorage.removeItem('ridingo_cached_trips');
       localStorage.removeItem('ridingo_user_session');
+      localStorage.removeItem('ridingo_driver_session');
+      localStorage.removeItem('ridingo_accepted_trips');
+      localStorage.removeItem('ridingo_settled_trips');
+      localStorage.removeItem('ridingo_declined_trips');
+      localStorage.removeItem('ridingo_active_tracking_trip_id');
+      localStorage.removeItem('ridingo_live_tracking_open');
       localStorage.removeItem('ridingo_has_onboarded');
+      localStorage.removeItem('ridingo_user_notified_accepted_trips');
+      localStorage.removeItem('ridingo_registered_users_registry');
     } catch (e) {}
     setTrips([]);
     setUtx([]);
@@ -1651,8 +1649,12 @@ export function AppProvider({ children }) {
     setDriverTx([]);
     setBookingOpen(false);
     setOnboardingOpen(true);
+    setDriverOnboardingOpen(true);
+    setActiveTrackingTripId(null);
+    setLiveTrackingOpen(false);
     setUTab('home');
-    addToast('App reset. Clean install state active.', 'check');
+    setDTab('dash');
+    addToast('App reset. Clean fresh state active.', 'check');
   };
 
   const bookRide = (cat = 'hourly', qty = 2, pickup = 'Edappally Toll, Kochi', drop = 'City Route', fare = 600, advanceAmount, phonepePaymentId, schedule) => {

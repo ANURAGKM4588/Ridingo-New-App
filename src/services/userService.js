@@ -57,34 +57,20 @@ export function getCompoundLoginKey(phone, email) {
   return `${normalizePhone10(phone)}_${normalizeEmail(email)}`;
 }
 
-export const DEFAULT_SEED_USERS = [
-  {
-    id: 'RDU-10001',
-    userId: 'RDU-10001',
-    name: 'Arjun Menon',
-    firstName: 'Arjun',
-    lastName: 'Menon',
-    phone: '+91 98401 23456',
-    email: 'arjun@ridingo.com',
-    emergencyPhone: '+91 98401 99999'
-  }
-];
+export const DEFAULT_SEED_USERS = [];
 
 /**
  * Reads local cached user registry
  */
 export function getLocalUserRegistry() {
-  if (typeof window === 'undefined') return DEFAULT_SEED_USERS;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(LOCAL_REGISTRY_KEY);
-    if (!raw) {
-      localStorage.setItem(LOCAL_REGISTRY_KEY, JSON.stringify(DEFAULT_SEED_USERS));
-      return DEFAULT_SEED_USERS;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_SEED_USERS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    return DEFAULT_SEED_USERS;
+    return [];
   }
 }
 
