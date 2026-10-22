@@ -1,6 +1,6 @@
 /**
  * Pure JavaScript Clean & Minimal PDF Receipt Generator for Ridingo
- * Requires 0 external npm dependencies, produces valid, beautiful vector PDF files
+ * Produces valid, beautiful vector PDF files with the official Ridingo Logo
  * and triggers immediate client-side file download.
  */
 
@@ -8,6 +8,11 @@ import { cleanLocationName } from './locationCleaner';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import {
+  RIDINGO_LOGO_JPEG_BASE64,
+  RIDINGO_LOGO_WIDTH,
+  RIDINGO_LOGO_HEIGHT
+} from './ridingoLogoBase64';
 
 function escapePdfText(str) {
   if (!str) return '';
@@ -18,8 +23,44 @@ function escapePdfText(str) {
     .replace(/[^\x20-\x7E]/g, ' '); // Keep standard printable ASCII
 }
 
+function concatUint8Arrays(arrays) {
+  let totalLength = 0;
+  for (const arr of arrays) totalLength += arr.length;
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
+function base64ToUint8Array(base64) {
+  const binaryString = typeof atob !== 'undefined'
+    ? atob(base64)
+    : Buffer.from(base64, 'base64').toString('binary');
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes) {
+  let binary = '';
+  const len = bytes.byteLength;
+  const chunk = 8192;
+  for (let i = 0; i < len; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, len)));
+  }
+  return typeof btoa !== 'undefined'
+    ? btoa(binary)
+    : Buffer.from(bytes).toString('base64');
+}
+
 /**
- * Builds a valid PDF 1.4 document buffer from receipt data
+ * Builds a valid PDF 1.4 document buffer as a Uint8Array from receipt data
  */
 export function buildReceiptPdfBuffer(data) {
   const {
@@ -42,6 +83,7 @@ export function buildReceiptPdfBuffer(data) {
     serviceCategory = String(trip.cat || 'hourly').toUpperCase() + ' DRIVER SERVICE'
   } = data;
 
+  const encoder = new TextEncoder();
   const contentStream = [];
 
   // Helper to add text
@@ -68,10 +110,12 @@ export function buildReceiptPdfBuffer(data) {
   // --- PDF CONTENT LAYOUT (A4 Size: 595 x 842 points) ---
 
   // 1. Header Box
-  addRect(40, 740, 515, 68, 0.98, 0.88);
-  addText('RIDINGO', 55, 782, 'F2', 20, '0.07 0.09 0.15');
-  addText('ON-DEMAND VERIFIED DRIVER SERVICE', 55, 768, 'F1', 8, '0.4 0.45 0.5');
-  addText('OFFICIAL TRIP RECEIPT & TAX INVOICE', 55, 752, 'F2', 10, '0.08 0.5 0.24');
+  addRect(40, 735, 515, 75, 0.98, 0.88);
+
+  // Official Ridingo Brand Logo (Aspect ratio ~2.84:1, width 94pt, height 33.1pt)
+  contentStream.push(`q\n94 0 0 33.1 55 766 cm\n/ImLogo Do\nQ`);
+  addText('ON-DEMAND VERIFIED DRIVER SERVICE', 55, 752, 'F1', 8, '0.4 0.45 0.5');
+  addText('OFFICIAL TRIP RECEIPT & TAX INVOICE', 55, 740, 'F2', 9.5, '0.08 0.5 0.24');
 
   addText(`RECEIPT NO: #${tripId}`, 400, 782, 'F2', 10, '0.1 0.1 0.1');
   addText(`Date: ${dateStr}`, 400, 768, 'F1', 8.5, '0.4 0.45 0.5');
@@ -157,33 +201,44 @@ export function buildReceiptPdfBuffer(data) {
   addText('This is a computer-generated official trip receipt and requires no physical signature.', 40, 122, 'F1', 8, '0.55 0.55 0.55');
 
   const streamBody = contentStream.join('\n');
-  const streamLength = streamBody.length;
+  const streamBytes = encoder.encode(streamBody);
+
+  const imgBytes = base64ToUint8Array(RIDINGO_LOGO_JPEG_BASE64);
 
   // Build PDF Objects
-  const objects = [
-    `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj`,
-    `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj`,
-    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>\nendobj`,
-    `4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj`,
-    `5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj`,
-    `6 0 obj\n<< /Length ${streamLength} >>\nstream\n${streamBody}\nendstream\nendobj`
-  ];
+  const obj1 = encoder.encode(`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`);
+  const obj2 = encoder.encode(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`);
+  const obj3 = encoder.encode(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> /XObject << /ImLogo 7 0 R >> >> /Contents 6 0 R >>\nendobj\n`);
+  const obj4 = encoder.encode(`4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`);
+  const obj5 = encoder.encode(`5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n`);
 
-  let xrefOffset = 0;
-  let pdfOutput = '%PDF-1.4\n';
+  const obj6Header = encoder.encode(`6 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n`);
+  const obj6Footer = encoder.encode(`\nendstream\nendobj\n`);
+  const obj6 = concatUint8Arrays([obj6Header, streamBytes, obj6Footer]);
+
+  const obj7Header = encoder.encode(`7 0 obj\n<< /Type /XObject /Subtype /Image /Width ${RIDINGO_LOGO_WIDTH} /Height ${RIDINGO_LOGO_HEIGHT} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgBytes.length} >>\nstream\n`);
+  const obj7Footer = encoder.encode(`\nendstream\nendobj\n`);
+  const obj7 = concatUint8Arrays([obj7Header, imgBytes, obj7Footer]);
+
+  const objects = [obj1, obj2, obj3, obj4, obj5, obj6, obj7];
+
+  const header = encoder.encode('%PDF-1.4\n');
+  let currentOffset = header.length;
   const xrefEntries = ['0000000000 65535 f \n'];
 
-  objects.forEach(obj => {
-    xrefEntries.push(String(pdfOutput.length).padStart(10, '0') + ' 00000 n \n');
-    pdfOutput += obj + '\n';
-  });
+  const parts = [header];
+  for (const obj of objects) {
+    xrefEntries.push(String(currentOffset).padStart(10, '0') + ' 00000 n \n');
+    currentOffset += obj.length;
+    parts.push(obj);
+  }
 
-  xrefOffset = pdfOutput.length;
-  pdfOutput += `xref\n0 ${objects.length + 1}\n`;
-  pdfOutput += xrefEntries.join('');
-  pdfOutput += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  const xrefOffset = currentOffset;
+  const xref = encoder.encode(`xref\n0 ${objects.length + 1}\n` + xrefEntries.join(''));
+  const trailer = encoder.encode(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
 
-  return pdfOutput;
+  parts.push(xref, trailer);
+  return concatUint8Arrays(parts);
 }
 
 /**
@@ -193,18 +248,13 @@ export async function downloadTripReceiptPdf(receiptData) {
   const tripId = receiptData.trip?.id || receiptData.tripId || `TRP-${Date.now().toString().slice(-6)}`;
   const fileName = `ridingo-receipt-${tripId}.pdf`;
 
-  const pdfString = buildReceiptPdfBuffer(receiptData);
-  const len = pdfString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = pdfString.charCodeAt(i) & 0xff;
-  }
-  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const pdfBytes = buildReceiptPdfBuffer(receiptData);
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
 
   // A. Mobile Native via Capacitor Filesystem
   if (Capacitor.isNativePlatform()) {
     try {
-      const base64Data = btoa(unescape(encodeURIComponent(pdfString)));
+      const base64Data = uint8ArrayToBase64(pdfBytes);
       const result = await Filesystem.writeFile({
         path: fileName,
         data: base64Data,
