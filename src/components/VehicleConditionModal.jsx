@@ -1053,11 +1053,11 @@ export default function VehicleConditionModal({
               </div>
             </div>
 
-            {/* 2. Visual Camera Inspection Card */}
+            {/* 2. Visual Camera Inspection Card (Photos & Video captured via Open Camera) */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Camera Photos
+                  Camera Photos & Video
                 </span>
                 <span
                   style={{
@@ -1065,18 +1065,20 @@ export default function VehicleConditionModal({
                     fontWeight: 750,
                     padding: '2px 8px',
                     borderRadius: '999px',
-                    background: photos.length > 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(0, 0, 0, 0.05)',
-                    color: photos.length > 0 ? '#15803D' : 'var(--muted, #64748B)'
+                    background: (photos.length > 0 || videoUrl) ? 'rgba(34, 197, 94, 0.12)' : 'rgba(0, 0, 0, 0.05)',
+                    color: (photos.length > 0 || videoUrl) ? '#15803D' : 'var(--muted, #64748B)'
                   }}
                 >
-                  {photos.length > 0 ? `✓ ${photos.length} Photo${photos.length !== 1 ? 's' : ''}` : 'Required'}
+                  {photos.length > 0 || videoUrl
+                    ? `✓ ${photos.length} Photo${photos.length !== 1 ? 's' : ''}${videoUrl ? ' + 1 Video' : ''}`
+                    : 'Required'}
                 </span>
               </div>
 
-              {photos.length === 0 ? (
+              {photos.length === 0 && !videoUrl ? (
                 /* Ultra-clean Minimalist Camera Action Card */
                 <div
-                  onClick={handleOpenCustomCamera}
+                  onClick={() => handleOpenCustomCamera('photo')}
                   style={{
                     background: '#0B0F19',
                     borderRadius: '20px',
@@ -1095,10 +1097,10 @@ export default function VehicleConditionModal({
                 >
                   <div>
                     <b style={{ fontSize: '15px', fontWeight: 800, display: 'block', letterSpacing: '-0.01em' }}>
-                      Take Vehicle Photos
+                      Take Vehicle Photos & Video
                     </b>
                     <span style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px', display: 'block' }}>
-                      Snap exterior angles & odometer with live camera
+                      Snap exterior angles or record walkaround in camera
                     </span>
                   </div>
                   <button
@@ -1132,11 +1134,11 @@ export default function VehicleConditionModal({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '12px', fontWeight: 750, color: 'var(--ink, #0F172A)' }}>
-                      Captured Photos ({photos.length})
+                      Captured Media ({photos.length + (videoUrl ? 1 : 0)})
                     </span>
                     <button
                       type="button"
-                      onClick={handleOpenCustomCamera}
+                      onClick={() => handleOpenCustomCamera('photo')}
                       style={{
                         padding: '6px 14px',
                         borderRadius: '8px',
@@ -1199,136 +1201,76 @@ export default function VehicleConditionModal({
                         </button>
                       </div>
                     ))}
-                  </div>
-                </div>
-              )}
-            </div>
 
-            {/* 2.5 Walkaround Inspection Video Section */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Walkaround Inspection Video
-                </span>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 750,
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                    background: videoUrl ? 'rgba(34, 197, 94, 0.12)' : 'rgba(0, 0, 0, 0.05)',
-                    color: videoUrl ? '#15803D' : 'var(--muted, #64748B)'
-                  }}
-                >
-                  {videoUrl ? '✓ Video Ready' : 'Recommended'}
-                </span>
-              </div>
-
-              {videoUrl ? (
-                <div
-                  style={{
-                    background: 'var(--field, #F8FAFC)',
-                    border: '1.5px solid #22C55E',
-                    borderRadius: '18px',
-                    padding: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E' }} />
-                      <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Recorded Inspection Video</b>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setVideoUrl(null);
-                        setSessionVideoUrl(null);
-                        recordedBlobRef.current = null;
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#EF4444',
-                        fontSize: '12px',
-                        fontWeight: 750,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Retake / Remove
-                    </button>
+                    {/* Recorded Video thumbnail item in filmstrip */}
+                    {videoUrl && (
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: '74px',
+                          height: '74px',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          flexShrink: 0,
+                          border: '2px solid #22C55E',
+                          background: '#000000',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <video
+                          src={videoUrl}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(0, 0, 0, 0.38)',
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          <Icon name="video" size={20} color="#22C55E" />
+                          <span style={{ fontSize: '9px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
+                            Video
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setVideoUrl(null);
+                            setSessionVideoUrl(null);
+                            recordedBlobRef.current = null;
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: '3px',
+                            right: '3px',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.9)',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            zIndex: 2
+                          }}
+                          aria-label="Remove video"
+                        >
+                          <Icon name="x" size={10} color="#FFFFFF" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-                  <div
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      aspectRatio: '16 / 9',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      background: '#000000',
-                      boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
-                    }}
-                  >
-                    <video
-                      key={videoUrl}
-                      src={videoUrl}
-                      controls
-                      playsInline
-                      webkit-playsinline="true"
-                      preload="metadata"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div
-                  onClick={() => handleOpenCustomCamera('video')}
-                  style={{
-                    background: 'var(--field, #F8FAFC)',
-                    border: '1.5px dashed var(--line, #CBD5E1)',
-                    borderRadius: '16px',
-                    padding: '14px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div
-                      style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '12px',
-                        background: 'rgba(239, 68, 68, 0.12)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#EF4444'
-                      }}
-                    >
-                      <Icon name="video" size={20} color="#EF4444" />
-                    </div>
-                    <div>
-                      <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', display: 'block', marginBottom: '2px' }}>
-                        Record Walkaround Video
-                      </b>
-                      <span style={{ fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
-                        Live 360° video walkaround of vehicle body
-                      </span>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#2563EB' }}>
-                    + Record
-                  </span>
                 </div>
               )}
             </div>
