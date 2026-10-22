@@ -1839,7 +1839,10 @@ export default function DriverApp() {
           supabase
             .from('trips')
             .update({
-              driver_location: { lat, lng, heading, speed, updatedAt: now }
+              driver: {
+                ...(activeAssignedTrip.driverObj || driverPartner || {}),
+                location: { lat, lng, heading, speed, updatedAt: now }
+              }
             })
             .eq('id', activeAssignedTrip.id)
             .then(() => {});
@@ -2225,8 +2228,10 @@ export default function DriverApp() {
     }
     const reader = new FileReader();
     reader.onload = (event) => {
-      setEditDriverAvatar(event.target.result);
-      addToast('Driver photo selected! Tap Save to apply.', 'check');
+      const dataUrl = event.target.result;
+      setEditDriverAvatar(dataUrl);
+      updateDriverPartner({ avatar: dataUrl });
+      addToast('Driver profile photo updated & saved!', 'check');
     };
     reader.readAsDataURL(file);
   };
@@ -2767,20 +2772,50 @@ export default function DriverApp() {
   // Dynamic earnings and trip calculations
   const completedTrips = trips.filter(t => t.status === 'completed');
   const completedTripsCount = completedTrips.length;
-  const todayEarnings = driverTx.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
-  const thisMonthEarnings = driverTx
+
+  const isTodayDateOrTs = (val) => {
+    if (!val) return false;
+    try {
+      const d = new Date(typeof val === 'number' || !isNaN(Number(val)) ? Number(val) : val);
+      const now = new Date();
+      return (
+        d.getDate() === now.getDate() &&
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
+      );
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const todayTxSum = (Array.isArray(driverTx) ? driverTx : [])
+    .filter(t => t.amount > 0 && (isTodayDateOrTs(t.ts) || isTodayDateOrTs(t.time) || (!t.ts && !t.time)))
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+  const todayCompletedTripsSum = completedTrips
+    .filter(t => isTodayDateOrTs(t.completedAt) || isTodayDateOrTs(t.when_ts) || isTripToday(t))
+    .reduce((sum, t) => {
+      const fare = Number(t.fare) || 0;
+      const tip = Number(t.tip) || 0;
+      return sum + Math.round(fare * 0.70) + tip;
+    }, 0);
+
+  const todayEarnings = Math.max(todayTxSum, todayCompletedTripsSum);
+
+  const thisMonthEarnings = (Array.isArray(driverTx) ? driverTx : [])
     .filter(t => {
       if (t.amount <= 0) return false;
-      if (!t.time) return true;
+      const ts = t.ts || t.time;
+      if (!ts) return true;
       try {
-        const d = new Date(t.time);
+        const d = new Date(typeof ts === 'number' || !isNaN(Number(ts)) ? Number(ts) : ts);
         const now = new Date();
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       } catch (_) {
         return true;
       }
     })
-    .reduce((sum, t) => sum + t.amount, 0) || todayEarnings;
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0) || todayEarnings;
 
   return (
     <div className="inner" style={{ flex: 1, minHeight: 0, height: '100%', borderRadius: 0, display: 'flex', flexDirection: 'column' }}>
@@ -5807,7 +5842,11 @@ export default function DriverApp() {
                           {editDriverAvatar && (
                             <button
                               type="button"
-                              onClick={() => { setEditDriverAvatar(''); addToast('Photo removed (initials will be used)', 'info'); }}
+                              onClick={() => {
+                                setEditDriverAvatar('');
+                                updateDriverPartner({ avatar: '' });
+                                addToast('Photo removed (initials will be used)', 'info');
+                              }}
                               style={{
                                 background: 'transparent',
                                 border: '1px solid var(--line)',

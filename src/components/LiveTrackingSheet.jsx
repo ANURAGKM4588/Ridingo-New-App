@@ -43,8 +43,15 @@ export default function LiveTrackingSheet() {
     isUserTrip,
     declineTrip,
     cancelTripByUser,
-    setTripToCancel
+    setTripToCancel,
+    driverPartner
   } = useApp();
+
+  const isMatchId = (id1, id2) => {
+    if (!id1 || !id2) return false;
+    if (id1 === id2) return true;
+    return String(id1).trim().toLowerCase().replace(/^trp-/, '') === String(id2).trim().toLowerCase().replace(/^trp-/, '');
+  };
 
   const isClientTrip = (t) => {
     if (!t) return false;
@@ -56,7 +63,7 @@ export default function LiveTrackingSheet() {
     return false;
   };
 
-  const activeTrip = (activeTrackingTripId ? trips.find(t => t.id === activeTrackingTripId && !['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(t.status)) : null) ||
+  const activeTrip = (activeTrackingTripId ? trips.find(t => isMatchId(t.id, activeTrackingTripId) && !['completed', 'cancelled', 'invoice_pending', 'ending_otp'].includes(t.status)) : null) ||
                      trips.find(t => isClientTrip(t) && t.status === 'inprogress') ||
                      trips.find(t => isClientTrip(t) && ['accepted', 'pickup_arrived', 'ready_to_start'].includes(t.status)) ||
                      trips.find(t => isClientTrip(t) && t.status === 'requested');
@@ -781,6 +788,13 @@ Please contact the passenger or emergency services (112) immediately!`;
                 role="Assigned Driver"
                 phone={trip.driverObj?.phone || '+91 94471 23456'}
                 rating="4.9"
+                avatar={
+                  trip.driverObj?.avatar ||
+                  trip.driverAvatar ||
+                  (driverPartner?.avatar && (trip.driver === driverPartner?.name || !trip.driver) ? driverPartner.avatar : null) ||
+                  driverPartner?.avatar ||
+                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
+                }
                 style={{
                   background: 'var(--card)',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.05)'

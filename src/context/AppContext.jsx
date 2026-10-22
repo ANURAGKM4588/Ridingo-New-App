@@ -402,8 +402,35 @@ export function AppProvider({ children }) {
   const [unotes, setUnotes] = useState(INITIAL_UNOTES);
   const [driverOnline, setDriverOnline] = useState(true);
   const [incomingTripRequest, setIncomingTripRequest] = useState(null);
-  const [driverBalance, setDriverBalance] = useState(0);
-  const [driverTx, setDriverTx] = useState([]);
+  const [driverBalance, setDriverBalance] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ridingo_driver_balance');
+      return saved !== null && !isNaN(Number(saved)) ? Number(saved) : 0;
+    } catch (_) {
+      return 0;
+    }
+  });
+  const [driverTx, setDriverTx] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ridingo_driver_tx');
+      return saved ? JSON.parse(saved) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ridingo_driver_balance', String(driverBalance));
+    } catch (_) {}
+  }, [driverBalance]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ridingo_driver_tx', JSON.stringify(driverTx));
+    } catch (_) {}
+  }, [driverTx]);
+
   const [toasts, setToasts] = useState([]);
   const [tripToCancel, setTripToCancel] = useState(null);
   const [tripCompleteModalOpen, setTripCompleteModalOpen] = useState(false);
@@ -860,6 +887,9 @@ export function AppProvider({ children }) {
                       setIncomingTripRequest(prev => (prev?.id === tripObj.id ? null : prev));
                       dismissIncomingRideNotification(tripObj.id);
                       stopActiveTone();
+                      // User App: Immediately switch from waiting popup to live tracking sheet
+                      setActiveTrackingTripId(tripObj.id);
+                      setLiveTrackingOpen(true);
                       if (window.RIDINGO_TARGET !== 'driver') {
                         // User App: Trigger system push notification with driver details
                         const driverName = (typeof tripObj.driver === 'string' ? tripObj.driver : tripObj.driver?.name) || 'Ravi Kumar';
@@ -980,6 +1010,8 @@ export function AppProvider({ children }) {
 
       // 2. Native Device Default System Push Notification for User App (Strictly Once)
       if (typeof window !== 'undefined' && window.RIDINGO_TARGET !== 'driver') {
+        setActiveTrackingTripId(tripId);
+        setLiveTrackingOpen(true);
         notifyUserTripAccepted(tripId, driverName, driverPhone, targetOtp);
       }
     });
@@ -1642,6 +1674,8 @@ export function AppProvider({ children }) {
       localStorage.removeItem('ridingo_has_onboarded');
       localStorage.removeItem('ridingo_user_notified_accepted_trips');
       localStorage.removeItem('ridingo_registered_users_registry');
+      localStorage.removeItem('ridingo_driver_balance');
+      localStorage.removeItem('ridingo_driver_tx');
     } catch (e) {}
     setTrips([]);
     setUtx([]);
@@ -1807,13 +1841,23 @@ export function AppProvider({ children }) {
   const updateTripStatusInSupabase = async (tripId, status, extra = {}) => {
     try {
       if (!supabase || typeof supabase.from !== 'function') return;
+      const safeExtra = { ...extra };
+      delete safeExtra.driver_location;
+      delete safeExtra.driverCoords;
+      delete safeExtra.driverHeading;
+      delete safeExtra.driverSpeed;
+
       const { data, error } = await supabase.from('trips').update({
         status,
         updated_at: new Date().toISOString(),
-        ...extra
+        ...safeExtra
       }).eq('id', tripId).select();
       if (error) {
-        console.warn('[Supabase] Status update error:', error.message);
+        console.warn('[Supabase] Status update error, retrying without extra:', error.message);
+        await supabase.from('trips').update({
+          status,
+          updated_at: new Date().toISOString()
+        }).eq('id', tripId);
       } else {
         console.info('[Supabase] Status update success:', tripId, status);
       }
@@ -1908,8 +1952,10 @@ export function AppProvider({ children }) {
     });
 
     updateTripStatusInSupabase(tripId, 'accepted', {
-      driver: driverObj,
-      driver_location: initialDriverCoords
+      driver: {
+        ...driverObj,
+        location: initialDriverCoords
+      }
     });
 
     // Query hardware GPS asynchronously for freshest live fix
@@ -2013,6 +2059,7 @@ export function AppProvider({ children }) {
     amount,
     fare,
     tip = 0,
+    driverEarnings: explicitDriverEarnings,
     method = 'PhonePe UPI',
     isCash = false,
     baseFare,
@@ -2041,9 +2088,9 @@ export function AppProvider({ children }) {
 
     realtime.clearActiveTrip(tripId, 'completed');
 
-    const tripFare = fare || 750;
+    const tripFare = Number(fare) || Number(amount) || 750;
     const companyCommission = Math.round(tripFare * 0.30); // 30% platform fee
-    const driverEarnings = Math.round(tripFare * 0.70) + Number(tip || 0); // 70% driver payout + tip
+    const driverEarnings = Number(explicitDriverEarnings) || (Math.round(tripFare * 0.70) + Number(tip || 0)); // 70% driver payout + tip
 
     if (isCash) {
       // PENALTY: Increment Black Mark for accepting cash
@@ -2056,20 +2103,33 @@ export function AppProvider({ children }) {
       addToast(`₹${driverEarnings} credited to Driver Wallet!`, 'check');
     }
 
-    // Update driver partner wallet
-    setDriverBalance(prev => prev + driverEarnings);
-    setDriverTx(prev => [
-      {
-        id: 'tx-' + Date.now(),
-        title: `Trip Earnings · ${method}`,
-        sub: `Net 70% (₹${Math.round(tripFare * 0.70)}) + Tip (₹${tip}) · Settled`,
-        amount: driverEarnings,
-        type: 'fare',
-        gateway: 'PhonePe Escrow',
-        ts: Date.now()
-      },
-      ...prev
-    ]);
+    // Update driver partner wallet and persist to localStorage
+    setDriverBalance(prev => {
+      const nextBal = (Number(prev) || 0) + driverEarnings;
+      try {
+        localStorage.setItem('ridingo_driver_balance', String(nextBal));
+      } catch (_) {}
+      return nextBal;
+    });
+
+    const newTxItem = {
+      id: 'tx-' + Date.now(),
+      title: `Trip Earnings · ${method}`,
+      sub: `Net 70% (₹${Math.round(tripFare * 0.70)}) + Tip (₹${tip}) · Settled`,
+      amount: driverEarnings,
+      type: 'fare',
+      gateway: 'PhonePe Escrow',
+      ts: Date.now(),
+      time: new Date().toISOString()
+    };
+
+    setDriverTx(prev => {
+      const nextTxList = [newTxItem, ...(Array.isArray(prev) ? prev : [])];
+      try {
+        localStorage.setItem('ridingo_driver_tx', JSON.stringify(nextTxList));
+      } catch (_) {}
+      return nextTxList;
+    });
 
     // Mark trip complete directly without any end OTP
     setTrips(prev =>
