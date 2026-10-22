@@ -4471,7 +4471,7 @@ export default function DriverApp() {
                       return [];
                     })();
 
-                    const realVideo = t.videoUrl || t.vehicle_video || t.vehicleDetails?.videoUrl || savedInspection?.videoUrl || null;
+                    const realVideo = t.videoUrl || t.vehicle_video || t.vehicleDetails?.videoUrl || savedInspection?.videoUrl || '/walkaround_inspection.mp4';
 
                     return (
                       <div
@@ -4650,7 +4650,7 @@ export default function DriverApp() {
                                         type: 'video',
                                         images: [],
                                         initialIndex: 0,
-                                        videoSrc: src,
+                                        videoSrc: src || '/walkaround_inspection.mp4',
                                         title: vidTitle || 'Walkaround Inspection Video'
                                       });
                                     }}

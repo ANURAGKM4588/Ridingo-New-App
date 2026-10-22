@@ -28,9 +28,34 @@ export default function CustomVideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef(null);
 
-  // Default fallback video URL if none provided
-  const videoSrc = src || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+  const FALLBACK_VIDEO_SRC = '/walkaround_inspection.mp4';
+  const [videoSrc, setVideoSrc] = useState(src || FALLBACK_VIDEO_SRC);
   const posterImg = poster || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80';
+
+  // Synchronize when src prop changes
+  useEffect(() => {
+    const nextSrc = src || FALLBACK_VIDEO_SRC;
+    setVideoSrc(nextSrc);
+    setIsEnded(false);
+    setIsLoading(true);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  }, [src]);
+
+  const handleVideoError = () => {
+    console.warn('[CustomVideoPlayer] Error loading video source:', videoSrc);
+    if (videoSrc !== FALLBACK_VIDEO_SRC) {
+      console.info('[CustomVideoPlayer] Switching to local walkaround inspection video');
+      setVideoSrc(FALLBACK_VIDEO_SRC);
+      if (videoRef.current) {
+        videoRef.current.src = FALLBACK_VIDEO_SRC;
+        videoRef.current.load();
+      }
+    } else {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -75,6 +100,7 @@ export default function CustomVideoPlayer({
     video.addEventListener('pause', handlePause);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
+    video.addEventListener('error', handleVideoError);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -84,8 +110,9 @@ export default function CustomVideoPlayer({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('error', handleVideoError);
     };
-  }, []);
+  }, [videoSrc]);
 
   const togglePlay = (e) => {
     if (e) e.stopPropagation();
@@ -98,11 +125,36 @@ export default function CustomVideoPlayer({
     }
 
     if (video.paused) {
-      video.play().catch(err => {
-        console.warn('Video play prevented:', err);
-      });
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+            setIsEnded(false);
+          })
+          .catch(err => {
+            console.warn('[CustomVideoPlayer] Unmuted play rejected, retrying muted:', err);
+            video.muted = true;
+            setIsMuted(true);
+            video.play()
+              .then(() => {
+                setIsPlaying(true);
+                setIsEnded(false);
+              })
+              .catch(err2 => {
+                console.warn('[CustomVideoPlayer] Play totally failed, switching to fallback:', err2);
+                if (videoSrc !== FALLBACK_VIDEO_SRC) {
+                  setVideoSrc(FALLBACK_VIDEO_SRC);
+                  video.src = FALLBACK_VIDEO_SRC;
+                  video.load();
+                  video.play().catch(() => {});
+                }
+              });
+          });
+      }
     } else {
       video.pause();
+      setIsPlaying(false);
     }
   };
 
@@ -114,7 +166,18 @@ export default function CustomVideoPlayer({
     video.currentTime = 0;
     setCurrentTime(0);
     setIsEnded(false);
-    video.play().catch(() => {});
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          video.muted = true;
+          setIsMuted(true);
+          video.play().catch(() => {});
+        });
+    }
   };
 
   const handleSeek = (e) => {
@@ -182,8 +245,10 @@ export default function CustomVideoPlayer({
         src={videoSrc}
         poster={posterImg}
         playsInline
+        webkit-playsinline="true"
         muted={isMuted}
-        preload="metadata"
+        preload="auto"
+        onError={handleVideoError}
         style={{
           width: '100%',
           height: '100%',

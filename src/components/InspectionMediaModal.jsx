@@ -23,6 +23,13 @@ export default function InspectionMediaModal({
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
+  const FALLBACK_VIDEO_SRC = '/walkaround_inspection.mp4';
+  const [activeVideoSrc, setActiveVideoSrc] = useState(videoSrc || FALLBACK_VIDEO_SRC);
+
+  useEffect(() => {
+    setActiveVideoSrc(videoSrc || FALLBACK_VIDEO_SRC);
+  }, [videoSrc]);
+
   // Refs for tracking pinch & pan gestures
   const containerRef = useRef(null);
   const touchStateRef = useRef({
@@ -311,7 +318,7 @@ export default function InspectionMediaModal({
           />
         )}
 
-        {type === 'video' && videoSrc && (
+        {type === 'video' && (
           <div
             style={{
               width: '100%',
@@ -327,10 +334,18 @@ export default function InspectionMediaModal({
             }}
           >
             <video
-              src={videoSrc}
+              key={activeVideoSrc}
+              src={activeVideoSrc}
               controls
               autoPlay
               playsInline
+              webkit-playsinline="true"
+              preload="auto"
+              onError={() => {
+                if (activeVideoSrc !== FALLBACK_VIDEO_SRC) {
+                  setActiveVideoSrc(FALLBACK_VIDEO_SRC);
+                }
+              }}
               style={{
                 width: '100%',
                 height: '100%',
