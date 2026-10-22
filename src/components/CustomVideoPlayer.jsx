@@ -30,7 +30,60 @@ export default function CustomVideoPlayer({
   const [videoSrc, setVideoSrc] = useState(src || '');
   const [loadError, setLoadError] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const posterImg = poster || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80';
+  const [firstFrameThumbnail, setFirstFrameThumbnail] = useState(null);
+  const activePoster = firstFrameThumbnail || poster || undefined;
+
+  // Extract the actual video's first frame to use as the true cover thumbnail
+  useEffect(() => {
+    if (!videoSrc) {
+      setFirstFrameThumbnail(null);
+      return;
+    }
+    let isCancelled = false;
+    const tempVideo = document.createElement('video');
+    tempVideo.crossOrigin = 'anonymous';
+    tempVideo.preload = 'auto';
+    tempVideo.muted = true;
+    tempVideo.playsInline = true;
+    tempVideo.src = videoSrc;
+
+    const captureFrame = () => {
+      if (isCancelled) return;
+      try {
+        if (!tempVideo.videoWidth || !tempVideo.videoHeight) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = tempVideo.videoWidth;
+        canvas.height = tempVideo.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          if (dataUrl && dataUrl.length > 200 && !isCancelled) {
+            setFirstFrameThumbnail(dataUrl);
+          }
+        }
+      } catch (_) {}
+    };
+
+    tempVideo.addEventListener('loadeddata', () => {
+      try { tempVideo.currentTime = 0.001; } catch (_) {}
+    }, { once: true });
+
+    tempVideo.addEventListener('seeked', () => {
+      captureFrame();
+      tempVideo.remove();
+    }, { once: true });
+
+    tempVideo.addEventListener('canplay', () => {
+      captureFrame();
+    }, { once: true });
+
+    return () => {
+      isCancelled = true;
+      tempVideo.src = '';
+      tempVideo.remove();
+    };
+  }, [videoSrc]);
 
   // Handle Fullscreen body overflow lock & Escape key
   useEffect(() => {
@@ -56,6 +109,7 @@ export default function CustomVideoPlayer({
     setLoadError(false);
     setIsEnded(false);
     setIsLoading(true);
+    setFirstFrameThumbnail(null);
     if (videoRef.current) {
       videoRef.current.load();
     }
@@ -80,6 +134,32 @@ export default function CustomVideoPlayer({
       setDuration(video.duration || 0);
       setIsLoading(false);
       setLoadError(false);
+      // Cue the video to the first frame (0.001s) so the browser renders the actual video frame
+      if (video.currentTime === 0) {
+        try { video.currentTime = 0.001; } catch (_) {}
+      }
+    };
+
+    const handleLoadedData = () => {
+      setIsLoading(false);
+      if (video.currentTime === 0) {
+        try { video.currentTime = 0.001; } catch (_) {}
+      }
+      try {
+        if (video.videoWidth && video.videoHeight) {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            if (dataUrl && dataUrl.length > 200) {
+              setFirstFrameThumbnail(prev => prev || dataUrl);
+            }
+          }
+        }
+      } catch (_) {}
     };
 
     const handleEnded = () => {
@@ -108,6 +188,7 @@ export default function CustomVideoPlayer({
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
@@ -118,6 +199,7 @@ export default function CustomVideoPlayer({
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
@@ -271,7 +353,7 @@ export default function CustomVideoPlayer({
       <video
         ref={videoRef}
         src={videoSrc}
-        poster={posterImg}
+        poster={activePoster}
         playsInline
         webkit-playsinline="true"
         muted={isMuted}
