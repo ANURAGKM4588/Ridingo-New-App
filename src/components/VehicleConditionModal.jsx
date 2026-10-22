@@ -60,8 +60,8 @@ export default function VehicleConditionModal({
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [regNumber, setRegNumber] = useState('');
-  const [photos, setPhotos] = useState(trip?.car_photos || trip?.vehicleDetails?.photos || []);
-  const [videoUrl, setVideoUrl] = useState(trip?.videoUrl || trip?.vehicle_video || trip?.vehicleDetails?.videoUrl || null);
+  const [photos, setPhotos] = useState([]);
+  const [videoUrl, setVideoUrl] = useState(null);
   const [isCustomCameraOpen, setIsCustomCameraOpen] = useState(false);
   const [sessionPhotos, setSessionPhotos] = useState([]);
   const [sessionVideoUrl, setSessionVideoUrl] = useState(null);
@@ -94,19 +94,6 @@ export default function VehicleConditionModal({
   const recordedChunksRef = useRef([]);
   const recordTimerRef = useRef(null);
   const recordedBlobRef = useRef(null);
-
-  // Restore recorded video from persistent IndexedDB if present
-  useEffect(() => {
-    let isMounted = true;
-    if (!videoUrl && trip?.id) {
-      getRecordedVideoUrl(trip.id).then(url => {
-        if (isMounted && url) {
-          setVideoUrl(url);
-        }
-      });
-    }
-    return () => { isMounted = false; };
-  }, [trip?.id]);
 
   // Outside click listener to dismiss floating dropdowns
   useEffect(() => {
@@ -376,15 +363,11 @@ export default function VehicleConditionModal({
               recordedChunksRef.current.push(e.data);
             }
           };
-          mr.onstop = async () => {
+          mr.onstop = () => {
             const blob = new Blob(recordedChunksRef.current, { type: chosenMime || 'video/mp4' });
             recordedBlobRef.current = blob;
-            // Save permanently into IndexedDB so it's never lost across reloads
-            const persistentUrl = await saveRecordedVideo(trip?.id || 'latest', blob, {
-              duration: recordDuration,
-              recordedAt: Date.now()
-            });
-            const url = persistentUrl || URL.createObjectURL(blob);
+            // Create in-memory object URL for live preview only - DO NOT store in database yet!
+            const url = URL.createObjectURL(blob);
             setSessionVideoUrl(url);
             setVideoUrl(url);
 
@@ -428,7 +411,7 @@ export default function VehicleConditionModal({
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!brand.trim()) {
       setErrorMsg('Vehicle Brand is required. Please enter or select the vehicle brand.');
       return;
@@ -446,8 +429,19 @@ export default function VehicleConditionModal({
       return;
     }
 
+    // ONLY store the taken video and image files in the database AFTER "Complete Inspection & Start Trip" is clicked
+    let finalVideoUrl = videoUrl;
     if (recordedBlobRef.current) {
-      saveRecordedVideo(trip?.id || 'TRP', recordedBlobRef.current);
+      try {
+        const savedUrl = await saveRecordedVideo(trip?.id || 'TRP', recordedBlobRef.current, {
+          brand: brand.trim(),
+          model: model.trim(),
+          regNumber: regNumber.trim().toUpperCase()
+        });
+        if (savedUrl) finalVideoUrl = savedUrl;
+      } catch (saveErr) {
+        console.warn('[Inspection] Error saving recorded video on submit:', saveErr);
+      }
     }
 
     const inspectionRecord = saveVehicleDetailsWith5DayRetention(trip?.id || 'TRP', {
@@ -455,7 +449,7 @@ export default function VehicleConditionModal({
       model: model.trim(),
       regNumber: regNumber.trim().toUpperCase(),
       photos,
-      videoUrl,
+      videoUrl: finalVideoUrl,
       notes: notes.trim()
     });
 
@@ -464,7 +458,7 @@ export default function VehicleConditionModal({
       model: model.trim(),
       regNumber: regNumber.trim().toUpperCase(),
       photos,
-      videoUrl,
+      videoUrl: finalVideoUrl,
       notes: notes.trim(),
       inspectionRecord
     });
