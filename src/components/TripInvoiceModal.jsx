@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { generateLivePhonePeQrUrl } from '../utils/phonepe';
-import {
-  generateTripInvoiceText,
-  autoShareTripInvoice
-} from '../utils/tripInvoiceSharing';
+import { generateTripInvoiceText } from '../utils/tripInvoiceSharing';
 
 export default function TripInvoiceModal({
   trip,
@@ -78,17 +75,6 @@ export default function TripInvoiceModal({
   const handleSimulatePaymentSettlement = () => {
     setIsProcessingPayment(true);
 
-    // Auto-share invoice on customer's registered WhatsApp (100% free) with Email fallback
-    try {
-      autoShareTripInvoice({
-        trip,
-        invoiceData,
-        preferredMethod: 'whatsapp'
-      });
-    } catch (e) {
-      console.warn('[TripInvoiceModal] Auto share notice:', e);
-    }
-
     setTimeout(() => {
       setIsProcessingPayment(false);
       if (onDigitalPaymentSuccess) {
@@ -111,7 +97,7 @@ export default function TripInvoiceModal({
           sharedToEmail: customerEmail
         });
       }
-    }, 1000);
+    }, 200);
   };
 
   const handleConfirmCashViolation = () => {

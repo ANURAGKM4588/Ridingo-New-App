@@ -11,6 +11,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
     tripCompleteModalOpen,
     setTripCompleteModalOpen,
     completedTripData,
+    setCompletedTripData,
     setBookingOpen,
     setBookingCategory,
     setBookingDestination,
@@ -27,15 +28,23 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   // Enabled only when both star rating and driver quality are selected
   const canSubmit = rating > 0 && selectedFeedback.length > 0;
 
-  if (!trip && !tripCompleteModalOpen) return null;
+  const isOpen = propTrip ? true : tripCompleteModalOpen;
+  if (!isOpen || !trip) return null;
 
   const handleClose = () => {
-    if (onClose) onClose();
-    if (setTripCompleteModalOpen) setTripCompleteModalOpen(false);
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      if (onClose) onClose();
+      if (setTripCompleteModalOpen) setTripCompleteModalOpen(false);
+      if (setCompletedTripData) setCompletedTripData(null);
+      setIsClosing(false);
+    }, 280);
   };
 
   // Safe trip attributes
@@ -86,7 +95,7 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
   // 1. Submit Rating -> Navigates to Home Page (Enabled only when stars and driver quality selected)
   const handleSubmitRating = (e) => {
     if (e) e.stopPropagation();
-    if (!canSubmit || isSubmitting || ratingSubmitted) return;
+    if (!canSubmit || isSubmitting || ratingSubmitted || isClosing) return;
     setIsSubmitting(true);
     setRatingSubmitted(true);
 
@@ -94,11 +103,8 @@ export default function TripCompleteModal({ trip: propTrip, onClose }) {
       addToast(`Thank you! Rated ${rating} stars for ${driverName}.`, 'check');
     }
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      handleClose();
-      if (setUTab) setUTab('home');
-    }, 350);
+    if (setUTab) setUTab('home');
+    handleClose();
   };
 
   // 2. Book Again -> Navigates to the same service booking page
@@ -225,7 +231,9 @@ Status: COMPLETED & PAID ✅`;
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         pointerEvents: 'auto',
-        animation: 'tcBackdropFade 0.25s ease-out forwards'
+        animation: isClosing
+          ? 'tcBackdropFadeOut 0.28s ease-in forwards'
+          : 'tcBackdropFade 0.25s ease-out forwards'
       }}
       onClick={handleClose}
     >
@@ -235,9 +243,17 @@ Status: COMPLETED & PAID ✅`;
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes tcBackdropFadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
         @keyframes tcModalSlideUp {
           from { transform: translateY(100%); opacity: 0.6; }
           to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes tcModalSlideDown {
+          from { transform: translateY(0); opacity: 1; }
+          to { transform: translateY(100%); opacity: 0; }
         }
         @keyframes tcTickPop {
           0% { transform: scale(0); opacity: 0; }
@@ -295,10 +311,12 @@ Status: COMPLETED & PAID ✅`;
           overflow: 'hidden',
           zIndex: 100060,
           pointerEvents: 'auto',
-          animation: 'tcModalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          animation: isClosing
+            ? 'tcModalSlideDown 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            : 'tcModalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}
       >
-        {/* Top Header Section with Animated Checkmark */}
+        {/* Top Header Section with Animated Checkmark (No top X close button) */}
         <div
           style={{
             padding: '24px 20px 8px',
@@ -307,31 +325,6 @@ Status: COMPLETED & PAID ✅`;
             pointerEvents: 'auto'
           }}
         >
-          {/* Circular Close Button */}
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Close"
-            style={{
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              width: '34px',
-              height: '34px',
-              borderRadius: '50%',
-              background: '#F1F5F9',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: '#64748B',
-              pointerEvents: 'auto'
-            }}
-          >
-            <Icon name="x" size={17} />
-          </button>
-
           {/* Large Animated Green Checkmark Badge */}
           <div
             style={{
