@@ -28,14 +28,14 @@ export default function CustomVideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef(null);
 
-  const FALLBACK_VIDEO_SRC = '/walkaround_inspection.mp4';
-  const [videoSrc, setVideoSrc] = useState(src || FALLBACK_VIDEO_SRC);
+  const [videoSrc, setVideoSrc] = useState(src || '');
+  const [loadError, setLoadError] = useState(false);
   const posterImg = poster || 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=80';
 
   // Synchronize when src prop changes
   useEffect(() => {
-    const nextSrc = src || FALLBACK_VIDEO_SRC;
-    setVideoSrc(nextSrc);
+    setVideoSrc(src || '');
+    setLoadError(false);
     setIsEnded(false);
     setIsLoading(true);
     if (videoRef.current) {
@@ -43,18 +43,11 @@ export default function CustomVideoPlayer({
     }
   }, [src]);
 
-  const handleVideoError = () => {
-    console.warn('[CustomVideoPlayer] Error loading video source:', videoSrc);
-    if (videoSrc !== FALLBACK_VIDEO_SRC) {
-      console.info('[CustomVideoPlayer] Switching to local walkaround inspection video');
-      setVideoSrc(FALLBACK_VIDEO_SRC);
-      if (videoRef.current) {
-        videoRef.current.src = FALLBACK_VIDEO_SRC;
-        videoRef.current.load();
-      }
-    } else {
-      setIsLoading(false);
-    }
+  const handleVideoError = (e) => {
+    console.warn('[CustomVideoPlayer] Error playing driver recorded video:', videoSrc, e);
+    setLoadError(true);
+    setIsLoading(false);
+    setIsPlaying(false);
   };
 
   useEffect(() => {
@@ -68,6 +61,7 @@ export default function CustomVideoPlayer({
     const handleLoadedMetadata = () => {
       setDuration(video.duration || 0);
       setIsLoading(false);
+      setLoadError(false);
     };
 
     const handleEnded = () => {
@@ -91,6 +85,7 @@ export default function CustomVideoPlayer({
 
     const handlePlaying = () => {
       setIsLoading(false);
+      setLoadError(false);
     };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
@@ -117,7 +112,7 @@ export default function CustomVideoPlayer({
   const togglePlay = (e) => {
     if (e) e.stopPropagation();
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || loadError) return;
 
     if (isEnded) {
       handleReplay(e);
@@ -142,13 +137,8 @@ export default function CustomVideoPlayer({
                 setIsEnded(false);
               })
               .catch(err2 => {
-                console.warn('[CustomVideoPlayer] Play totally failed, switching to fallback:', err2);
-                if (videoSrc !== FALLBACK_VIDEO_SRC) {
-                  setVideoSrc(FALLBACK_VIDEO_SRC);
-                  video.src = FALLBACK_VIDEO_SRC;
-                  video.load();
-                  video.play().catch(() => {});
-                }
+                console.warn('[CustomVideoPlayer] Play totally failed:', err2);
+                setLoadError(true);
               });
           });
       }
@@ -294,8 +284,54 @@ export default function CustomVideoPlayer({
         </div>
       </div>
 
+      {/* Error state if recorded video cannot be loaded */}
+      {loadError && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(9, 10, 13, 0.92)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            zIndex: 10,
+            textAlign: 'center'
+          }}
+        >
+          <span style={{ fontSize: '13px', fontWeight: 750, color: '#F87171', marginBottom: '8px' }}>
+            Inspection Video Playback Error
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLoadError(false);
+              if (videoRef.current) {
+                videoRef.current.load();
+                videoRef.current.play().catch(() => {});
+              }
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              background: 'rgba(255, 255, 255, 0.16)',
+              color: '#FFFFFF',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Center Action Overlay (Play / Replay / Spinner) */}
-      {(!isPlaying || isEnded) && (
+      {!loadError && (!isPlaying || isEnded) && (
         <div
           style={{
             position: 'absolute',

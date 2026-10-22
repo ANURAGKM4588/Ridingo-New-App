@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
 import { searchBrands, getModelsForBrand, searchAllModels, ALL_BRANDS, INDIAN_VEHICLE_DATABASE } from '../utils/indianVehicles';
+import { saveRecordedVideo, getRecordedVideoUrl } from '../utils/inspectionVideoStore';
 
 const STORAGE_KEY = 'ridingo_vehicle_inspections';
 const RETENTION_PERIOD_MS = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
@@ -92,6 +93,20 @@ export default function VehicleConditionModal({
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const recordTimerRef = useRef(null);
+  const recordedBlobRef = useRef(null);
+
+  // Restore recorded video from persistent IndexedDB if present
+  useEffect(() => {
+    let isMounted = true;
+    if (!videoUrl && trip?.id) {
+      getRecordedVideoUrl(trip.id).then(url => {
+        if (isMounted && url) {
+          setVideoUrl(url);
+        }
+      });
+    }
+    return () => { isMounted = false; };
+  }, [trip?.id]);
 
   // Outside click listener to dismiss floating dropdowns
   useEffect(() => {
@@ -226,9 +241,10 @@ export default function VehicleConditionModal({
   /**
    * User taps to open custom camera UI
    */
-  const handleOpenCustomCamera = () => {
+  const handleOpenCustomCamera = (initialMode = 'photo') => {
     setErrorMsg('');
     setCameraError('');
+    setCaptureMode(initialMode === 'video' ? 'video' : 'photo');
     setSessionPhotos([...photos]); // initialize with existing saved photos
     setSessionVideoUrl(videoUrl);
     setShowGallerySheet(false);
@@ -258,12 +274,19 @@ export default function VehicleConditionModal({
   /**
    * User taps Done button in camera (saves all images & video taken in this session)
    */
-  const handleDoneCamera = () => {
+  const handleDoneCamera = async () => {
     if (isRecordingVideo) {
       setIsRecordingVideo(false);
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch (_) {}
+        await new Promise((resolve) => {
+          const originalOnStop = mediaRecorderRef.current.onstop;
+          mediaRecorderRef.current.onstop = async (e) => {
+            if (originalOnStop) await originalOnStop(e);
+            resolve();
+          };
+          try { mediaRecorderRef.current.stop(); } catch (_) { resolve(); }
+        });
       }
     }
     stopCameraStream();
@@ -333,19 +356,37 @@ export default function VehicleConditionModal({
 
       try {
         if (streamRef.current && typeof MediaRecorder !== 'undefined') {
-          const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-            ? 'video/webm;codecs=vp9'
-            : (MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm');
-          const mr = new MediaRecorder(streamRef.current, { mimeType: mime });
+          const supportedMimes = [
+            'video/mp4;codecs=avc1',
+            'video/mp4',
+            'video/webm;codecs=vp8,opus',
+            'video/webm;codecs=vp8',
+            'video/webm'
+          ];
+          let chosenMime = '';
+          for (const m of supportedMimes) {
+            if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) {
+              chosenMime = m;
+              break;
+            }
+          }
+          const mr = chosenMime ? new MediaRecorder(streamRef.current, { mimeType: chosenMime }) : new MediaRecorder(streamRef.current);
           mr.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
               recordedChunksRef.current.push(e.data);
             }
           };
-          mr.onstop = () => {
-            const blob = new Blob(recordedChunksRef.current, { type: mime || 'video/webm' });
-            const url = URL.createObjectURL(blob);
+          mr.onstop = async () => {
+            const blob = new Blob(recordedChunksRef.current, { type: chosenMime || 'video/mp4' });
+            recordedBlobRef.current = blob;
+            // Save permanently into IndexedDB so it's never lost across reloads
+            const persistentUrl = await saveRecordedVideo(trip?.id || 'latest', blob, {
+              duration: recordDuration,
+              recordedAt: Date.now()
+            });
+            const url = persistentUrl || URL.createObjectURL(blob);
             setSessionVideoUrl(url);
+            setVideoUrl(url);
 
             // Also capture a thumbnail frame for the collected files stack
             if (videoRef.current && canvasRef.current) {
@@ -403,6 +444,10 @@ export default function VehicleConditionModal({
     if (!photos || photos.length === 0) {
       setErrorMsg('Vehicle Camera Inspection is required. Please capture at least 1 photo using the camera before starting the trip.');
       return;
+    }
+
+    if (recordedBlobRef.current) {
+      saveRecordedVideo(trip?.id || 'TRP', recordedBlobRef.current);
     }
 
     const inspectionRecord = saveVehicleDetailsWith5DayRetention(trip?.id || 'TRP', {
@@ -1155,6 +1200,135 @@ export default function VehicleConditionModal({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* 2.5 Walkaround Inspection Video Section */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted, #64748B)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Walkaround Inspection Video
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 750,
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    background: videoUrl ? 'rgba(34, 197, 94, 0.12)' : 'rgba(0, 0, 0, 0.05)',
+                    color: videoUrl ? '#15803D' : 'var(--muted, #64748B)'
+                  }}
+                >
+                  {videoUrl ? '✓ Video Ready' : 'Recommended'}
+                </span>
+              </div>
+
+              {videoUrl ? (
+                <div
+                  style={{
+                    background: 'var(--field, #F8FAFC)',
+                    border: '1.5px solid #22C55E',
+                    borderRadius: '18px',
+                    padding: '14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E' }} />
+                      <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)' }}>Recorded Inspection Video</b>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoUrl(null);
+                        setSessionVideoUrl(null);
+                        recordedBlobRef.current = null;
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#EF4444',
+                        fontSize: '12px',
+                        fontWeight: 750,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Retake / Remove
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '100%',
+                      aspectRatio: '16 / 9',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      background: '#000000',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
+                    }}
+                  >
+                    <video
+                      key={videoUrl}
+                      src={videoUrl}
+                      controls
+                      playsInline
+                      webkit-playsinline="true"
+                      preload="metadata"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => handleOpenCustomCamera('video')}
+                  style={{
+                    background: 'var(--field, #F8FAFC)',
+                    border: '1.5px dashed var(--line, #CBD5E1)',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '12px',
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#EF4444'
+                      }}
+                    >
+                      <Icon name="video" size={20} color="#EF4444" />
+                    </div>
+                    <div>
+                      <b style={{ fontSize: '13px', color: 'var(--ink, #0F172A)', display: 'block', marginBottom: '2px' }}>
+                        Record Walkaround Video
+                      </b>
+                      <span style={{ fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
+                        Live 360° video walkaround of vehicle body
+                      </span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#2563EB' }}>
+                    + Record
+                  </span>
                 </div>
               )}
             </div>
